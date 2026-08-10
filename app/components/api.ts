@@ -1,0 +1,102 @@
+// Cliente da API. Todo erro chega como { error } e vira Error com a mensagem em pt-BR;
+// 401 devolve a pessoa para o login.
+
+export type Activity = {
+  id: number;
+  ref: string;
+  titulo: string;
+  area: string;
+  tipo: string;
+  status: string;
+  prioridade: string;
+  prazo: string | null;
+  responsavelId: number | null;
+  responsavel: string;
+  podeEditar: boolean;
+};
+
+export type Deal = {
+  id: number;
+  ref: string;
+  conta: string;
+  escopo: string;
+  area: string;
+  estagio: string;
+  valorCentavos: number;
+  responsavel: string;
+  proximoPasso: string;
+  podeEditar: boolean;
+};
+
+export type LogEntry = {
+  id: number;
+  criadoEm: string;
+  autor: string;
+  area: string | null;
+  entidade: string;
+  texto: string;
+};
+
+export type Pessoa = {
+  id: number;
+  nome: string;
+  email: string;
+  papel: string;
+  iniciais: string;
+  ativo: boolean;
+  perms: Record<string, string>;
+};
+
+export type Me = {
+  id: number;
+  nome: string;
+  email: string;
+  papel: string;
+  iniciais: string;
+  avatarUrl: string | null;
+};
+
+export type State = {
+  me: Me;
+  perms: Record<string, string>;
+  areasVisiveis: string[];
+  isAdmin: boolean;
+  activities: Activity[];
+  deals: Deal[];
+  logs: LogEntry[];
+  pessoas: Pessoa[];
+};
+
+async function req<T>(url: string, opts: RequestInit = {}): Promise<T> {
+  const headers = new Headers(opts.headers ?? {});
+  if (opts.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  const res = await fetch(url, { ...opts, headers });
+  if (res.status === 401) {
+    window.location.href = "/login";
+    throw new Error("Não autenticado.");
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((data as { error?: string }).error ?? "Ocorreu um erro.");
+  return data as T;
+}
+
+export const api = {
+  estado: () => req<State>("/api/state"),
+
+  alterarAtividade: (id: number, patch: { status?: string; responsavelId?: number | null; prioridade?: string }) =>
+    req<{ ok: boolean }>(`/api/activities/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+
+  moverOportunidade: (id: number, direcao: 1 | -1) =>
+    req<{ ok: boolean }>(`/api/deals/${id}`, { method: "PATCH", body: JSON.stringify({ direcao }) }),
+
+  ciclarPermissao: (userId: number, area: string) =>
+    req<{ ok: boolean; nivel: string | null }>(`/api/users/${userId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ ciclarArea: area }),
+    }),
+
+  definirAtivo: (userId: number, ativo: boolean) =>
+    req<{ ok: boolean }>(`/api/users/${userId}`, { method: "PATCH", body: JSON.stringify({ ativo }) }),
+
+  sair: () => req<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
+};

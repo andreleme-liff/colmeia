@@ -1,0 +1,237 @@
+// Camada de banco (Postgres via Supabase), usando o driver `postgres` — o mesmo padrão do
+// mini-todos: funciona bem com o Transaction Pooler via `prepare: false`.
+// Migração idempotente no primeiro acesso + seed do conjunto de demonstração.
+
+import postgres from "postgres";
+import { AREA_IDS, PAPEIS, PRIORIDADES, STAGE_KEYS, STATUS_KEYS } from "./domain";
+
+export type Db = ReturnType<typeof postgres>;
+
+let _sql: Db | null = null;
+let _migrated: Promise<void> | null = null;
+
+function connectionString(): string {
+  const url = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRES_URL_NON_POOLING;
+  if (!url) {
+    throw new Error(
+      "DATABASE_URL não configurada. Defina a connection string do Supabase (Settings → Database → Connection string)."
+    );
+  }
+  return url;
+}
+
+function rawSql(): Db {
+  if (_sql) return _sql;
+  _sql = postgres(connectionString(), {
+    ssl: "require",
+    prepare: false, // compatível com o Transaction Pooler (pgbouncer) da Supabase
+  });
+  return _sql;
+}
+
+/** ISO 8601 com sufixo Z. */
+export function nowIso(): string {
+  return new Date().toISOString();
+}
+
+// As listas de valores válidos vivem em domain.ts; os CHECKs abaixo são gerados a partir
+// delas para o banco e o app nunca discordarem sobre o que é um status válido.
+const inList = (vals: readonly string[]) => vals.map((v) => `'${v}'`).join(",");
+
+async function migrate(): Promise<void> {
+  const sql = rawSql();
+
+  await sql.unsafe(`
+    CREATE TABLE IF NOT EXISTS users (
+      id          SERIAL PRIMARY KEY,
+      nome        TEXT NOT NULL,
+      email       TEXT NOT NULL UNIQUE,
+      papel       TEXT NOT NULL DEFAULT 'membro' CHECK (papel IN (${inList(PAPEIS)})),
+      iniciais    TEXT NOT NULL DEFAULT '',
+      ativo       BOOLEAN NOT NULL DEFAULT true,
+      google_sub  TEXT,
+      avatar_url  TEXT,
+      criado_em   TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+
+  // Ausência de linha = sem acesso. É a matriz da tela de administração.
+  await sql.unsafe(`
+    CREATE TABLE IF NOT EXISTS user_area_perms (
+      user_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      area     TEXT NOT NULL CHECK (area IN (${inList(AREA_IDS)})),
+      nivel    TEXT NOT NULL CHECK (nivel IN ('view','edit')),
+      PRIMARY KEY (user_id, area)
+    )
+  `);
+
+  await sql.unsafe(`
+    CREATE TABLE IF NOT EXISTS activities (
+      id                  SERIAL PRIMARY KEY,
+      ref                 TEXT NOT NULL UNIQUE,
+      titulo              TEXT NOT NULL,
+      area                TEXT NOT NULL CHECK (area IN (${inList(AREA_IDS)})),
+      tipo                TEXT NOT NULL DEFAULT 'Operacional',
+      status              TEXT NOT NULL DEFAULT 'backlog' CHECK (status IN (${inList(STATUS_KEYS)})),
+      responsavel_user_id INTEGER REFERENCES users(id),
+      prazo               DATE,
+      prioridade          TEXT NOT NULL DEFAULT 'media' CHECK (prioridade IN (${inList(PRIORIDADES)})),
+      criado_em           TIMESTAMPTZ NOT NULL DEFAULT now(),
+      atualizado_em       TIMESTAMPTZ
+    )
+  `);
+
+  await sql.unsafe(`
+    CREATE TABLE IF NOT EXISTS deals (
+      id                  SERIAL PRIMARY KEY,
+      ref                 TEXT NOT NULL UNIQUE,
+      conta               TEXT NOT NULL,
+      escopo              TEXT NOT NULL DEFAULT '',
+      area                TEXT NOT NULL CHECK (area IN (${inList(AREA_IDS)})),
+      estagio             TEXT NOT NULL DEFAULT 'lead' CHECK (estagio IN (${inList(STAGE_KEYS)})),
+      valor_centavos      BIGINT NOT NULL DEFAULT 0,
+      responsavel_user_id INTEGER REFERENCES users(id),
+      proximo_passo       TEXT NOT NULL DEFAULT '',
+      criado_em           TIMESTAMPTZ NOT NULL DEFAULT now(),
+      atualizado_em       TIMESTAMPTZ
+    )
+  `);
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS sessions (
+      token      TEXT PRIMARY KEY,
+      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      expires_at TIMESTAMPTZ NOT NULL
+    )
+  `;
+
+  // Log append-only: quem, quando, o quê, e o par valor anterior/novo — exatamente o que a
+  // tela de administração promete guardar. Nada aqui é atualizado ou apagado pelo app.
+  await sql.unsafe(`
+    CREATE TABLE IF NOT EXISTS audit_log (
+      id             SERIAL PRIMARY KEY,
+      actor_user_id  INTEGER REFERENCES users(id),
+      area           TEXT CHECK (area IS NULL OR area IN (${inList(AREA_IDS)})),
+      entidade       TEXT NOT NULL,
+      campo          TEXT,
+      valor_anterior TEXT,
+      valor_novo     TEXT,
+      texto          TEXT NOT NULL,
+      criado_em      TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+
+  await sql`CREATE INDEX IF NOT EXISTS idx_activities_area ON activities(area, status)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_deals_area ON deals(area, estagio)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_audit_recente ON audit_log(criado_em DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_perms_user ON user_area_perms(user_id)`;
+
+  await seed(sql);
+}
+
+/**
+ * Conjunto de demonstração — só entra em base vazia, e só se SEED_DEMO não estiver desligado.
+ * São os mesmos dados que o protótipo estático carregava em memória, agora persistidos.
+ */
+async function seed(sql: Db): Promise<void> {
+  if (process.env.SEED_DEMO === "0") return;
+  const [{ c }] = await sql<{ c: number }[]>`SELECT COUNT(*)::int AS c FROM users`;
+  if (Number(c) > 0) return;
+
+  const adminEmail = (process.env.ADMIN_EMAIL ?? "andre@getliff.ai").trim().toLowerCase();
+
+  const pessoas: {
+    nome: string;
+    email: string;
+    papel: string;
+    iniciais: string;
+    perms: Record<string, "view" | "edit">;
+  }[] = [
+    {
+      nome: "André Leme", email: "andre@getliff.ai", papel: "admin", iniciais: "AL",
+      perms: {},
+    },
+    {
+      nome: "Marina Duarte", email: "marina@getliff.ai", papel: "gestor", iniciais: "MD",
+      perms: { "law-firms": "edit", corporate: "edit", "public-sector": "view", tax: "view" },
+    },
+    {
+      nome: "Rafael Nunes", email: "rafael@getliff.ai", papel: "gestor", iniciais: "RN",
+      perms: { "law-firms": "view", corporate: "view", tax: "edit", labs: "edit" },
+    },
+    {
+      nome: "Clara Bastos", email: "clara@getliff.ai", papel: "membro", iniciais: "CB",
+      perms: { "public-sector": "view", social: "view" },
+    },
+  ];
+
+  const idPorEmail = new Map<string, number>();
+  for (const p of pessoas) {
+    const papel = p.email.toLowerCase() === adminEmail ? "admin" : p.papel;
+    const [row] = await sql<{ id: number }[]>`
+      INSERT INTO users (nome, email, papel, iniciais) VALUES (${p.nome}, ${p.email}, ${papel}, ${p.iniciais})
+      RETURNING id
+    `;
+    idPorEmail.set(p.email, row.id);
+    for (const [area, nivel] of Object.entries(p.perms)) {
+      await sql`INSERT INTO user_area_perms (user_id, area, nivel) VALUES (${row.id}, ${area}, ${nivel})`;
+    }
+  }
+
+  const uid = (email: string) => idPorEmail.get(email) ?? null;
+
+  const atividades: [string, string, string, string, string, string, string, string][] = [
+    ["A-101", "Implantação law-v no escritório Vieira & Costa", "law-firms", "Operacional", "andamento", "marina@getliff.ai", "2026-08-12", "alta"],
+    ["A-102", "Migração de base processual — fase 2", "law-firms", "Operacional", "revisao", "rafael@getliff.ai", "2026-08-09", "alta"],
+    ["A-103", "Proposta comercial Grupo Andrade", "law-firms", "Comercial", "backlog", "marina@getliff.ai", "2026-08-18", "media"],
+    ["A-201", "Rollout Regtrack na área de compliance", "corporate", "Operacional", "andamento", "rafael@getliff.ai", "2026-08-15", "alta"],
+    ["A-202", "Treinamento de governança — turma 3", "corporate", "Institucional", "concluido", "clara@getliff.ai", "2026-08-01", "baixa"],
+    ["A-203", "Revisão de política de retenção documental", "corporate", "Operacional", "backlog", "andre@getliff.ai", "2026-08-22", "media"],
+    ["A-301", "Pregão eletrônico — Tribunal de Contas MG", "public-sector", "Comercial", "andamento", "andre@getliff.ai", "2026-08-11", "alta"],
+    ["A-302", "Integração com sistema de controle interno", "public-sector", "Operacional", "backlog", "rafael@getliff.ai", "2026-08-29", "baixa"],
+    ["A-401", "Motor de cálculo da reforma — CBS/IBS", "tax", "Produto", "andamento", "rafael@getliff.ai", "2026-08-20", "alta"],
+    ["A-402", "DRE Impact para carteira industrial", "tax", "Operacional", "revisao", "andre@getliff.ai", "2026-08-08", "alta"],
+    ["A-403", "Onboarding tributário — Nutrimax", "tax", "Comercial", "concluido", "marina@getliff.ai", "2026-07-31", "media"],
+    ["A-501", "Deadline Agent — avaliação de precisão", "labs", "Produto", "andamento", "rafael@getliff.ai", "2026-08-14", "alta"],
+    ["A-502", "Evidence Graph — protótipo de grafo", "labs", "Produto", "backlog", "andre@getliff.ai", "2026-08-26", "media"],
+    ["A-503", "Benchmark de modelos para extração", "labs", "Produto", "revisao", "rafael@getliff.ai", "2026-08-10", "media"],
+    ["A-601", "Convênio com Defensoria — plano piloto", "social", "Institucional", "andamento", "clara@getliff.ai", "2026-08-19", "media"],
+    ["A-602", "Relatório de impacto do 1º semestre", "social", "Institucional", "concluido", "clara@getliff.ai", "2026-08-04", "baixa"],
+  ];
+  for (const [ref, titulo, area, tipo, status, email, prazo, prio] of atividades) {
+    await sql`
+      INSERT INTO activities (ref, titulo, area, tipo, status, responsavel_user_id, prazo, prioridade)
+      VALUES (${ref}, ${titulo}, ${area}, ${tipo}, ${status}, ${uid(email)}, ${prazo}, ${prio})
+    `;
+  }
+
+  // valor em centavos: 420000 reais → 42000000
+  const oportunidades: [string, string, string, string, string, number, string, string][] = [
+    ["D-01", "Vieira & Costa Advogados", "law-v · 80 usuários", "law-firms", "negociacao", 420000, "marina@getliff.ai", "Reunião 08/08"],
+    ["D-02", "Grupo Andrade", "law-v + Docflows", "law-firms", "proposta", 260000, "marina@getliff.ai", "Enviar proposta"],
+    ["D-03", "Metalcorp S.A.", "Regtrack corporate", "corporate", "qualificacao", 180000, "marina@getliff.ai", "Discovery 12/08"],
+    ["D-04", "Instituto Vega", "Compliance ESG", "corporate", "lead", 95000, "andre@getliff.ai", "Qualificar"],
+    ["D-05", "Tribunal de Contas MG", "Controle interno", "public-sector", "proposta", 610000, "andre@getliff.ai", "Edital 11/08"],
+    ["D-06", "Nutrimax Alimentos", "LIFF Tax · DRE Impact", "tax", "ganho", 340000, "marina@getliff.ai", "Kickoff feito"],
+    ["D-07", "Cimentos Boa Vista", "Reforma tributária", "tax", "negociacao", 275000, "andre@getliff.ai", "Ajuste de escopo"],
+    ["D-08", "Rede Solidária Brasil", "Acesso à justiça", "social", "lead", 60000, "clara@getliff.ai", "Primeiro contato"],
+  ];
+  for (const [ref, conta, escopo, area, estagio, reais, email, prox] of oportunidades) {
+    await sql`
+      INSERT INTO deals (ref, conta, escopo, area, estagio, valor_centavos, responsavel_user_id, proximo_passo)
+      VALUES (${ref}, ${conta}, ${escopo}, ${area}, ${estagio}, ${reais * 100}, ${uid(email)}, ${prox})
+    `;
+  }
+
+  await sql`
+    INSERT INTO audit_log (actor_user_id, area, entidade, texto)
+    VALUES (${uid(adminEmail) ?? uid("andre@getliff.ai")}, NULL, 'sistema', 'Base criada com o conjunto de demonstração')
+  `;
+}
+
+/** Garante a migração (uma vez por processo) e devolve o client. */
+export async function getDb(): Promise<Db> {
+  if (!_migrated) _migrated = migrate();
+  await _migrated;
+  return rawSql();
+}

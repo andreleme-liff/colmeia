@@ -1,142 +1,126 @@
 # LIFF Ops — sistema de gestão de atividades
 
-Implementação do design `Sistema LIFF.dc.html` (projeto Claude Design
-`bc1e3d7a-45c7-4125-a2ce-281f6f74e0e3`) como aplicação estática real.
+Atividade comercial, execução operacional, cadastros e administração da LIFF, organizados
+por área, com permissão por usuário e log de alterações em tudo.
 
-Site estático puro: React 18 via CDN, sem build, sem bundler. Abrir `index.html`
-por um servidor HTTP já roda tudo.
+Next.js 16 (App Router) + Supabase Postgres, na mesma stack do `mini-todos`: driver
+`postgres`, connection string no servidor, sessão em cookie httpOnly.
+
+> ⚠️ **Nunca aponte `DATABASE_URL` local para o projeto Supabase de produção.** Use sempre um
+> projeto Supabase separado para desenvolvimento (um segundo projeto gratuito resolve).
 
 ```bash
-python3 -m http.server 4173
+cp .env.example .env.local   # preencha DATABASE_URL e as credenciais do Google
+npm install
+npm run dev
 ```
+
+A migração é idempotente e roda sozinha no primeiro acesso ao banco: cria as tabelas e, se a
+base estiver vazia, insere o conjunto de demonstração. `SEED_DEMO=0` sobe a base limpa.
+
+## Onde as coisas estão
+
+| Caminho | Papel |
+|---|---|
+| `lib/db.ts` | Conexão, schema e seed |
+| `lib/auth.ts` | Sessão em cookie; criação/vínculo de conta pelo Google |
+| `lib/google-oauth.ts` | Authorization code flow, restrição de domínio |
+| `lib/perms.ts` | **Permissão por área — o enforcement de verdade** |
+| `lib/log.ts` | Escrita na auditoria |
+| `lib/domain.ts` | Áreas, status, estágios, papéis — compartilhado servidor/cliente |
+| `app/api/state` | Estado completo, já recortado pela permissão |
+| `app/api/activities/[id]`, `deals/[id]`, `users/[id]` | Escritas, cada uma com sua checagem |
+| `app/components/Ops.tsx` | Casca do sistema, estado de tela e handlers |
+| `app/components/views.tsx` | As telas, puramente de apresentação |
+| `app/components/ds.tsx` | Componentes do design system LIFF |
+| `_ds/` | Design system original, intocado — tokens consumidos direto |
+
+## Permissão: o que mudou de verdade
+
+No protótipo estático a regra de permissão morava no navegador. Isso se sustentava porque
+não havia dados — nada a proteger. Com banco de verdade, permissão em JavaScript é
+decoração: basta abrir o console.
+
+Agora **toda leitura filtra pelas áreas visíveis no SQL** (`WHERE area = ANY($areas)`) e
+**toda escrita reavalia a permissão a partir da área do registro no banco**, nunca de algo
+que o cliente mandou junto. O `podeEditar` que chega em cada registro para o front existe só
+para desenhar o estado — se o cliente ignorá-lo, o servidor recusa.
+
+Duas decisões que valem registrar:
+
+- Quem não enxerga a área recebe **404, não 403**, ao mexer num registro dela. Um 403
+  confirmaria que aquele id existe.
+- No pipeline o cliente manda a **direção** (`-1`/`+1`), não o estágio de destino. Assim não
+  dá para pular etapas mandando um estágio arbitrário.
+
+O papel define o teto e a matriz por área refina dentro dele: `admin` tem edição em tudo sem
+depender da matriz, `leitura` nunca passa de `view` mesmo que a matriz diga `edit`.
+
+## Acesso
+
+Só existe um caminho de entrada: **SSO Google restrito a `getliff.ai`** (a lista de perfis
+do protótipo sumiu — quem você é passa a ser definido pelo Google). Conta nova entra como
+`membro` e **sem nenhuma área**, até a administração liberar — que é o que a tela sempre
+prometeu. A exceção é `ADMIN_EMAIL`, que entra como admin para a primeira instalação não
+ficar sem ninguém capaz de liberar acesso.
+
+Desativar alguém na administração corta o acesso na requisição seguinte.
+
+## Auditoria
+
+`audit_log` é append-only — nada no app faz `UPDATE` ou `DELETE` nela. Cada linha guarda
+autor, horário, entidade, campo e o par valor anterior/novo, que é exatamente o que a tela
+de administração promete. Uma alteração que mexe em três campos vira três linhas.
+
+## Temas
+
+O design system é dark-first e não define tema claro. O escuro é ele, intocado. O claro vive
+em `app/globals.css` e reescreve só os aliases semânticos, derivando cada tom por mistura das
+cores da marca — nenhum HEX novo entra no sistema.
+
+Três pontos que não eram simples inversão de fundo: Charcoal fazia dois papéis (hairline e
+texto apagado) e precisou virar dois tokens; as cores de estado não contrastam sobre Floral
+White e ganharam variante de texto escurecida por mistura com Obsidiana; e os tons Mid das
+verticais somem no branco, então cada área sobe para o Core (Labs usa o Dark, porque seu Core
+é um teal luminoso que também não segura).
+
+## Design system
+
+Os tokens CSS vêm direto de `_ds/`, sem cópia — `globals.css` os importa. A única exceção é
+`fonts.css`, que faz `@import` do Google Fonts: no Next as mesmas duas famílias entram por
+`next/font`.
+
+Os componentes React são o ponto onde o kit não coube como está: `_ds_bundle.js` é um IIFE
+que pendura tudo em `window.LIFFDesignSystem_064c9d` e depende de um React global, o que não
+existe num build de módulos. Os seis componentes usados (`LiffMark`, `Button`, `Field`,
+`Input`, `Select`, `Switch`) estão transcritos 1:1 em `app/components/ds.tsx` — mesmas props,
+mesmos valores. O bundle segue no repositório como referência para conferir divergências.
+
+`Field`/`Input`/`Select` e o variant `ghost` do `Button` fixam texto Floral White em estilo
+inline: foram construídos só para o canvas escuro. No tema claro isso é corrigido por fora,
+sem alterar o kit.
+
+## Estado atual e limites
+
+- **Cadastros é só leitura.** O formulário "novo registro" desenha, mas não grava — não havia
+  rota de criação no desenho original e não inventei uma.
+- Os tipos de atividade são texto livre (`Comercial`, `Operacional`, `Produto`,
+  `Institucional`), não uma tabela.
+- O conjunto de demonstração inclui três pessoas fictícias além do admin. Em base de verdade,
+  suba com `SEED_DEMO=0`.
+- Prazo crítico agora é calculado (vence nos próximos 7 dias e não está concluído), não mais
+  uma lista fixa de datas.
 
 ## Deploy
 
 Produção: **https://liff-ops.vercel.app** (projeto `liff-ops`, time `liff-ai`).
 Repositório: `andreleme-liff/liff-ops`, privado.
 
-O repositório está conectado ao projeto e o push na `main` cria deployment,
-mas **o domínio de produção não está sendo atualizado**. Todo deployment depois
-do primeiro fica travado em `UNKNOWN` (nunca chega a `READY`), e por isso a
-Vercel recusa promovê-lo:
+Havia um impedimento aberto na versão estática: todo deployment depois do primeiro trava em
+`UNKNOWN` e a Vercel recusa promovê-lo (`422 ... is not ready`). Não é erro de build; aponta
+para algo do lado da conta e precisa ser visto no dashboard. Enquanto isso, o domínio serve
+uma versão antiga.
 
-```
-Error: The provided deploymentId (...) is not ready and cannot be promoted. (422)
-Error: The deployment https://... is not ready.
-```
-
-Não é erro de build — o projeto é estático, o build é `. [0ms]`, o `vercel.json`
-é lido (as rotas aparecem no `inspect`) e o deployment até responde. Ele
-simplesmente não sai desse estado, o que aponta para algo do lado da conta
-(fila, cota ou limite do time) e precisa ser visto no dashboard da Vercel.
-
-Enquanto isso, `liff-ops.vercel.app` continua servindo o **primeiro** deployment.
-Para conferir o que está no ar, não confie no status do CLI — compare o conteúdo:
-
-```bash
-curl -s https://liff-ops.vercel.app/app.js | md5
-```
-
-O time também tem **Deployment Protection** ligada: as URLs por deployment
-(`liff-<hash>-liff-ai.vercel.app`, `liff-ops-git-main-liff-ai.vercel.app`)
-respondem 302 para o SSO da Vercel. Só o domínio de produção é público.
-
-## Arquivos
-
-| Arquivo | Papel |
-|---|---|
-| `index.html` | Shell: carrega o design system, o React e o app |
-| `app.js` | Telas e regras (permissão, log, pipeline, kanban, resumo) |
-| `data.js` | Constantes de domínio e carga inicial de dados |
-| `app.css` | Layout, hover e breakpoints — o que não cabe em estilo inline |
-| `_ds/liff-design-system-.../` | Design system LIFF, cópia intocada do projeto |
-
-O design system é consumido como veio: `styles.css` importa os tokens
-(`fonts`, `colors`, `typography`, `spacing`, `base`) e `_ds_bundle.js` expõe os
-componentes React em `window.LIFFDesignSystem_064c9d`. Deste app são usados
-`LiffMark`, `Button`, `Field`, `Input`, `Select` e `Switch`. Nenhum HEX é
-escrito à mão fora dos tokens — `app.js` referencia `var(--liff-*)`.
-
-## O que o sistema faz
-
-**Acesso.** Tela de SSO (protótipo) com quatro contas `@getliff.ai`. A conta
-escolhida define o que se vê e o que se edita.
-
-**Permissão por área.** Cada usuário tem, por vertical (Law Firms, Corporate,
-Public Sector, Tax, Labs, Social), um de três níveis: sem acesso, ver ou
-editar. `Admin` tem edição em tudo. A permissão filtra listas, contadores,
-chips de área, o log e a própria navegação — `administração` só aparece para
-Admin.
-
-**Visão geral.** KPIs do escopo do usuário, carga por área e as últimas
-alterações.
-
-**Comercial.** Pipeline em cinco estágios; as setas movem a oportunidade e só
-funcionam em áreas com permissão de edição.
-
-**Operações.** Kanban por status com arrastar e soltar (HTML5). Cards de áreas
-sem permissão de edição não são arrastáveis — e a checagem se repete no `drop`,
-então forçar o evento também não passa.
-
-**Atividades.** Tabela plana do escopo; prazos críticos em vermelho. Clicar
-abre o painel lateral com status, responsável, prioridade e o log daquela
-atividade. Sem permissão de edição, o painel fica somente leitura com o aviso
-correspondente.
-
-**Cadastros.** Contas, pessoas, áreas e tipos, com o formulário de novo
-registro montado com os primitivos de formulário do design system.
-
-**Administração.** Matriz usuário × área; clicar em uma célula alterna
-sem acesso → ver → editar. Linhas de Admin não são editáveis.
-
-**Auditoria.** Todo movimento de card, mudança de status, troca de responsável
-ou prioridade, avanço de estágio e alteração de permissão vira registro com
-autor, horário, entidade e o que mudou.
-
-**Resumo p/ WhatsApp.** Gera o texto de status (geral ou por área) já formatado
-e copia para a área de transferência.
-
-**Fundo escuro ou claro.** Seletor no rodapé da barra lateral (e na tela de
-acesso). A escolha fica em `localStorage`; sem escolha, segue o
-`prefers-color-scheme` do sistema. Um script inline no `index.html` aplica o
-tema antes do primeiro paint para a página não piscar.
-
-## Como o tema claro funciona
-
-O design system LIFF é dark-first e não define um tema claro. O escuro aqui é
-ele, intocado. O claro vive em `app.css` e reescreve **só os aliases
-semânticos** (`--liff-canvas`, `--liff-surface*`, `--liff-text*`, `--liff-border`),
-derivando cada tom por mistura das cores da marca — Floral White, Dust Grey,
-Charcoal, Obsidiana. Nenhum HEX novo entra no sistema; `app.js` e `data.js` não
-têm um HEX sequer.
-
-Três pontos que não eram simples inversão de fundo:
-
-- **Charcoal fazia dois papéis.** No escuro ele é a hairline *e* o texto mais
-  apagado. No claro os dois precisam ir para lados opostos, então a hairline
-  virou `--liff-border` e o texto apagado, `--liff-app-ghost`.
-- **As cores de estado foram calibradas para o canvas escuro.** Success e
-  Warning não têm contraste sobre Floral White. Existe uma variante de texto
-  por estado (`--liff-app-*-ink`) que escurece por mistura com Obsidiana — o
-  matiz é o mesmo. Os tokens originais seguem valendo para preenchimentos.
-- **Os tons Mid das verticais somem sobre branco.** No claro cada área sobe
-  para o Core da sua cascata. Labs é a exceção: seu Core é um teal luminoso
-  que também não segura, então usa o Dark.
-
-Duas concessões aos componentes do kit, que só existem para o canvas escuro:
-o variant `ghost` do `Button` recebe um `style` corrigindo a cor, e
-`Field`/`Input`/`Select` levam um patch com `!important` em `app.css`. O bundle
-do design system continua sem uma linha alterada.
-
-## Estado atual e limites
-
-- Dados moram em memória (`data.js`); recarregar a página zera tudo. Nenhuma
-  chamada de rede além das fontes do Google e do React na CDN.
-- O login não é SSO de verdade — é a escolha de um perfil, como no design.
-- Duas coisas estão desenhadas como display-only e ficaram assim:
-  o switch **ATIVO** da administração não altera o usuário, e **cadastrar**
-  não grava registro.
-- Os prazos "críticos" são uma lista fixa de datas (`CRITICAL_DUE`), não um
-  cálculo sobre a data de hoje.
-- O design foi feito para 1440×900. Os breakpoints em `app.css` são adição
-  desta implementação e não mudam a aparência em desktop.
+Ao subir esta versão será preciso, além de destravar aquilo, definir as variáveis de ambiente
+no projeto da Vercel (`DATABASE_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
+`ADMIN_EMAIL`) e cadastrar o redirect URI de produção no Google Cloud Console.
