@@ -50,7 +50,7 @@ escrito à mão fora dos tokens — `app.js` referencia `var(--liff-*)`.
 
 ## O que o sistema faz
 
-**Acesso.** Tela de SSO (protótipo) com quatro contas `@liff.com.br`. A conta
+**Acesso.** Tela de SSO (protótipo) com quatro contas `@getliff.ai`. A conta
 escolhida define o que se vê e o que se edita.
 
 **Permissão por área.** Cada usuário tem, por vertical (Law Firms, Corporate,
@@ -86,6 +86,38 @@ autor, horário, entidade e o que mudou.
 
 **Resumo p/ WhatsApp.** Gera o texto de status (geral ou por área) já formatado
 e copia para a área de transferência.
+
+**Fundo escuro ou claro.** Seletor no rodapé da barra lateral (e na tela de
+acesso). A escolha fica em `localStorage`; sem escolha, segue o
+`prefers-color-scheme` do sistema. Um script inline no `index.html` aplica o
+tema antes do primeiro paint para a página não piscar.
+
+## Como o tema claro funciona
+
+O design system LIFF é dark-first e não define um tema claro. O escuro aqui é
+ele, intocado. O claro vive em `app.css` e reescreve **só os aliases
+semânticos** (`--liff-canvas`, `--liff-surface*`, `--liff-text*`, `--liff-border`),
+derivando cada tom por mistura das cores da marca — Floral White, Dust Grey,
+Charcoal, Obsidiana. Nenhum HEX novo entra no sistema; `app.js` e `data.js` não
+têm um HEX sequer.
+
+Três pontos que não eram simples inversão de fundo:
+
+- **Charcoal fazia dois papéis.** No escuro ele é a hairline *e* o texto mais
+  apagado. No claro os dois precisam ir para lados opostos, então a hairline
+  virou `--liff-border` e o texto apagado, `--liff-app-ghost`.
+- **As cores de estado foram calibradas para o canvas escuro.** Success e
+  Warning não têm contraste sobre Floral White. Existe uma variante de texto
+  por estado (`--liff-app-*-ink`) que escurece por mistura com Obsidiana — o
+  matiz é o mesmo. Os tokens originais seguem valendo para preenchimentos.
+- **Os tons Mid das verticais somem sobre branco.** No claro cada área sobe
+  para o Core da sua cascata. Labs é a exceção: seu Core é um teal luminoso
+  que também não segura, então usa o Dark.
+
+Duas concessões aos componentes do kit, que só existem para o canvas escuro:
+o variant `ghost` do `Button` recebe um `style` corrigindo a cor, e
+`Field`/`Input`/`Select` levam um patch com `!important` em `app.css`. O bundle
+do design system continua sem uma linha alterada.
 
 ## Estado atual e limites
 

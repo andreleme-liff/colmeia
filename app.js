@@ -12,24 +12,51 @@
   const D = window.LIFFOpsData;
   const { AREAS, STATUS, STAGES, NAV, TITLES, ADMIN_CARDS, CRITICAL_DUE } = D;
 
-  /* ---------- tokens usados na composição ---------- */
+  /* ---------- tokens usados na composição ----------
+     Só aliases semânticos: quem decide o valor de cada um é o tema, em
+     app.css. Nenhum HEX aqui. */
   const C = {
-    canvas:  'var(--liff-obsidiana)',
-    panel:   'var(--liff-panel)',
-    panel2:  'var(--liff-panel-2)',
-    cell:    'var(--liff-cell)',
+    canvas:  'var(--liff-canvas)',
+    panel:   'var(--liff-surface)',
+    panel2:  'var(--liff-surface-2)',
+    cell:    'var(--liff-surface-cell)',
     code:    'var(--liff-code-bg)',
-    line:    'var(--liff-charcoal)',
-    ink:     'var(--liff-floral)',
-    body:    'var(--liff-body-ink)',
-    dust:    'var(--liff-dust)',
-    faint:   'var(--liff-muted)',
-    accent:  'var(--liff-paprika)',
-    success: 'var(--liff-success)',
-    warning: 'var(--liff-warning)',
-    error:   'var(--liff-error)',
-    info:    'var(--liff-info)'
+    line:    'var(--liff-border)',   // hairline estrutural
+    ghost:   'var(--liff-app-ghost)', // texto mais apagado da interface
+    ink:     'var(--liff-text)',
+    body:    'var(--liff-text-body)',
+    dust:    'var(--liff-text-muted)',
+    faint:   'var(--liff-text-faint)',
+    accent:  'var(--liff-accent)',
+    success: 'var(--liff-app-success-ink)',
+    warning: 'var(--liff-app-warning-ink)',
+    error:   'var(--liff-app-error-ink)',
+    info:    'var(--liff-app-info-ink)',
+    onState: 'var(--liff-app-on-state)' // texto sobre preenchimento de estado
   };
+
+  /* O variant `ghost` do Button do design system fixa texto Floral White e
+     borda Charcoal — ele só existe para o canvas escuro. Como o componente
+     aplica o `style` recebido por último, dá para acertar no tema claro sem
+     tocar no bundle. */
+  const GHOST_FIX = { color: C.ink, borderColor: C.line };
+
+  /* ---------- tema ---------- */
+  const THEME_KEY = 'liff-ops-theme';
+  const readTheme = () => {
+    try {
+      const saved = localStorage.getItem(THEME_KEY);
+      if (saved === 'light' || saved === 'dark') return saved;
+    } catch (e) { /* storage bloqueado — cai na preferência do sistema */ }
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches
+      ? 'light' : 'dark';
+  };
+  const writeTheme = theme => {
+    document.documentElement.dataset.theme = theme;
+    try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* idem */ }
+  };
+  /* O wordmark é monocromático: Floral sobre escuro, Obsidiana sobre claro. */
+  const markTone = theme => (theme === 'light' ? 'dark' : 'light');
 
   const SANS = 'var(--liff-font-body)';
   const MONO = 'var(--liff-font-mono)';
@@ -124,12 +151,12 @@
   }
 
   /* =========================================================
-     Login — SSO Google restrito ao domínio liff.com.br
+     Login — SSO Google restrito ao domínio getliff.ai
      ========================================================= */
-  function LoginScreen({ users, onLogin }) {
+  function LoginScreen({ users, onLogin, theme, onTheme }) {
     return h('div', { className: 'liff-login' },
       h('div', { className: 'liff-login__pitch' },
-        h(LiffMark, { height: 34, tone: 'light' }),
+        h(LiffMark, { height: 34, tone: markTone(theme) }),
         h('div', null,
           h('div', { style: { ...eyebrow(12, C.accent), marginBottom: 24 } }, 'LIFF/ OPS'),
           h('h1', {
@@ -145,7 +172,7 @@
         h('div', { style: { display: 'flex', gap: 10, flexWrap: 'wrap' } },
           ['CRM', 'KANBAN', 'AUDITORIA', 'PERMISSÕES'].map((t, i) =>
             h(React.Fragment, { key: t },
-              i > 0 ? h('span', { style: { color: C.line } }, '/') : null,
+              i > 0 ? h('span', { style: { color: C.ghost } }, '/') : null,
               h('span', { style: eyebrow(11, C.faint, '0.14em') }, t)
             )
           )
@@ -157,7 +184,7 @@
           h('h2', { style: { fontSize: 26, letterSpacing: '-0.02em', fontWeight: 800, color: C.ink, margin: '0 0 6px' } },
             'Entrar com Google'),
           h('p', { style: { fontSize: 14, lineHeight: 1.6, color: C.faint, margin: '0 0 28px' } },
-            'SSO restrito ao domínio liff.com.br. O acesso a cada área é definido pela administração.'),
+            'SSO restrito ao domínio getliff.ai. O acesso a cada área é definido pela administração.'),
           h('div', { style: mesh({ display: 'flex', flexDirection: 'column', gap: 1 }) },
             users.map(u =>
               h('div', {
@@ -174,10 +201,32 @@
             )
           ),
           h('div', { style: { marginTop: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
-            h('span', { style: { fontFamily: MONO, fontSize: 10, letterSpacing: '0.12em', color: C.line } }, 'GOOGLE WORKSPACE SSO'),
+            h('span', { style: { fontFamily: MONO, fontSize: 10, letterSpacing: '0.12em', color: C.ghost } }, 'GOOGLE WORKSPACE SSO'),
             h('span', { style: { fontFamily: MONO, fontSize: 10, letterSpacing: '0.12em', color: C.faint } }, '/ protótipo')
+          ),
+          h('div', { style: { marginTop: 22, borderTop: `1px solid ${C.line}`, paddingTop: 18 } },
+            h('div', { style: { ...eyebrow(10, C.faint, '0.14em'), marginBottom: 9 } }, 'FUNDO'),
+            h(ThemeToggle, { theme, onChange: onTheme })
           )
         )
+      )
+    );
+  }
+
+  /* Segmentado escuro/claro, na mesma linguagem dos chips de área. */
+  function ThemeToggle({ theme, onChange, style }) {
+    return h('div', { style: mesh({ display: 'flex', gap: 1, ...style }) },
+      [{ key: 'dark', label: 'escuro' }, { key: 'light', label: 'claro' }].map(t =>
+        h('div', {
+          key: t.key, onClick: () => onChange(t.key),
+          role: 'button', 'aria-pressed': theme === t.key,
+          title: t.key === 'dark' ? 'Fundo escuro' : 'Fundo claro',
+          style: {
+            flex: 1, textAlign: 'center', padding: '7px 10px', cursor: 'pointer',
+            ...eyebrow(10, theme === t.key ? C.ink : C.faint, '0.12em'),
+            background: theme === t.key ? C.panel2 : C.canvas
+          }
+        }, t.label)
       )
     );
   }
@@ -225,7 +274,7 @@
           h('div', { style: { display: 'flex', flexDirection: 'column', gap: 14 } },
             recentLogs.map(l =>
               h('div', { key: l.id, style: { display: 'flex', gap: 12 } },
-                h('div', { style: { fontFamily: MONO, fontSize: 11, color: C.line, whiteSpace: 'nowrap', paddingTop: 2 } }, l.ts),
+                h('div', { style: { fontFamily: MONO, fontSize: 11, color: C.ghost, whiteSpace: 'nowrap', paddingTop: 2 } }, l.ts),
                 h('div', { style: { minWidth: 0 } },
                   h('div', { style: { fontSize: 13, color: C.body, lineHeight: 1.5 } }, l.text),
                   h('div', { style: { ...eyebrow(10, C.faint, '0.1em'), marginTop: 3 } }, `${l.who} · ${areaOf(l.area).label}`)
@@ -476,10 +525,12 @@
      Administração — matriz de permissões
      ========================================================= */
   const PERM_COLS = '1.5fr repeat(6,1fr) 0.9fr';
+  /* Pílulas de permissão: preenchimento a ~12% e borda a ~35% da cor de
+     estado, como manda o sistema; o texto usa a variante legível do tema. */
   const PERM_STYLE = {
-    edit: { label: 'editar', bg: 'color-mix(in srgb, #3BA66B 12%, transparent)', bd: 'color-mix(in srgb, #3BA66B 35%, transparent)', ink: C.success },
-    view: { label: 'ver',    bg: 'color-mix(in srgb, #2E6F95 12%, transparent)', bd: 'color-mix(in srgb, #2E6F95 35%, transparent)', ink: C.info },
-    none: { label: '—',      bg: 'transparent',                                  bd: C.line,                                        ink: C.line }
+    edit: { label: 'editar', bg: 'color-mix(in srgb, var(--liff-success) 12%, transparent)', bd: 'color-mix(in srgb, var(--liff-success) 35%, transparent)', ink: C.success },
+    view: { label: 'ver',    bg: 'color-mix(in srgb, var(--liff-info) 12%, transparent)',    bd: 'color-mix(in srgb, var(--liff-info) 35%, transparent)',    ink: C.info },
+    none: { label: '—',      bg: 'transparent',                                              bd: C.line,                                                     ink: C.ghost }
   };
 
   function Admin({ users, isAdmin, onCyclePerm }) {
@@ -580,7 +631,7 @@
             ),
             h('span', { onClick: onClose, role: 'button', 'aria-label': 'Fechar', style: { cursor: 'pointer', fontFamily: MONO, fontSize: 16, color: C.faint } }, '×')
           ),
-          h('div', { style: { fontFamily: MONO, fontSize: 11, color: C.line, marginTop: 10 } }, `${act.id} · vence ${act.due}`)
+          h('div', { style: { fontFamily: MONO, fontSize: 11, color: C.ghost, marginTop: 10 } }, `${act.id} · vence ${act.due}`)
         ),
         h('div', { style: { padding: '24px 26px', borderBottom: `1px solid ${C.line}`, display: 'flex', flexDirection: 'column', gap: 18 } },
           h('div', null,
@@ -592,7 +643,7 @@
                   key: s.key, onClick: () => onStatus(s.key),
                   style: {
                     flex: 1, textAlign: 'center', padding: '9px 6px', cursor: editable ? 'pointer' : 'not-allowed',
-                    ...eyebrow(10, on ? C.canvas : C.faint, '0.08em'),
+                    ...eyebrow(10, on ? C.onState : C.faint, '0.08em'),
                     background: on ? statusColor(s.key) : C.canvas
                   }
                 }, s.label);
@@ -689,7 +740,7 @@
             h('span', { style: { fontFamily: MONO, fontSize: 11, color: copied ? C.success : C.faint } },
               copied ? 'Copiado para a área de transferência.' : 'Texto formatado para colar no WhatsApp.'),
             h('span', { style: { display: 'flex', gap: 10 } },
-              h(Button, { variant: 'ghost', size: 'sm', onClick: onClose }, 'fechar'),
+              h(Button, { variant: 'ghost', size: 'sm', onClick: onClose, style: GHOST_FIX }, 'fechar'),
               h(Button, { variant: 'solid', size: 'sm', onClick: onCopy }, 'copiar texto')
             )
           )
@@ -703,6 +754,9 @@
      ========================================================= */
   function App() {
     const [state, setStateRaw] = useState(D.initialState);
+    const [theme, setTheme] = useState(readTheme);
+
+    React.useEffect(() => { writeTheme(theme); }, [theme]);
 
     const setState = useCallback(patch => {
       setStateRaw(s => ({ ...s, ...(typeof patch === 'function' ? patch(s) : patch) }));
@@ -774,7 +828,7 @@
     /* ---------- login ---------- */
     if (!state.authed) {
       return h(LoginScreen, {
-        users: state.users,
+        users: state.users, theme, onTheme: setTheme,
         onLogin: uid => setState({ authed: true, userId: uid, view: 'overview', area: 'all' })
       });
     }
@@ -810,7 +864,7 @@
         cards: cards.map(d => ({
           id: d.id, conta: d.conta, escopo: d.escopo, owner: d.owner, prox: d.prox,
           valor: brl(d.valor), color: areaOf(d.area).color,
-          editable: canEdit(d.area), ctrl: canEdit(d.area) ? C.dust : C.line
+          editable: canEdit(d.area), ctrl: canEdit(d.area) ? C.dust : C.ghost
         }))
       };
     });
@@ -859,7 +913,7 @@
       /* ---- sidebar ---- */
       h('aside', { className: 'liff-aside' },
         h('div', { style: { padding: '0 22px 26px' } },
-          h(LiffMark, { height: 24, tone: 'light' }),
+          h(LiffMark, { height: 24, tone: markTone(theme) }),
           h('div', { style: { ...eyebrow(10, C.accent, '0.18em'), marginTop: 10 } }, 'OPS · GESTÃO INTERNA')
         ),
         h('nav', { style: { display: 'flex', flexDirection: 'column' } },
@@ -880,6 +934,10 @@
           })
         ),
         h('div', { style: { marginTop: 'auto', padding: '26px 22px 0' } },
+          h('div', { style: { borderTop: `1px solid ${C.line}`, paddingTop: 18, marginBottom: 18 } },
+            h('div', { style: { ...eyebrow(10, C.faint, '0.14em'), marginBottom: 9 } }, 'FUNDO'),
+            h(ThemeToggle, { theme, onChange: setTheme })
+          ),
           h('div', { style: { borderTop: `1px solid ${C.line}`, paddingTop: 18 } },
             h('div', { style: { display: 'flex', alignItems: 'center', gap: 11 } },
               h('div', { style: avatarStyle(32) }, me.initials),
@@ -892,7 +950,7 @@
               h(Button, {
                 variant: 'ghost', size: 'sm',
                 onClick: () => setState({ authed: false, selectedId: null, waOpen: false }),
-                style: { width: '100%', justifyContent: 'center' }
+                style: { width: '100%', justifyContent: 'center', ...GHOST_FIX }
               }, 'trocar conta')
             )
           )

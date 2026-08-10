@@ -3,13 +3,15 @@
    é a carga inicial do protótipo (substituível por uma API sem tocar na UI). */
 
 window.LIFFOpsData = (() => {
+  /* O tom de cada vertical muda com o tema (ver app.css) — daqui sai só o
+     token, nunca o HEX. */
   const AREAS = [
-    { id: 'law-firms',     label: 'Law Firms',     short: 'LAW',  color: 'var(--liff-law-firms-mid)' },
-    { id: 'corporate',     label: 'Corporate',     short: 'CORP', color: 'var(--liff-corporate-mid)' },
-    { id: 'public-sector', label: 'Public Sector', short: 'PUB',  color: 'var(--liff-public-sector-mid)' },
-    { id: 'tax',           label: 'Tax',           short: 'TAX',  color: 'var(--liff-tax-mid)' },
-    { id: 'labs',          label: 'Labs',          short: 'LABS', color: 'var(--liff-labs-core)' },
-    { id: 'social',        label: 'Social',        short: 'SOC',  color: 'var(--liff-social-mid)' }
+    { id: 'law-firms',     label: 'Law Firms',     short: 'LAW',  color: 'var(--liff-app-area-law-firms)' },
+    { id: 'corporate',     label: 'Corporate',     short: 'CORP', color: 'var(--liff-app-area-corporate)' },
+    { id: 'public-sector', label: 'Public Sector', short: 'PUB',  color: 'var(--liff-app-area-public-sector)' },
+    { id: 'tax',           label: 'Tax',           short: 'TAX',  color: 'var(--liff-app-area-tax)' },
+    { id: 'labs',          label: 'Labs',          short: 'LABS', color: 'var(--liff-app-area-labs)' },
+    { id: 'social',        label: 'Social',        short: 'SOC',  color: 'var(--liff-app-area-social)' }
   ];
 
   const STATUS = [
@@ -48,13 +50,13 @@ window.LIFFOpsData = (() => {
   };
 
   const users = [
-    { id: 'u1', name: 'André Leme', email: 'andre@liff.com.br', role: 'Admin', initials: 'AL', active: true,
+    { id: 'u1', name: 'André Leme', email: 'andre@getliff.ai', role: 'Admin', initials: 'AL', active: true,
       perms: { 'law-firms': 'edit', corporate: 'edit', 'public-sector': 'edit', tax: 'edit', labs: 'edit', social: 'edit' } },
-    { id: 'u2', name: 'Marina Duarte', email: 'marina@liff.com.br', role: 'Gestora comercial', initials: 'MD', active: true,
+    { id: 'u2', name: 'Marina Duarte', email: 'marina@getliff.ai', role: 'Gestora comercial', initials: 'MD', active: true,
       perms: { 'law-firms': 'edit', corporate: 'edit', 'public-sector': 'view', tax: 'view', labs: null, social: null } },
-    { id: 'u3', name: 'Rafael Nunes', email: 'rafael@liff.com.br', role: 'Líder de operações', initials: 'RN', active: true,
+    { id: 'u3', name: 'Rafael Nunes', email: 'rafael@getliff.ai', role: 'Líder de operações', initials: 'RN', active: true,
       perms: { 'law-firms': 'view', corporate: 'view', 'public-sector': null, tax: 'edit', labs: 'edit', social: null } },
-    { id: 'u4', name: 'Clara Bastos', email: 'clara@liff.com.br', role: 'Analista', initials: 'CB', active: true,
+    { id: 'u4', name: 'Clara Bastos', email: 'clara@getliff.ai', role: 'Analista', initials: 'CB', active: true,
       perms: { 'law-firms': null, corporate: null, 'public-sector': 'view', tax: null, labs: null, social: 'view' } }
   ];
 
@@ -99,7 +101,7 @@ window.LIFFOpsData = (() => {
 
   const ADMIN_CARDS = [
     { title: 'PAPÉIS',           body: 'Admin, Gestor, Membro e Leitura. O papel define o teto de permissão; a matriz acima refina por área.' },
-    { title: 'SSO GOOGLE',       body: 'Login restrito ao domínio liff.com.br. Novos usuários entram sem área atribuída até liberação.' },
+    { title: 'SSO GOOGLE',       body: 'Login restrito ao domínio getliff.ai. Novos usuários entram sem área atribuída até liberação.' },
     { title: 'RETENÇÃO DE LOG',  body: 'Registro imutável por 24 meses: autor, horário, entidade, campo, valor anterior e novo.' }
   ];
 

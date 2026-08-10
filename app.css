@@ -1,18 +1,92 @@
-/* LIFF Ops — layout, estados de hover e comportamento responsivo.
+/* LIFF Ops — temas, layout, estados de hover e comportamento responsivo.
    A linguagem visual (cor, tipo, espaço, borda) vem do design system;
-   aqui ficam só a estrutura da tela e o que não cabe em style inline. */
+   aqui ficam só a estrutura da tela e o que não cabe em estilo inline. */
 
-html, body { margin: 0; padding: 0; background: var(--liff-obsidiana); }
+/* =========================================================
+   Temas
+   O escuro é o padrão do design system e não é tocado. O claro reescreve
+   apenas os aliases semânticos, derivando cada tom por mistura de cores da
+   marca (Floral White, Dust Grey, Charcoal, Obsidiana) — nenhum HEX novo
+   entra no sistema.
+   ========================================================= */
+:root {
+  /* Cinza mais apagado da interface. No escuro coincide com a hairline
+     (Charcoal), no claro precisa se separar dela para continuar legível. */
+  --liff-app-ghost: var(--liff-charcoal);
+
+  /* Cores de estado como TEXTO. No escuro são as do design system. */
+  --liff-app-success-ink: var(--liff-success);
+  --liff-app-warning-ink: var(--liff-warning);
+  --liff-app-error-ink:   var(--liff-error);
+  --liff-app-info-ink:    var(--liff-info);
+  /* Texto sobre um preenchimento de estado (pílula de status ativa). */
+  --liff-app-on-state: var(--liff-obsidiana);
+
+  /* Cor de cada vertical. No escuro, o tom Mid do cascata. */
+  --liff-app-area-law-firms:     var(--liff-law-firms-mid);
+  --liff-app-area-corporate:     var(--liff-corporate-mid);
+  --liff-app-area-public-sector: var(--liff-public-sector-mid);
+  --liff-app-area-tax:           var(--liff-tax-mid);
+  --liff-app-area-labs:          var(--liff-labs-core);
+  --liff-app-area-social:        var(--liff-social-mid);
+}
+
+:root[data-theme="light"] {
+  /* Superfícies: a célula de conteúdo é o Floral White puro; o canvas recua
+     com um véu de Dust, e o passo 2 (hover/selecionado) avança sobre ele. */
+  --liff-canvas:       color-mix(in srgb, var(--liff-dust) 24%, var(--liff-floral));
+  --liff-surface:      var(--liff-floral);
+  --liff-surface-cell: var(--liff-floral);
+  --liff-surface-2:    color-mix(in srgb, var(--liff-dust) 42%, var(--liff-floral));
+  --liff-code-bg:      color-mix(in srgb, var(--liff-dust) 16%, var(--liff-floral));
+
+  /* A hairline clareia; o cinza apagado escurece — no escuro os dois são
+     Charcoal, aqui precisam ir para lados opostos. */
+  --liff-border:    color-mix(in srgb, var(--liff-charcoal) 28%, var(--liff-floral));
+  --liff-app-ghost: color-mix(in srgb, var(--liff-charcoal) 58%, var(--liff-floral));
+
+  /* Texto: a escala de proeminência do escuro, invertida. */
+  --liff-text:       var(--liff-obsidiana);
+  --liff-text-body:  color-mix(in srgb, var(--liff-obsidiana) 84%, var(--liff-floral));
+  --liff-text-muted: color-mix(in srgb, var(--liff-obsidiana) 64%, var(--liff-floral));
+  --liff-text-faint: color-mix(in srgb, var(--liff-charcoal) 82%, var(--liff-floral));
+
+  /* Estados: os HEX do design system foram calibrados para o canvas escuro e
+     não têm contraste sobre Floral White. Escurecem por mistura com Obsidiana
+     — o matiz é o mesmo, só a luminância muda. Os tokens originais seguem
+     intactos e continuam valendo para preenchimentos. */
+  --liff-app-success-ink: color-mix(in srgb, var(--liff-success) 72%, var(--liff-obsidiana));
+  --liff-app-warning-ink: color-mix(in srgb, var(--liff-warning) 70%, var(--liff-obsidiana));
+  --liff-app-error-ink:   color-mix(in srgb, var(--liff-error) 82%, var(--liff-obsidiana));
+  --liff-app-info-ink:    color-mix(in srgb, var(--liff-info) 88%, var(--liff-obsidiana));
+  --liff-app-on-state:    var(--liff-floral);
+
+  /* Verticais: o tom Mid é claro demais para texto sobre Floral White; sobe
+     para o Core de cada cascata. Labs é a exceção — seu Core é um teal
+     luminoso que também não segura, então usa o Dark. */
+  --liff-app-area-law-firms:     var(--liff-law-firms-core);
+  --liff-app-area-corporate:     var(--liff-corporate-core);
+  --liff-app-area-public-sector: var(--liff-public-sector-core);
+  --liff-app-area-tax:           var(--liff-tax-core);
+  --liff-app-area-labs:          var(--liff-labs-dark);
+  --liff-app-area-social:        var(--liff-social-core);
+}
+
+/* =========================================================
+   Base
+   ========================================================= */
+html, body { margin: 0; padding: 0; background: var(--liff-canvas); }
+body { background: var(--liff-canvas); color: var(--liff-text); }
 #root { font-family: var(--liff-font-body); }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-thumb { background: var(--liff-charcoal); }
-::-webkit-scrollbar-track { background: var(--liff-obsidiana); }
+::-webkit-scrollbar-thumb { background: var(--liff-border); }
+::-webkit-scrollbar-track { background: var(--liff-canvas); }
 
 /* ---------- login ---------- */
 .liff-login {
   min-height: 100vh;
-  background: var(--liff-obsidiana);
+  background: var(--liff-canvas);
   display: grid;
   grid-template-columns: 1fr 1fr;
 }
@@ -22,7 +96,7 @@ html, body { margin: 0; padding: 0; background: var(--liff-obsidiana); }
   flex-direction: column;
   justify-content: space-between;
   gap: 48px;
-  border-right: 1px solid var(--liff-charcoal);
+  border-right: 1px solid var(--liff-border);
 }
 .liff-login__panel {
   padding: 72px;
@@ -37,24 +111,24 @@ html, body { margin: 0; padding: 0; background: var(--liff-obsidiana); }
   display: grid;
   grid-template-columns: 248px 1fr;
   gap: 1px;
-  background: var(--liff-charcoal);
+  background: var(--liff-border);
   overflow: hidden;
 }
 .liff-aside {
-  background: var(--liff-obsidiana);
+  background: var(--liff-canvas);
   display: flex;
   flex-direction: column;
   padding: 26px 0;
   overflow: auto;
 }
 .liff-header {
-  border-bottom: 1px solid var(--liff-charcoal);
+  border-bottom: 1px solid var(--liff-border);
   padding: 16px 28px;
   display: flex;
   align-items: center;
   gap: 18px;
   flex-wrap: wrap;
-  background: var(--liff-obsidiana);
+  background: var(--liff-canvas);
 }
 .liff-main { flex: 1; overflow: auto; padding: 28px; }
 
@@ -74,19 +148,31 @@ html, body { margin: 0; padding: 0; background: var(--liff-obsidiana); }
   top: 0; right: 0; bottom: 0;
   width: 460px;
   max-width: 100%;
-  background: var(--liff-panel);
-  border-left: 1px solid var(--liff-charcoal);
+  background: var(--liff-surface);
+  border-left: 1px solid var(--liff-border);
   z-index: 41;
   display: flex;
   flex-direction: column;
   overflow: auto;
 }
 
+/* ---------- primitivos de formulário no tema claro ----------
+   Field, Input e Select do design system fixam texto Floral White e rótulo
+   Dust Grey em style inline — foram construídos só para o canvas escuro (o
+   próprio README do kit os marca como "intentional additions" sobre ele).
+   Sobre Floral White eles somem. Como o estilo é inline, a correção precisa
+   de !important; o bundle continua intocado. */
+:root[data-theme="light"] .liff-main input,
+:root[data-theme="light"] .liff-main select { color: var(--liff-text) !important; }
+:root[data-theme="light"] .liff-main label { color: var(--liff-text-muted) !important; }
+/* Caret do Select — irmão do <select> dentro do wrapper do componente. */
+:root[data-theme="light"] .liff-main select ~ span { color: var(--liff-text-faint) !important; }
+
 /* ---------- hover: só troca de cor, sem transformações ---------- */
 .liff-hover-cell:hover,
 .liff-hover-card:hover,
-.liff-hover-row:hover { background: var(--liff-panel-2) !important; }
-.liff-nav-item:hover { color: var(--liff-floral) !important; }
+.liff-hover-row:hover { background: var(--liff-surface-2) !important; }
+.liff-nav-item:hover { color: var(--liff-text) !important; }
 
 /* ---------- responsivo ---------- */
 @media (max-width: 1100px) {
@@ -100,7 +186,7 @@ html, body { margin: 0; padding: 0; background: var(--liff-obsidiana); }
   .liff-login { grid-template-columns: 1fr; }
   .liff-login__pitch,
   .liff-login__panel { padding: 42px 28px; }
-  .liff-login__pitch { border-right: 0; border-bottom: 1px solid var(--liff-charcoal); }
+  .liff-login__pitch { border-right: 0; border-bottom: 1px solid var(--liff-border); }
   /* O display encolhe, mas o tracking nunca passa de -0.04em. */
   .liff-login__pitch h1 { font-size: clamp(30px, 8.6vw, 52px) !important; }
 

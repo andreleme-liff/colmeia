@@ -9,6 +9,18 @@
 <!-- Design system LIFF: fontes, tokens e base -->
 <link rel="stylesheet" href="_ds/liff-design-system-064c9d4d-2b53-487d-bb38-ec3256a6c7cb/styles.css">
 <link rel="stylesheet" href="app.css">
+
+<!-- Aplica o tema antes do primeiro paint, senão a página pisca no fundo errado. -->
+<script>
+(() => {
+  let theme;
+  try { theme = localStorage.getItem('liff-ops-theme'); } catch (e) { /* storage bloqueado */ }
+  if (theme !== 'light' && theme !== 'dark') {
+    theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  }
+  document.documentElement.dataset.theme = theme;
+})();
+</script>
 </head>
 <body>
 <div id="root"></div>
