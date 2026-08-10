@@ -10,6 +10,20 @@ por um servidor HTTP já roda tudo.
 python3 -m http.server 4173
 ```
 
+## Deploy
+
+Produção: **https://liff-ops.vercel.app** (projeto `liff-ops`, time `liff-ai`).
+Repositório: `andreleme-liff/liff-ops`, privado.
+
+O repositório está conectado ao projeto na Vercel, mas o time tem
+**Deployment Protection** ligada: os deployments criados pelo push ficam atrás
+do login da Vercel (`liff-ops-git-main-liff-ai.vercel.app` responde 302 para o
+SSO) e não assumem o domínio limpo. Para publicar de fato no endereço público:
+
+```bash
+vercel deploy --prod --scope liff-ai
+```
+
 ## Arquivos
 
 | Arquivo | Papel |
