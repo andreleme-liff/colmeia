@@ -15,22 +15,31 @@ python3 -m http.server 4173
 Produção: **https://liff-ops.vercel.app** (projeto `liff-ops`, time `liff-ai`).
 Repositório: `andreleme-liff/liff-ops`, privado.
 
-O repositório está conectado ao projeto: `push` na `main` publica sozinho.
+O repositório está conectado ao projeto e o push na `main` cria deployment,
+mas **o domínio de produção não está sendo atualizado**. Todo deployment depois
+do primeiro fica travado em `UNKNOWN` (nunca chega a `READY`), e por isso a
+Vercel recusa promovê-lo:
 
-O time tem **Deployment Protection** ligada, então as URLs por deployment
-(`liff-<hash>-liff-ai.vercel.app`, `liff-ops-git-main-liff-ai.vercel.app`)
-respondem 302 para o SSO da Vercel e só abrem para quem está logado no time.
-O domínio de produção `liff-ops.vercel.app` fica de fora da proteção — é
-público e serve sempre o último commit da `main`.
+```
+Error: The provided deploymentId (...) is not ready and cannot be promoted. (422)
+Error: The deployment https://... is not ready.
+```
 
-O `vercel ls` mostra esses deployments como `UNKNOWN` em vez de `Ready`; é
-limitação do CLI lendo estado através da proteção, não falha de build.
+Não é erro de build — o projeto é estático, o build é `. [0ms]`, o `vercel.json`
+é lido (as rotas aparecem no `inspect`) e o deployment até responde. Ele
+simplesmente não sai desse estado, o que aponta para algo do lado da conta
+(fila, cota ou limite do time) e precisa ser visto no dashboard da Vercel.
 
-Deploy manual, quando precisar:
+Enquanto isso, `liff-ops.vercel.app` continua servindo o **primeiro** deployment.
+Para conferir o que está no ar, não confie no status do CLI — compare o conteúdo:
 
 ```bash
-vercel deploy --prod --scope liff-ai
+curl -s https://liff-ops.vercel.app/app.js | md5
 ```
+
+O time também tem **Deployment Protection** ligada: as URLs por deployment
+(`liff-<hash>-liff-ai.vercel.app`, `liff-ops-git-main-liff-ai.vercel.app`)
+respondem 302 para o SSO da Vercel. Só o domínio de produção é público.
 
 ## Arquivos
 
