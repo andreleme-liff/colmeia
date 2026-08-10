@@ -116,11 +116,21 @@ sem alterar o kit.
 Produção: **https://liff-ops.vercel.app** (projeto `liff-ops`, time `liff-ai`).
 Repositório: `andreleme-liff/liff-ops`, privado.
 
-Havia um impedimento aberto na versão estática: todo deployment depois do primeiro trava em
-`UNKNOWN` e a Vercel recusa promovê-lo (`422 ... is not ready`). Não é erro de build; aponta
-para algo do lado da conta e precisa ser visto no dashboard. Enquanto isso, o domínio serve
-uma versão antiga.
+Durante um tempo todo deployment depois do primeiro travou em `UNKNOWN`, sem construir e sem
+logs, e a Vercel recusava promovê-lo (`422 ... is not ready`). A causa era o **e-mail do autor
+do commit**: os commits saíram com um endereço que a Vercel não reconhece como membro do time,
+e ela não constrói commit de autor desconhecido. Corrigido reescrevendo a autoria para
+`leme@getliff.ai` — os `git config` do repositório já estavam certos, bastava não sobrescrevê-los
+na hora de commitar.
 
-Ao subir esta versão será preciso, além de destravar aquilo, definir as variáveis de ambiente
-no projeto da Vercel (`DATABASE_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
-`ADMIN_EMAIL`) e cadastrar o redirect URI de produção no Google Cloud Console.
+Separadamente, o time tem **Deployment Protection**: as URLs por deployment
+(`liff-<hash>-liff-ai.vercel.app`, `liff-ops-git-<branch>-liff-ai.vercel.app`) respondem 302
+para o SSO da Vercel e só abrem logado. Só o domínio de produção é público. Isso é esperado.
+
+O projeto na Vercel nasceu como site estático, então `vercel.json` declara
+`"framework": "nextjs"` — sem isso o build termina bem mas falha em
+`No Output Directory named "public" found`.
+
+Falta, antes de promover esta branch a produção: definir `DATABASE_URL`, `GOOGLE_CLIENT_ID`,
+`GOOGLE_CLIENT_SECRET` e `ADMIN_EMAIL` no projeto da Vercel (hoje não há **nenhuma** variável
+definida lá) e cadastrar o redirect URI de produção no Google Cloud Console.
