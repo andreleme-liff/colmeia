@@ -15,10 +15,18 @@ python3 -m http.server 4173
 Produção: **https://liff-ops.vercel.app** (projeto `liff-ops`, time `liff-ai`).
 Repositório: `andreleme-liff/liff-ops`, privado.
 
-O repositório está conectado ao projeto na Vercel, mas o time tem
-**Deployment Protection** ligada: os deployments criados pelo push ficam atrás
-do login da Vercel (`liff-ops-git-main-liff-ai.vercel.app` responde 302 para o
-SSO) e não assumem o domínio limpo. Para publicar de fato no endereço público:
+O repositório está conectado ao projeto: `push` na `main` publica sozinho.
+
+O time tem **Deployment Protection** ligada, então as URLs por deployment
+(`liff-<hash>-liff-ai.vercel.app`, `liff-ops-git-main-liff-ai.vercel.app`)
+respondem 302 para o SSO da Vercel e só abrem para quem está logado no time.
+O domínio de produção `liff-ops.vercel.app` fica de fora da proteção — é
+público e serve sempre o último commit da `main`.
+
+O `vercel ls` mostra esses deployments como `UNKNOWN` em vez de `Ready`; é
+limitação do CLI lendo estado através da proteção, não falha de build.
+
+Deploy manual, quando precisar:
 
 ```bash
 vercel deploy --prod --scope liff-ai
