@@ -5,7 +5,7 @@ import { getDb } from "@/lib/db";
 import { requireAdmin } from "@/lib/perms";
 import { json, err } from "@/lib/http";
 import { registrar } from "@/lib/log";
-import { AREA_IDS } from "@/lib/domain";
+
 
 type Body = { cor?: string; label?: string; short?: string };
 
@@ -17,7 +17,6 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/areas/[id
   if (ctx instanceof Response) return ctx;
 
   const { id } = await ctxRoute.params;
-  if (!AREA_IDS.includes(id)) return err("Área inválida.", 404);
 
   let body: Body;
   try {
@@ -82,4 +81,54 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/areas/[id
   }
 
   return json({ ok: true, mudancas: mudancas.length });
+}
+
+/**
+ * Exclusão. Recusa se a vertical ainda tem atividade ou oportunidade — a chave estrangeira
+ * já barraria, mas aqui a mensagem diz quantos registros seguram, que é o que a pessoa
+ * precisa saber para decidir.
+ *
+ * As permissões concedidas naquela área caem junto (ON DELETE CASCADE): permissão sobre
+ * área inexistente não significa nada. A auditoria sobrevive — ela guarda o texto da área,
+ * sem chave estrangeira, de propósito: histórico não deve sumir porque a estrutura mudou.
+ */
+export async function DELETE(_req: Request, ctxRoute: RouteContext<"/api/areas/[id]">) {
+  const ctx = await requireAdmin();
+  if (ctx instanceof Response) return ctx;
+
+  const { id } = await ctxRoute.params;
+  const sql = await getDb();
+
+  const alvos = await sql<{ label: string }[]>`SELECT label FROM areas WHERE id = ${id}`;
+  if (!alvos.length) return err("Área não encontrada.", 404);
+
+  const [{ atividades, oportunidades }] = await sql<{ atividades: number; oportunidades: number }[]>`
+    SELECT
+      (SELECT COUNT(*)::int FROM activities WHERE area = ${id}) AS atividades,
+      (SELECT COUNT(*)::int FROM deals      WHERE area = ${id}) AS oportunidades
+  `;
+  if (atividades > 0 || oportunidades > 0) {
+    const partes = [
+      atividades > 0 ? `${atividades} atividade${atividades > 1 ? "s" : ""}` : null,
+      oportunidades > 0 ? `${oportunidades} oportunidade${oportunidades > 1 ? "s" : ""}` : null,
+    ].filter(Boolean);
+    return err(`${alvos[0].label} ainda tem ${partes.join(" e ")}. Mova ou exclua antes.`, 409);
+  }
+
+  const [{ perms }] = await sql<{ perms: number }[]>`
+    SELECT COUNT(*)::int AS perms FROM user_area_perms WHERE area = ${id}
+  `;
+
+  await sql`DELETE FROM areas WHERE id = ${id}`;
+  await registrar(sql, {
+    actorUserId: ctx.user.userId,
+    area: null,
+    entidade: `AREA-${id}`,
+    campo: "exclusao",
+    de: alvos[0].label,
+    para: null,
+    texto: `Excluiu a área ${alvos[0].label}${perms > 0 ? ` e ${perms} permissão(ões) nela` : ""}`,
+  });
+
+  return json({ ok: true });
 }

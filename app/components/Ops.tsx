@@ -24,11 +24,13 @@ import {
   type CargaArea,
   type Kpi,
 } from "./views";
-import { C, GHOST_FIX, avatarStyle, dot, eyebrow, markTone, mesh, useTheme } from "./tokens";
+import { C, GHOST_FIX, avatarStyle, eyebrow, markTone, useTheme } from "./tokens";
 import CoresDasAreas from "./CoresDasAreas";
+import SeletorArea from "./SeletorArea";
 import { api, type Activity, type State } from "./api";
-import { setAreas } from "@/lib/domain";
-import { NAV, STAGES, STATUS, TITLES, areaOf, brl, ddmm, stageLabel, statusLabel, todasAreas } from "@/lib/domain";
+import {
+  NAV, STAGES, STATUS, TITLES, areaOf, brl, ddmm, setAreas, stageLabel, statusLabel, todasAreas,
+} from "@/lib/domain";
 
 const DIAS_CRITICO = 7;
 
@@ -337,7 +339,17 @@ export default function Ops() {
             areas={estado.areas.filter((a) => estado.areasVisiveis.includes(a.id))}
             contagemPorArea={(id) => estado.activities.filter((x) => x.area === id).length}
             podeEditarAreas={estado.isAdmin}
+            salvandoArea={salvando}
             onCorArea={(id, cor) => void acao(() => api.alterarArea(id, { cor }))}
+            onCriarArea={(d) => {
+              setSalvando(true);
+              void acao(() => api.criarArea(d)).finally(() => setSalvando(false));
+            }}
+            onExcluirArea={(id, label) => {
+              // Exclusão é irreversível e some com as permissões concedidas naquela área.
+              if (!window.confirm(`Excluir a vertical ${label}? As permissões nela também caem.`)) return;
+              void acao(() => api.excluirArea(id));
+            }}
           />
         );
       case "admin":
@@ -434,28 +446,8 @@ export default function Ops() {
             <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em", color: C.ink }}>{TITLES[view]}</div>
           </div>
 
-          <div className="liff-area-chips" style={mesh({ display: "flex", gap: 1, marginLeft: "auto", flexWrap: "wrap" })}>
-            {chips.map((chip) => {
-              const on = area === chip.id;
-              return (
-                <div
-                  key={chip.id}
-                  onClick={() => setArea(chip.id)}
-                  style={{
-                    padding: "8px 13px",
-                    cursor: "pointer",
-                    ...eyebrow(11, on ? C.ink : C.faint, "0.1em"),
-                    background: on ? C.panel2 : C.canvas,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
-                >
-                  <span style={{ ...dot(chip.color), borderRadius: 2 }} />
-                  {chip.label}
-                </div>
-              );
-            })}
+          <div className="liff-area-chips" style={{ marginLeft: "auto" }}>
+            <SeletorArea opcoes={chips} valor={area} onChange={setArea} />
           </div>
 
           {/* As ações ficam num grupo próprio para quebrarem juntas quando o cabeçalho
@@ -551,7 +543,7 @@ export default function Ops() {
 
       {waAberto && (
         <WaModal
-          tabs={[{ id: "all", label: "Geral" }, ...dados.areasVisiveis.map((a) => ({ id: a.id, label: a.label }))]}
+          tabs={[{ id: "all", label: "Geral", color: C.dust }, ...dados.areasVisiveis.map((a) => ({ id: a.id, label: a.label, color: a.color }))]}
           areaAtiva={waArea}
           texto={waTexto}
           copiado={copiado}

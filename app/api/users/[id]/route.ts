@@ -6,7 +6,7 @@ import { getDb } from "@/lib/db";
 import { requireAdmin } from "@/lib/perms";
 import { json, err } from "@/lib/http";
 import { registrar } from "@/lib/log";
-import { AREA_IDS, areaOf } from "@/lib/domain";
+import { areaOf } from "@/lib/domain";
 
 type Body = {
   /** Alterna sem acesso → ver → editar naquela área. */
@@ -41,7 +41,7 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/users/[id
 
   if (body.ciclarArea !== undefined) {
     const area = body.ciclarArea;
-    if (!AREA_IDS.includes(area)) return err("Área inválida.", 400);
+    if (!ctx.areasExistentes.includes(area)) return err("Área inválida.", 400);
     // Admin tem edit em tudo por definição do papel; a matriz não se aplica a ele.
     if (alvo.papel === "admin") return err("Permissões de admin não são editáveis.", 409);
 

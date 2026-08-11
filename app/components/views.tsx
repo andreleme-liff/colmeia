@@ -8,6 +8,7 @@ import { useState, type CSSProperties, type ReactNode } from "react";
 import { Button, Field, Input, Select, Switch } from "./ds";
 import { C, GHOST_FIX, MONO, SANS, dot, eyebrow, mesh, prioColor, statusColor } from "./tokens";
 import type { Activity, AreaCadastro, Deal, LogEntry, Pessoa } from "./api";
+import SeletorArea, { type OpcaoArea } from "./SeletorArea";
 import { ADMIN_CARDS, STAGES, STATUS, areaOf, brl, ddmm, stamp, statusLabel, todasAreas } from "@/lib/domain";
 
 /* =========================================================
@@ -363,24 +364,26 @@ function TabelaAreas({
   contagem,
   podeEditar,
   onCor,
+  onExcluir,
 }: {
   areas: AreaCadastro[];
   contagem: (id: string) => number;
   podeEditar: boolean;
   onCor: (id: string, cor: string) => void;
+  onExcluir: (id: string, label: string) => void;
 }) {
   return (
     <div style={{ minWidth: 480 }}>
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "1.6fr 1fr 1fr",
+          gridTemplateColumns: "1.6fr 1fr 1fr 44px",
           background: C.canvas,
           borderBottom: `1px solid ${C.line}`,
         }}
       >
-        {["ÁREA", "COR", "ATIVIDADES"].map((h) => (
-          <div key={h} style={{ padding: "12px 16px", ...eyebrow(10, C.faint) }}>
+        {["ÁREA", "COR", "ATIVIDADES", ""].map((h, i) => (
+          <div key={i} style={{ padding: "12px 16px", ...eyebrow(10, C.faint) }}>
             {h}
           </div>
         ))}
@@ -388,7 +391,7 @@ function TabelaAreas({
       {areas.map((a) => (
         <div
           key={a.id}
-          style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr", borderBottom: `1px solid ${C.line}`, alignItems: "center" }}
+          style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr 44px", borderBottom: `1px solid ${C.line}`, alignItems: "center" }}
         >
           <div style={{ padding: "13px 16px", fontSize: 14, color: C.ink, display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ ...dot(`var(--liff-app-area-${a.id})`), width: 9, height: 9 }} />
@@ -417,13 +420,77 @@ function TabelaAreas({
           <div style={{ padding: "13px 16px", fontFamily: MONO, fontSize: 11, color: C.faint }}>
             {contagem(a.id)} ativas
           </div>
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            {podeEditar && (
+              <span
+                role="button"
+                onClick={() => onExcluir(a.id, a.label)}
+                title={`Excluir ${a.label}`}
+                style={{ cursor: "pointer", fontFamily: MONO, fontSize: 14, color: C.ghost, padding: "4px 8px" }}
+              >
+                ×
+              </span>
+            )}
+          </div>
         </div>
       ))}
       <div style={{ padding: "14px 16px", fontSize: 12, lineHeight: 1.6, color: C.faint }}>
         A cor pinta chip, card, barra e tabela em toda a interface. No tema claro ela é escurecida
         automaticamente para manter contraste sobre o fundo Floral White.
+        {podeEditar && " Uma vertical só pode ser excluída quando não tem mais atividade nem oportunidade."}
       </div>
     </div>
+  );
+}
+
+/** Cadastro de uma vertical nova. O id sai do nome (vira variável CSS), então o formulário
+ *  pede só nome, sigla e cor. */
+function NovaArea({ salvando, onCriar }: { salvando: boolean; onCriar: (d: { label: string; short: string; cor: string }) => void }) {
+  const [label, setLabel] = useState("");
+  const [short, setShort] = useState("");
+  const [cor, setCor] = useState("#4B6B9B");
+
+  return (
+    <>
+      <Field label="Nome da vertical" required>
+        <Input placeholder="Seguros" value={label} onChange={setLabel} />
+      </Field>
+      <Field label="Sigla" hint="Até 8 caracteres. Aparece nos cards do quadro.">
+        <Input placeholder="SEG" value={short} onChange={setShort} />
+      </Field>
+      <Field label="Cor">
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <input
+            type="color"
+            value={cor}
+            onChange={(e) => setCor(e.target.value)}
+            style={{
+              width: 40,
+              height: 32,
+              padding: 0,
+              border: `1px solid ${C.line}`,
+              borderRadius: 4,
+              background: "transparent",
+              cursor: "pointer",
+            }}
+          />
+          <span style={{ fontFamily: MONO, fontSize: 12, color: C.faint, textTransform: "uppercase" }}>{cor}</span>
+        </div>
+      </Field>
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={salvando || !label.trim()}
+        style={{ justifyContent: "center" }}
+        onClick={() => {
+          onCriar({ label: label.trim(), short: short.trim() || label.trim(), cor });
+          setLabel("");
+          setShort("");
+        }}
+      >
+        {salvando ? "criando…" : "cadastrar vertical"}
+      </Button>
+    </>
   );
 }
 
@@ -437,6 +504,9 @@ export function Cadastros({
   contagemPorArea,
   podeEditarAreas,
   onCorArea,
+  onCriarArea,
+  onExcluirArea,
+  salvandoArea,
 }: {
   tab: string;
   onTab: (k: string) => void;
@@ -447,6 +517,9 @@ export function Cadastros({
   contagemPorArea: (id: string) => number;
   podeEditarAreas: boolean;
   onCorArea: (id: string, cor: string) => void;
+  onCriarArea: (d: { label: string; short: string; cor: string }) => void;
+  onExcluirArea: (id: string, label: string) => void;
+  salvandoArea: boolean;
 }) {
   return (
     <>
@@ -470,7 +543,7 @@ export function Cadastros({
       <div className="liff-cad-split" style={mesh({ display: "grid", gap: 1 })}>
         <div className="liff-scroll-x" style={{ background: C.cell }}>
           {tab === "areas" ? (
-            <TabelaAreas areas={areas} contagem={contagemPorArea} podeEditar={podeEditarAreas} onCor={onCorArea} />
+            <TabelaAreas areas={areas} contagem={contagemPorArea} podeEditar={podeEditarAreas} onCor={onCorArea} onExcluir={onExcluirArea} />
           ) : (
           <div style={{ minWidth: 480 }}>
             <div
@@ -502,8 +575,20 @@ export function Cadastros({
         </div>
 
         <div style={{ background: C.cell, padding: 22 }}>
-          <div style={{ ...eyebrow(11, C.dust), marginBottom: 18 }}>NOVO REGISTRO</div>
+          <div style={{ ...eyebrow(11, C.dust), marginBottom: 18 }}>
+            {tab === "areas" ? "NOVA VERTICAL" : "NOVO REGISTRO"}
+          </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {tab === "areas" ? (
+              podeEditarAreas ? (
+                <NovaArea salvando={salvandoArea} onCriar={onCriarArea} />
+              ) : (
+                <div style={{ fontSize: 13, lineHeight: 1.6, color: C.faint }}>
+                  Só a administração cadastra verticais.
+                </div>
+              )
+            ) : (
+              <>
             <Field label="Nome">
               <Input placeholder={set.ph} />
             </Field>
@@ -516,6 +601,8 @@ export function Cadastros({
             <Button variant="outline" size="sm" disabled={semEdicao} style={{ justifyContent: "center" }}>
               cadastrar
             </Button>
+              </>
+            )}
             <div style={{ fontSize: 12, lineHeight: 1.6, color: C.faint }}>
               Cadastros alimentam os seletores de atividades, oportunidades e permissões. Alterações entram na
               auditoria.
@@ -530,7 +617,9 @@ export function Cadastros({
 /* =========================================================
    Administração — matriz de permissões
    ========================================================= */
-const PERM_COLS = "1.5fr repeat(6,1fr) 0.9fr";
+/** Acima disto a matriz vira rolagem horizontal sem fim e para de servir. */
+const LIMITE_MATRIZ = 8;
+const permCols = (n: number) => `1.5fr repeat(${n},1fr) 0.9fr`;
 const PERM_STYLE: Record<string, { label: string; bg: string; bd: string; ink: string }> = {
   edit: {
     label: "editar",
@@ -547,6 +636,148 @@ const PERM_STYLE: Record<string, { label: string; bg: string; bd: string; ink: s
   none: { label: "—", bg: "transparent", bd: C.line, ink: C.ghost },
 };
 
+/** A célula de permissão, igual nos dois formatos. */
+function CelulaPerm({
+  nivel,
+  travado,
+  onClick,
+  style,
+}: {
+  nivel: string;
+  travado: boolean;
+  onClick: () => void;
+  style?: CSSProperties;
+}) {
+  const s = PERM_STYLE[nivel] ?? PERM_STYLE.none;
+  return (
+    <div
+      onClick={() => !travado && onClick()}
+      title={
+        travado ? "Admin tem edição em tudo por definição do papel" : "Clique para alternar sem acesso / ver / editar"
+      }
+      style={{
+        padding: "7px 4px",
+        textAlign: "center",
+        cursor: travado ? "default" : "pointer",
+        ...eyebrow(10, s.ink, "0.1em"),
+        border: `1px solid ${s.bd}`,
+        background: s.bg,
+        borderRadius: 6,
+        ...style,
+      }}
+    >
+      {s.label}
+    </div>
+  );
+}
+
+/** Formato longo: uma pessoa por vez, áreas em grade que quebra. Vale quando a matriz
+ *  deixaria de caber — ver tudo de uma vez só ajuda enquanto cabe numa tela. */
+function PermissoesPorPessoa({
+  pessoas,
+  areas,
+  meuId,
+  onCiclar,
+  onAtivo,
+}: {
+  pessoas: Pessoa[];
+  areas: { id: string; label: string; short: string; color: string }[];
+  meuId: number;
+  onCiclar: (userId: number, area: string) => void;
+  onAtivo: (userId: number, ativo: boolean) => void;
+}) {
+  const [aberto, setAberto] = useState<number | null>(pessoas[0]?.id ?? null);
+
+  return (
+    <div style={{ border: `1px solid ${C.line}`, marginBottom: 28 }}>
+      {pessoas.map((u) => {
+        const expandido = aberto === u.id;
+        const edita = u.papel === "admin" ? areas.length : Object.values(u.perms).filter((n) => n === "edit").length;
+        const ve = u.papel === "admin" ? 0 : Object.values(u.perms).filter((n) => n === "view").length;
+        return (
+          <div key={u.id} style={{ borderBottom: `1px solid ${C.line}`, background: C.cell }}>
+            <div
+              className="liff-hover-row"
+              onClick={() => setAberto(expandido ? null : u.id)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+                padding: "13px 16px",
+                cursor: "pointer",
+              }}
+            >
+              <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint, width: 12 }}>{expandido ? "−" : "+"}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, color: C.ink, fontWeight: 600 }}>{u.nome}</div>
+                <div style={eyebrow(10, C.faint, "0.1em")}>{u.papel}</div>
+              </div>
+              <div style={eyebrow(10, C.faint, "0.1em")}>
+                {u.papel === "admin" ? "todas as áreas" : `${edita} editar · ${ve} ver`}
+              </div>
+              <Switch
+                checked={u.ativo}
+                disabled={u.id === meuId}
+                title={u.id === meuId ? "Você não pode desativar a própria conta" : "Ativa ou corta o acesso"}
+                onChange={(v) => onAtivo(u.id, v)}
+              />
+            </div>
+
+            {expandido && (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))",
+                  gap: 8,
+                  padding: "4px 16px 16px",
+                  background: C.canvas,
+                }}
+              >
+                {areas.map((a) => (
+                  // Cada área é uma célula fechada: sem a borda, o controle de uma coluna
+                  // encosta no nome da coluna seguinte e não dá para saber a qual pertence.
+                  <div
+                    key={a.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "6px 10px",
+                      background: C.cell,
+                      border: `1px solid ${C.line}`,
+                    }}
+                  >
+                    <span style={{ ...dot(a.color), flex: "none" }} />
+                    <span
+                      style={{
+                        fontSize: 13,
+                        color: C.body,
+                        flex: 1,
+                        minWidth: 0,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {a.label}
+                    </span>
+                    <CelulaPerm
+                      nivel={u.papel === "admin" ? "edit" : u.perms[a.id] ?? "none"}
+                      travado={u.papel === "admin"}
+                      onClick={() => onCiclar(u.id, a.id)}
+                      style={{ minWidth: 62, flex: "none" }}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function Admin({
   pessoas,
   meuId,
@@ -558,20 +789,47 @@ export function Admin({
   onCiclar: (userId: number, area: string) => void;
   onAtivo: (userId: number, ativo: boolean) => void;
 }) {
+  const areas = todasAreas();
+
+  // Com poucas verticais a matriz é imbatível: dá para ler a política inteira de uma vez.
+  // Passando do limite ela só produz rolagem horizontal, e a leitura por pessoa passa a
+  // valer mais.
+  if (areas.length > LIMITE_MATRIZ) {
+    return (
+      <>
+        <PermissoesPorPessoa
+          pessoas={pessoas}
+          areas={areas}
+          meuId={meuId}
+          onCiclar={onCiclar}
+          onAtivo={onAtivo}
+        />
+        <div className="liff-admin-cards" style={mesh({ display: "grid", gap: 1 })}>
+          {ADMIN_CARDS.map((c) => (
+            <div key={c.title} style={{ background: C.cell, padding: 22 }}>
+              <div style={{ ...eyebrow(11, C.accent), marginBottom: 10 }}>{c.title}</div>
+              <div style={{ fontSize: 13, lineHeight: 1.6, color: C.body }}>{c.body}</div>
+            </div>
+          ))}
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}`, marginBottom: 28 }}>
-        <div style={{ minWidth: 820 }}>
+        <div style={{ minWidth: 160 + areas.length * 110 }}>
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: PERM_COLS,
+              gridTemplateColumns: permCols(areas.length),
               background: C.canvas,
               borderBottom: `1px solid ${C.line}`,
             }}
           >
             <div style={{ padding: "12px 16px", ...eyebrow(10, C.faint) }}>USUÁRIO</div>
-            {todasAreas().map((a) => (
+            {areas.map((a) => (
               <div key={a.id} style={{ padding: "12px 10px", ...eyebrow(10, a.color, "0.1em"), textAlign: "center" }}>
                 {a.short}
               </div>
@@ -584,7 +842,7 @@ export function Admin({
               key={u.id}
               style={{
                 display: "grid",
-                gridTemplateColumns: PERM_COLS,
+                gridTemplateColumns: permCols(areas.length),
                 background: C.cell,
                 borderBottom: `1px solid ${C.line}`,
                 alignItems: "center",
@@ -594,34 +852,15 @@ export function Admin({
                 <div style={{ fontSize: 14, color: C.ink, fontWeight: 600 }}>{u.nome}</div>
                 <div style={eyebrow(10, C.faint, "0.1em")}>{u.papel}</div>
               </div>
-              {todasAreas().map((a) => {
-                const nivel = u.papel === "admin" ? "edit" : u.perms[a.id] ?? "none";
-                const s = PERM_STYLE[nivel] ?? PERM_STYLE.none;
-                const travado = u.papel === "admin";
-                return (
-                  <div
-                    key={a.id}
-                    onClick={() => !travado && onCiclar(u.id, a.id)}
-                    title={
-                      travado
-                        ? "Admin tem edição em tudo por definição do papel"
-                        : "Clique para alternar sem acesso / ver / editar"
-                    }
-                    style={{
-                      margin: 8,
-                      padding: "7px 4px",
-                      textAlign: "center",
-                      cursor: travado ? "default" : "pointer",
-                      ...eyebrow(10, s.ink, "0.1em"),
-                      border: `1px solid ${s.bd}`,
-                      background: s.bg,
-                      borderRadius: 6,
-                    }}
-                  >
-                    {s.label}
-                  </div>
-                );
-              })}
+              {areas.map((a) => (
+                <CelulaPerm
+                  key={a.id}
+                  nivel={u.papel === "admin" ? "edit" : u.perms[a.id] ?? "none"}
+                  travado={u.papel === "admin"}
+                  onClick={() => onCiclar(u.id, a.id)}
+                  style={{ margin: 8 }}
+                />
+              ))}
               <div style={{ display: "flex", justifyContent: "center" }}>
                 <Switch
                   checked={u.ativo}
@@ -885,7 +1124,7 @@ export function WaModal({
   onCopiar,
   onFechar,
 }: {
-  tabs: { id: string; label: string }[];
+  tabs: OpcaoArea[];
   areaAtiva: string;
   texto: string;
   copiado: boolean;
@@ -925,23 +1164,8 @@ export function WaModal({
           </div>
         </div>
 
-        <div style={mesh({ display: "flex", gap: 1, flexWrap: "wrap", borderTop: 0, borderLeft: 0, borderRight: 0 })}>
-          {tabs.map((t) => (
-            <div
-              key={t.id}
-              onClick={() => onArea(t.id)}
-              style={{
-                padding: "11px 14px",
-                cursor: "pointer",
-                flex: 1,
-                textAlign: "center",
-                ...eyebrow(11, areaAtiva === t.id ? C.ink : C.faint, "0.1em"),
-                background: areaAtiva === t.id ? C.panel2 : C.canvas,
-              }}
-            >
-              {t.label}
-            </div>
-          ))}
+        <div style={{ padding: "16px 26px", borderBottom: `1px solid ${C.line}` }}>
+          <SeletorArea opcoes={tabs} valor={areaAtiva} onChange={onArea} larguraTotal />
         </div>
 
         <div style={{ padding: "24px 26px" }}>

@@ -6,7 +6,7 @@ import { getDb } from "@/lib/db";
 import { requireCtx } from "@/lib/perms";
 import { json, err } from "@/lib/http";
 import { registrar } from "@/lib/log";
-import { AREA_IDS, PRIORIDADES, STATUS_KEYS, areaOf, statusLabel } from "@/lib/domain";
+import { PRIORIDADES, STATUS_KEYS, areaOf, statusLabel } from "@/lib/domain";
 
 type Body = {
   titulo?: string;
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
   if (titulo.length > 300) return err("Título longo demais.", 400);
 
   const area = String(body.area ?? "");
-  if (!AREA_IDS.includes(area)) return err("Área inválida.", 400);
+  if (!ctx.areasExistentes.includes(area)) return err("Área inválida.", 400);
   if (!ctx.podeEditar(area)) return err(`Sem permissão de edição em ${areaOf(area).label}.`, 403);
 
   const status = body.status ?? "backlog";

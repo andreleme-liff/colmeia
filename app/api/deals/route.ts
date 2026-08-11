@@ -5,7 +5,7 @@ import { getDb } from "@/lib/db";
 import { requireCtx } from "@/lib/perms";
 import { json, err } from "@/lib/http";
 import { registrar } from "@/lib/log";
-import { AREA_IDS, STAGE_KEYS, areaOf, brl, stageLabel } from "@/lib/domain";
+import { STAGE_KEYS, areaOf, brl, stageLabel } from "@/lib/domain";
 
 type Body = {
   conta?: string;
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
   if (conta.length > 200) return err("Nome de conta longo demais.", 400);
 
   const area = String(body.area ?? "");
-  if (!AREA_IDS.includes(area)) return err("Área inválida.", 400);
+  if (!ctx.areasExistentes.includes(area)) return err("Área inválida.", 400);
   if (!ctx.podeEditar(area)) return err(`Sem permissão de edição em ${areaOf(area).label}.`, 403);
 
   const estagio = body.estagio ?? "lead";

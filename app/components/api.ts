@@ -115,6 +115,11 @@ export const api = {
   alterarArea: (id: string, patch: { cor?: string; label?: string; short?: string }) =>
     req<{ ok: boolean }>(`/api/areas/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
 
+  criarArea: (dados: { label: string; short: string; cor: string }) =>
+    req<{ ok: boolean; id: string }>("/api/areas", { method: "POST", body: JSON.stringify(dados) }),
+
+  excluirArea: (id: string) => req<{ ok: boolean }>(`/api/areas/${id}`, { method: "DELETE" }),
+
   alterarAtividade: (id: number, patch: { status?: string; responsavelId?: number | null; prioridade?: string }) =>
     req<{ ok: boolean }>(`/api/activities/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
 

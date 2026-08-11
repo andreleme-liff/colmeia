@@ -3,7 +3,7 @@
 // Migração idempotente no primeiro acesso + seed do conjunto de demonstração.
 
 import postgres from "postgres";
-import { AREA_IDS, PAPEIS, PRIORIDADES, STAGE_KEYS, STATUS_KEYS } from "./domain";
+import { PAPEIS, PRIORIDADES, STAGE_KEYS, STATUS_KEYS } from "./domain";
 
 export type Db = ReturnType<typeof postgres>;
 
@@ -102,6 +102,26 @@ async function migrate(): Promise<void> {
   await rawSql().begin(async (sql) => {
     await sql`SELECT pg_advisory_xact_lock(${MIGRATION_LOCK})`;
 
+    // Cadastro das verticais. Vem primeiro porque as demais tabelas apontam para ela: o
+    // conjunto de áreas é aberto, e quem garante que um registro não aponte para área
+    // inexistente é a chave estrangeira, não uma lista fixa no código.
+    await sql`
+      CREATE TABLE IF NOT EXISTS areas (
+        id     TEXT PRIMARY KEY,
+        label  TEXT NOT NULL,
+        short  TEXT NOT NULL,
+        cor    TEXT NOT NULL,
+        ordem  INTEGER NOT NULL DEFAULT 0
+      )
+    `;
+    for (const [i, a] of AREAS_SEMENTE.entries()) {
+      await sql`
+        INSERT INTO areas (id, label, short, cor, ordem)
+        VALUES (${a.id}, ${a.label}, ${a.short}, ${a.cor}, ${i})
+        ON CONFLICT (id) DO NOTHING
+      `;
+    }
+
     await sql.unsafe(`
     CREATE TABLE IF NOT EXISTS users (
       id          SERIAL PRIMARY KEY,
@@ -120,7 +140,7 @@ async function migrate(): Promise<void> {
     await sql.unsafe(`
     CREATE TABLE IF NOT EXISTS user_area_perms (
       user_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      area     TEXT NOT NULL CHECK (area IN (${inList(AREA_IDS)})),
+      area     TEXT NOT NULL REFERENCES areas(id) ON DELETE CASCADE,
       nivel    TEXT NOT NULL CHECK (nivel IN ('view','edit')),
       PRIMARY KEY (user_id, area)
     )
@@ -131,7 +151,7 @@ async function migrate(): Promise<void> {
       id                  SERIAL PRIMARY KEY,
       ref                 TEXT NOT NULL UNIQUE,
       titulo              TEXT NOT NULL,
-      area                TEXT NOT NULL CHECK (area IN (${inList(AREA_IDS)})),
+      area                TEXT NOT NULL REFERENCES areas(id),
       tipo                TEXT NOT NULL DEFAULT 'Operacional',
       status              TEXT NOT NULL DEFAULT 'backlog' CHECK (status IN (${inList(STATUS_KEYS)})),
       responsavel_user_id INTEGER REFERENCES users(id),
@@ -148,7 +168,7 @@ async function migrate(): Promise<void> {
       ref                 TEXT NOT NULL UNIQUE,
       conta               TEXT NOT NULL,
       escopo              TEXT NOT NULL DEFAULT '',
-      area                TEXT NOT NULL CHECK (area IN (${inList(AREA_IDS)})),
+      area                TEXT NOT NULL REFERENCES areas(id),
       estagio             TEXT NOT NULL DEFAULT 'lead' CHECK (estagio IN (${inList(STAGE_KEYS)})),
       valor_centavos      BIGINT NOT NULL DEFAULT 0,
       responsavel_user_id INTEGER REFERENCES users(id),
@@ -172,7 +192,7 @@ async function migrate(): Promise<void> {
     CREATE TABLE IF NOT EXISTS audit_log (
       id             SERIAL PRIMARY KEY,
       actor_user_id  INTEGER REFERENCES users(id),
-      area           TEXT CHECK (area IS NULL OR area IN (${inList(AREA_IDS)})),
+      area           TEXT,
       entidade       TEXT NOT NULL,
       campo          TEXT,
       valor_anterior TEXT,
@@ -182,26 +202,33 @@ async function migrate(): Promise<void> {
     )
     `);
 
-      // Cadastro das verticais. A cor sai daqui para virar variável CSS no cliente, então
-    // dá para repintar uma área sem tocar em código. Os valores semeados são os da cascata
-    // do design system (tom Mid, exceto Labs que usa o Core) — a partir daqui viram
-    // configuração, editável na tela de Cadastros.
-    await sql`
-      CREATE TABLE IF NOT EXISTS areas (
-        id     TEXT PRIMARY KEY,
-        label  TEXT NOT NULL,
-        short  TEXT NOT NULL,
-        cor    TEXT NOT NULL,
-        ordem  INTEGER NOT NULL DEFAULT 0
-      )
-    `;
-    for (const [i, a] of AREAS_SEMENTE.entries()) {
-      await sql`
-        INSERT INTO areas (id, label, short, cor, ordem)
-        VALUES (${a.id}, ${a.label}, ${a.short}, ${a.cor}, ${i})
-        ON CONFLICT (id) DO NOTHING
-      `;
-    }
+      // Bases criadas antes de o conjunto de áreas virar aberto têm CHECK com a lista fixa
+    // das seis verticais — o que impediria cadastrar a sétima. Aqui o CHECK sai e a chave
+    // estrangeira entra. Em base nova os DROPs não encontram nada e os IFs não disparam.
+    await sql.unsafe(`
+      DO $$
+      BEGIN
+        ALTER TABLE user_area_perms DROP CONSTRAINT IF EXISTS user_area_perms_area_check;
+        ALTER TABLE activities      DROP CONSTRAINT IF EXISTS activities_area_check;
+        ALTER TABLE deals           DROP CONSTRAINT IF EXISTS deals_area_check;
+        ALTER TABLE audit_log       DROP CONSTRAINT IF EXISTS audit_log_area_check;
+
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'user_area_perms_area_fkey') THEN
+          ALTER TABLE user_area_perms
+            ADD CONSTRAINT user_area_perms_area_fkey
+            FOREIGN KEY (area) REFERENCES areas(id) ON DELETE CASCADE;
+        END IF;
+
+        -- Sem CASCADE de propósito: excluir uma vertical que ainda tem atividade ou
+        -- oportunidade deve falhar, não apagar o trabalho junto.
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'activities_area_fkey') THEN
+          ALTER TABLE activities ADD CONSTRAINT activities_area_fkey FOREIGN KEY (area) REFERENCES areas(id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'deals_area_fkey') THEN
+          ALTER TABLE deals ADD CONSTRAINT deals_area_fkey FOREIGN KEY (area) REFERENCES areas(id);
+        END IF;
+      END $$;
+    `);
 
     // Refs legíveis para registros novos. Começam acima das semeadas (A-101…A-602,
     // D-01…D-08) para nunca colidir com elas.

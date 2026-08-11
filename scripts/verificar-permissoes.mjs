@@ -63,10 +63,18 @@ try {
   const areas = (e) => [...new Set(e.activities.map((a) => a.area))].sort();
 
   console.log("\n1. RECORTE NA LEITURA — cada um só recebe as áreas que pode ver\n");
+  // Contra o banco, não contra um número fixo: o conjunto de verticais é aberto.
+  const [{ c: totalAreas }] = await sql`SELECT COUNT(*)::int AS c FROM areas`;
+  const comAtividade = await sql`SELECT DISTINCT area FROM activities`;
   checa(
-    `André (admin) vê as 6 áreas`,
-    areas(estados.andre).length === 6,
-    areas(estados.andre).join(",")
+    `André (admin) vê todas as áreas que têm atividade`,
+    areas(estados.andre).length === comAtividade.length,
+    `${areas(estados.andre).length} de ${comAtividade.length} (há ${totalAreas} áreas no total)`
+  );
+  checa(
+    `e a permissão de admin cobre as ${totalAreas} áreas cadastradas`,
+    Object.keys(estados.andre.perms).length === Number(totalAreas),
+    `${Object.keys(estados.andre.perms).length} de ${totalAreas}`
   );
   checa(
     `Marina vê law-firms, corporate, public-sector, tax`,
