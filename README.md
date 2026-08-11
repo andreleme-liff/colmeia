@@ -18,6 +18,39 @@ npm run dev
 A migração é idempotente e roda sozinha no primeiro acesso ao banco: cria as tabelas e, se a
 base estiver vazia, insere o conjunto de demonstração. `SEED_DEMO=0` sobe a base limpa.
 
+### Pooler ou conexão direta?
+
+**Pooler, porta 6543 (Transaction mode).** Uma só string, inclusive para a migração.
+
+A regra "migration precisa da conexão direta" vem de ferramentas como o Prisma, que usam
+advisory lock de **sessão** e prepared statements — nada disso sobrevive ao pgbouncer em modo
+transaction. Aqui não se usa nenhum dos dois: a migração é DDL simples pelo driver `postgres`
+com `prepare: false`, e a serialização usa `pg_advisory_xact_lock`, que morre no commit e é
+exatamente o tipo compatível com o pooler.
+
+A direta (5432) funcionaria, mas esgota conexões em serverless. Não use.
+
+### Por que a migração tem um lock
+
+Ela roda no primeiro acesso ao banco, e em serverless vários cold starts sobem ao mesmo
+tempo. `CREATE TABLE IF NOT EXISTS` **não é atômico** contra um criador concorrente: dois
+processos simultâneos conseguem produzir `relation already exists` ou violar
+`pg_type_typname_nsp_index`. O seed tinha a mesma corrida — dois processos liam `COUNT(*) = 0`
+e ambos inseriam. Por isso tudo acontece dentro de uma transação protegida por advisory lock.
+
+Para um sistema maior, o mais convencional seria um passo de migração separado do boot. Aqui
+o schema é pequeno e estável, e a migração no primeiro acesso segue a convenção do
+`mini-todos`.
+
+### Sessão: não há segredo
+
+Não existe `SESSION_SECRET`, `NEXTAUTH_SECRET` ou equivalente, e é de propósito. O token de
+sessão é **opaco** — `randomBytes(32)` guardado na tabela `sessions` e conferido por consulta
+— em vez de um cookie assinado tipo JWT. Não há nada para assinar, logo nada para rotacionar
+ou vazar, e revogar acesso é apagar a linha (é assim que o interruptor "ativo" da
+administração corta a sessão na requisição seguinte). O custo é uma consulta por requisição,
+irrelevante nesta escala.
+
 ## Onde as coisas estão
 
 | Caminho | Papel |

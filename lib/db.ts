@@ -7,6 +7,10 @@ import { AREA_IDS, PAPEIS, PRIORIDADES, STAGE_KEYS, STATUS_KEYS } from "./domain
 
 export type Db = ReturnType<typeof postgres>;
 
+/** Aceita tanto o client normal quanto o de dentro de uma transação — o que basta para
+ *  quem só executa queries (a migração, o seed, o log de auditoria). */
+export type Queryable = Db | postgres.TransactionSql<Record<string, never>>;
+
 let _sql: Db | null = null;
 let _migrated: Promise<void> | null = null;
 
@@ -38,10 +42,29 @@ export function nowIso(): string {
 // delas para o banco e o app nunca discordarem sobre o que é um status válido.
 const inList = (vals: readonly string[]) => vals.map((v) => `'${v}'`).join(",");
 
-async function migrate(): Promise<void> {
-  const sql = rawSql();
+/** Identifica esta migração no espaço de advisory locks do Postgres. Valor arbitrário, fixo. */
+const MIGRATION_LOCK = 811020261;
 
-  await sql.unsafe(`
+/**
+ * A migração roda no primeiro acesso ao banco, dentro de UMA transação protegida por
+ * advisory lock.
+ *
+ * O lock não é luxo: em serverless vários cold starts sobem ao mesmo tempo e
+ * `CREATE TABLE IF NOT EXISTS` não é atômico contra um criador concorrente — dois processos
+ * simultâneos conseguem produzir "relation already exists" ou violar
+ * `pg_type_typname_nsp_index`. O seed tinha a mesma corrida: dois processos liam
+ * `COUNT(*) = 0` e ambos inseriam.
+ *
+ * É `pg_advisory_xact_lock` e não o de sessão de propósito: o lock de transação morre no
+ * commit, que é o único comportamento compatível com o Transaction Pooler da Supabase
+ * (no modo transaction a conexão volta para o pool a cada commit, e um lock de sessão
+ * ficaria preso numa conexão que não é mais nossa).
+ */
+async function migrate(): Promise<void> {
+  await rawSql().begin(async (sql) => {
+    await sql`SELECT pg_advisory_xact_lock(${MIGRATION_LOCK})`;
+
+    await sql.unsafe(`
     CREATE TABLE IF NOT EXISTS users (
       id          SERIAL PRIMARY KEY,
       nome        TEXT NOT NULL,
@@ -53,19 +76,19 @@ async function migrate(): Promise<void> {
       avatar_url  TEXT,
       criado_em   TIMESTAMPTZ NOT NULL DEFAULT now()
     )
-  `);
+    `);
 
-  // Ausência de linha = sem acesso. É a matriz da tela de administração.
-  await sql.unsafe(`
+    // Ausência de linha = sem acesso. É a matriz da tela de administração.
+    await sql.unsafe(`
     CREATE TABLE IF NOT EXISTS user_area_perms (
       user_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       area     TEXT NOT NULL CHECK (area IN (${inList(AREA_IDS)})),
       nivel    TEXT NOT NULL CHECK (nivel IN ('view','edit')),
       PRIMARY KEY (user_id, area)
     )
-  `);
+    `);
 
-  await sql.unsafe(`
+    await sql.unsafe(`
     CREATE TABLE IF NOT EXISTS activities (
       id                  SERIAL PRIMARY KEY,
       ref                 TEXT NOT NULL UNIQUE,
@@ -79,9 +102,9 @@ async function migrate(): Promise<void> {
       criado_em           TIMESTAMPTZ NOT NULL DEFAULT now(),
       atualizado_em       TIMESTAMPTZ
     )
-  `);
+    `);
 
-  await sql.unsafe(`
+    await sql.unsafe(`
     CREATE TABLE IF NOT EXISTS deals (
       id                  SERIAL PRIMARY KEY,
       ref                 TEXT NOT NULL UNIQUE,
@@ -95,19 +118,19 @@ async function migrate(): Promise<void> {
       criado_em           TIMESTAMPTZ NOT NULL DEFAULT now(),
       atualizado_em       TIMESTAMPTZ
     )
-  `);
+    `);
 
-  await sql`
+    await sql`
     CREATE TABLE IF NOT EXISTS sessions (
       token      TEXT PRIMARY KEY,
       user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       expires_at TIMESTAMPTZ NOT NULL
     )
-  `;
+    `;
 
-  // Log append-only: quem, quando, o quê, e o par valor anterior/novo — exatamente o que a
-  // tela de administração promete guardar. Nada aqui é atualizado ou apagado pelo app.
-  await sql.unsafe(`
+    // Log append-only: quem, quando, o quê, e o par valor anterior/novo — exatamente o que a
+    // tela de administração promete guardar. Nada aqui é atualizado ou apagado pelo app.
+    await sql.unsafe(`
     CREATE TABLE IF NOT EXISTS audit_log (
       id             SERIAL PRIMARY KEY,
       actor_user_id  INTEGER REFERENCES users(id),
@@ -119,21 +142,22 @@ async function migrate(): Promise<void> {
       texto          TEXT NOT NULL,
       criado_em      TIMESTAMPTZ NOT NULL DEFAULT now()
     )
-  `);
+    `);
 
-  await sql`CREATE INDEX IF NOT EXISTS idx_activities_area ON activities(area, status)`;
-  await sql`CREATE INDEX IF NOT EXISTS idx_deals_area ON deals(area, estagio)`;
-  await sql`CREATE INDEX IF NOT EXISTS idx_audit_recente ON audit_log(criado_em DESC)`;
-  await sql`CREATE INDEX IF NOT EXISTS idx_perms_user ON user_area_perms(user_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_activities_area ON activities(area, status)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_deals_area ON deals(area, estagio)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_audit_recente ON audit_log(criado_em DESC)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_perms_user ON user_area_perms(user_id)`;
 
-  await seed(sql);
+    await seed(sql);
+  });
 }
 
 /**
  * Conjunto de demonstração — só entra em base vazia, e só se SEED_DEMO não estiver desligado.
  * São os mesmos dados que o protótipo estático carregava em memória, agora persistidos.
  */
-async function seed(sql: Db): Promise<void> {
+async function seed(sql: Queryable): Promise<void> {
   if (process.env.SEED_DEMO === "0") return;
   const [{ c }] = await sql<{ c: number }[]>`SELECT COUNT(*)::int AS c FROM users`;
   if (Number(c) > 0) return;
