@@ -1,0 +1,215 @@
+// Teste de integração da permissão por área, contra o banco de DESENVOLVIMENTO.
+//
+// Cria sessões direto na tabela `sessions` para cada usuário semeado — assim dá para agir
+// como cada perfil sem depender das contas Google deles — e exercita a API pelo HTTP, sem
+// passar pela interface. É o único jeito de provar que o recorte acontece no servidor: se a
+// regra vivesse no front, todas as chamadas abaixo passariam.
+//
+//   npm run dev              (noutro terminal, com DATABASE_URL do projeto de dev)
+//   node scripts/verificar-permissoes.mjs
+
+import { readFileSync } from "node:fs";
+import { randomBytes } from "node:crypto";
+import postgres from "postgres";
+
+const BASE = process.env.BASE ?? "http://localhost:3000";
+
+for (const linha of readFileSync(new URL("../.env.local", import.meta.url), "utf8").split("\n")) {
+  const m = linha.match(/^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.*)$/);
+  if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim().replace(/^["']|["']$/g, "");
+}
+
+const sql = postgres(process.env.DATABASE_URL, { ssl: "require", prepare: false });
+
+let ok = 0;
+let falhou = 0;
+function checa(descricao, condicao, detalhe = "") {
+  if (condicao) {
+    console.log(`  ✓ ${descricao}`);
+    ok++;
+  } else {
+    console.log(`  ✗ ${descricao}${detalhe ? ` — ${detalhe}` : ""}`);
+    falhou++;
+  }
+}
+
+/** Sessão real na tabela, como o login faria. */
+async function sessaoDe(email) {
+  const [u] = await sql`SELECT id, nome FROM users WHERE email = ${email}`;
+  if (!u) throw new Error(`usuário ${email} não existe — a base foi semeada?`);
+  const token = randomBytes(32).toString("hex");
+  const expira = new Date(Date.now() + 3600_000).toISOString();
+  await sql`INSERT INTO sessions (token, user_id, expires_at) VALUES (${token}, ${u.id}, ${expira})`;
+  return { token, id: u.id, nome: u.nome };
+}
+
+const req = (token, caminho, opts = {}) =>
+  fetch(`${BASE}${caminho}`, {
+    ...opts,
+    headers: { Cookie: `session=${token}`, "Content-Type": "application/json", ...(opts.headers ?? {}) },
+  });
+
+try {
+  const andre = await sessaoDe("leme@getliff.ai");
+  const marina = await sessaoDe("marina@getliff.ai");
+  const rafael = await sessaoDe("rafael@getliff.ai");
+  const clara = await sessaoDe("clara@getliff.ai");
+
+  const estados = {};
+  for (const [nome, s] of Object.entries({ andre, marina, rafael, clara })) {
+    estados[nome] = await (await req(s.token, "/api/state")).json();
+  }
+
+  const areas = (e) => [...new Set(e.activities.map((a) => a.area))].sort();
+
+  console.log("\n1. RECORTE NA LEITURA — cada um só recebe as áreas que pode ver\n");
+  checa(
+    `André (admin) vê as 6 áreas`,
+    areas(estados.andre).length === 6,
+    areas(estados.andre).join(",")
+  );
+  checa(
+    `Marina vê law-firms, corporate, public-sector, tax`,
+    areas(estados.marina).join(",") === "corporate,law-firms,public-sector,tax",
+    areas(estados.marina).join(",")
+  );
+  checa(
+    `Rafael NÃO vê public-sector nem social`,
+    !areas(estados.rafael).includes("public-sector") && !areas(estados.rafael).includes("social"),
+    areas(estados.rafael).join(",")
+  );
+  checa(
+    `Clara vê apenas public-sector e social`,
+    areas(estados.clara).join(",") === "public-sector,social",
+    areas(estados.clara).join(",")
+  );
+  checa(
+    `matriz de permissões só vai para admin`,
+    estados.andre.pessoas.some((p) => Object.keys(p.perms).length > 0) &&
+      estados.marina.pessoas.every((p) => Object.keys(p.perms).length === 0)
+  );
+
+  // ids resolvidos pelo banco, não pelo que cada estado devolveu. ORDER BY para as rodadas
+  // serem comparáveis entre si.
+  const [aLaw] = await sql`SELECT id, ref, status FROM activities WHERE area='law-firms' ORDER BY id LIMIT 1`;
+  const [aTax] = await sql`SELECT id, ref FROM activities WHERE area='tax' ORDER BY id LIMIT 1`;
+  const [aPub] = await sql`SELECT id, ref FROM activities WHERE area='public-sector' ORDER BY id LIMIT 1`;
+  const [dLaw] = await sql`SELECT id, ref, estagio FROM deals WHERE area='law-firms' ORDER BY id LIMIT 1`;
+
+  // O teste escreve de verdade, então guarda o estado anterior para devolver no fim. Sem
+  // isso a rodada seguinte começa de um mundo diferente — foi assim que a checagem da Clara
+  // quebrou na segunda execução, depois de o próprio teste ter concedido `tax` a ela.
+  const restaurar = {
+    statusAtividade: aLaw.status,
+    estagioDeal: dLaw.estagio,
+    permClaraTax: (await sql`SELECT nivel FROM user_area_perms WHERE user_id=${clara.id} AND area='tax'`)[0]
+      ?.nivel ?? null,
+  };
+
+  console.log("\n2. ESCRITA — permitida onde há edit, recusada onde não há\n");
+  const novoStatus = aLaw.status === "concluido" ? "andamento" : "concluido";
+  const r1 = await req(marina.token, `/api/activities/${aLaw.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status: novoStatus }),
+  });
+  checa(`Marina EDITA atividade de law-firms → 200`, r1.status === 200, `veio ${r1.status}`);
+
+  const r2 = await req(marina.token, `/api/activities/${aTax.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status: "concluido" }),
+  });
+  checa(`Marina só LÊ tax → 403 ao tentar escrever`, r2.status === 403, `veio ${r2.status}`);
+
+  console.log("\n3. ÁREA INVISÍVEL — 404, não 403 (um 403 confirmaria que o id existe)\n");
+  const r3 = await req(rafael.token, `/api/activities/${aPub.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status: "concluido" }),
+  });
+  checa(`Rafael, sem acesso a public-sector → 404`, r3.status === 404, `veio ${r3.status}`);
+
+  const r4 = await req(clara.token, `/api/activities/${aPub.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status: "concluido" }),
+  });
+  checa(`Clara, que VÊ public-sector mas não edita → 403`, r4.status === 403, `veio ${r4.status}`);
+
+  console.log("\n4. PIPELINE e ADMINISTRAÇÃO\n");
+  const r5 = await req(marina.token, `/api/deals/${dLaw.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ direcao: 1 }),
+  });
+  checa(`Marina move oportunidade de law-firms → 200`, r5.status === 200, `veio ${r5.status}`);
+
+  const r6 = await req(marina.token, `/api/users/${clara.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ ciclarArea: "tax" }),
+  });
+  checa(`Marina (não admin) mexendo em permissão → 403`, r6.status === 403, `veio ${r6.status}`);
+
+  const r7 = await req(andre.token, `/api/users/${clara.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ ciclarArea: "tax" }),
+  });
+  checa(`André (admin) altera permissão de Clara → 200`, r7.status === 200, `veio ${r7.status}`);
+
+  const r8 = await req(andre.token, `/api/users/${andre.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ ativo: false }),
+  });
+  checa(`André não consegue desativar a si mesmo → 409`, r8.status === 409, `veio ${r8.status}`);
+
+  console.log("\n5. AUDITORIA — cada escrita virou registro com autor e valor anterior/novo\n");
+  const logs = await sql`
+    SELECT l.entidade, l.campo, l.valor_anterior, l.valor_novo, u.nome AS autor
+    FROM audit_log l LEFT JOIN users u ON u.id = l.actor_user_id
+    WHERE l.campo IS NOT NULL ORDER BY l.id DESC LIMIT 10
+  `;
+  // Três escritas passaram nesta rodada (status, estágio, permissão). A quarta tentativa —
+  // o admin se desativando — levou 409 e, corretamente, não deixa rastro.
+  checa(`há registros com campo e par anterior/novo`, logs.length >= 3, `${logs.length} encontrados`);
+  checa(
+    `as três escritas bem-sucedidas viraram registro`,
+    ["status", "estagio", "permissao"].every((c) => logs.some((l) => l.campo === c)),
+    logs.map((l) => l.campo).join(",")
+  );
+  checa(
+    `a edição de Marina foi atribuída a ela`,
+    logs.some((l) => l.entidade === aLaw.ref && l.autor === "Marina Duarte")
+  );
+  checa(
+    `a mudança de permissão foi atribuída ao admin`,
+    logs.some((l) => l.campo === "permissao" && l.autor === "André Leme")
+  );
+  for (const l of logs.slice(0, 5)) {
+    console.log(`     ${l.autor} · ${l.entidade} · ${l.campo}: ${l.valor_anterior} → ${l.valor_novo}`);
+  }
+
+  console.log("\n6. TENTATIVA RECUSADA NÃO SUJA O LOG\n");
+  const suja = await sql`
+    SELECT COUNT(*)::int AS c FROM audit_log WHERE entidade = ${aTax.ref}
+  `;
+  checa(`a escrita que Marina levou 403 não gerou registro`, suja[0].c === 0, `${suja[0].c} registros`);
+
+  // Devolve o mundo ao estado anterior. O audit_log fica como está: ele é append-only por
+  // desenho, e apagar linha dele aqui contradiria a própria coisa que o teste verifica.
+  await sql`UPDATE activities SET status = ${restaurar.statusAtividade} WHERE id = ${aLaw.id}`;
+  await sql`UPDATE deals SET estagio = ${restaurar.estagioDeal} WHERE id = ${dLaw.id}`;
+  if (restaurar.permClaraTax === null) {
+    await sql`DELETE FROM user_area_perms WHERE user_id = ${clara.id} AND area = 'tax'`;
+  } else {
+    await sql`
+      INSERT INTO user_area_perms (user_id, area, nivel) VALUES (${clara.id}, 'tax', ${restaurar.permClaraTax})
+      ON CONFLICT (user_id, area) DO UPDATE SET nivel = EXCLUDED.nivel
+    `;
+  }
+  await sql`DELETE FROM sessions WHERE token IN ${sql([andre.token, marina.token, rafael.token, clara.token])}`;
+  console.log("\n(estado restaurado — o harness é repetível)");
+
+  console.log(`\n${falhou === 0 ? "✓" : "✗"} ${ok} passaram, ${falhou} falharam\n`);
+  process.exitCode = falhou === 0 ? 0 : 1;
+} catch (e) {
+  console.error("\n✗ erro no harness:", e?.message ?? e);
+  process.exitCode = 1;
+} finally {
+  await sql.end({ timeout: 5 });
+}
