@@ -24,9 +24,32 @@ function connectionString(): string {
   return url;
 }
 
+/** De qual variável veio a string — útil quando a integração da Supabase injeta várias. */
+function origemDaConexao(): string {
+  if (process.env.DATABASE_URL) return "DATABASE_URL";
+  if (process.env.POSTGRES_URL) return "POSTGRES_URL";
+  return "POSTGRES_URL_NON_POOLING";
+}
+
 function rawSql(): Db {
   if (_sql) return _sql;
-  _sql = postgres(connectionString(), {
+  const url = connectionString();
+
+  // Registra host, porta e origem — nunca usuário ou senha. Sem isto não dá para saber, a
+  // partir dos logs, se a app está falando com o pooler ou com a conexão direta: a
+  // integração da Supabase injeta as duas, e as duas funcionam (a direta só até esgotar
+  // conexões sob carga, que é o modo de falha caro de descobrir em produção).
+  try {
+    const u = new URL(url);
+    const pooled = u.hostname.includes("pooler.supabase.com");
+    console.log(
+      `[db] ${origemDaConexao()} → ${u.hostname}:${u.port || "5432"} (${pooled ? "pooler" : "conexão direta"})`
+    );
+  } catch {
+    console.log(`[db] ${origemDaConexao()} → string não parseável`);
+  }
+
+  _sql = postgres(url, {
     ssl: "require",
     prepare: false, // compatível com o Transaction Pooler (pgbouncer) da Supabase
   });
