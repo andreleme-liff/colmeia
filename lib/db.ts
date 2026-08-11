@@ -138,7 +138,7 @@ async function seed(sql: Db): Promise<void> {
   const [{ c }] = await sql<{ c: number }[]>`SELECT COUNT(*)::int AS c FROM users`;
   if (Number(c) > 0) return;
 
-  const adminEmail = (process.env.ADMIN_EMAIL ?? "andre@getliff.ai").trim().toLowerCase();
+  const adminEmail = (process.env.ADMIN_EMAIL ?? "leme@getliff.ai").trim().toLowerCase();
 
   const pessoas: {
     nome: string;
@@ -148,7 +148,7 @@ async function seed(sql: Db): Promise<void> {
     perms: Record<string, "view" | "edit">;
   }[] = [
     {
-      nome: "André Leme", email: "andre@getliff.ai", papel: "admin", iniciais: "AL",
+      nome: "André Leme", email: "leme@getliff.ai", papel: "admin", iniciais: "AL",
       perms: {},
     },
     {
@@ -186,14 +186,14 @@ async function seed(sql: Db): Promise<void> {
     ["A-103", "Proposta comercial Grupo Andrade", "law-firms", "Comercial", "backlog", "marina@getliff.ai", "2026-08-18", "media"],
     ["A-201", "Rollout Regtrack na área de compliance", "corporate", "Operacional", "andamento", "rafael@getliff.ai", "2026-08-15", "alta"],
     ["A-202", "Treinamento de governança — turma 3", "corporate", "Institucional", "concluido", "clara@getliff.ai", "2026-08-01", "baixa"],
-    ["A-203", "Revisão de política de retenção documental", "corporate", "Operacional", "backlog", "andre@getliff.ai", "2026-08-22", "media"],
-    ["A-301", "Pregão eletrônico — Tribunal de Contas MG", "public-sector", "Comercial", "andamento", "andre@getliff.ai", "2026-08-11", "alta"],
+    ["A-203", "Revisão de política de retenção documental", "corporate", "Operacional", "backlog", "leme@getliff.ai", "2026-08-22", "media"],
+    ["A-301", "Pregão eletrônico — Tribunal de Contas MG", "public-sector", "Comercial", "andamento", "leme@getliff.ai", "2026-08-11", "alta"],
     ["A-302", "Integração com sistema de controle interno", "public-sector", "Operacional", "backlog", "rafael@getliff.ai", "2026-08-29", "baixa"],
     ["A-401", "Motor de cálculo da reforma — CBS/IBS", "tax", "Produto", "andamento", "rafael@getliff.ai", "2026-08-20", "alta"],
-    ["A-402", "DRE Impact para carteira industrial", "tax", "Operacional", "revisao", "andre@getliff.ai", "2026-08-08", "alta"],
+    ["A-402", "DRE Impact para carteira industrial", "tax", "Operacional", "revisao", "leme@getliff.ai", "2026-08-08", "alta"],
     ["A-403", "Onboarding tributário — Nutrimax", "tax", "Comercial", "concluido", "marina@getliff.ai", "2026-07-31", "media"],
     ["A-501", "Deadline Agent — avaliação de precisão", "labs", "Produto", "andamento", "rafael@getliff.ai", "2026-08-14", "alta"],
-    ["A-502", "Evidence Graph — protótipo de grafo", "labs", "Produto", "backlog", "andre@getliff.ai", "2026-08-26", "media"],
+    ["A-502", "Evidence Graph — protótipo de grafo", "labs", "Produto", "backlog", "leme@getliff.ai", "2026-08-26", "media"],
     ["A-503", "Benchmark de modelos para extração", "labs", "Produto", "revisao", "rafael@getliff.ai", "2026-08-10", "media"],
     ["A-601", "Convênio com Defensoria — plano piloto", "social", "Institucional", "andamento", "clara@getliff.ai", "2026-08-19", "media"],
     ["A-602", "Relatório de impacto do 1º semestre", "social", "Institucional", "concluido", "clara@getliff.ai", "2026-08-04", "baixa"],
@@ -210,10 +210,10 @@ async function seed(sql: Db): Promise<void> {
     ["D-01", "Vieira & Costa Advogados", "law-v · 80 usuários", "law-firms", "negociacao", 420000, "marina@getliff.ai", "Reunião 08/08"],
     ["D-02", "Grupo Andrade", "law-v + Docflows", "law-firms", "proposta", 260000, "marina@getliff.ai", "Enviar proposta"],
     ["D-03", "Metalcorp S.A.", "Regtrack corporate", "corporate", "qualificacao", 180000, "marina@getliff.ai", "Discovery 12/08"],
-    ["D-04", "Instituto Vega", "Compliance ESG", "corporate", "lead", 95000, "andre@getliff.ai", "Qualificar"],
-    ["D-05", "Tribunal de Contas MG", "Controle interno", "public-sector", "proposta", 610000, "andre@getliff.ai", "Edital 11/08"],
+    ["D-04", "Instituto Vega", "Compliance ESG", "corporate", "lead", 95000, "leme@getliff.ai", "Qualificar"],
+    ["D-05", "Tribunal de Contas MG", "Controle interno", "public-sector", "proposta", 610000, "leme@getliff.ai", "Edital 11/08"],
     ["D-06", "Nutrimax Alimentos", "LIFF Tax · DRE Impact", "tax", "ganho", 340000, "marina@getliff.ai", "Kickoff feito"],
-    ["D-07", "Cimentos Boa Vista", "Reforma tributária", "tax", "negociacao", 275000, "andre@getliff.ai", "Ajuste de escopo"],
+    ["D-07", "Cimentos Boa Vista", "Reforma tributária", "tax", "negociacao", 275000, "leme@getliff.ai", "Ajuste de escopo"],
     ["D-08", "Rede Solidária Brasil", "Acesso à justiça", "social", "lead", 60000, "clara@getliff.ai", "Primeiro contato"],
   ];
   for (const [ref, conta, escopo, area, estagio, reais, email, prox] of oportunidades) {
@@ -225,7 +225,7 @@ async function seed(sql: Db): Promise<void> {
 
   await sql`
     INSERT INTO audit_log (actor_user_id, area, entidade, texto)
-    VALUES (${uid(adminEmail) ?? uid("andre@getliff.ai")}, NULL, 'sistema', 'Base criada com o conjunto de demonstração')
+    VALUES (${uid(adminEmail) ?? uid("leme@getliff.ai")}, NULL, 'sistema', 'Base criada com o conjunto de demonstração')
   `;
 }
 
