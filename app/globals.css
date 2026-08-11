@@ -1,20 +1,17 @@
 /* LIFF Ops — temas, layout, estados de hover e comportamento responsivo.
-   Os tokens vêm do design system (importado abaixo, sem alteração); aqui ficam o tema
+   Os cinco token files do design system entram abaixo sem alteração; aqui ficam o tema
    claro, a estrutura da tela e o que não cabe em estilo inline.
 
-   fonts.css do kit é o único token file que NÃO é importado: ele faz @import do Google
-   Fonts, e no Next as mesmas duas famílias entram por next/font (ver layout.tsx). */
+   As fontes vêm do próprio `fonts.css` do kit, que é como a marca as carrega (o kit não
+   embarca binário de fonte). Já usei `next/font` aqui, e o build da Vercel quebrou: ele
+   baixa os woff2 em tempo de build e o fonts.gstatic.com devolveu 404, derrubando o
+   deploy inteiro. O @import resolve no navegador — o build deixa de depender de rede. */
 
+@import "../_ds/liff-design-system-064c9d4d-2b53-487d-bb38-ec3256a6c7cb/tokens/fonts.css";
 @import "../_ds/liff-design-system-064c9d4d-2b53-487d-bb38-ec3256a6c7cb/tokens/colors.css";
 @import "../_ds/liff-design-system-064c9d4d-2b53-487d-bb38-ec3256a6c7cb/tokens/typography.css";
 @import "../_ds/liff-design-system-064c9d4d-2b53-487d-bb38-ec3256a6c7cb/tokens/spacing.css";
 @import "../_ds/liff-design-system-064c9d4d-2b53-487d-bb38-ec3256a6c7cb/tokens/base.css";
-
-/* As famílias vêm de next/font; o fallback preserva os nomes do kit. */
-:root {
-  --liff-font-body: var(--font-rethink), "Rethink Sans", Arial, sans-serif;
-  --liff-font-mono: var(--font-jetbrains), "JetBrains Mono", ui-monospace, monospace;
-}
 
 /* =========================================================
    Temas

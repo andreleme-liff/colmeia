@@ -1,19 +1,10 @@
 import type { Metadata } from "next";
-import { Rethink_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-// As duas famílias do sistema, nos papéis fixos da marca: Rethink Sans para leitura humana,
-// JetBrains Mono para linguagem técnica.
-const rethink = Rethink_Sans({
-  variable: "--font-rethink",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-});
-const jetbrains = JetBrains_Mono({
-  variable: "--font-jetbrains",
-  subsets: ["latin"],
-  weight: ["400", "500", "700"],
-});
+// As duas famílias (Rethink Sans para leitura humana, JetBrains Mono para linguagem
+// técnica) vêm do `fonts.css` do design system, importado em globals.css — não de
+// `next/font`. Ver o comentário lá: o next/font baixa os woff2 durante o build e um 404
+// do fonts.gstatic.com derrubava o deploy inteiro.
 
 export const metadata: Metadata = {
   title: "LIFF Ops — sistema de gestão de atividades",
@@ -28,7 +19,7 @@ document.documentElement.dataset.theme=t})()`;
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="pt-BR" className={`${rethink.variable} ${jetbrains.variable}`} suppressHydrationWarning>
+    <html lang="pt-BR" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: ANTI_FLASH }} />
       </head>
