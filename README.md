@@ -42,6 +42,22 @@ Para um sistema maior, o mais convencional seria um passo de migração separado
 o schema é pequeno e estável, e a migração no primeiro acesso segue a convenção do
 `mini-todos`.
 
+### A API REST da Supabase fica fechada
+
+A Supabase expõe o schema `public` via PostgREST, atendendo com os papéis `anon` e
+`authenticated`, e concede privilégios a eles por padrão em tabelas novas. Como a chave anon
+é pública por definição, tabela sem restrição no `public` é tabela legível por quem tiver a
+URL do projeto — e `sessions` guarda token de sessão, o que viraria sequestro de conta.
+
+A migração revoga os privilégios desses dois papéis nas seis tabelas. Isso vale independente
+de RLS e de atributo de papel, e é no-op em Postgres sem Supabase.
+
+O painel da Supabase vai continuar mostrando o aviso "RLS disabled in public" — ele olha
+`relrowsecurity`, não os privilégios. **Não é exposição**: pode conferir tentando ler
+qualquer tabela com a chave anon, que volta permission denied. Ligar RLS também, como camada
+extra, é possível, mas exige testar antes que o papel da connection string não seja barrado
+junto.
+
 ### Sessão: não há segredo
 
 Não existe `SESSION_SECRET`, `NEXTAUTH_SECRET` ou equivalente, e é de propósito. O token de

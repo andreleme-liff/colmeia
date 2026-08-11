@@ -149,6 +149,34 @@ async function migrate(): Promise<void> {
     await sql`CREATE INDEX IF NOT EXISTS idx_audit_recente ON audit_log(criado_em DESC)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_perms_user ON user_area_perms(user_id)`;
 
+    // A Supabase expõe o schema `public` pela API REST (PostgREST), que atende usando os
+    // papéis `anon` e `authenticated` — e concede privilégios a eles por padrão em tabelas
+    // novas. A chave anon é pública por definição (nasceu para ir em código de navegador),
+    // então tabela sem restrição no `public` é tabela legível por qualquer um que tenha a
+    // URL do projeto.
+    //
+    // Este app fala com o banco só pelo servidor, com a connection string. Nada aqui deve
+    // ser alcançável por aquela porta — e `sessions` guarda token de sessão, o que
+    // transformaria a exposição em sequestro de conta.
+    //
+    // O REVOKE resolve independente de RLS e de atributos de papel. Em Postgres sem
+    // Supabase os papéis não existem e o bloco não faz nada.
+    await sql.unsafe(`
+      DO $$
+      DECLARE papel TEXT;
+      BEGIN
+        FOREACH papel IN ARRAY ARRAY['anon','authenticated'] LOOP
+          IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = papel) THEN
+            EXECUTE format(
+              'REVOKE ALL ON users, user_area_perms, activities, deals, sessions, audit_log FROM %I',
+              papel
+            );
+            EXECUTE format('REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM %I', papel);
+          END IF;
+        END LOOP;
+      END $$;
+    `);
+
     await seed(sql);
   });
 }
