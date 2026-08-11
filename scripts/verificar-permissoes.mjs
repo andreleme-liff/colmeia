@@ -134,11 +134,17 @@ try {
   checa(`Clara, que VÊ public-sector mas não edita → 403`, r4.status === 403, `veio ${r4.status}`);
 
   console.log("\n4. PIPELINE e ADMINISTRAÇÃO\n");
+  // Coloca a oportunidade num estágio que tem para onde avançar. Sem isto o teste dependia
+  // do histórico: uma vez em "ganho", o +1 não muda nada e a rota devolve 200 sem gravar
+  // log — correto, mas fazia a checagem de auditoria falhar sem nada estar quebrado.
+  await sql`UPDATE deals SET estagio = 'proposta' WHERE id = ${dLaw.id}`;
   const r5 = await req(marina.token, `/api/deals/${dLaw.id}`, {
     method: "PATCH",
     body: JSON.stringify({ direcao: 1 }),
   });
   checa(`Marina move oportunidade de law-firms → 200`, r5.status === 200, `veio ${r5.status}`);
+  const [depoisMover] = await sql`SELECT estagio FROM deals WHERE id = ${dLaw.id}`;
+  checa(`e o estágio avançou de fato`, depoisMover.estagio === "negociacao", depoisMover.estagio);
 
   const r6 = await req(marina.token, `/api/users/${clara.id}`, {
     method: "PATCH",
@@ -158,11 +164,79 @@ try {
   });
   checa(`André não consegue desativar a si mesmo → 409`, r8.status === 409, `veio ${r8.status}`);
 
-  console.log("\n5. AUDITORIA — cada escrita virou registro com autor e valor anterior/novo\n");
+  console.log("\n5. CRIAÇÃO — a área vem do corpo, então é onde a checagem mais importa\n");
+  const criados = { atividades: [], deals: [] };
+
+  const c1 = await req(marina.token, "/api/activities", {
+    method: "POST",
+    body: JSON.stringify({ titulo: "[teste] atividade de Marina", area: "law-firms", prioridade: "alta" }),
+  });
+  const c1json = await c1.json();
+  checa(`Marina cria em law-firms (edit) → 201`, c1.status === 201, `veio ${c1.status}`);
+  if (c1json.id) criados.atividades.push(c1json.id);
+
+  const c2 = await req(marina.token, "/api/activities", {
+    method: "POST",
+    body: JSON.stringify({ titulo: "[teste] não deveria existir", area: "tax" }),
+  });
+  checa(`Marina criando em tax (só lê) → 403`, c2.status === 403, `veio ${c2.status}`);
+
+  const c3 = await req(marina.token, "/api/activities", {
+    method: "POST",
+    body: JSON.stringify({ titulo: "[teste] não deveria existir", area: "labs" }),
+  });
+  checa(`Marina criando em labs (sem acesso) → 403`, c3.status === 403, `veio ${c3.status}`);
+
+  const c4 = await req(clara.token, "/api/activities", {
+    method: "POST",
+    body: JSON.stringify({ titulo: "[teste] não deveria existir", area: "social" }),
+  });
+  checa(`Clara, só leitura em social → 403`, c4.status === 403, `veio ${c4.status}`);
+
+  const c5 = await req(marina.token, "/api/activities", {
+    method: "POST",
+    body: JSON.stringify({ titulo: "   ", area: "law-firms" }),
+  });
+  checa(`título em branco → 400`, c5.status === 400, `veio ${c5.status}`);
+
+  const c6 = await req(marina.token, "/api/deals", {
+    method: "POST",
+    body: JSON.stringify({ conta: "[teste] Conta", area: "corporate", estagio: "lead", valorReais: 1000 }),
+  });
+  const c6json = await c6.json();
+  checa(`Marina cria oportunidade em corporate → 201`, c6.status === 201, `veio ${c6.status}`);
+  if (c6json.id) criados.deals.push(c6json.id);
+
+  console.log("\n6. CADASTRO DE ÁREA — configuração, restrita a admin\n");
+  const corOriginal = (await sql`SELECT cor FROM areas WHERE id='tax'`)[0].cor;
+
+  const a1 = await req(marina.token, "/api/areas/tax", { method: "PATCH", body: JSON.stringify({ cor: "#123456" }) });
+  checa(`Marina (não admin) mudando cor → 403`, a1.status === 403, `veio ${a1.status}`);
+
+  const a2 = await req(andre.token, "/api/areas/tax", { method: "PATCH", body: JSON.stringify({ cor: "#123456" }) });
+  checa(`André (admin) muda cor → 200`, a2.status === 200, `veio ${a2.status}`);
+
+  const a3 = await req(andre.token, "/api/areas/tax", { method: "PATCH", body: JSON.stringify({ cor: "red" }) });
+  checa(`cor fora do formato HEX → 400`, a3.status === 400, `veio ${a3.status}`);
+
+  const a4 = await req(andre.token, "/api/areas/tax", {
+    method: "PATCH",
+    body: JSON.stringify({ cor: "#fff;}body{display:none" }),
+  });
+  checa(`tentativa de injeção de CSS na cor → 400`, a4.status === 400, `veio ${a4.status}`);
+
+  await sql`UPDATE areas SET cor = ${corOriginal} WHERE id = 'tax'`;
+
+  console.log("\n7. AUDITORIA — cada escrita virou registro com autor e valor anterior/novo\n");
+  // Filtra pelas entidades que ESTA rodada tocou. Antes isto era um LIMIT sobre as últimas
+  // linhas, e bastou o teste passar a criar registros para as escritas anteriores saírem da
+  // janela e a asserção falhar sem nada ter quebrado.
+  const alvos = [aLaw.ref, dLaw.ref, `U-${clara.id}`];
   const logs = await sql`
     SELECT l.entidade, l.campo, l.valor_anterior, l.valor_novo, u.nome AS autor
     FROM audit_log l LEFT JOIN users u ON u.id = l.actor_user_id
-    WHERE l.campo IS NOT NULL ORDER BY l.id DESC LIMIT 10
+    WHERE l.campo IS NOT NULL AND l.entidade = ANY(${alvos})
+    ORDER BY l.id DESC LIMIT 10
   `;
   // Três escritas passaram nesta rodada (status, estágio, permissão). A quarta tentativa —
   // o admin se desativando — levou 409 e, corretamente, não deixa rastro.
@@ -184,7 +258,7 @@ try {
     console.log(`     ${l.autor} · ${l.entidade} · ${l.campo}: ${l.valor_anterior} → ${l.valor_novo}`);
   }
 
-  console.log("\n6. TENTATIVA RECUSADA NÃO SUJA O LOG\n");
+  console.log("\n8. TENTATIVA RECUSADA NÃO SUJA O LOG\n");
   const suja = await sql`
     SELECT COUNT(*)::int AS c FROM audit_log WHERE entidade = ${aTax.ref}
   `;
@@ -192,6 +266,8 @@ try {
 
   // Devolve o mundo ao estado anterior. O audit_log fica como está: ele é append-only por
   // desenho, e apagar linha dele aqui contradiria a própria coisa que o teste verifica.
+  for (const id of criados.atividades) await sql`DELETE FROM activities WHERE id = ${id}`;
+  for (const id of criados.deals) await sql`DELETE FROM deals WHERE id = ${id}`;
   await sql`UPDATE activities SET status = ${restaurar.statusAtividade} WHERE id = ${aLaw.id}`;
   await sql`UPDATE deals SET estagio = ${restaurar.estagioDeal} WHERE id = ${dLaw.id}`;
   if (restaurar.permClaraTax === null) {

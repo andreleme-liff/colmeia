@@ -69,6 +69,21 @@ const inList = (vals: readonly string[]) => vals.map((v) => `'${v}'`).join(",");
 const MIGRATION_LOCK = 811020261;
 
 /**
+ * Semente do cadastro de áreas. São os valores da cascata de cada vertical no design system
+ * — o tom Mid, exceto Labs, cujo Core é o que segura sobre os dois fundos. Ficam aqui como
+ * HEX porque a partir da primeira subida viram DADO editável, não mais token de código: o
+ * cliente os transforma em variáveis CSS, e o tema claro deriva a variante escurecida.
+ */
+const AREAS_SEMENTE = [
+  { id: "law-firms", label: "Law Firms", short: "LAW", cor: "#4B6B9B" },
+  { id: "corporate", label: "Corporate", short: "CORP", cor: "#8B6FA8" },
+  { id: "public-sector", label: "Public Sector", short: "PUB", cor: "#809A6A" },
+  { id: "tax", label: "Tax", short: "TAX", cor: "#C4774C" },
+  { id: "labs", label: "Labs", short: "LABS", cor: "#00A3B5" },
+  { id: "social", label: "Social", short: "SOC", cor: "#D38A9A" },
+];
+
+/**
  * A migração roda no primeiro acesso ao banco, dentro de UMA transação protegida por
  * advisory lock.
  *
@@ -166,6 +181,32 @@ async function migrate(): Promise<void> {
       criado_em      TIMESTAMPTZ NOT NULL DEFAULT now()
     )
     `);
+
+      // Cadastro das verticais. A cor sai daqui para virar variável CSS no cliente, então
+    // dá para repintar uma área sem tocar em código. Os valores semeados são os da cascata
+    // do design system (tom Mid, exceto Labs que usa o Core) — a partir daqui viram
+    // configuração, editável na tela de Cadastros.
+    await sql`
+      CREATE TABLE IF NOT EXISTS areas (
+        id     TEXT PRIMARY KEY,
+        label  TEXT NOT NULL,
+        short  TEXT NOT NULL,
+        cor    TEXT NOT NULL,
+        ordem  INTEGER NOT NULL DEFAULT 0
+      )
+    `;
+    for (const [i, a] of AREAS_SEMENTE.entries()) {
+      await sql`
+        INSERT INTO areas (id, label, short, cor, ordem)
+        VALUES (${a.id}, ${a.label}, ${a.short}, ${a.cor}, ${i})
+        ON CONFLICT (id) DO NOTHING
+      `;
+    }
+
+    // Refs legíveis para registros novos. Começam acima das semeadas (A-101…A-602,
+    // D-01…D-08) para nunca colidir com elas.
+    await sql`CREATE SEQUENCE IF NOT EXISTS activities_ref_seq START 1000`;
+    await sql`CREATE SEQUENCE IF NOT EXISTS deals_ref_seq START 100`;
 
     await sql`CREATE INDEX IF NOT EXISTS idx_activities_area ON activities(area, status)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_deals_area ON deals(area, estagio)`;

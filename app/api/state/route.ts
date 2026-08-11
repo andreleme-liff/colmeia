@@ -105,6 +105,12 @@ export async function GET() {
     { id: number; nome: string; email: string; papel: string; iniciais: string; ativo: boolean }[]
   >`SELECT id, nome, email, papel, iniciais, ativo FROM users ORDER BY id ASC`;
 
+  // Cadastro das verticais: rótulo, sigla e cor. Vai inteiro para o cliente, que transforma
+  // a cor em variável CSS.
+  const areasCadastro = await sql<{ id: string; label: string; short: string; cor: string }[]>`
+    SELECT id, label, short, cor FROM areas ORDER BY ordem ASC, id ASC
+  `;
+
   const permLinhas = ctx.isAdmin
     ? await sql<{ user_id: number; area: string; nivel: string }[]>`
         SELECT user_id, area, nivel FROM user_area_perms
@@ -128,6 +134,7 @@ export async function GET() {
     },
     perms: ctx.perms,
     areasVisiveis: ctx.areasVisiveis,
+    areas: areasCadastro,
     isAdmin: ctx.isAdmin,
     activities: atividades.map((a) => ({
       id: a.id,

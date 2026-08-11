@@ -4,11 +4,11 @@
 // devolvem eventos. Quem decide o que pode ser alterado é o servidor — `podeEditar` que
 // chega em cada registro é o eco daquela decisão, usado só para desenhar o estado.
 
-import type { CSSProperties, ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { Button, Field, Input, Select, Switch } from "./ds";
 import { C, GHOST_FIX, MONO, SANS, dot, eyebrow, mesh, prioColor, statusColor } from "./tokens";
-import type { Activity, Deal, LogEntry, Pessoa } from "./api";
-import { AREAS, ADMIN_CARDS, STATUS, areaOf, brl, ddmm, stamp, statusLabel } from "@/lib/domain";
+import type { Activity, AreaCadastro, Deal, LogEntry, Pessoa } from "./api";
+import { ADMIN_CARDS, STAGES, STATUS, areaOf, brl, ddmm, stamp, statusLabel, todasAreas } from "@/lib/domain";
 
 /* =========================================================
    Visão geral
@@ -356,18 +356,97 @@ export const CAD_TABS = [
 
 export type CadSet = { head: string[]; rows: { key: string; a: string; b: string; c: string }[]; ph: string };
 
+/** Aba "áreas": a cor de cada vertical é configuração, e muda como todo mundo vê o quadro —
+ *  por isso só admin edita. O `input type=color` devolve HEX, que é o que o servidor aceita. */
+function TabelaAreas({
+  areas,
+  contagem,
+  podeEditar,
+  onCor,
+}: {
+  areas: AreaCadastro[];
+  contagem: (id: string) => number;
+  podeEditar: boolean;
+  onCor: (id: string, cor: string) => void;
+}) {
+  return (
+    <div style={{ minWidth: 480 }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1.6fr 1fr 1fr",
+          background: C.canvas,
+          borderBottom: `1px solid ${C.line}`,
+        }}
+      >
+        {["ÁREA", "COR", "ATIVIDADES"].map((h) => (
+          <div key={h} style={{ padding: "12px 16px", ...eyebrow(10, C.faint) }}>
+            {h}
+          </div>
+        ))}
+      </div>
+      {areas.map((a) => (
+        <div
+          key={a.id}
+          style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr", borderBottom: `1px solid ${C.line}`, alignItems: "center" }}
+        >
+          <div style={{ padding: "13px 16px", fontSize: 14, color: C.ink, display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ ...dot(`var(--liff-app-area-${a.id})`), width: 9, height: 9 }} />
+            LIFF {a.label}
+            <span style={eyebrow(10, C.faint, "0.1em")}>{a.short}</span>
+          </div>
+          <div style={{ padding: "9px 16px", display: "flex", alignItems: "center", gap: 10 }}>
+            <input
+              type="color"
+              value={a.cor}
+              disabled={!podeEditar}
+              onChange={(e) => onCor(a.id, e.target.value)}
+              title={podeEditar ? "Escolher a cor desta vertical" : "Só a administração altera a cor"}
+              style={{
+                width: 34,
+                height: 26,
+                padding: 0,
+                border: `1px solid ${C.line}`,
+                borderRadius: 4,
+                background: "transparent",
+                cursor: podeEditar ? "pointer" : "not-allowed",
+              }}
+            />
+            <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint, textTransform: "uppercase" }}>{a.cor}</span>
+          </div>
+          <div style={{ padding: "13px 16px", fontFamily: MONO, fontSize: 11, color: C.faint }}>
+            {contagem(a.id)} ativas
+          </div>
+        </div>
+      ))}
+      <div style={{ padding: "14px 16px", fontSize: 12, lineHeight: 1.6, color: C.faint }}>
+        A cor pinta chip, card, barra e tabela em toda a interface. No tema claro ela é escurecida
+        automaticamente para manter contraste sobre o fundo Floral White.
+      </div>
+    </div>
+  );
+}
+
 export function Cadastros({
   tab,
   onTab,
   set,
   areaOptions,
   semEdicao,
+  areas,
+  contagemPorArea,
+  podeEditarAreas,
+  onCorArea,
 }: {
   tab: string;
   onTab: (k: string) => void;
   set: CadSet;
   areaOptions: string[];
   semEdicao: boolean;
+  areas: AreaCadastro[];
+  contagemPorArea: (id: string) => number;
+  podeEditarAreas: boolean;
+  onCorArea: (id: string, cor: string) => void;
 }) {
   return (
     <>
@@ -390,6 +469,9 @@ export function Cadastros({
 
       <div className="liff-cad-split" style={mesh({ display: "grid", gap: 1 })}>
         <div className="liff-scroll-x" style={{ background: C.cell }}>
+          {tab === "areas" ? (
+            <TabelaAreas areas={areas} contagem={contagemPorArea} podeEditar={podeEditarAreas} onCor={onCorArea} />
+          ) : (
           <div style={{ minWidth: 480 }}>
             <div
               style={{
@@ -416,6 +498,7 @@ export function Cadastros({
               </div>
             ))}
           </div>
+          )}
         </div>
 
         <div style={{ background: C.cell, padding: 22 }}>
@@ -488,7 +571,7 @@ export function Admin({
             }}
           >
             <div style={{ padding: "12px 16px", ...eyebrow(10, C.faint) }}>USUÁRIO</div>
-            {AREAS.map((a) => (
+            {todasAreas().map((a) => (
               <div key={a.id} style={{ padding: "12px 10px", ...eyebrow(10, a.color, "0.1em"), textAlign: "center" }}>
                 {a.short}
               </div>
@@ -511,7 +594,7 @@ export function Admin({
                 <div style={{ fontSize: 14, color: C.ink, fontWeight: 600 }}>{u.nome}</div>
                 <div style={eyebrow(10, C.faint, "0.1em")}>{u.papel}</div>
               </div>
-              {AREAS.map((a) => {
+              {todasAreas().map((a) => {
                 const nivel = u.papel === "admin" ? "edit" : u.perms[a.id] ?? "none";
                 const s = PERM_STYLE[nivel] ?? PERM_STYLE.none;
                 const travado = u.papel === "admin";
@@ -903,6 +986,271 @@ export function WaModal({
         </div>
       </div>
     </div>
+  );
+}
+
+/* =========================================================
+   Criação — atividade e oportunidade
+   ========================================================= */
+const campoNativo: CSSProperties = {
+  width: "100%",
+  background: C.code,
+  border: `1px solid ${C.line}`,
+  borderRadius: 6,
+  color: C.ink,
+  fontFamily: SANS,
+  fontSize: 15,
+  padding: "11px 13px",
+};
+
+function Modal({ titulo, eyebrowTexto, children, onFechar }: {
+  titulo: string;
+  eyebrowTexto: string;
+  children: ReactNode;
+  onFechar: () => void;
+}) {
+  return (
+    <div
+      onClick={onFechar}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(14,16,20,0.78)",
+        zIndex: 50,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: 520,
+          maxWidth: "100%",
+          maxHeight: "88vh",
+          overflow: "auto",
+          background: C.panel,
+          border: `1px solid ${C.line}`,
+        }}
+      >
+        <div style={{ padding: "24px 26px", borderBottom: `1px solid ${C.line}` }}>
+          <div style={eyebrow(10, C.accent)}>{eyebrowTexto}</div>
+          <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: "-0.02em", color: C.ink, marginTop: 6 }}>
+            {titulo}
+          </div>
+        </div>
+        <div style={{ padding: "24px 26px", display: "flex", flexDirection: "column", gap: 16 }}>{children}</div>
+      </div>
+    </div>
+  );
+}
+
+export type OpcaoPessoa = { id: number; nome: string };
+
+export function NovaAtividade({
+  areasEditaveis,
+  pessoas,
+  salvando,
+  erro,
+  onSalvar,
+  onFechar,
+}: {
+  areasEditaveis: { id: string; label: string }[];
+  pessoas: OpcaoPessoa[];
+  salvando: boolean;
+  erro: string | null;
+  onSalvar: (d: {
+    titulo: string;
+    area: string;
+    tipo: string;
+    status: string;
+    prioridade: string;
+    prazo: string | null;
+    responsavelId: number | null;
+  }) => void;
+  onFechar: () => void;
+}) {
+  const [titulo, setTitulo] = useState("");
+  const [area, setArea] = useState(areasEditaveis[0]?.id ?? "");
+  const [tipo, setTipo] = useState("Operacional");
+  const [status, setStatus] = useState("backlog");
+  const [prioridade, setPrioridade] = useState("media");
+  const [prazo, setPrazo] = useState("");
+  const [responsavel, setResponsavel] = useState<string>("");
+
+  const enviar = () =>
+    onSalvar({
+      titulo,
+      area,
+      tipo,
+      status,
+      prioridade,
+      prazo: prazo || null,
+      responsavelId: responsavel ? Number(responsavel) : null,
+    });
+
+  return (
+    <Modal titulo="Nova atividade" eyebrowTexto="LIFF/ ATIVIDADES" onFechar={onFechar}>
+      <Field label="Título" required>
+        <Input placeholder="O que precisa ser feito" value={titulo} onChange={setTitulo} />
+      </Field>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <Field label="Área" required>
+          <Select
+            options={areasEditaveis.map((a) => ({ value: a.id, label: a.label }))}
+            value={area}
+            onChange={setArea}
+          />
+        </Field>
+        <Field label="Tipo">
+          <Select options={["Operacional", "Comercial", "Produto", "Institucional"]} value={tipo} onChange={setTipo} />
+        </Field>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <Field label="Status">
+          <Select
+            options={STATUS.map((s) => ({ value: s.key, label: s.label }))}
+            value={status}
+            onChange={setStatus}
+          />
+        </Field>
+        <Field label="Prioridade">
+          <Select
+            options={[
+              { value: "alta", label: "alta" },
+              { value: "media", label: "média" },
+              { value: "baixa", label: "baixa" },
+            ]}
+            value={prioridade}
+            onChange={setPrioridade}
+          />
+        </Field>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <Field label="Prazo">
+          <input type="date" value={prazo} onChange={(e) => setPrazo(e.target.value)} style={campoNativo} />
+        </Field>
+        <Field label="Responsável">
+          <Select
+            options={[{ value: "", label: "—" }, ...pessoas.map((p) => ({ value: String(p.id), label: p.nome }))]}
+            value={responsavel}
+            onChange={setResponsavel}
+          />
+        </Field>
+      </div>
+
+      {erro && <div style={{ fontFamily: MONO, fontSize: 11, lineHeight: 1.6, color: C.error }}>{erro}</div>}
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 4 }}>
+        <Button variant="ghost" size="sm" onClick={onFechar} style={GHOST_FIX}>
+          cancelar
+        </Button>
+        <Button variant="solid" size="sm" disabled={salvando || !titulo.trim() || !area} onClick={enviar}>
+          {salvando ? "criando…" : "criar atividade"}
+        </Button>
+      </div>
+    </Modal>
+  );
+}
+
+export function NovaOportunidade({
+  areasEditaveis,
+  pessoas,
+  salvando,
+  erro,
+  onSalvar,
+  onFechar,
+}: {
+  areasEditaveis: { id: string; label: string }[];
+  pessoas: OpcaoPessoa[];
+  salvando: boolean;
+  erro: string | null;
+  onSalvar: (d: {
+    conta: string;
+    escopo: string;
+    area: string;
+    estagio: string;
+    valorReais: number;
+    proximoPasso: string;
+    responsavelId: number | null;
+  }) => void;
+  onFechar: () => void;
+}) {
+  const [conta, setConta] = useState("");
+  const [escopo, setEscopo] = useState("");
+  const [area, setArea] = useState(areasEditaveis[0]?.id ?? "");
+  const [estagio, setEstagio] = useState("lead");
+  const [valor, setValor] = useState("");
+  const [proximo, setProximo] = useState("");
+  const [responsavel, setResponsavel] = useState<string>("");
+
+  const enviar = () =>
+    onSalvar({
+      conta,
+      escopo,
+      area,
+      estagio,
+      valorReais: Number(valor.replace(/\./g, "").replace(",", ".")) || 0,
+      proximoPasso: proximo,
+      responsavelId: responsavel ? Number(responsavel) : null,
+    });
+
+  return (
+    <Modal titulo="Nova oportunidade" eyebrowTexto="LIFF/ COMERCIAL" onFechar={onFechar}>
+      <Field label="Conta" required>
+        <Input placeholder="Razão social" value={conta} onChange={setConta} />
+      </Field>
+      <Field label="Escopo" hint="O que está sendo vendido — aparece abaixo do nome no card.">
+        <Input placeholder="law-v · 80 usuários" value={escopo} onChange={setEscopo} />
+      </Field>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <Field label="Área" required>
+          <Select
+            options={areasEditaveis.map((a) => ({ value: a.id, label: a.label }))}
+            value={area}
+            onChange={setArea}
+          />
+        </Field>
+        <Field label="Estágio">
+          <Select
+            options={STAGES.map((s) => ({ value: s.key, label: s.label }))}
+            value={estagio}
+            onChange={setEstagio}
+          />
+        </Field>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <Field label="Valor (R$)">
+          <Input placeholder="420000" value={valor} onChange={setValor} />
+        </Field>
+        <Field label="Responsável">
+          <Select
+            options={[{ value: "", label: "—" }, ...pessoas.map((p) => ({ value: String(p.id), label: p.nome }))]}
+            value={responsavel}
+            onChange={setResponsavel}
+          />
+        </Field>
+      </div>
+
+      <Field label="Próximo passo">
+        <Input placeholder="Enviar proposta" value={proximo} onChange={setProximo} />
+      </Field>
+
+      {erro && <div style={{ fontFamily: MONO, fontSize: 11, lineHeight: 1.6, color: C.error }}>{erro}</div>}
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 4 }}>
+        <Button variant="ghost" size="sm" onClick={onFechar} style={GHOST_FIX}>
+          cancelar
+        </Button>
+        <Button variant="solid" size="sm" disabled={salvando || !conta.trim() || !area} onClick={enviar}>
+          {salvando ? "criando…" : "criar oportunidade"}
+        </Button>
+      </div>
+    </Modal>
   );
 }
 

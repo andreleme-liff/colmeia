@@ -56,15 +56,38 @@ export type Me = {
   avatarUrl: string | null;
 };
 
+export type AreaCadastro = { id: string; label: string; short: string; cor: string };
+
 export type State = {
   me: Me;
   perms: Record<string, string>;
   areasVisiveis: string[];
+  areas: AreaCadastro[];
   isAdmin: boolean;
   activities: Activity[];
   deals: Deal[];
   logs: LogEntry[];
   pessoas: Pessoa[];
+};
+
+export type NovaAtividade = {
+  titulo: string;
+  area: string;
+  tipo: string;
+  status: string;
+  prioridade: string;
+  prazo: string | null;
+  responsavelId: number | null;
+};
+
+export type NovaOportunidade = {
+  conta: string;
+  escopo: string;
+  area: string;
+  estagio: string;
+  valorReais: number;
+  proximoPasso: string;
+  responsavelId: number | null;
 };
 
 async function req<T>(url: string, opts: RequestInit = {}): Promise<T> {
@@ -82,6 +105,15 @@ async function req<T>(url: string, opts: RequestInit = {}): Promise<T> {
 
 export const api = {
   estado: () => req<State>("/api/state"),
+
+  criarAtividade: (dados: NovaAtividade) =>
+    req<{ ok: boolean; ref: string }>("/api/activities", { method: "POST", body: JSON.stringify(dados) }),
+
+  criarOportunidade: (dados: NovaOportunidade) =>
+    req<{ ok: boolean; ref: string }>("/api/deals", { method: "POST", body: JSON.stringify(dados) }),
+
+  alterarArea: (id: string, patch: { cor?: string; label?: string; short?: string }) =>
+    req<{ ok: boolean }>(`/api/areas/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
 
   alterarAtividade: (id: number, patch: { status?: string; responsavelId?: number | null; prioridade?: string }) =>
     req<{ ok: boolean }>(`/api/activities/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),

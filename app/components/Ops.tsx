@@ -15,6 +15,8 @@ import {
   Cadastros,
   Comercial,
   Drawer,
+  NovaAtividade,
+  NovaOportunidade,
   Operacoes,
   Overview,
   WaModal,
@@ -23,8 +25,10 @@ import {
   type Kpi,
 } from "./views";
 import { C, GHOST_FIX, avatarStyle, dot, eyebrow, markTone, mesh, useTheme } from "./tokens";
+import CoresDasAreas from "./CoresDasAreas";
 import { api, type Activity, type State } from "./api";
-import { AREAS, NAV, STAGES, STATUS, TITLES, areaOf, brl, ddmm, stageLabel, statusLabel } from "@/lib/domain";
+import { setAreas } from "@/lib/domain";
+import { NAV, STAGES, STATUS, TITLES, areaOf, brl, ddmm, stageLabel, statusLabel, todasAreas } from "@/lib/domain";
 
 const DIAS_CRITICO = 7;
 
@@ -40,10 +44,17 @@ export default function Ops() {
   const [waAberto, setWaAberto] = useState(false);
   const [waArea, setWaArea] = useState("all");
   const [copiado, setCopiado] = useState(false);
+  const [criando, setCriando] = useState<null | "atividade" | "oportunidade">(null);
+  const [salvando, setSalvando] = useState(false);
+  const [erroForm, setErroForm] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
     try {
-      setEstado(await api.estado());
+      const s = await api.estado();
+      // O cadastro de áreas alimenta o registro que `areaOf` consulta — precisa estar em pé
+      // antes de qualquer view renderizar, por isso acontece aqui e não num efeito.
+      setAreas(s.areas);
+      setEstado(s);
       setErro(null);
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Falha ao carregar.");
@@ -56,7 +67,9 @@ export default function Ops() {
     let vivo = true;
     api.estado().then(
       (s) => {
-        if (vivo) setEstado(s);
+        if (!vivo) return;
+        setAreas(s.areas);
+        setEstado(s);
       },
       (e: unknown) => {
         if (vivo) setErro(e instanceof Error ? e.message : "Falha ao carregar.");
@@ -95,7 +108,7 @@ export default function Ops() {
     const atividades = noEscopo(estado.activities);
     const oportunidades = noEscopo(estado.deals);
     const logs = estado.logs.filter((l) => area === "all" || l.area === area);
-    const areasVisiveis = AREAS.filter((a) => estado.areasVisiveis.includes(a.id));
+    const areasVisiveis = todasAreas().filter((a) => estado.areasVisiveis.includes(a.id));
     const atrasadas = atividades.filter(critico);
 
     const kpis: Kpi[] = [
@@ -172,7 +185,7 @@ export default function Ops() {
     if (cadTab === "areas") {
       return {
         head: ["ÁREA", "VERTICAL", "ATIVIDADES"],
-        rows: AREAS.filter((a) => estado.areasVisiveis.includes(a.id)).map((a) => ({
+        rows: todasAreas().filter((a) => estado.areasVisiveis.includes(a.id)).map((a) => ({
           key: a.id,
           a: "LIFF " + a.label,
           b: a.short,
@@ -278,6 +291,24 @@ export default function Ops() {
     auditoria: dados.logs.length,
   };
   const chips = [{ id: "all", label: "Todas", color: C.dust }, ...dados.areasVisiveis];
+  // Só oferece criar nas áreas onde a pessoa realmente escreve.
+  const areasEditaveis = dados.areasVisiveis.filter((a) => estado.perms[a.id] === "edit");
+  const pessoasAtivas = estado.pessoas.filter((p) => p.ativo).map((p) => ({ id: p.id, nome: p.nome }));
+
+  /** Cria e, dando certo, fecha o modal. O erro fica no próprio formulário. */
+  const criar = async (fn: () => Promise<unknown>) => {
+    setSalvando(true);
+    setErroForm(null);
+    try {
+      await fn();
+      await carregar();
+      setCriando(null);
+    } catch (e) {
+      setErroForm(e instanceof Error ? e.message : "Não foi possível criar.");
+    } finally {
+      setSalvando(false);
+    }
+  };
   const rotuloArea = area === "all" ? "todas as áreas" : areaOf(area).label;
   const selecionadaObj = estado.activities.find((a) => a.id === selecionada) ?? null;
 
@@ -303,6 +334,10 @@ export default function Ops() {
             set={cadSet}
             areaOptions={dados.areasVisiveis.map((a) => a.label)}
             semEdicao={!dados.areasVisiveis.some((a) => estado.perms[a.id] === "edit")}
+            areas={estado.areas.filter((a) => estado.areasVisiveis.includes(a.id))}
+            contagemPorArea={(id) => estado.activities.filter((x) => x.area === id).length}
+            podeEditarAreas={estado.isAdmin}
+            onCorArea={(id, cor) => void acao(() => api.alterarArea(id, { cor }))}
           />
         );
       case "admin":
@@ -323,6 +358,7 @@ export default function Ops() {
 
   return (
     <div className="liff-shell">
+      <CoresDasAreas areas={estado.areas} />
       {/* ---- barra lateral ---- */}
       <aside className="liff-aside">
         <div style={{ padding: "0 22px 26px" }}>
@@ -422,17 +458,41 @@ export default function Ops() {
             })}
           </div>
 
-          <Button
-            variant="solid"
-            size="sm"
-            onClick={() => {
-              setWaArea(area);
-              setCopiado(false);
-              setWaAberto(true);
-            }}
-          >
-            resumo p/ whatsapp
-          </Button>
+          {/* As ações ficam num grupo próprio para quebrarem juntas quando o cabeçalho
+              não couber, em vez de uma delas cair sozinha para a linha de baixo. */}
+          <div style={{ display: "flex", gap: 10, alignItems: "center", marginLeft: "auto" }}>
+            {/* Criar aparece onde a coisa vive: atividade em Atividades e no quadro,
+                oportunidade no pipeline. Desabilita quando não há área com permissão de
+                edição — o servidor recusaria de todo jeito. */}
+            {["atividades", "operacoes", "comercial"].includes(view) && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={areasEditaveis.length === 0}
+                title={
+                  areasEditaveis.length === 0 ? "Você não tem permissão de edição em nenhuma área" : undefined
+                }
+                onClick={() => {
+                  setErroForm(null);
+                  setCriando(view === "comercial" ? "oportunidade" : "atividade");
+                }}
+              >
+                + {view === "comercial" ? "oportunidade" : "atividade"}
+              </Button>
+            )}
+
+            <Button
+              variant="solid"
+              size="sm"
+              onClick={() => {
+                setWaArea(area);
+                setCopiado(false);
+                setWaAberto(true);
+              }}
+            >
+              resumo p/ whatsapp
+            </Button>
+          </div>
         </header>
 
         <main className="liff-main">
@@ -464,6 +524,28 @@ export default function Ops() {
           onStatus={(k) => void acao(() => api.alterarAtividade(selecionadaObj.id, { status: k }))}
           onResponsavel={(id) => void acao(() => api.alterarAtividade(selecionadaObj.id, { responsavelId: id }))}
           onPrioridade={(p) => void acao(() => api.alterarAtividade(selecionadaObj.id, { prioridade: p }))}
+        />
+      )}
+
+      {criando === "atividade" && (
+        <NovaAtividade
+          areasEditaveis={areasEditaveis}
+          pessoas={pessoasAtivas}
+          salvando={salvando}
+          erro={erroForm}
+          onFechar={() => setCriando(null)}
+          onSalvar={(d) => void criar(() => api.criarAtividade(d))}
+        />
+      )}
+
+      {criando === "oportunidade" && (
+        <NovaOportunidade
+          areasEditaveis={areasEditaveis}
+          pessoas={pessoasAtivas}
+          salvando={salvando}
+          erro={erroForm}
+          onFechar={() => setCriando(null)}
+          onSalvar={(d) => void criar(() => api.criarOportunidade(d))}
         />
       )}
 

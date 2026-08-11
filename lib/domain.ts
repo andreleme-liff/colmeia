@@ -79,8 +79,36 @@ export const ADMIN_CARDS = [
   },
 ];
 
-export function areaOf(id: string) {
-  return AREAS.find((a) => a.id === id) ?? { id, label: "—", short: "—", color: "var(--liff-text-faint)" };
+export type Area = { id: string; label: string; short: string; color: string };
+
+/**
+ * Registro em memória do cadastro de áreas, preenchido pelo cliente com o que vem do banco.
+ * A cor devolvida é sempre a variável CSS `--liff-app-area-<id>` — quem define o valor dela é
+ * o bloco de estilo que o cliente injeta a partir do cadastro, e é por isso que o tema claro
+ * continua derivando a variante escurecida sozinho.
+ *
+ * O padrão abaixo vale para o servidor e para o primeiro render, antes de o estado carregar.
+ */
+let registroAreas: Area[] = AREAS.map((a) => ({ ...a }));
+
+export function setAreas(lista: { id: string; label: string; short: string }[]): void {
+  if (!lista?.length) return;
+  registroAreas = lista.map((a) => ({ ...a, color: `var(--liff-app-area-${a.id})` }));
+}
+
+export function todasAreas(): Area[] {
+  return registroAreas;
+}
+
+export function areaOf(id: string): Area {
+  return (
+    registroAreas.find((a) => a.id === id) ?? {
+      id,
+      label: "—",
+      short: "—",
+      color: "var(--liff-text-faint)",
+    }
+  );
 }
 
 export function statusLabel(k: string): string {
