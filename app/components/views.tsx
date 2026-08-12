@@ -93,7 +93,15 @@ export function Overview({ kpis, carga, logs }: { kpis: Kpi[]; carga: CargaArea[
    ========================================================= */
 export type ColunaDeal = { key: string; label: string; total: string; cards: Deal[] };
 
-export function Comercial({ colunas, onMover }: { colunas: ColunaDeal[]; onMover: (id: number, dir: 1 | -1) => void }) {
+export function Comercial({
+  colunas,
+  onMover,
+  onAbrir,
+}: {
+  colunas: ColunaDeal[];
+  onMover: (id: number, dir: 1 | -1) => void;
+  onAbrir: (id: number) => void;
+}) {
   return (
     <div style={mesh({ display: "flex", gap: 1, overflowX: "auto" })}>
       {colunas.map((col) => (
@@ -118,7 +126,16 @@ export function Comercial({ colunas, onMover }: { colunas: ColunaDeal[]; onMover
             return (
               <div
                 key={d.id}
-                style={{ background: C.panel, border: `1px solid ${C.line}`, borderTop: `2px solid ${cor}`, padding: 14 }}
+                className={d.podeEditar ? "liff-hover-card" : undefined}
+                onClick={() => d.podeEditar && onAbrir(d.id)}
+                title={d.podeEditar ? "Abrir para editar" : "Somente leitura nesta área"}
+                style={{
+                  background: C.panel,
+                  border: `1px solid ${C.line}`,
+                  borderTop: `2px solid ${cor}`,
+                  padding: 14,
+                  cursor: d.podeEditar ? "pointer" : "default",
+                }}
               >
                 <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, lineHeight: 1.35 }}>{d.conta}</div>
                 <div style={{ fontSize: 12, color: C.faint, marginTop: 4, lineHeight: 1.5 }}>{d.escopo}</div>
@@ -141,7 +158,10 @@ export function Comercial({ colunas, onMover }: { colunas: ColunaDeal[]; onMover
                     {([-1, 1] as const).map((dir) => (
                       <span
                         key={dir}
-                        onClick={() => d.podeEditar && onMover(d.id, dir)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (d.podeEditar) onMover(d.id, dir);
+                        }}
                         title={d.podeEditar ? "Mover estágio" : "Sem permissão de edição nesta área"}
                         style={{
                           cursor: d.podeEditar ? "pointer" : "not-allowed",
@@ -349,13 +369,16 @@ export function Atividades({
    Cadastros
    ========================================================= */
 export const CAD_TABS = [
-  { key: "contas", label: "contas" },
+  // Era "contas", mas nunca foi um cadastro: é a lista das oportunidades do CRM. O nome
+  // antigo sugeria uma entidade que não existe no sistema.
+  { key: "oportunidades", label: "oportunidades" },
   { key: "pessoas", label: "pessoas" },
   { key: "areas", label: "áreas" },
   { key: "tipos", label: "tipos de atividade" },
 ] as const;
 
-export type CadSet = { head: string[]; rows: { key: string; a: string; b: string; c: string }[]; ph: string };
+export type LinhaCad = { key: string; a: string; b: string; c: string; abrir?: () => void };
+export type CadSet = { head: string[]; rows: LinhaCad[]; ph: string };
 
 /** Aba "áreas": a cor de cada vertical é configuração, e muda como todo mundo vê o quadro —
  *  por isso só admin edita. O `input type=color` devolve HEX, que é o que o servidor aceita. */
@@ -563,7 +586,15 @@ export function Cadastros({
             {set.rows.map((r) => (
               <div
                 key={r.key}
-                style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr", borderBottom: `1px solid ${C.line}` }}
+                className={r.abrir ? "liff-hover-row" : undefined}
+                onClick={r.abrir}
+                title={r.abrir ? "Abrir para editar" : undefined}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1.6fr 1fr 1fr",
+                  borderBottom: `1px solid ${C.line}`,
+                  cursor: r.abrir ? "pointer" : undefined,
+                }}
               >
                 <div style={{ padding: "13px 16px", fontSize: 14, color: C.ink }}>{r.a}</div>
                 <div style={{ padding: "13px 16px", fontSize: 13, color: C.body }}>{r.b}</div>
@@ -966,18 +997,23 @@ export function Drawer({
   act,
   pessoas,
   logs,
+  areasEditaveis,
   onFechar,
   onStatus,
   onResponsavel,
   onPrioridade,
+  onArea,
 }: {
   act: Activity;
   pessoas: Pessoa[];
   logs: LogEntry[];
+  /** Só as áreas onde a pessoa escreve — mover para fora delas o servidor recusaria. */
+  areasEditaveis: { id: string; label: string }[];
   onFechar: () => void;
   onStatus: (k: string) => void;
   onResponsavel: (id: number) => void;
   onPrioridade: (p: string) => void;
+  onArea: (id: string) => void;
 }) {
   const a = areaOf(act.area);
   const editavel = act.podeEditar;
@@ -1050,6 +1086,25 @@ export function Drawer({
                 );
               })}
             </div>
+          </div>
+
+          <div>
+            <div style={{ ...eyebrow(10, C.faint), marginBottom: 9 }}>ÁREA</div>
+            <select
+              value={act.area}
+              onChange={(e) => onArea(e.target.value)}
+              disabled={!editavel}
+              style={nativeSelectStyle}
+            >
+              {/* A área atual entra na lista mesmo se a pessoa não puder escrever nela —
+                  senão o select mostraria outra coisa que não o estado real do registro. */}
+              {!areasEditaveis.some((x) => x.id === act.area) && <option value={act.area}>{a.label}</option>}
+              {areasEditaveis.map((x) => (
+                <option key={x.id} value={x.id}>
+                  {x.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
@@ -1270,6 +1325,16 @@ function Modal({ titulo, eyebrowTexto, children, onFechar }: {
   );
 }
 
+/** A área atual entra na lista mesmo sem permissão de escrita nela, senão o campo mostraria
+ *  algo diferente do que o registro realmente é. */
+function opcoesArea(editaveis: { id: string; label: string }[], atual?: string) {
+  const lista = editaveis.map((a) => ({ value: a.id, label: a.label }));
+  if (atual && !editaveis.some((a) => a.id === atual)) {
+    lista.unshift({ value: atual, label: areaOf(atual).label });
+  }
+  return lista;
+}
+
 export type OpcaoPessoa = { id: number; nome: string };
 
 export function NovaAtividade({
@@ -1380,11 +1445,17 @@ export function NovaAtividade({
   );
 }
 
-export function NovaOportunidade({
+/**
+ * Serve para criar e para editar. A diferença é só o estado inicial e o rótulo do botão —
+ * duplicar o formulário significaria dois lugares para manter em sincronia toda vez que a
+ * oportunidade ganhar um campo.
+ */
+export function FormOportunidade({
   areasEditaveis,
   pessoas,
   salvando,
   erro,
+  inicial,
   onSalvar,
   onFechar,
 }: {
@@ -1392,6 +1463,8 @@ export function NovaOportunidade({
   pessoas: OpcaoPessoa[];
   salvando: boolean;
   erro: string | null;
+  /** Ausente = criação. */
+  inicial?: Deal;
   onSalvar: (d: {
     conta: string;
     escopo: string;
@@ -1403,13 +1476,16 @@ export function NovaOportunidade({
   }) => void;
   onFechar: () => void;
 }) {
-  const [conta, setConta] = useState("");
-  const [escopo, setEscopo] = useState("");
-  const [area, setArea] = useState(areasEditaveis[0]?.id ?? "");
-  const [estagio, setEstagio] = useState("lead");
-  const [valor, setValor] = useState("");
-  const [proximo, setProximo] = useState("");
-  const [responsavel, setResponsavel] = useState<string>("");
+  const editando = !!inicial;
+  const [conta, setConta] = useState(inicial?.conta ?? "");
+  const [escopo, setEscopo] = useState(inicial?.escopo ?? "");
+  const [area, setArea] = useState(inicial?.area ?? areasEditaveis[0]?.id ?? "");
+  const [estagio, setEstagio] = useState(inicial?.estagio ?? "lead");
+  const [valor, setValor] = useState(inicial ? String(inicial.valorCentavos / 100) : "");
+  const [proximo, setProximo] = useState(inicial?.proximoPasso ?? "");
+  const [responsavel, setResponsavel] = useState<string>(
+    inicial ? String(pessoas.find((p) => p.nome === inicial.responsavel)?.id ?? "") : ""
+  );
 
   const enviar = () =>
     onSalvar({
@@ -1423,7 +1499,11 @@ export function NovaOportunidade({
     });
 
   return (
-    <Modal titulo="Nova oportunidade" eyebrowTexto="LIFF/ COMERCIAL" onFechar={onFechar}>
+    <Modal
+      titulo={editando ? `Editar ${inicial.conta}` : "Nova oportunidade"}
+      eyebrowTexto={editando ? `LIFF/ COMERCIAL · ${inicial.ref}` : "LIFF/ COMERCIAL"}
+      onFechar={onFechar}
+    >
       <Field label="Conta" required>
         <Input placeholder="Razão social" value={conta} onChange={setConta} />
       </Field>
@@ -1434,7 +1514,7 @@ export function NovaOportunidade({
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         <Field label="Área" required>
           <Select
-            options={areasEditaveis.map((a) => ({ value: a.id, label: a.label }))}
+            options={opcoesArea(areasEditaveis, inicial?.area)}
             value={area}
             onChange={setArea}
           />
@@ -1471,7 +1551,7 @@ export function NovaOportunidade({
           cancelar
         </Button>
         <Button variant="solid" size="sm" disabled={salvando || !conta.trim() || !area} onClick={enviar}>
-          {salvando ? "criando…" : "criar oportunidade"}
+          {salvando ? "salvando…" : editando ? "salvar alterações" : "criar oportunidade"}
         </Button>
       </div>
     </Modal>

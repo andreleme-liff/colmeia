@@ -172,12 +172,19 @@ body { background: var(--liff-canvas); color: var(--liff-text); }
    Dust Grey em style inline — foram construídos só para o canvas escuro (o
    próprio README do kit os marca como "intentional additions" sobre ele).
    Sobre Floral White eles somem. Como o estilo é inline, a correção precisa
-   de !important; o bundle continua intocado. */
-:root[data-theme="light"] .liff-main input,
-:root[data-theme="light"] .liff-main select { color: var(--liff-text) !important; }
-:root[data-theme="light"] .liff-main label { color: var(--liff-text-muted) !important; }
+   de !important; o bundle continua intocado.
+
+   Sem escopo de contêiner de propósito: os modais renderizam FORA de .liff-main, como
+   sobreposições no nível da casca. Quando isto estava preso a .liff-main, os campos dentro
+   dos formulários de criação ficavam com texto Floral White sobre fundo claro — invisíveis. */
+:root[data-theme="light"] input,
+:root[data-theme="light"] select,
+:root[data-theme="light"] textarea { color: var(--liff-text) !important; }
+:root[data-theme="light"] label { color: var(--liff-text-muted) !important; }
 /* Caret do Select — irmão do <select> dentro do wrapper do componente. */
-:root[data-theme="light"] .liff-main select ~ span { color: var(--liff-text-faint) !important; }
+:root[data-theme="light"] select ~ span { color: var(--liff-text-faint) !important; }
+/* O placeholder também vem do kit e some no claro. */
+:root[data-theme="light"] input::placeholder { color: var(--liff-text-faint) !important; }
 
 /* ---------- hover: só troca de cor, sem transformações ---------- */
 .liff-hover-cell:hover,

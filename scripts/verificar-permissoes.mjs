@@ -215,6 +215,73 @@ try {
   checa(`Marina cria oportunidade em corporate → 201`, c6.status === 201, `veio ${c6.status}`);
   if (c6json.id) criados.deals.push(c6json.id);
 
+  console.log("\n5b. TROCA DE ÁREA — exige permissão nas duas pontas\n");
+  const areaOriginal = aLaw.area ?? "law-firms";
+  const m1 = await req(marina.token, `/api/activities/${aLaw.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ area: "corporate" }),
+  });
+  checa(`law-firms → corporate, Marina edita as duas → 200`, m1.status === 200, `veio ${m1.status}`);
+
+  const m2 = await req(marina.token, `/api/activities/${aLaw.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ area: "tax" }),
+  });
+  checa(`→ tax, onde Marina só lê → 403`, m2.status === 403, `veio ${m2.status}`);
+
+  const m3 = await req(marina.token, `/api/activities/${aLaw.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ area: "labs" }),
+  });
+  checa(`→ labs, que Marina nem enxerga → 403`, m3.status === 403, `veio ${m3.status}`);
+
+  // A auditoria da mudança fica na área de DESTINO, senão o registro sumiria para quem
+  // enxerga a área nova.
+  const logArea = await sql`
+    SELECT area FROM audit_log WHERE entidade = ${aLaw.ref} AND campo = 'area' ORDER BY id DESC LIMIT 1
+  `;
+  checa(`o log da troca fica na área de destino`, logArea[0]?.area === "corporate", logArea[0]?.area ?? "nenhum");
+  await sql`UPDATE activities SET area = ${areaOriginal} WHERE id = ${aLaw.id}`;
+
+  console.log("\n5c. EDIÇÃO COMPLETA DA OPORTUNIDADE\n");
+  const dOrig = (await sql`SELECT conta, escopo, estagio, valor_centavos, proximo_passo FROM deals WHERE id = ${dLaw.id}`)[0];
+  const e1 = await req(marina.token, `/api/deals/${dLaw.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      conta: "[teste] Conta Editada",
+      escopo: "[teste] escopo",
+      valorReais: 123000,
+      proximoPasso: "[teste] passo",
+      estagio: "qualificacao",
+    }),
+  });
+  const e1json = await e1.json();
+  checa(`cinco campos de uma vez → 200 com 5 mudanças`, e1.status === 200 && e1json.mudancas === 5, JSON.stringify(e1json));
+
+  const e2 = await req(marina.token, `/api/deals/${dLaw.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ valorReais: -1 }),
+  });
+  checa(`valor negativo → 400`, e2.status === 400, `veio ${e2.status}`);
+
+  const e3 = await req(marina.token, `/api/deals/${dLaw.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ conta: "   " }),
+  });
+  checa(`conta em branco → 400`, e3.status === 400, `veio ${e3.status}`);
+
+  const e4 = await req(marina.token, `/api/deals/${dLaw.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ area: "labs" }),
+  });
+  checa(`mover oportunidade para labs → 403`, e4.status === 403, `veio ${e4.status}`);
+
+  await sql`
+    UPDATE deals SET conta = ${dOrig.conta}, escopo = ${dOrig.escopo}, estagio = ${dOrig.estagio},
+      valor_centavos = ${dOrig.valor_centavos}, proximo_passo = ${dOrig.proximo_passo}
+    WHERE id = ${dLaw.id}
+  `;
+
   console.log("\n6. CADASTRO DE ÁREA — configuração, restrita a admin\n");
   const corOriginal = (await sql`SELECT cor FROM areas WHERE id='tax'`)[0].cor;
 

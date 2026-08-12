@@ -1,4 +1,4 @@
-// Alteração de uma atividade: status, responsável ou prioridade.
+// Alteração de uma atividade: área, status, responsável ou prioridade.
 // A permissão é sempre reavaliada a partir da ÁREA DO REGISTRO NO BANCO — nunca de algo que
 // o cliente tenha mandado junto. Cada campo alterado vira uma linha na auditoria.
 
@@ -6,12 +6,13 @@ import { getDb } from "@/lib/db";
 import { requireCtx } from "@/lib/perms";
 import { json, err } from "@/lib/http";
 import { registrar } from "@/lib/log";
-import { PRIORIDADES, STATUS_KEYS, statusLabel } from "@/lib/domain";
+import { PRIORIDADES, STATUS_KEYS, areaOf, statusLabel } from "@/lib/domain";
 
 type Body = {
   status?: string;
   responsavelId?: number | null;
   prioridade?: string;
+  area?: string;
 };
 
 export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/activities/[id]">) {
@@ -48,6 +49,24 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/activitie
   if (!ctx.podeEditar(atual.area)) return err("Sem permissão de edição nesta área.", 403);
 
   const mudancas: { campo: string; de: string; para: string; texto: string }[] = [];
+
+  // Mudar de área exige permissão nas DUAS pontas: tirar da origem e colocar no destino.
+  // Só a origem deixaria alguém empurrar trabalho para uma área que não administra; só o
+  // destino deixaria tirar trabalho de uma área alheia.
+  if (body.area !== undefined && body.area !== atual.area) {
+    const destino = body.area;
+    if (!ctx.areasExistentes.includes(destino)) return err("Área inválida.", 400);
+    if (!ctx.podeEditar(destino)) {
+      return err(`Sem permissão de edição em ${areaOf(destino).label}.`, 403);
+    }
+    mudancas.push({
+      campo: "area",
+      de: atual.area,
+      para: destino,
+      texto: `Moveu de ${areaOf(atual.area).label} para ${areaOf(destino).label}`,
+    });
+    await sql`UPDATE activities SET area = ${destino}, atualizado_em = now() WHERE id = ${activityId}`;
+  }
 
   if (body.status !== undefined && body.status !== atual.status) {
     if (!STATUS_KEYS.includes(body.status)) return err("Status inválido.", 400);
@@ -90,10 +109,13 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/activitie
     `;
   }
 
+  // A área pode ter acabado de mudar; a auditoria fica na de destino, senão o registro da
+  // própria mudança sumiria para quem enxerga a área nova.
+  const areaFinal = mudancas.find((m) => m.campo === "area")?.para ?? atual.area;
   for (const m of mudancas) {
     await registrar(sql, {
       actorUserId: ctx.user.userId,
-      area: atual.area,
+      area: areaFinal,
       entidade: atual.ref,
       campo: m.campo,
       de: m.de,

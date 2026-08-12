@@ -16,7 +16,7 @@ import {
   Comercial,
   Drawer,
   NovaAtividade,
-  NovaOportunidade,
+  FormOportunidade,
   Operacoes,
   Overview,
   WaModal,
@@ -41,12 +41,13 @@ export default function Ops() {
 
   const [view, setView] = useState("overview");
   const [area, setArea] = useState("all");
-  const [cadTab, setCadTab] = useState<string>("contas");
+  const [cadTab, setCadTab] = useState<string>("oportunidades");
   const [selecionada, setSelecionada] = useState<number | null>(null);
   const [waAberto, setWaAberto] = useState(false);
   const [waArea, setWaArea] = useState("all");
   const [copiado, setCopiado] = useState(false);
   const [criando, setCriando] = useState<null | "atividade" | "oportunidade">(null);
+  const [editandoDeal, setEditandoDeal] = useState<number | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [erroForm, setErroForm] = useState<string | null>(null);
 
@@ -209,13 +210,21 @@ export default function Ops() {
         ph: "Nome do tipo",
       };
     }
+    // Não é cadastro de nada: é a lista das oportunidades do CRM, em formato de tabela.
+    // Clicar abre o mesmo formulário do card do pipeline.
     return {
-      head: ["CONTA", "ÁREA", "RESPONSÁVEL"],
+      head: ["OPORTUNIDADE", "ÁREA", "RESPONSÁVEL"],
       rows: estado.deals.map((d) => ({
         key: d.ref,
-        a: d.conta,
+        a: `${d.conta}${d.escopo ? ` · ${d.escopo}` : ""}`,
         b: areaOf(d.area).label,
         c: d.responsavel,
+        abrir: d.podeEditar
+          ? () => {
+              setErroForm(null);
+              setEditandoDeal(d.id);
+            }
+          : undefined,
       })),
       ph: "Razão social",
     };
@@ -313,11 +322,21 @@ export default function Ops() {
   };
   const rotuloArea = area === "all" ? "todas as áreas" : areaOf(area).label;
   const selecionadaObj = estado.activities.find((a) => a.id === selecionada) ?? null;
+  const dealEmEdicao = estado.deals.find((d) => d.id === editandoDeal) ?? null;
 
   const conteudo = () => {
     switch (view) {
       case "comercial":
-        return <Comercial colunas={dados.colunasDeal} onMover={(id, dir) => void acao(() => api.moverOportunidade(id, dir))} />;
+        return (
+          <Comercial
+            colunas={dados.colunasDeal}
+            onMover={(id, dir) => void acao(() => api.moverOportunidade(id, dir))}
+            onAbrir={(id) => {
+              setErroForm(null);
+              setEditandoDeal(id);
+            }}
+          />
+        );
       case "operacoes":
         return (
           <Operacoes
@@ -513,6 +532,8 @@ export default function Ops() {
           pessoas={estado.pessoas}
           logs={estado.logs.filter((l) => l.entidade === selecionadaObj.ref)}
           onFechar={() => setSelecionada(null)}
+          areasEditaveis={areasEditaveis}
+          onArea={(id) => void acao(() => api.alterarAtividade(selecionadaObj.id, { area: id }))}
           onStatus={(k) => void acao(() => api.alterarAtividade(selecionadaObj.id, { status: k }))}
           onResponsavel={(id) => void acao(() => api.alterarAtividade(selecionadaObj.id, { responsavelId: id }))}
           onPrioridade={(p) => void acao(() => api.alterarAtividade(selecionadaObj.id, { prioridade: p }))}
@@ -531,13 +552,34 @@ export default function Ops() {
       )}
 
       {criando === "oportunidade" && (
-        <NovaOportunidade
+        <FormOportunidade
           areasEditaveis={areasEditaveis}
           pessoas={pessoasAtivas}
           salvando={salvando}
           erro={erroForm}
           onFechar={() => setCriando(null)}
           onSalvar={(d) => void criar(() => api.criarOportunidade(d))}
+        />
+      )}
+
+      {dealEmEdicao && (
+        <FormOportunidade
+          inicial={dealEmEdicao}
+          areasEditaveis={areasEditaveis}
+          pessoas={pessoasAtivas}
+          salvando={salvando}
+          erro={erroForm}
+          onFechar={() => setEditandoDeal(null)}
+          onSalvar={(d) => {
+            setSalvando(true);
+            setErroForm(null);
+            api
+              .alterarOportunidade(dealEmEdicao.id, d)
+              .then(() => carregar())
+              .then(() => setEditandoDeal(null))
+              .catch((e: unknown) => setErroForm(e instanceof Error ? e.message : "Não foi possível salvar."))
+              .finally(() => setSalvando(false));
+          }}
         />
       )}
 

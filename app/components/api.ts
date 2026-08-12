@@ -120,11 +120,17 @@ export const api = {
 
   excluirArea: (id: string) => req<{ ok: boolean }>(`/api/areas/${id}`, { method: "DELETE" }),
 
-  alterarAtividade: (id: number, patch: { status?: string; responsavelId?: number | null; prioridade?: string }) =>
-    req<{ ok: boolean }>(`/api/activities/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  alterarAtividade: (
+    id: number,
+    patch: { status?: string; responsavelId?: number | null; prioridade?: string; area?: string }
+  ) => req<{ ok: boolean }>(`/api/activities/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
 
+  /** Movimento de uma casa pelas setas do card — o servidor calcula o destino. */
   moverOportunidade: (id: number, direcao: 1 | -1) =>
     req<{ ok: boolean }>(`/api/deals/${id}`, { method: "PATCH", body: JSON.stringify({ direcao }) }),
+
+  alterarOportunidade: (id: number, patch: Partial<NovaOportunidade>) =>
+    req<{ ok: boolean }>(`/api/deals/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
 
   ciclarPermissao: (userId: number, area: string) =>
     req<{ ok: boolean; nivel: string | null }>(`/api/users/${userId}`, {
