@@ -77,11 +77,14 @@ export async function GET() {
     sql<
       {
         id: number; ref: string; conta: string; escopo: string; area: string; estagio: string;
-        valor_centavos: string; responsavel: string | null; proximo_passo: string;
+        valor_centavos: string; responsavel: string | null; responsavel_user_id: number | null;
+        proximo_passo: string; situacao: string; contato: string; responsavel_texto: string;
+        produto_id: string | null; pausado: boolean;
       }[]
     >`
       SELECT d.id, d.ref, d.conta, d.escopo, d.area, d.estagio, d.valor_centavos,
-             u.nome AS responsavel, d.proximo_passo
+             u.nome AS responsavel, d.responsavel_user_id, d.proximo_passo,
+             d.situacao, d.contato, d.responsavel_texto, d.produto_id, d.pausado
       FROM deals d
       LEFT JOIN users u ON u.id = d.responsavel_user_id
       WHERE d.area = ANY(${areas})
@@ -111,6 +114,11 @@ export async function GET() {
     SELECT id, label, short, cor FROM areas ORDER BY ordem ASC, id ASC
   `;
 
+  // Produtos de todas as áreas visíveis. O formulário só oferece os da área escolhida.
+  const produtos = await sql<{ id: string; label: string; area: string; ativo: boolean }[]>`
+    SELECT id, label, area, ativo FROM produtos WHERE area = ANY(${areas}) ORDER BY ordem ASC, id ASC
+  `;
+
   const permLinhas = ctx.isAdmin
     ? await sql<{ user_id: number; area: string; nivel: string }[]>`
         SELECT user_id, area, nivel FROM user_area_perms
@@ -135,6 +143,7 @@ export async function GET() {
     perms: ctx.perms,
     areasVisiveis: ctx.areasVisiveis,
     areas: areasCadastro,
+    produtos,
     isAdmin: ctx.isAdmin,
     activities: atividades.map((a) => ({
       id: a.id,
@@ -158,7 +167,13 @@ export async function GET() {
       estagio: d.estagio,
       valorCentavos: Number(d.valor_centavos),
       responsavel: d.responsavel ?? "—",
+      responsavelId: d.responsavel_user_id,
+      responsavelTexto: d.responsavel_texto,
       proximoPasso: d.proximo_passo,
+      situacao: d.situacao,
+      contato: d.contato,
+      produtoId: d.produto_id,
+      pausado: d.pausado,
       podeEditar: ctx.podeEditar(d.area),
     })),
     logs: logs.map((l) => ({

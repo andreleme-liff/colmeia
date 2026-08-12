@@ -24,8 +24,30 @@ export type Deal = {
   estagio: string;
   valorCentavos: number;
   responsavel: string;
+  responsavelId: number | null;
+  responsavelTexto: string;
   proximoPasso: string;
+  /** Onde a conversa está agora. O histórico do que já foi vive no audit_log. */
+  situacao: string;
+  contato: string;
+  produtoId: string | null;
+  /** Paralelo ao estágio: "não é o momento" não é uma casa do funil. */
+  pausado: boolean;
   podeEditar: boolean;
+};
+
+export type ProdutoCadastro = { id: string; label: string; area: string; ativo: boolean };
+
+export type LinhaImport = {
+  conta: string;
+  escopo: string;
+  estagio: string;
+  situacao: string;
+  proximoPasso: string;
+  contato: string;
+  responsavelTexto: string;
+  produtoId: string | null;
+  pausado: boolean;
 };
 
 export type LogEntry = {
@@ -63,6 +85,7 @@ export type State = {
   perms: Record<string, string>;
   areasVisiveis: string[];
   areas: AreaCadastro[];
+  produtos: ProdutoCadastro[];
   isAdmin: boolean;
   activities: Activity[];
   deals: Deal[];
@@ -88,6 +111,11 @@ export type NovaOportunidade = {
   valorReais: number;
   proximoPasso: string;
   responsavelId: number | null;
+  situacao: string;
+  contato: string;
+  responsavelTexto: string;
+  produtoId: string | null;
+  pausado: boolean;
 };
 
 async function req<T>(url: string, opts: RequestInit = {}): Promise<T> {
@@ -140,6 +168,20 @@ export const api = {
 
   definirAtivo: (userId: number, ativo: boolean) =>
     req<{ ok: boolean }>(`/api/users/${userId}`, { method: "PATCH", body: JSON.stringify({ ativo }) }),
+
+  criarProduto: (dados: { label: string; area: string }) =>
+    req<{ ok: boolean; id: string }>("/api/produtos", { method: "POST", body: JSON.stringify(dados) }),
+
+  alterarProduto: (id: string, patch: { label?: string; area?: string; ativo?: boolean }) =>
+    req<{ ok: boolean }>(`/api/produtos/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+
+  excluirProduto: (id: string) => req<{ ok: boolean }>(`/api/produtos/${id}`, { method: "DELETE" }),
+
+  importarOportunidades: (area: string, linhas: LinhaImport[]) =>
+    req<{ ok: boolean; criadas: number; atualizadas: number; ignoradas: { linha: number; motivo: string }[] }>(
+      "/api/import/deals",
+      { method: "POST", body: JSON.stringify({ area, linhas }) }
+    ),
 
   sair: () => req<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
 };

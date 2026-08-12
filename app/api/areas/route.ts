@@ -7,24 +7,11 @@ import { getDb } from "@/lib/db";
 import { requireAdmin } from "@/lib/perms";
 import { json, err } from "@/lib/http";
 import { registrar } from "@/lib/log";
+import { slugificar } from "@/lib/domain";
 
 type Body = { label?: string; short?: string; cor?: string };
 
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
-
-/**
- * O id vira nome de variável CSS (`--liff-app-area-<id>`), então o conjunto de caracteres é
- * restrito de propósito: minúsculas, dígitos e hífen. Acentos viram a letra base.
- */
-function slug(texto: string): string {
-  return texto
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 40);
-}
 
 export async function POST(req: Request) {
   const ctx = await requireAdmin();
@@ -41,7 +28,7 @@ export async function POST(req: Request) {
   if (!label) return err("A área precisa de um nome.", 400);
   if (label.length > 60) return err("Nome longo demais.", 400);
 
-  const id = slug(label);
+  const id = slugificar(label);
   if (!id) return err("Nome inválido — use letras ou números.", 400);
 
   const cor = String(body.cor ?? "").trim();

@@ -122,6 +122,19 @@ async function migrate(): Promise<void> {
       `;
     }
 
+    // Produto é o que se vende dentro de uma vertical — "Regtrack Farma" dentro de
+    // Regulatório. Fica só em oportunidades por enquanto: as planilhas que motivaram a
+    // entidade são comerciais, e ligá-la a atividades depois é acrescentar uma coluna.
+    await sql`
+      CREATE TABLE IF NOT EXISTS produtos (
+        id     TEXT PRIMARY KEY,
+        label  TEXT NOT NULL,
+        area   TEXT NOT NULL REFERENCES areas(id) ON DELETE CASCADE,
+        ativo  BOOLEAN NOT NULL DEFAULT true,
+        ordem  INTEGER NOT NULL DEFAULT 0
+      )
+    `;
+
     await sql.unsafe(`
     CREATE TABLE IF NOT EXISTS users (
       id          SERIAL PRIMARY KEY,
@@ -173,6 +186,11 @@ async function migrate(): Promise<void> {
       valor_centavos      BIGINT NOT NULL DEFAULT 0,
       responsavel_user_id INTEGER REFERENCES users(id),
       proximo_passo       TEXT NOT NULL DEFAULT '',
+      situacao            TEXT NOT NULL DEFAULT '',
+      contato             TEXT NOT NULL DEFAULT '',
+      responsavel_texto   TEXT NOT NULL DEFAULT '',
+      produto_id          TEXT REFERENCES produtos(id) ON DELETE SET NULL,
+      pausado             BOOLEAN NOT NULL DEFAULT false,
       criado_em           TIMESTAMPTZ NOT NULL DEFAULT now(),
       atualizado_em       TIMESTAMPTZ
     )
@@ -229,6 +247,28 @@ async function migrate(): Promise<void> {
         END IF;
       END $$;
     `);
+
+    // Colunas que nasceram depois: em base já criada o CREATE acima não as acrescenta.
+    // `situacao` é a narrativa de onde a conversa está — o que a planilha guardava numa
+    // célula só, misturada com histórico. Aqui o histórico fica no audit_log e a coluna
+    // guarda apenas o estado atual.
+    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS situacao TEXT NOT NULL DEFAULT ''`;
+    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS contato TEXT NOT NULL DEFAULT ''`;
+    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS responsavel_texto TEXT NOT NULL DEFAULT ''`;
+    // Estado paralelo ao estágio: "não é o momento" não é uma casa do funil, e sem isto a
+    // oportunidade fica parada num estágio que mente sobre ela.
+    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS pausado BOOLEAN NOT NULL DEFAULT false`;
+    await sql.unsafe(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns WHERE table_name='deals' AND column_name='produto_id'
+        ) THEN
+          ALTER TABLE deals ADD COLUMN produto_id TEXT REFERENCES produtos(id) ON DELETE SET NULL;
+        END IF;
+      END $$;
+    `);
+    await sql`CREATE INDEX IF NOT EXISTS idx_deals_produto ON deals(produto_id)`;
 
     // Refs legíveis para registros novos. Começam acima das semeadas (A-101…A-602,
     // D-01…D-08) para nunca colidir com elas.

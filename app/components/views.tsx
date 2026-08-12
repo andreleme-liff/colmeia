@@ -96,10 +96,12 @@ export type ColunaDeal = { key: string; label: string; total: string; cards: Dea
 
 export function Comercial({
   colunas,
+  produtos,
   onMover,
   onAbrir,
 }: {
   colunas: ColunaDeal[];
+  produtos: { id: string; label: string }[];
   onMover: (id: number, dir: 1 | -1) => void;
   onAbrir: (id: number) => void;
 }) {
@@ -138,8 +140,35 @@ export function Comercial({
                   cursor: d.podeEditar ? "pointer" : "default",
                 }}
               >
-                <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, lineHeight: 1.35 }}>{d.conta}</div>
-                <div style={{ fontSize: 12, color: C.faint, marginTop: 4, lineHeight: 1.5 }}>{d.escopo}</div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 8, justifyContent: "space-between" }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, lineHeight: 1.35 }}>{d.conta}</div>
+                  {d.pausado && <span style={eyebrow(9, C.warning, "0.1em")}>pausada</span>}
+                </div>
+
+                {/* Produto é o que se vende; a cor continua sendo a da área, para não haver
+                    duas dimensões cromáticas competindo no mesmo card. */}
+                {d.produtoId && (
+                  <div style={{ ...eyebrow(9, C.dust, "0.12em"), marginTop: 6 }}>
+                    {produtos.find((p) => p.id === d.produtoId)?.label ?? d.produtoId}
+                  </div>
+                )}
+
+                {(d.situacao || d.escopo) && (
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: C.faint,
+                      marginTop: 6,
+                      lineHeight: 1.5,
+                      display: "-webkit-box",
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {d.situacao || d.escopo}
+                  </div>
+                )}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
                   <span style={{ fontFamily: MONO, fontSize: 13, color: cor }}>{brl(d.valorCentavos)}</span>
                   <span style={eyebrow(10, C.faint, "0.1em")}>{d.responsavel.split(" ")[0]}</span>
@@ -374,6 +403,7 @@ export const CAD_TABS = [
   // antigo sugeria uma entidade que não existe no sistema.
   { key: "oportunidades", label: "oportunidades" },
   { key: "pessoas", label: "pessoas" },
+  { key: "produtos", label: "produtos" },
   { key: "areas", label: "áreas" },
   { key: "tipos", label: "tipos de atividade" },
 ] as const;
@@ -1591,6 +1621,7 @@ export function NovaAtividade({
 export function FormOportunidade({
   areasEditaveis,
   pessoas,
+  produtos,
   salvando,
   erro,
   inicial,
@@ -1599,6 +1630,7 @@ export function FormOportunidade({
 }: {
   areasEditaveis: { id: string; label: string }[];
   pessoas: OpcaoPessoa[];
+  produtos: { id: string; label: string; area: string; ativo: boolean }[];
   salvando: boolean;
   erro: string | null;
   /** Ausente = criação. */
@@ -1611,6 +1643,11 @@ export function FormOportunidade({
     valorReais: number;
     proximoPasso: string;
     responsavelId: number | null;
+    situacao: string;
+    contato: string;
+    responsavelTexto: string;
+    produtoId: string | null;
+    pausado: boolean;
   }) => void;
   onFechar: () => void;
 }) {
@@ -1624,8 +1661,16 @@ export function FormOportunidade({
   const [responsavel, setResponsavel] = useState<string>(
     inicial ? String(pessoas.find((p) => p.nome === inicial.responsavel)?.id ?? "") : ""
   );
+  const [situacao, setSituacao] = useState(inicial?.situacao ?? "");
+  const [contato, setContato] = useState(inicial?.contato ?? "");
+  const [respTexto, setRespTexto] = useState(inicial?.responsavelTexto ?? "");
+  const [produtoId, setProdutoId] = useState(inicial?.produtoId ?? "");
+  const [pausado, setPausado] = useState(inicial?.pausado ?? false);
   // Fechado por padrão: o formulário existe para editar, o histórico é consulta.
   const [verHistorico, setVerHistorico] = useState(false);
+
+  // Produto pertence a uma área; trocar a área invalida a escolha anterior.
+  const produtosDaArea = produtos.filter((p) => p.area === area && (p.ativo || p.id === inicial?.produtoId));
 
   const enviar = () =>
     onSalvar({
@@ -1636,6 +1681,11 @@ export function FormOportunidade({
       valorReais: Number(valor.replace(/\./g, "").replace(",", ".")) || 0,
       proximoPasso: proximo,
       responsavelId: responsavel ? Number(responsavel) : null,
+      situacao,
+      contato,
+      responsavelTexto: respTexto,
+      produtoId: produtoId || null,
+      pausado,
     });
 
   return (
@@ -1681,9 +1731,52 @@ export function FormOportunidade({
         </Field>
       </div>
 
-      <Field label="Próximo passo">
-        <Input placeholder="Enviar proposta" value={proximo} onChange={setProximo} />
+      <Field label="Produto" hint="O que está sendo vendido nesta vertical.">
+        <Select
+          options={[{ value: "", label: "—" }, ...produtosDaArea.map((p) => ({ value: p.id, label: p.label }))]}
+          value={produtoId}
+          onChange={setProdutoId}
+        />
       </Field>
+
+      <Field
+        label="Situação atual"
+        hint="Onde a conversa está hoje. Cada alteração guarda o texto anterior no histórico."
+      >
+        <textarea
+          rows={4}
+          value={situacao}
+          onChange={(e) => setSituacao(e.target.value)}
+          placeholder="Contato feito com Vanessa (Jurídico). Dois FUPs sem resposta."
+          style={{ ...campoNativo, resize: "vertical", lineHeight: 1.5 }}
+        />
+      </Field>
+
+      <Field label="Próximo passo">
+        <textarea
+          rows={2}
+          value={proximo}
+          onChange={(e) => setProximo(e.target.value)}
+          placeholder="Novo FUP e, se necessário, escalar para um interlocutor acima."
+          style={{ ...campoNativo, resize: "vertical", lineHeight: 1.5 }}
+        />
+      </Field>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <Field label="Contato / cargo">
+          <Input placeholder="Marçal — CFO" value={contato} onChange={setContato} />
+        </Field>
+        <Field label="Responsável (texto)" hint="Para quem ainda não tem conta, ou duplas.">
+          <Input placeholder="Felipe Silveira / Bianka" value={respTexto} onChange={setRespTexto} />
+        </Field>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <Switch checked={pausado} onChange={setPausado} label="Em pausa" />
+        <span style={{ fontSize: 12, color: C.faint, lineHeight: 1.5 }}>
+          Marque quando o motivo da parada não é o estágio — &quot;não é o momento&quot;, aguardando terceiro.
+        </span>
+      </div>
 
       {editando && (
         <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 18 }}>

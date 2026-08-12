@@ -26,6 +26,7 @@ import {
 } from "./views";
 import { C, GHOST_FIX, avatarStyle, eyebrow, markTone, useTheme } from "./tokens";
 import CoresDasAreas from "./CoresDasAreas";
+import ImportarPlanilha from "./ImportarPlanilha";
 import SeletorArea from "./SeletorArea";
 import { api, type Activity, type State } from "./api";
 import {
@@ -48,8 +49,11 @@ export default function Ops() {
   const [copiado, setCopiado] = useState(false);
   const [criando, setCriando] = useState<null | "atividade" | "oportunidade">(null);
   const [editandoDeal, setEditandoDeal] = useState<number | null>(null);
+  const [importando, setImportando] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [erroForm, setErroForm] = useState<string | null>(null);
+  /** Confirmação de operação concluída. Separado do erro: sucesso não pode ser vermelho. */
+  const [aviso, setAviso] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
     try {
@@ -197,6 +201,18 @@ export default function Ops() {
         ph: "Nome da área",
       };
     }
+    if (cadTab === "produtos") {
+      return {
+        head: ["PRODUTO", "ÁREA", "OPORTUNIDADES"],
+        rows: estado.produtos.map((p) => ({
+          key: p.id,
+          a: p.label + (p.ativo ? "" : " (arquivado)"),
+          b: areaOf(p.area).label,
+          c: estado.deals.filter((d) => d.produtoId === p.id).length + " no pipeline",
+        })),
+        ph: "Nome do produto",
+      };
+    }
     if (cadTab === "tipos") {
       const conta = (t: string) => estado.activities.filter((x) => x.tipo === t).length + " registros";
       return {
@@ -306,6 +322,20 @@ export default function Ops() {
   const areasEditaveis = dados.areasVisiveis.filter((a) => estado.perms[a.id] === "edit");
   const pessoasAtivas = estado.pessoas.filter((p) => p.ativo).map((p) => ({ id: p.id, nome: p.nome }));
 
+  /** Cria mantendo o modal aberto — o cadastro de produto acontece dentro da importação. */
+  const criarSemFechar = async (fn: () => Promise<unknown>) => {
+    setSalvando(true);
+    setErroForm(null);
+    try {
+      await fn();
+      await carregar();
+    } catch (e) {
+      setErroForm(e instanceof Error ? e.message : "Não foi possível criar.");
+    } finally {
+      setSalvando(false);
+    }
+  };
+
   /** Cria e, dando certo, fecha o modal. O erro fica no próprio formulário. */
   const criar = async (fn: () => Promise<unknown>) => {
     setSalvando(true);
@@ -330,6 +360,7 @@ export default function Ops() {
         return (
           <Comercial
             colunas={dados.colunasDeal}
+            produtos={estado.produtos}
             onMover={(id, dir) => void acao(() => api.moverOportunidade(id, dir))}
             onAbrir={(id) => {
               setErroForm(null);
@@ -493,6 +524,20 @@ export default function Ops() {
               </Button>
             )}
 
+            {view === "comercial" && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={areasEditaveis.length === 0}
+                onClick={() => {
+                  setErroForm(null);
+                  setImportando(true);
+                }}
+              >
+                importar planilha
+              </Button>
+            )}
+
             <Button
               variant="solid"
               size="sm"
@@ -508,6 +553,23 @@ export default function Ops() {
         </header>
 
         <main className="liff-main">
+          {aviso && (
+            <div
+              onClick={() => setAviso(null)}
+              style={{
+                border: `1px solid ${C.success}`,
+                color: C.success,
+                fontFamily: "var(--liff-font-mono)",
+                fontSize: 12,
+                padding: "10px 14px",
+                marginBottom: 18,
+                cursor: "pointer",
+              }}
+              title="Clique para dispensar"
+            >
+              {aviso}
+            </div>
+          )}
           {erro && (
             <div
               style={{
@@ -556,6 +618,7 @@ export default function Ops() {
         <FormOportunidade
           areasEditaveis={areasEditaveis}
           pessoas={pessoasAtivas}
+          produtos={estado.produtos}
           salvando={salvando}
           erro={erroForm}
           onFechar={() => setCriando(null)}
@@ -568,6 +631,7 @@ export default function Ops() {
           inicial={dealEmEdicao}
           areasEditaveis={areasEditaveis}
           pessoas={pessoasAtivas}
+          produtos={estado.produtos}
           salvando={salvando}
           erro={erroForm}
           onFechar={() => setEditandoDeal(null)}
@@ -579,6 +643,34 @@ export default function Ops() {
               .then(() => carregar())
               .then(() => setEditandoDeal(null))
               .catch((e: unknown) => setErroForm(e instanceof Error ? e.message : "Não foi possível salvar."))
+              .finally(() => setSalvando(false));
+          }}
+        />
+      )}
+
+      {importando && (
+        <ImportarPlanilha
+          areasEditaveis={areasEditaveis}
+          produtos={estado.produtos}
+          deals={estado.deals}
+          salvando={salvando}
+          erro={erroForm}
+          onFechar={() => setImportando(false)}
+          onCriarProduto={async (label, areaProduto) => {
+            await criarSemFechar(() => api.criarProduto({ label, area: areaProduto }));
+          }}
+          onImportar={(areaDestino, linhas) => {
+            setSalvando(true);
+            setErroForm(null);
+            api
+              .importarOportunidades(areaDestino, linhas)
+              .then(async (r) => {
+                await carregar();
+                setImportando(false);
+                const ign = r.ignoradas.length ? `, ${r.ignoradas.length} ignorada(s)` : "";
+                setAviso(`Importação concluída: ${r.criadas} criada(s), ${r.atualizadas} atualizada(s)${ign}.`);
+              })
+              .catch((e: unknown) => setErroForm(e instanceof Error ? e.message : "Falha na importação."))
               .finally(() => setSalvando(false));
           }}
         />

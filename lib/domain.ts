@@ -79,6 +79,37 @@ export const ADMIN_CARDS = [
   },
 ];
 
+/**
+ * Id derivado do nome. O conjunto de caracteres é restrito de propósito: no caso das áreas
+ * o id vira nome de variável CSS, e vale manter a mesma regra para produtos.
+ */
+export function slugificar(texto: string): string {
+  return texto
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+}
+
+export type Produto = { id: string; label: string; area: string; ativo: boolean };
+
+/**
+ * Chave de comparação de nome de empresa, usada para deduplicar na importação. Ignora
+ * caixa, acento, pontuação e sufixo societário — "GLOBE QUIMICA S.A" e "Globe Química SA"
+ * são a mesma conta, e a planilha alterna entre as duas grafias.
+ */
+export function normalizarConta(nome: string): string {
+  return nome
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replace(/\b(s\.?a\.?|ltda\.?|eireli|me|epp|inc\.?|s\/a)\b/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
 export type Area = { id: string; label: string; short: string; color: string };
 
 /**

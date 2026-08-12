@@ -17,6 +17,12 @@ export type Ctx = {
   areasEditaveis: string[];
   /** Todas as áreas cadastradas — o conjunto é aberto, então vem do banco. */
   areasExistentes: string[];
+  /**
+   * Nome de exibição de uma área, resolvido pelo BANCO. `areaOf` de domain.ts consulta um
+   * registro em memória que só o cliente preenche — no servidor ele devolve a lista semeada
+   * e uma área criada depois viraria "—" nas mensagens de erro.
+   */
+  labelArea: (area: string) => string;
   isAdmin: boolean;
   podeVer: (area: string) => boolean;
   podeEditar: (area: string) => boolean;
@@ -48,15 +54,21 @@ export async function carregarPerms(user: SessionUser, areasExistentes: string[]
   return perms;
 }
 
-export function montarCtx(user: SessionUser, perms: Record<string, Nivel>, areasExistentes: string[]): Ctx {
+export function montarCtx(
+  user: SessionUser,
+  perms: Record<string, Nivel>,
+  cadastro: { id: string; label: string }[]
+): Ctx {
   const areasVisiveis = Object.keys(perms);
   const areasEditaveis = areasVisiveis.filter((a) => perms[a] === "edit");
+  const areasExistentes = cadastro.map((a) => a.id);
   return {
     user,
     perms,
     areasVisiveis,
     areasEditaveis,
     areasExistentes,
+    labelArea: (area) => cadastro.find((a) => a.id === area)?.label ?? area,
     isAdmin: user.papel === "admin",
     podeVer: (area) => !!perms[area],
     podeEditar: (area) => perms[area] === "edit",
@@ -68,9 +80,10 @@ export async function requireCtx(): Promise<Ctx | Response> {
   const user = await getSessionUser();
   if (!user) return err("Não autenticado.", 401);
   const sql = await getDb();
-  const areas = await sql<{ id: string }[]>`SELECT id FROM areas ORDER BY ordem ASC, id ASC`;
-  const ids = areas.map((a) => a.id);
-  return montarCtx(user, await carregarPerms(user, ids), ids);
+  const cadastro = await sql<{ id: string; label: string }[]>`
+    SELECT id, label FROM areas ORDER BY ordem ASC, id ASC
+  `;
+  return montarCtx(user, await carregarPerms(user, cadastro.map((a) => a.id)), cadastro);
 }
 
 /** Só admin mexe em permissões e em usuários. */

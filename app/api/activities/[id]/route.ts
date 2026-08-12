@@ -6,7 +6,7 @@ import { getDb } from "@/lib/db";
 import { requireCtx } from "@/lib/perms";
 import { json, err } from "@/lib/http";
 import { registrar } from "@/lib/log";
-import { PRIORIDADES, STATUS_KEYS, areaOf, statusLabel } from "@/lib/domain";
+import { PRIORIDADES, STATUS_KEYS, statusLabel } from "@/lib/domain";
 
 type Body = {
   titulo?: string;
@@ -58,13 +58,13 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/activitie
     const destino = body.area;
     if (!ctx.areasExistentes.includes(destino)) return err("Área inválida.", 400);
     if (!ctx.podeEditar(destino)) {
-      return err(`Sem permissão de edição em ${areaOf(destino).label}.`, 403);
+      return err(`Sem permissão de edição em ${ctx.labelArea(destino)}.`, 403);
     }
     mudancas.push({
       campo: "area",
       de: atual.area,
       para: destino,
-      texto: `Moveu de ${areaOf(atual.area).label} para ${areaOf(destino).label}`,
+      texto: `Moveu de ${ctx.labelArea(atual.area)} para ${ctx.labelArea(destino)}`,
     });
     await sql`UPDATE activities SET area = ${destino}, atualizado_em = now() WHERE id = ${activityId}`;
   }

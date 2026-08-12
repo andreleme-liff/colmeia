@@ -5,7 +5,7 @@ import { getDb } from "@/lib/db";
 import { requireCtx } from "@/lib/perms";
 import { json, err } from "@/lib/http";
 import { registrar } from "@/lib/log";
-import { STAGE_KEYS, areaOf, brl, stageLabel } from "@/lib/domain";
+import { STAGE_KEYS, brl, stageLabel } from "@/lib/domain";
 
 type Body = {
   conta?: string;
@@ -15,6 +15,11 @@ type Body = {
   valorReais?: number;
   proximoPasso?: string;
   responsavelId?: number | null;
+  situacao?: string;
+  contato?: string;
+  responsavelTexto?: string;
+  produtoId?: string | null;
+  pausado?: boolean;
 };
 
 export async function POST(req: Request) {
@@ -34,7 +39,7 @@ export async function POST(req: Request) {
 
   const area = String(body.area ?? "");
   if (!ctx.areasExistentes.includes(area)) return err("Área inválida.", 400);
-  if (!ctx.podeEditar(area)) return err(`Sem permissão de edição em ${areaOf(area).label}.`, 403);
+  if (!ctx.podeEditar(area)) return err(`Sem permissão de edição em ${ctx.labelArea(area)}.`, 403);
 
   const estagio = body.estagio ?? "lead";
   if (!STAGE_KEYS.includes(estagio)) return err("Estágio inválido.", 400);
@@ -53,12 +58,26 @@ export async function POST(req: Request) {
     responsavelId = alvo[0].id;
   }
 
+  // O produto precisa pertencer à área escolhida — senão o card ficaria classificado como
+  // algo que aquela vertical não vende.
+  let produtoId: string | null = null;
+  if (body.produtoId) {
+    const prod = await sql<{ id: string }[]>`
+      SELECT id FROM produtos WHERE id = ${body.produtoId} AND area = ${area}
+    `;
+    if (!prod.length) return err("Produto inválido para esta área.", 400);
+    produtoId = prod[0].id;
+  }
+
   const [{ ref }] = await sql<{ ref: string }[]>`SELECT 'D-' || nextval('deals_ref_seq') AS ref`;
 
   const [nova] = await sql<{ id: number }[]>`
-    INSERT INTO deals (ref, conta, escopo, area, estagio, valor_centavos, responsavel_user_id, proximo_passo)
+    INSERT INTO deals (ref, conta, escopo, area, estagio, valor_centavos, responsavel_user_id,
+                       proximo_passo, situacao, contato, responsavel_texto, produto_id, pausado)
     VALUES (${ref}, ${conta}, ${String(body.escopo ?? "").trim()}, ${area}, ${estagio},
-            ${valorCentavos}, ${responsavelId}, ${String(body.proximoPasso ?? "").trim()})
+            ${valorCentavos}, ${responsavelId}, ${String(body.proximoPasso ?? "").trim()},
+            ${String(body.situacao ?? "").trim()}, ${String(body.contato ?? "").trim()},
+            ${String(body.responsavelTexto ?? "").trim()}, ${produtoId}, ${body.pausado ?? false})
     RETURNING id
   `;
 
@@ -69,7 +88,7 @@ export async function POST(req: Request) {
     campo: "criacao",
     de: null,
     para: stageLabel(estagio),
-    texto: `Criou a oportunidade ${conta} (${brl(valorCentavos)}) em ${areaOf(area).label}`,
+    texto: `Criou a oportunidade ${conta} (${brl(valorCentavos)}) em ${ctx.labelArea(area)}`,
   });
 
   return json({ ok: true, id: nova.id, ref }, 201);

@@ -12,7 +12,7 @@ import { getDb } from "@/lib/db";
 import { requireCtx } from "@/lib/perms";
 import { json, err } from "@/lib/http";
 import { registrar } from "@/lib/log";
-import { STAGES, STAGE_KEYS, areaOf, brl, stageLabel } from "@/lib/domain";
+import { STAGES, STAGE_KEYS, brl, stageLabel } from "@/lib/domain";
 
 type Body = {
   direcao?: number;
@@ -23,6 +23,11 @@ type Body = {
   valorReais?: number;
   proximoPasso?: string;
   responsavelId?: number | null;
+  situacao?: string;
+  contato?: string;
+  responsavelTexto?: string;
+  produtoId?: string | null;
+  pausado?: boolean;
 };
 
 export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/deals/[id]">) {
@@ -45,10 +50,12 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/deals/[id
     {
       id: number; ref: string; conta: string; escopo: string; area: string; estagio: string;
       valor_centavos: string; proximo_passo: string; responsavel_user_id: number | null; responsavel: string | null;
+      situacao: string; contato: string; responsavel_texto: string; produto_id: string | null; pausado: boolean;
     }[]
   >`
     SELECT d.id, d.ref, d.conta, d.escopo, d.area, d.estagio, d.valor_centavos, d.proximo_passo,
-           d.responsavel_user_id, u.nome AS responsavel
+           d.responsavel_user_id, u.nome AS responsavel,
+           d.situacao, d.contato, d.responsavel_texto, d.produto_id, d.pausado
     FROM deals d LEFT JOIN users u ON u.id = d.responsavel_user_id
     WHERE d.id = ${dealId}
   `;
@@ -89,12 +96,12 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/deals/[id
   if (body.area !== undefined && body.area !== atual.area) {
     const destino = body.area;
     if (!ctx.areasExistentes.includes(destino)) return err("Área inválida.", 400);
-    if (!ctx.podeEditar(destino)) return err(`Sem permissão de edição em ${areaOf(destino).label}.`, 403);
+    if (!ctx.podeEditar(destino)) return err(`Sem permissão de edição em ${ctx.labelArea(destino)}.`, 403);
     mudancas.push({
       campo: "area",
       de: atual.area,
       para: destino,
-      texto: `Moveu ${atual.conta} de ${areaOf(atual.area).label} para ${areaOf(destino).label}`,
+      texto: `Moveu ${atual.conta} de ${ctx.labelArea(atual.area)} para ${ctx.labelArea(destino)}`,
     });
     await sql`UPDATE deals SET area = ${destino}, atualizado_em = now() WHERE id = ${dealId}`;
   }
@@ -164,6 +171,59 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/deals/[id
       });
       await sql`UPDATE deals SET proximo_passo = ${proximo}, atualizado_em = now() WHERE id = ${dealId}`;
     }
+  }
+
+  // Campos de texto livre: mesmo tratamento para todos, e o log guarda o par anterior/novo.
+  const TEXTOS: { chave: keyof Body; coluna: string; campo: string; atual: string; rotulo: string; max: number }[] = [
+    { chave: "situacao", coluna: "situacao", campo: "situacao", atual: atual.situacao, rotulo: "a situação", max: 4000 },
+    { chave: "contato", coluna: "contato", campo: "contato", atual: atual.contato, rotulo: "o contato", max: 300 },
+    {
+      chave: "responsavelTexto", coluna: "responsavel_texto", campo: "responsavel_texto",
+      atual: atual.responsavel_texto, rotulo: "o responsável (texto)", max: 200,
+    },
+  ];
+  for (const t of TEXTOS) {
+    const bruto = body[t.chave];
+    if (bruto === undefined) continue;
+    const valor = String(bruto).trim().slice(0, t.max);
+    if (valor === t.atual) continue;
+    mudancas.push({
+      campo: t.campo,
+      de: t.atual || "—",
+      para: valor || "—",
+      texto: `Alterou ${t.rotulo} de ${atual.conta}`,
+    });
+    await sql.unsafe(`UPDATE deals SET ${t.coluna} = $1, atualizado_em = now() WHERE id = $2`, [valor, dealId]);
+  }
+
+  if (body.produtoId !== undefined && body.produtoId !== atual.produto_id) {
+    let novo: string | null = null;
+    if (body.produtoId) {
+      // Contra a área FINAL, que pode ter acabado de mudar nesta mesma requisição.
+      const areaAlvo = mudancas.find((m) => m.campo === "area")?.para ?? atual.area;
+      const prod = await sql<{ label: string }[]>`
+        SELECT label FROM produtos WHERE id = ${body.produtoId} AND area = ${areaAlvo}
+      `;
+      if (!prod.length) return err("Produto inválido para esta área.", 400);
+      novo = body.produtoId;
+    }
+    mudancas.push({
+      campo: "produto",
+      de: atual.produto_id ?? "—",
+      para: novo ?? "—",
+      texto: `Alterou o produto de ${atual.conta}`,
+    });
+    await sql`UPDATE deals SET produto_id = ${novo}, atualizado_em = now() WHERE id = ${dealId}`;
+  }
+
+  if (body.pausado !== undefined && body.pausado !== atual.pausado) {
+    mudancas.push({
+      campo: "pausado",
+      de: String(atual.pausado),
+      para: String(body.pausado),
+      texto: `${body.pausado ? "Pausou" : "Retomou"} ${atual.conta}`,
+    });
+    await sql`UPDATE deals SET pausado = ${body.pausado}, atualizado_em = now() WHERE id = ${dealId}`;
   }
 
   if (body.responsavelId !== undefined && body.responsavelId !== atual.responsavel_user_id) {

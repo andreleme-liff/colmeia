@@ -6,7 +6,7 @@ import { getDb } from "@/lib/db";
 import { requireAdmin } from "@/lib/perms";
 import { json, err } from "@/lib/http";
 import { registrar } from "@/lib/log";
-import { areaOf } from "@/lib/domain";
+
 
 type Body = {
   /** Alterna sem acesso → ver → editar naquela área. */
@@ -67,7 +67,7 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/users/[id
       campo: "permissao",
       de: rotulo(de),
       para: rotulo(para),
-      texto: `Definiu permissão de ${alvo.nome} em ${areaOf(area).label} para ${rotulo(para)}`,
+      texto: `Definiu permissão de ${alvo.nome} em ${ctx.labelArea(area)} para ${rotulo(para)}`,
     });
     return json({ ok: true, nivel: para });
   }

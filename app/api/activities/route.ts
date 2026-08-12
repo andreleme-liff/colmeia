@@ -6,7 +6,7 @@ import { getDb } from "@/lib/db";
 import { requireCtx } from "@/lib/perms";
 import { json, err } from "@/lib/http";
 import { registrar } from "@/lib/log";
-import { PRIORIDADES, STATUS_KEYS, areaOf, statusLabel } from "@/lib/domain";
+import { PRIORIDADES, STATUS_KEYS, statusLabel } from "@/lib/domain";
 
 type Body = {
   titulo?: string;
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
 
   const area = String(body.area ?? "");
   if (!ctx.areasExistentes.includes(area)) return err("Área inválida.", 400);
-  if (!ctx.podeEditar(area)) return err(`Sem permissão de edição em ${areaOf(area).label}.`, 403);
+  if (!ctx.podeEditar(area)) return err(`Sem permissão de edição em ${ctx.labelArea(area)}.`, 403);
 
   const status = body.status ?? "backlog";
   if (!STATUS_KEYS.includes(status)) return err("Status inválido.", 400);
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
     campo: "criacao",
     de: null,
     para: statusLabel(status),
-    texto: `Criou "${titulo}" em ${areaOf(area).label}`,
+    texto: `Criou "${titulo}" em ${ctx.labelArea(area)}`,
   });
 
   return json({ ok: true, id: nova.id, ref }, 201);
