@@ -122,7 +122,7 @@ export const api = {
 
   alterarAtividade: (
     id: number,
-    patch: { status?: string; responsavelId?: number | null; prioridade?: string; area?: string }
+    patch: { titulo?: string; status?: string; responsavelId?: number | null; prioridade?: string; area?: string }
   ) => req<{ ok: boolean }>(`/api/activities/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
 
   /** Movimento de uma casa pelas setas do card — o servidor calcula o destino. */

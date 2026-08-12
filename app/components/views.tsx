@@ -9,6 +9,7 @@ import { Button, Field, Input, Select, Switch } from "./ds";
 import { C, GHOST_FIX, MONO, SANS, dot, eyebrow, mesh, prioColor, statusColor } from "./tokens";
 import type { Activity, AreaCadastro, Deal, LogEntry, Pessoa } from "./api";
 import SeletorArea, { type OpcaoArea } from "./SeletorArea";
+import Historico from "./Historico";
 import { ADMIN_CARDS, STAGES, STATUS, areaOf, brl, ddmm, stamp, statusLabel, todasAreas } from "@/lib/domain";
 
 /* =========================================================
@@ -380,6 +381,66 @@ export const CAD_TABS = [
 export type LinhaCad = { key: string; a: string; b: string; c: string; abrir?: () => void };
 export type CadSet = { head: string[]; rows: LinhaCad[]; ph: string };
 
+/** Texto que vira campo ao clicar. Salva no Enter ou ao sair; Esc desfaz. */
+function TextoEditavel({
+  valor,
+  onSalvar,
+  titulo,
+  estilo,
+}: {
+  valor: string;
+  onSalvar: (v: string) => void;
+  titulo?: string;
+  estilo?: CSSProperties;
+}) {
+  const [editando, setEditando] = useState(false);
+  const [texto, setTexto] = useState(valor);
+
+  const confirmar = () => {
+    setEditando(false);
+    const limpo = texto.trim();
+    if (limpo && limpo !== valor) onSalvar(limpo);
+    else setTexto(valor);
+  };
+
+  if (!editando) {
+    return (
+      <span
+        onClick={() => (setTexto(valor), setEditando(true))}
+        title={titulo}
+        style={{ ...estilo, cursor: "text", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+      >
+        {valor}
+      </span>
+    );
+  }
+
+  return (
+    <input
+      autoFocus
+      value={texto}
+      onChange={(e) => setTexto(e.target.value)}
+      onBlur={confirmar}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") confirmar();
+        if (e.key === "Escape") {
+          setTexto(valor);
+          setEditando(false);
+        }
+      }}
+      style={{
+        ...estilo,
+        background: C.code,
+        border: `1px solid ${C.accent}`,
+        borderRadius: 4,
+        padding: "4px 7px",
+        outline: "none",
+        fontFamily: "inherit",
+      }}
+    />
+  );
+}
+
 /** Aba "áreas": a cor de cada vertical é configuração, e muda como todo mundo vê o quadro —
  *  por isso só admin edita. O `input type=color` devolve HEX, que é o que o servidor aceita. */
 function TabelaAreas({
@@ -388,12 +449,14 @@ function TabelaAreas({
   podeEditar,
   onCor,
   onExcluir,
+  onNome,
 }: {
   areas: AreaCadastro[];
   contagem: (id: string) => number;
   podeEditar: boolean;
   onCor: (id: string, cor: string) => void;
   onExcluir: (id: string, label: string) => void;
+  onNome: (id: string, patch: { label?: string; short?: string }) => void;
 }) {
   return (
     <div style={{ minWidth: 480 }}>
@@ -416,10 +479,29 @@ function TabelaAreas({
           key={a.id}
           style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr 44px", borderBottom: `1px solid ${C.line}`, alignItems: "center" }}
         >
-          <div style={{ padding: "13px 16px", fontSize: 14, color: C.ink, display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ ...dot(`var(--liff-app-area-${a.id})`), width: 9, height: 9 }} />
-            LIFF {a.label}
-            <span style={eyebrow(10, C.faint, "0.1em")}>{a.short}</span>
+          <div style={{ padding: "9px 16px", display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ ...dot(`var(--liff-app-area-${a.id})`), width: 9, height: 9, flex: "none" }} />
+            {podeEditar ? (
+              <>
+                <TextoEditavel
+                  valor={a.label}
+                  onSalvar={(v) => onNome(a.id, { label: v })}
+                  titulo="Clique para renomear a vertical"
+                  estilo={{ fontSize: 14, color: C.ink, flex: 1, minWidth: 0 }}
+                />
+                <TextoEditavel
+                  valor={a.short}
+                  onSalvar={(v) => onNome(a.id, { short: v })}
+                  titulo="Clique para alterar a sigla"
+                  estilo={{ ...eyebrow(10, C.faint, "0.1em"), width: 56, textAlign: "right" }}
+                />
+              </>
+            ) : (
+              <>
+                <span style={{ fontSize: 14, color: C.ink, flex: 1 }}>LIFF {a.label}</span>
+                <span style={eyebrow(10, C.faint, "0.1em")}>{a.short}</span>
+              </>
+            )}
           </div>
           <div style={{ padding: "9px 16px", display: "flex", alignItems: "center", gap: 10 }}>
             <input
@@ -529,6 +611,7 @@ export function Cadastros({
   onCorArea,
   onCriarArea,
   onExcluirArea,
+  onNomeArea,
   salvandoArea,
 }: {
   tab: string;
@@ -542,6 +625,7 @@ export function Cadastros({
   onCorArea: (id: string, cor: string) => void;
   onCriarArea: (d: { label: string; short: string; cor: string }) => void;
   onExcluirArea: (id: string, label: string) => void;
+  onNomeArea: (id: string, patch: { label?: string; short?: string }) => void;
   salvandoArea: boolean;
 }) {
   return (
@@ -566,7 +650,7 @@ export function Cadastros({
       <div className="liff-cad-split" style={mesh({ display: "grid", gap: 1 })}>
         <div className="liff-scroll-x" style={{ background: C.cell }}>
           {tab === "areas" ? (
-            <TabelaAreas areas={areas} contagem={contagemPorArea} podeEditar={podeEditarAreas} onCor={onCorArea} onExcluir={onExcluirArea} />
+            <TabelaAreas areas={areas} contagem={contagemPorArea} podeEditar={podeEditarAreas} onCor={onCorArea} onExcluir={onExcluirArea} onNome={onNomeArea} />
           ) : (
           <div style={{ minWidth: 480 }}>
             <div
@@ -993,20 +1077,96 @@ const nativeSelectStyle: CSSProperties = {
   padding: "10px 12px",
 };
 
+/**
+ * Título do card, editável no lugar. Vira campo ao clicar e salva no Enter ou ao sair;
+ * Esc desfaz. Sem botão de edição para não poluir o cabeçalho do drawer, que já tem a
+ * referência, a área e o tipo disputando espaço.
+ */
+function TituloEditavel({
+  titulo,
+  editavel,
+  onSalvar,
+}: {
+  titulo: string;
+  editavel: boolean;
+  onSalvar: (t: string) => void;
+}) {
+  const [editando, setEditando] = useState(false);
+  const [texto, setTexto] = useState(titulo);
+
+  const estilo: CSSProperties = {
+    fontSize: 21,
+    fontWeight: 800,
+    letterSpacing: "-0.02em",
+    color: C.ink,
+    lineHeight: 1.25,
+    marginTop: 8,
+  };
+
+  const confirmar = () => {
+    setEditando(false);
+    const limpo = texto.trim();
+    if (limpo && limpo !== titulo) onSalvar(limpo);
+    else setTexto(titulo);
+  };
+
+  if (!editando) {
+    return (
+      <div
+        onClick={() => editavel && (setTexto(titulo), setEditando(true))}
+        title={editavel ? "Clique para renomear" : undefined}
+        style={{ ...estilo, cursor: editavel ? "text" : "default" }}
+      >
+        {titulo}
+      </div>
+    );
+  }
+
+  return (
+    <textarea
+      autoFocus
+      rows={2}
+      value={texto}
+      onChange={(e) => setTexto(e.target.value)}
+      onBlur={confirmar}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          confirmar();
+        }
+        if (e.key === "Escape") {
+          setTexto(titulo);
+          setEditando(false);
+        }
+      }}
+      style={{
+        ...estilo,
+        width: "100%",
+        resize: "vertical",
+        fontFamily: SANS,
+        background: C.code,
+        border: `1px solid ${C.accent}`,
+        borderRadius: 6,
+        padding: "6px 9px",
+        outline: "none",
+      }}
+    />
+  );
+}
+
 export function Drawer({
   act,
   pessoas,
-  logs,
   areasEditaveis,
   onFechar,
   onStatus,
   onResponsavel,
   onPrioridade,
   onArea,
+  onTitulo,
 }: {
   act: Activity;
   pessoas: Pessoa[];
-  logs: LogEntry[];
   /** Só as áreas onde a pessoa escreve — mover para fora delas o servidor recusaria. */
   areasEditaveis: { id: string; label: string }[];
   onFechar: () => void;
@@ -1014,6 +1174,7 @@ export function Drawer({
   onResponsavel: (id: number) => void;
   onPrioridade: (p: string) => void;
   onArea: (id: string) => void;
+  onTitulo: (t: string) => void;
 }) {
   const a = areaOf(act.area);
   const editavel = act.podeEditar;
@@ -1027,18 +1188,7 @@ export function Drawer({
               <div style={eyebrow(10, a.color)}>
                 {a.label} / {act.tipo}
               </div>
-              <div
-                style={{
-                  fontSize: 21,
-                  fontWeight: 800,
-                  letterSpacing: "-0.02em",
-                  color: C.ink,
-                  lineHeight: 1.25,
-                  marginTop: 8,
-                }}
-              >
-                {act.titulo}
-              </div>
+              <TituloEditavel titulo={act.titulo} editavel={editavel} onSalvar={onTitulo} />
             </div>
             <span
               onClick={onFechar}
@@ -1147,20 +1297,8 @@ export function Drawer({
         </div>
 
         <div style={{ padding: "24px 26px" }}>
-          <div style={{ ...eyebrow(11, C.dust), marginBottom: 18 }}>LOG DE ALTERAÇÕES</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {logs.length === 0 && (
-              <div style={{ fontSize: 13, color: C.faint }}>Nenhuma alteração registrada nesta atividade.</div>
-            )}
-            {logs.map((l) => (
-              <div key={l.id} style={{ borderLeft: `1px solid ${C.line}`, paddingLeft: 14 }}>
-                <div style={{ fontSize: 13, color: C.body, lineHeight: 1.5 }}>{l.texto}</div>
-                <div style={{ ...eyebrow(10, C.faint, "0.1em"), marginTop: 4 }}>
-                  {l.autor} · {stamp(l.criadoEm)}
-                </div>
-              </div>
-            ))}
-          </div>
+          <div style={{ ...eyebrow(11, C.dust), marginBottom: 18 }}>HISTÓRICO DE ALTERAÇÕES</div>
+          <Historico entidade={act.ref} />
         </div>
       </div>
     </>
@@ -1486,6 +1624,8 @@ export function FormOportunidade({
   const [responsavel, setResponsavel] = useState<string>(
     inicial ? String(pessoas.find((p) => p.nome === inicial.responsavel)?.id ?? "") : ""
   );
+  // Fechado por padrão: o formulário existe para editar, o histórico é consulta.
+  const [verHistorico, setVerHistorico] = useState(false);
 
   const enviar = () =>
     onSalvar({
@@ -1544,6 +1684,24 @@ export function FormOportunidade({
       <Field label="Próximo passo">
         <Input placeholder="Enviar proposta" value={proximo} onChange={setProximo} />
       </Field>
+
+      {editando && (
+        <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 18 }}>
+          <div
+            role="button"
+            onClick={() => setVerHistorico((v) => !v)}
+            style={{ ...eyebrow(11, C.dust), cursor: "pointer", display: "flex", gap: 8, alignItems: "center" }}
+          >
+            <span style={{ fontFamily: MONO, fontSize: 10, color: C.faint }}>{verHistorico ? "−" : "+"}</span>
+            HISTÓRICO DE ALTERAÇÕES
+          </div>
+          {verHistorico && (
+            <div style={{ marginTop: 16 }}>
+              <Historico entidade={inicial.ref} />
+            </div>
+          )}
+        </div>
+      )}
 
       {erro && <div style={{ fontFamily: MONO, fontSize: 11, lineHeight: 1.6, color: C.error }}>{erro}</div>}
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 4 }}>

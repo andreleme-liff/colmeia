@@ -9,6 +9,7 @@ import { registrar } from "@/lib/log";
 import { PRIORIDADES, STATUS_KEYS, areaOf, statusLabel } from "@/lib/domain";
 
 type Body = {
+  titulo?: string;
   status?: string;
   responsavelId?: number | null;
   prioridade?: string;
@@ -66,6 +67,21 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/activitie
       texto: `Moveu de ${areaOf(atual.area).label} para ${areaOf(destino).label}`,
     });
     await sql`UPDATE activities SET area = ${destino}, atualizado_em = now() WHERE id = ${activityId}`;
+  }
+
+  if (body.titulo !== undefined) {
+    const titulo = String(body.titulo).trim();
+    if (!titulo) return err("A atividade precisa de um título.", 400);
+    if (titulo.length > 300) return err("Título longo demais.", 400);
+    if (titulo !== atual.titulo) {
+      mudancas.push({
+        campo: "titulo",
+        de: atual.titulo,
+        para: titulo,
+        texto: `Renomeou a atividade para "${titulo}"`,
+      });
+      await sql`UPDATE activities SET titulo = ${titulo}, atualizado_em = now() WHERE id = ${activityId}`;
+    }
   }
 
   if (body.status !== undefined && body.status !== atual.status) {

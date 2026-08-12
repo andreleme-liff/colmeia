@@ -360,6 +360,7 @@ export default function Ops() {
             podeEditarAreas={estado.isAdmin}
             salvandoArea={salvando}
             onCorArea={(id, cor) => void acao(() => api.alterarArea(id, { cor }))}
+            onNomeArea={(id, patch) => void acao(() => api.alterarArea(id, patch))}
             onCriarArea={(d) => {
               setSalvando(true);
               void acao(() => api.criarArea(d)).finally(() => setSalvando(false));
@@ -530,10 +531,10 @@ export default function Ops() {
         <Drawer
           act={selecionadaObj}
           pessoas={estado.pessoas}
-          logs={estado.logs.filter((l) => l.entidade === selecionadaObj.ref)}
           onFechar={() => setSelecionada(null)}
           areasEditaveis={areasEditaveis}
           onArea={(id) => void acao(() => api.alterarAtividade(selecionadaObj.id, { area: id }))}
+          onTitulo={(t) => void acao(() => api.alterarAtividade(selecionadaObj.id, { titulo: t }))}
           onStatus={(k) => void acao(() => api.alterarAtividade(selecionadaObj.id, { status: k }))}
           onResponsavel={(id) => void acao(() => api.alterarAtividade(selecionadaObj.id, { responsavelId: id }))}
           onPrioridade={(p) => void acao(() => api.alterarAtividade(selecionadaObj.id, { prioridade: p }))}

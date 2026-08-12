@@ -282,7 +282,55 @@ try {
     WHERE id = ${dLaw.id}
   `;
 
+  console.log("\n5d. TÍTULO DA ATIVIDADE E HISTÓRICO DO REGISTRO\n");
+  const tituloOriginal = (await sql`SELECT titulo FROM activities WHERE id = ${aLaw.id}`)[0].titulo;
+  const t1 = await req(marina.token, `/api/activities/${aLaw.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ titulo: "[teste] renomeada" }),
+  });
+  checa(`renomear a atividade → 200`, t1.status === 200, `veio ${t1.status}`);
+
+  const t2 = await req(marina.token, `/api/activities/${aLaw.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ titulo: "   " }),
+  });
+  checa(`título em branco → 400`, t2.status === 400, `veio ${t2.status}`);
+  await sql`UPDATE activities SET titulo = ${tituloOriginal} WHERE id = ${aLaw.id}`;
+
+  const h1 = await req(marina.token, `/api/logs/${aLaw.ref}`);
+  const h1json = await h1.json();
+  checa(
+    `histórico de ${aLaw.ref} para quem enxerga → 200 com entradas`,
+    h1.status === 200 && h1json.entradas.length > 0,
+    `${h1.status}, ${h1json.entradas?.length ?? 0} entradas`
+  );
+  checa(
+    `e cada entrada traz autor, campo e o par anterior/novo`,
+    h1json.entradas.some((e) => e.autor && e.campo && e.para !== undefined)
+  );
+
+  const h2 = await req(rafael.token, `/api/logs/${aPub.ref}`);
+  checa(`histórico de área invisível → 404, não 403`, h2.status === 404, `veio ${h2.status}`);
+
+  const h3 = await req(marina.token, "/api/logs/NAO-EXISTE-999");
+  checa(`histórico de referência inexistente → 404`, h3.status === 404, `veio ${h3.status}`);
+
   console.log("\n6. CADASTRO DE ÁREA — configuração, restrita a admin\n");
+  const nomeOriginal = (await sql`SELECT label, short FROM areas WHERE id='tax'`)[0];
+  const n1 = await req(andre.token, "/api/areas/tax", {
+    method: "PATCH",
+    body: JSON.stringify({ label: "[teste] Tributário", short: "TRIB" }),
+  });
+  const n1json = await n1.json();
+  checa(`admin renomeia a vertical → 200 com 2 mudanças`, n1.status === 200 && n1json.mudancas === 2, JSON.stringify(n1json));
+
+  const n2 = await req(marina.token, "/api/areas/tax", {
+    method: "PATCH",
+    body: JSON.stringify({ label: "Não deveria" }),
+  });
+  checa(`não-admin renomeando → 403`, n2.status === 403, `veio ${n2.status}`);
+  await sql`UPDATE areas SET label = ${nomeOriginal.label}, short = ${nomeOriginal.short} WHERE id = 'tax'`;
+
   const corOriginal = (await sql`SELECT cor FROM areas WHERE id='tax'`)[0].cor;
 
   const a1 = await req(marina.token, "/api/areas/tax", { method: "PATCH", body: JSON.stringify({ cor: "#123456" }) });
