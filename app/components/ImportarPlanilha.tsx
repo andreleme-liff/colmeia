@@ -44,14 +44,18 @@ const chave = (s: string) =>
 /**
  * Estágio inferido do texto da situação. É deliberadamente conservador — na dúvida, o
  * estágio mais atrás, porque adiantar um card indevidamente engana o pipeline.
+ *
+ * NDA, POC, transferência de dados e refinamento de escopo caem todos em `validacao`: são
+ * fases do mesmo trabalho de provar que dá para fazer, e nenhuma delas significa que existe
+ * proposta comercial. Nada aqui sugere `proposta` ou `negociacao` de propósito — as planilhas
+ * não falam de preço, e esses dois estágios devem ser marcados por quem enviou a proposta.
  */
 function estagioSugerido(situacao: string): string {
   const t = situacao.toLowerCase();
   if (!t || PLACEHOLDER.test(t)) return "lead";
   // `tra\w*fer` de propósito: a planilha real escreve "tranferência", sem o s. Casar só a
   // grafia correta jogaria o card para o início do funil por causa de um typo.
-  if (/\bpoc\b|tra\w*fer[êe]ncia d[eo]s? dados|refinamento de escopo/.test(t)) return "negociacao";
-  if (/\bnda\b/.test(t)) return "proposta";
+  if (/\bnda\b|\bpoc\b|tra\w*fer[êe]ncia d[eo]s? dados|refinamento de escopo/.test(t)) return "validacao";
   if (/reuni[ãa]o|apresenta[çc][ãa]o|fup|contato|aproxima[çc][ãa]o/.test(t)) return "qualificacao";
   return "lead";
 }

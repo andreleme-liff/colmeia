@@ -286,8 +286,15 @@ export default function Ops() {
       );
       const ganhos = deals.filter((x) => x.estagio === "ganho");
       if (ganhos.length) L.push(`- Ganhos no período: ${ganhos.map((g) => g.conta).join(", ")}`);
+      // Da validação em diante, exceto ganho: são as contas com trabalho em curso. Por índice
+      // e não por lista de chaves, para um estágio novo no meio do funil não sair do resumo
+      // sem ninguém perceber.
+      const iAtivo = STAGES.findIndex((s) => s.key === "validacao");
       deals
-        .filter((x) => x.estagio === "negociacao" || x.estagio === "proposta")
+        .filter((x) => {
+          const i = STAGES.findIndex((s) => s.key === x.estagio);
+          return i >= iAtivo && x.estagio !== "ganho";
+        })
         .slice(0, 3)
         .forEach((x) => L.push(`- ${x.conta}: ${stageLabel(x.estagio)} - ${brl(x.valorCentavos)} (${x.proximoPasso})`));
       L.push("");

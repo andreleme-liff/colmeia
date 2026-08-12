@@ -23,9 +23,19 @@ export const STATUS = [
 export type StatusKey = (typeof STATUS)[number]["key"];
 export const STATUS_KEYS = STATUS.map((s) => s.key) as readonly string[];
 
+/**
+ * O funil. `validacao` é onde a conta já topou explorar e os dois lados estão provando que dá
+ * para fazer, antes de existir preço: NDA, transferência de dados, POC, refinamento de escopo.
+ * Fica antes de `proposta` de propósito — sem ela, um card em NDA ficava obrigado a se declarar
+ * em Proposta ou Negociação, adiantando o pipeline sobre trabalho que ainda é técnico e jurídico.
+ *
+ * A ordem desta lista é o funil: mover ±1 anda por ela, e o CHECK do banco é gerado a partir
+ * das chaves (ver `lib/db.ts`).
+ */
 export const STAGES = [
   { key: "lead", label: "Lead" },
   { key: "qualificacao", label: "Qualificação" },
+  { key: "validacao", label: "Validação" },
   { key: "proposta", label: "Proposta" },
   { key: "negociacao", label: "Negociação" },
   { key: "ganho", label: "Ganho" },

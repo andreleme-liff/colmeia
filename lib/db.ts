@@ -270,6 +270,36 @@ async function migrate(): Promise<void> {
     `);
     await sql`CREATE INDEX IF NOT EXISTS idx_deals_produto ON deals(produto_id)`;
 
+    /**
+     * Os CHECK de lista fechada são gerados a partir de domain.ts no CREATE TABLE — mas o
+     * CREATE não roda de novo em base existente. Sem isto, acrescentar um valor à lista
+     * (foi o caso de `validacao` no funil) passa no build, passa no tipo, e só falha na
+     * primeira gravação em produção, com erro de constraint.
+     *
+     * Aqui o CHECK é comparado com a lista atual e recriado quando falta algum valor. Só o
+     * DROP/ADD é caro (revalida a tabela), e ele só acontece quando de fato mudou.
+     */
+    for (const [tabela, coluna, valores] of [
+      ["deals", "estagio", STAGE_KEYS],
+      ["activities", "status", STATUS_KEYS],
+      ["activities", "prioridade", PRIORIDADES as readonly string[]],
+    ] as const) {
+      const nome = `${tabela}_${coluna}_check`;
+      const [atual] = await sql<{ def: string }[]>`
+        SELECT pg_get_constraintdef(oid) AS def
+        FROM pg_constraint
+        WHERE conrelid = ${tabela}::regclass AND conname = ${nome}
+      `;
+      // Compara por valor presente e não por texto: o Postgres reescreve o CHECK na forma
+      // canônica (`= ANY (ARRAY[...])`), que nunca bateria com a string que mandamos.
+      if (atual && valores.every((v) => atual.def.includes(`'${v}'`))) continue;
+      await sql.unsafe(`ALTER TABLE ${tabela} DROP CONSTRAINT IF EXISTS ${nome}`);
+      await sql.unsafe(
+        `ALTER TABLE ${tabela} ADD CONSTRAINT ${nome} CHECK (${coluna} IN (${inList(valores)}))`
+      );
+      console.log(`[db] CHECK ${nome} recriado com ${valores.length} valores`);
+    }
+
     // Refs legíveis para registros novos. Começam acima das semeadas (A-101…A-602,
     // D-01…D-08) para nunca colidir com elas.
     await sql`CREATE SEQUENCE IF NOT EXISTS activities_ref_seq START 1000`;
