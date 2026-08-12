@@ -629,6 +629,15 @@ export default function Ops() {
       {dealEmEdicao && (
         <FormOportunidade
           inicial={dealEmEdicao}
+          onExcluir={() => {
+            if (
+              !window.confirm(
+                `Excluir a oportunidade ${dealEmEdicao.conta}?\n\nO card e seus campos somem. O histórico de alterações continua na auditoria.`
+              )
+            )
+              return;
+            void acao(() => api.excluirOportunidade(dealEmEdicao.id)).then(() => setEditandoDeal(null));
+          }}
           areasEditaveis={areasEditaveis}
           pessoas={pessoasAtivas}
           produtos={estado.produtos}

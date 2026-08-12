@@ -30,6 +30,46 @@ type Body = {
   pausado?: boolean;
 };
 
+/**
+ * Exclusão de uma oportunidade. Exige `edit` na área — quem opera o pipeline pode remover um
+ * card errado sem depender da administração.
+ *
+ * O registro some, mas a auditoria fica: o log guarda o texto da entidade, sem chave
+ * estrangeira, então a linha da exclusão sobrevive e o histórico anterior continua
+ * consultável pela referência. Apagar o rastro junto com o dado esvaziaria o log.
+ */
+export async function DELETE(_req: Request, ctxRoute: RouteContext<"/api/deals/[id]">) {
+  const ctx = await requireCtx();
+  if (ctx instanceof Response) return ctx;
+
+  const { id } = await ctxRoute.params;
+  const dealId = Number(id);
+  if (!Number.isInteger(dealId)) return err("Oportunidade inválida.", 400);
+
+  const sql = await getDb();
+  const linhas = await sql<{ ref: string; conta: string; area: string; valor_centavos: string }[]>`
+    SELECT ref, conta, area, valor_centavos FROM deals WHERE id = ${dealId}
+  `;
+  if (!linhas.length) return err("Oportunidade não encontrada.", 404);
+  const alvo = linhas[0];
+
+  if (!ctx.podeVer(alvo.area)) return err("Oportunidade não encontrada.", 404);
+  if (!ctx.podeEditar(alvo.area)) return err("Sem permissão de edição nesta área.", 403);
+
+  await sql`DELETE FROM deals WHERE id = ${dealId}`;
+  await registrar(sql, {
+    actorUserId: ctx.user.userId,
+    area: alvo.area,
+    entidade: alvo.ref,
+    campo: "exclusao",
+    de: alvo.conta,
+    para: null,
+    texto: `Excluiu a oportunidade ${alvo.conta} (${brl(Number(alvo.valor_centavos))})`,
+  });
+
+  return json({ ok: true });
+}
+
 export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/deals/[id]">) {
   const ctx = await requireCtx();
   if (ctx instanceof Response) return ctx;

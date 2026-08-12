@@ -160,6 +160,8 @@ export const api = {
   alterarOportunidade: (id: number, patch: Partial<NovaOportunidade>) =>
     req<{ ok: boolean }>(`/api/deals/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
 
+  excluirOportunidade: (id: number) => req<{ ok: boolean }>(`/api/deals/${id}`, { method: "DELETE" }),
+
   ciclarPermissao: (userId: number, area: string) =>
     req<{ ok: boolean; nivel: string | null }>(`/api/users/${userId}`, {
       method: "PATCH",

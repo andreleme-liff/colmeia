@@ -1625,6 +1625,7 @@ export function FormOportunidade({
   salvando,
   erro,
   inicial,
+  onExcluir,
   onSalvar,
   onFechar,
 }: {
@@ -1635,6 +1636,8 @@ export function FormOportunidade({
   erro: string | null;
   /** Ausente = criação. */
   inicial?: Deal;
+  /** Só na edição. Ausente = sem permissão para excluir. */
+  onExcluir?: () => void;
   onSalvar: (d: {
     conta: string;
     escopo: string;
@@ -1797,13 +1800,28 @@ export function FormOportunidade({
       )}
 
       {erro && <div style={{ fontFamily: MONO, fontSize: 11, lineHeight: 1.6, color: C.error }}>{erro}</div>}
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 4 }}>
-        <Button variant="ghost" size="sm" onClick={onFechar} style={GHOST_FIX}>
-          cancelar
-        </Button>
-        <Button variant="solid" size="sm" disabled={salvando || !conta.trim() || !area} onClick={enviar}>
-          {salvando ? "salvando…" : editando ? "salvar alterações" : "criar oportunidade"}
-        </Button>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginTop: 4, alignItems: "center" }}>
+        {/* Excluir fica longe do salvar, e do lado oposto: é a única ação irreversível aqui. */}
+        {editando && onExcluir ? (
+          <span
+            role="button"
+            onClick={onExcluir}
+            title="Excluir esta oportunidade"
+            style={{ ...eyebrow(10, C.error, "0.1em"), cursor: "pointer" }}
+          >
+            excluir
+          </span>
+        ) : (
+          <span />
+        )}
+        <span style={{ display: "flex", gap: 10 }}>
+          <Button variant="ghost" size="sm" onClick={onFechar} style={GHOST_FIX}>
+            cancelar
+          </Button>
+          <Button variant="solid" size="sm" disabled={salvando || !conta.trim() || !area} onClick={enviar}>
+            {salvando ? "salvando…" : editando ? "salvar alterações" : "criar oportunidade"}
+          </Button>
+        </span>
       </div>
     </Modal>
   );
