@@ -6,7 +6,6 @@ export type Activity = {
   ref: string;
   titulo: string;
   area: string;
-  tipo: string;
   status: string;
   prioridade: string;
   prazo: string | null;
@@ -101,7 +100,6 @@ export type State = {
 export type NovaAtividade = {
   titulo: string;
   area: string;
-  tipo: string;
   status: string;
   prioridade: string;
   prazo: string | null;

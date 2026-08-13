@@ -30,7 +30,7 @@ import ImportarPlanilha from "./ImportarPlanilha";
 import SeletorArea from "./SeletorArea";
 import { api, type Activity, type State } from "./api";
 import {
-  NAV, STAGES, STATUS, TIPOS_ATIVIDADE, TITLES, areaOf, brl, ddmm, setAreas, stageLabel, statusLabel, todasAreas,
+  NAV, STAGES, STATUS, TITLES, areaOf, brl, ddmm, setAreas, stageLabel, statusLabel, todasAreas,
 } from "@/lib/domain";
 
 const DIAS_CRITICO = 7;
@@ -249,19 +249,6 @@ export default function Ops() {
           c: estado.deals.filter((d) => d.produtoId === p.id).length + " no pipeline",
         })),
         ph: "Nome do produto",
-      };
-    }
-    if (cadTab === "tipos") {
-      const conta = (t: string) => estado.activities.filter((x) => x.tipo === t).length + " registros";
-      return {
-        head: ["TIPO", "FLUXO", "USO"],
-        rows: TIPOS_ATIVIDADE.map((t) => ({
-          key: t,
-          a: t,
-          b: t === "Comercial" ? "Pipeline CRM" : "Kanban",
-          c: conta(t),
-        })),
-        ph: "Nome do tipo",
       };
     }
     // Não é cadastro de nada: é a lista das oportunidades do CRM, em formato de tabela.

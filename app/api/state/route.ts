@@ -11,7 +11,6 @@ export type ActivityDTO = {
   ref: string;
   titulo: string;
   area: string;
-  tipo: string;
   status: string;
   prioridade: string;
   prazo: string | null;
@@ -68,12 +67,12 @@ export async function GET() {
   const [atividades, oportunidades, logs] = await Promise.all([
     sql<
       {
-        id: number; ref: string; titulo: string; area: string; tipo: string; status: string;
+        id: number; ref: string; titulo: string; area: string; status: string;
         prioridade: string; prazo: Date | null; responsavel_user_id: number | null; responsavel: string | null;
         situacao: string; proximo_passo: string;
       }[]
     >`
-      SELECT a.id, a.ref, a.titulo, a.area, a.tipo, a.status, a.prioridade, a.prazo,
+      SELECT a.id, a.ref, a.titulo, a.area, a.status, a.prioridade, a.prazo,
              a.responsavel_user_id, a.situacao, a.proximo_passo, u.nome AS responsavel
       FROM activities a
       LEFT JOIN users u ON u.id = a.responsavel_user_id
@@ -173,7 +172,6 @@ export async function GET() {
       ref: a.ref,
       titulo: a.titulo,
       area: a.area,
-      tipo: a.tipo,
       status: a.status,
       prioridade: a.prioridade,
       prazo: a.prazo ? a.prazo.toISOString().slice(0, 10) : null,

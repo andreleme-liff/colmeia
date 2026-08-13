@@ -11,7 +11,7 @@ import type { Activity, AreaCadastro, Deal, LogEntry, Pessoa } from "./api";
 import SeletorArea, { type OpcaoArea } from "./SeletorArea";
 import Historico from "./Historico";
 import {
-  ADMIN_CARDS, STAGES, STATUS, TIPOS_ATIVIDADE, areaOf, brl, ddmm, porTexto, stamp, statusLabel, todasAreas,
+  ADMIN_CARDS, STAGES, STATUS, areaOf, brl, ddmm, porTexto, stamp, statusLabel, todasAreas,
 } from "@/lib/domain";
 
 /* =========================================================
@@ -361,7 +361,8 @@ export function Operacoes({
 /* =========================================================
    Atividades — tabela plana
    ========================================================= */
-const ACT_COLS = "2.4fr 1fr 1fr 1fr 0.8fr 0.9fr";
+// A coluna liberada pelo tipo vai para o título, que é o que mais quebra em duas linhas.
+const ACT_COLS = "2.9fr 1fr 1fr 0.8fr 0.9fr";
 
 export function Atividades({
   rows,
@@ -383,7 +384,7 @@ export function Atividades({
             borderBottom: `1px solid ${C.line}`,
           }}
         >
-          {["ATIVIDADE", "ÁREA", "TIPO", "RESPONSÁVEL", "PRAZO", "STATUS"].map((h) => (
+          {["ATIVIDADE", "ÁREA", "RESPONSÁVEL", "PRAZO", "STATUS"].map((h) => (
             <div key={h} style={{ padding: "12px 16px", ...eyebrow(10, C.faint) }}>
               {h}
             </div>
@@ -419,7 +420,6 @@ export function Atividades({
                 <span style={dot(area.color)} />
                 {area.label}
               </div>
-              <div style={{ padding: "14px 16px", ...eyebrow(11, C.dust, "0.08em") }}>{r.tipo}</div>
               <div style={{ padding: "14px 16px", fontSize: 13, color: C.body }}>{r.responsavel}</div>
               <div
                 style={{ padding: "14px 16px", fontFamily: MONO, fontSize: 12, color: critico(r) ? C.error : C.dust }}
@@ -447,7 +447,6 @@ export const CAD_TABS = [
   { key: "pessoas", label: "pessoas" },
   { key: "produtos", label: "produtos" },
   { key: "areas", label: "áreas" },
-  { key: "tipos", label: "tipos de atividade" },
 ] as const;
 
 export type LinhaCad = { key: string; a: string; b: string; c: string; abrir?: () => void };
@@ -1197,7 +1196,7 @@ const nativeSelectStyle: CSSProperties = {
 /**
  * Título do card, editável no lugar. Vira campo ao clicar e salva no Enter ou ao sair;
  * Esc desfaz. Sem botão de edição para não poluir o cabeçalho do drawer, que já tem a
- * referência, a área e o tipo disputando espaço.
+ * referência e a área disputando espaço.
  */
 function TituloEditavel({
   titulo,
@@ -1306,9 +1305,7 @@ export function Drawer({
         <div style={{ padding: "24px 26px", borderBottom: `1px solid ${C.line}` }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
             <div>
-              <div style={eyebrow(10, a.color)}>
-                {a.label} / {act.tipo}
-              </div>
+              <div style={eyebrow(10, a.color)}>{a.label}</div>
               <TituloEditavel titulo={act.titulo} editavel={editavel} onSalvar={onTitulo} />
             </div>
             <span
@@ -1637,7 +1634,6 @@ export function NovaAtividade({
   onSalvar: (d: {
     titulo: string;
     area: string;
-    tipo: string;
     status: string;
     prioridade: string;
     prazo: string | null;
@@ -1649,7 +1645,6 @@ export function NovaAtividade({
 }) {
   const [titulo, setTitulo] = useState("");
   const [area, setArea] = useState(areasEditaveis[0]?.id ?? "");
-  const [tipo, setTipo] = useState("Operacional");
   const [status, setStatus] = useState("backlog");
   const [prioridade, setPrioridade] = useState("media");
   const [prazo, setPrazo] = useState("");
@@ -1661,7 +1656,6 @@ export function NovaAtividade({
     onSalvar({
       titulo,
       area,
-      tipo,
       status,
       prioridade,
       prazo: prazo || null,
@@ -1676,18 +1670,13 @@ export function NovaAtividade({
         <Input placeholder="O que precisa ser feito" value={titulo} onChange={setTitulo} />
       </Field>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-        <Field label="Área" required>
-          <Select
-            options={areasEditaveis.map((a) => ({ value: a.id, label: a.label }))}
-            value={area}
-            onChange={setArea}
-          />
-        </Field>
-        <Field label="Tipo">
-          <Select options={[...TIPOS_ATIVIDADE]} value={tipo} onChange={setTipo} />
-        </Field>
-      </div>
+      <Field label="Área" required>
+        <Select
+          options={areasEditaveis.map((a) => ({ value: a.id, label: a.label }))}
+          value={area}
+          onChange={setArea}
+        />
+      </Field>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         <Field label="Status">

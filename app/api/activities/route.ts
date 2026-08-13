@@ -6,12 +6,11 @@ import { getDb } from "@/lib/db";
 import { requireCtx } from "@/lib/perms";
 import { json, err } from "@/lib/http";
 import { registrar } from "@/lib/log";
-import { PRIORIDADES, STATUS_KEYS, TIPOS_ATIVIDADE, statusLabel } from "@/lib/domain";
+import { PRIORIDADES, STATUS_KEYS, statusLabel } from "@/lib/domain";
 
 type Body = {
   titulo?: string;
   area?: string;
-  tipo?: string;
   status?: string;
   prioridade?: string;
   prazo?: string | null;
@@ -47,9 +46,6 @@ export async function POST(req: Request) {
   const prioridade = body.prioridade ?? "media";
   if (!(PRIORIDADES as readonly string[]).includes(prioridade)) return err("Prioridade inválida.", 400);
 
-  const tipo = body.tipo ?? "Operacional";
-  if (!(TIPOS_ATIVIDADE as readonly string[]).includes(tipo)) return err("Tipo inválido.", 400);
-
   const prazo = body.prazo && DATA_RE.test(body.prazo) ? body.prazo : null;
 
   // Mesmos limites da oportunidade: a situação é narrativa e cresce, o próximo passo é curto.
@@ -70,9 +66,12 @@ export async function POST(req: Request) {
   const [{ ref }] = await sql<{ ref: string }[]>`SELECT 'A-' || nextval('activities_ref_seq') AS ref`;
 
   const [nova] = await sql<{ id: number }[]>`
-    INSERT INTO activities (ref, titulo, area, tipo, status, responsavel_user_id, prazo, prioridade,
+    -- A coluna tipo fica de fora: continua no banco, com default, mas deixou de ser
+    -- vocabulário do sistema. Era um rótulo escolhido na criação que ninguém podia
+    -- corrigir depois e que não governava nada.
+    INSERT INTO activities (ref, titulo, area, status, responsavel_user_id, prazo, prioridade,
                             situacao, proximo_passo)
-    VALUES (${ref}, ${titulo}, ${area}, ${tipo}, ${status}, ${responsavelId}, ${prazo}, ${prioridade},
+    VALUES (${ref}, ${titulo}, ${area}, ${status}, ${responsavelId}, ${prazo}, ${prioridade},
             ${situacao}, ${proximoPasso})
     RETURNING id
   `;

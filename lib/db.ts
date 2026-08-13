@@ -165,6 +165,11 @@ async function migrate(): Promise<void> {
       ref                 TEXT NOT NULL UNIQUE,
       titulo              TEXT NOT NULL,
       area                TEXT NOT NULL REFERENCES areas(id),
+      -- Aposentada, não removida. Era um rótulo (Operacional/Comercial/Produto/Institucional)
+      -- escolhido na criação, que o PATCH nunca aceitou alterar e que não governava nada:
+      -- não filtrava, não roteava, não definia coluna de quadro. Saiu da interface e da API.
+      -- A coluna fica, com default, para o que já foi classificado não se perder e para o
+      -- caminho de volta ser barato caso a classificação ganhe uma função de verdade.
       tipo                TEXT NOT NULL DEFAULT 'Operacional',
       status              TEXT NOT NULL DEFAULT 'backlog' CHECK (status IN (${inList(STATUS_KEYS)})),
       responsavel_user_id INTEGER REFERENCES users(id),
@@ -400,28 +405,29 @@ async function seed(sql: Queryable): Promise<void> {
 
   const uid = (email: string) => idPorEmail.get(email) ?? null;
 
-  const atividades: [string, string, string, string, string, string, string, string][] = [
-    ["A-101", "Implantação law-v no escritório Vieira & Costa", "law-firms", "Operacional", "andamento", "marina@getliff.ai", "2026-08-12", "alta"],
-    ["A-102", "Migração de base processual — fase 2", "law-firms", "Operacional", "revisao", "rafael@getliff.ai", "2026-08-09", "alta"],
-    ["A-103", "Proposta comercial Grupo Andrade", "law-firms", "Comercial", "backlog", "marina@getliff.ai", "2026-08-18", "media"],
-    ["A-201", "Rollout Regtrack na área de compliance", "corporate", "Operacional", "andamento", "rafael@getliff.ai", "2026-08-15", "alta"],
-    ["A-202", "Treinamento de governança — turma 3", "corporate", "Institucional", "concluido", "clara@getliff.ai", "2026-08-01", "baixa"],
-    ["A-203", "Revisão de política de retenção documental", "corporate", "Operacional", "backlog", "leme@getliff.ai", "2026-08-22", "media"],
-    ["A-301", "Pregão eletrônico — Tribunal de Contas MG", "public-sector", "Comercial", "andamento", "leme@getliff.ai", "2026-08-11", "alta"],
-    ["A-302", "Integração com sistema de controle interno", "public-sector", "Operacional", "backlog", "rafael@getliff.ai", "2026-08-29", "baixa"],
-    ["A-401", "Motor de cálculo da reforma — CBS/IBS", "tax", "Produto", "andamento", "rafael@getliff.ai", "2026-08-20", "alta"],
-    ["A-402", "DRE Impact para carteira industrial", "tax", "Operacional", "revisao", "leme@getliff.ai", "2026-08-08", "alta"],
-    ["A-403", "Onboarding tributário — Nutrimax", "tax", "Comercial", "concluido", "marina@getliff.ai", "2026-07-31", "media"],
-    ["A-501", "Deadline Agent — avaliação de precisão", "labs", "Produto", "andamento", "rafael@getliff.ai", "2026-08-14", "alta"],
-    ["A-502", "Evidence Graph — protótipo de grafo", "labs", "Produto", "backlog", "leme@getliff.ai", "2026-08-26", "media"],
-    ["A-503", "Benchmark de modelos para extração", "labs", "Produto", "revisao", "rafael@getliff.ai", "2026-08-10", "media"],
-    ["A-601", "Convênio com Defensoria — plano piloto", "social", "Institucional", "andamento", "clara@getliff.ai", "2026-08-19", "media"],
-    ["A-602", "Relatório de impacto do 1º semestre", "social", "Institucional", "concluido", "clara@getliff.ai", "2026-08-04", "baixa"],
+  // ref, título, área, status, e-mail do responsável, prazo, prioridade
+  const atividades: [string, string, string, string, string, string, string][] = [
+    ["A-101", "Implantação law-v no escritório Vieira & Costa", "law-firms", "andamento", "marina@getliff.ai", "2026-08-12", "alta"],
+    ["A-102", "Migração de base processual — fase 2", "law-firms", "revisao", "rafael@getliff.ai", "2026-08-09", "alta"],
+    ["A-103", "Proposta comercial Grupo Andrade", "law-firms", "backlog", "marina@getliff.ai", "2026-08-18", "media"],
+    ["A-201", "Rollout Regtrack na área de compliance", "corporate", "andamento", "rafael@getliff.ai", "2026-08-15", "alta"],
+    ["A-202", "Treinamento de governança — turma 3", "corporate", "concluido", "clara@getliff.ai", "2026-08-01", "baixa"],
+    ["A-203", "Revisão de política de retenção documental", "corporate", "backlog", "leme@getliff.ai", "2026-08-22", "media"],
+    ["A-301", "Pregão eletrônico — Tribunal de Contas MG", "public-sector", "andamento", "leme@getliff.ai", "2026-08-11", "alta"],
+    ["A-302", "Integração com sistema de controle interno", "public-sector", "backlog", "rafael@getliff.ai", "2026-08-29", "baixa"],
+    ["A-401", "Motor de cálculo da reforma — CBS/IBS", "tax", "andamento", "rafael@getliff.ai", "2026-08-20", "alta"],
+    ["A-402", "DRE Impact para carteira industrial", "tax", "revisao", "leme@getliff.ai", "2026-08-08", "alta"],
+    ["A-403", "Onboarding tributário — Nutrimax", "tax", "concluido", "marina@getliff.ai", "2026-07-31", "media"],
+    ["A-501", "Deadline Agent — avaliação de precisão", "labs", "andamento", "rafael@getliff.ai", "2026-08-14", "alta"],
+    ["A-502", "Evidence Graph — protótipo de grafo", "labs", "backlog", "leme@getliff.ai", "2026-08-26", "media"],
+    ["A-503", "Benchmark de modelos para extração", "labs", "revisao", "rafael@getliff.ai", "2026-08-10", "media"],
+    ["A-601", "Convênio com Defensoria — plano piloto", "social", "andamento", "clara@getliff.ai", "2026-08-19", "media"],
+    ["A-602", "Relatório de impacto do 1º semestre", "social", "concluido", "clara@getliff.ai", "2026-08-04", "baixa"],
   ];
-  for (const [ref, titulo, area, tipo, status, email, prazo, prio] of atividades) {
+  for (const [ref, titulo, area, status, email, prazo, prio] of atividades) {
     await sql`
-      INSERT INTO activities (ref, titulo, area, tipo, status, responsavel_user_id, prazo, prioridade)
-      VALUES (${ref}, ${titulo}, ${area}, ${tipo}, ${status}, ${uid(email)}, ${prazo}, ${prio})
+      INSERT INTO activities (ref, titulo, area, status, responsavel_user_id, prazo, prioridade)
+      VALUES (${ref}, ${titulo}, ${area}, ${status}, ${uid(email)}, ${prazo}, ${prio})
     `;
   }
 
