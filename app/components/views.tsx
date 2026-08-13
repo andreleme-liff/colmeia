@@ -11,7 +11,7 @@ import type { Activity, AreaCadastro, Deal, LogEntry, Pessoa } from "./api";
 import SeletorArea, { type OpcaoArea } from "./SeletorArea";
 import Historico from "./Historico";
 import {
-  ADMIN_CARDS, STAGES, STATUS, areaOf, brl, ddmm, porTexto, stamp, statusLabel, todasAreas,
+  ADMIN_CARDS, PAPEIS, STAGES, STATUS, areaOf, brl, ddmm, porTexto, stamp, statusLabel, todasAreas,
 } from "@/lib/domain";
 
 /* =========================================================
@@ -440,14 +440,19 @@ export function Atividades({
 /* =========================================================
    Cadastros
    ========================================================= */
+// A aba de oportunidades saiu: era a lista do CRM em forma de tabela, e o pipeline já é o
+// lugar delas — com estágio, valor e histórico, que a tabela não mostrava.
 export const CAD_TABS = [
-  // Era "contas", mas nunca foi um cadastro: é a lista das oportunidades do CRM. O nome
-  // antigo sugeria uma entidade que não existe no sistema.
-  { key: "oportunidades", label: "oportunidades" },
   { key: "pessoas", label: "pessoas" },
   { key: "produtos", label: "produtos" },
   { key: "areas", label: "áreas" },
 ] as const;
+
+const TITULO_NOVO: Record<string, string> = {
+  pessoas: "NOVA PESSOA",
+  produtos: "NOVO PRODUTO",
+  areas: "NOVA VERTICAL",
+};
 
 export type LinhaCad = { key: string; a: string; b: string; c: string; abrir?: () => void };
 export type CadSet = { head: string[]; rows: LinhaCad[]; ph: string };
@@ -715,12 +720,104 @@ function NovaArea({ salvando, onCriar }: { salvando: boolean; onCriar: (d: { lab
   );
 }
 
+/**
+ * Pré-cadastro de pessoa. Não cria acesso: a conta nasce no primeiro login pelo Google, e o
+ * que se faz aqui é deixar nome, papel e permissões prontos para quando isso acontecer.
+ */
+function NovaPessoa({
+  salvando,
+  dominio,
+  onCriar,
+}: {
+  salvando: boolean;
+  dominio: string;
+  onCriar: (d: { nome: string; email: string; papel: string }) => void;
+}) {
+  const [nome, setNome] = useState("");
+  const [email, setEmail] = useState("");
+  const [papel, setPapel] = useState<string>("membro");
+
+  return (
+    <>
+      <Field label="Nome completo" required>
+        <Input placeholder="Larissa Prado" value={nome} onChange={setNome} />
+      </Field>
+      <Field label="E-mail" required hint={`Precisa ser @${dominio} — é o domínio aceito no login.`}>
+        <Input placeholder={`larissa@${dominio}`} value={email} onChange={setEmail} />
+      </Field>
+      <Field label="Papel" hint="O papel é o teto; o acesso por área se define em Administração.">
+        <Select options={[...PAPEIS]} value={papel} onChange={setPapel} />
+      </Field>
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={salvando || !nome.trim() || !email.trim()}
+        style={{ justifyContent: "center" }}
+        onClick={() => {
+          onCriar({ nome: nome.trim(), email: email.trim(), papel });
+          setNome("");
+          setEmail("");
+        }}
+      >
+        {salvando ? "cadastrando…" : "cadastrar pessoa"}
+      </Button>
+      <div style={{ fontSize: 12, lineHeight: 1.6, color: C.faint }}>
+        A pessoa entra sozinha no primeiro login pelo Google — o cadastro só a espera do outro
+        lado, já com papel e permissões.
+      </div>
+    </>
+  );
+}
+
+/** Produto é o que se vende dentro de uma vertical. Sempre nasce preso a uma área. */
+function NovoProduto({
+  salvando,
+  areas,
+  onCriar,
+}: {
+  salvando: boolean;
+  areas: { id: string; label: string }[];
+  onCriar: (d: { label: string; area: string }) => void;
+}) {
+  const [label, setLabel] = useState("");
+  const [area, setArea] = useState(areas[0]?.id ?? "");
+
+  if (!areas.length) {
+    return (
+      <div style={{ fontSize: 13, lineHeight: 1.6, color: C.faint }}>
+        Cadastre uma vertical antes: todo produto pertence a uma.
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <Field label="Nome do produto" required>
+        <Input placeholder="Regtrack Farma" value={label} onChange={setLabel} />
+      </Field>
+      <Field label="Vertical" required hint="O formulário de oportunidade só oferece os produtos da área escolhida.">
+        <Select options={areas.map((a) => ({ value: a.id, label: a.label }))} value={area} onChange={setArea} />
+      </Field>
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={salvando || !label.trim() || !area}
+        style={{ justifyContent: "center" }}
+        onClick={() => {
+          onCriar({ label: label.trim(), area });
+          setLabel("");
+        }}
+      >
+        {salvando ? "cadastrando…" : "cadastrar produto"}
+      </Button>
+    </>
+  );
+}
+
 export function Cadastros({
   tab,
   onTab,
   set,
-  areaOptions,
-  semEdicao,
   areas,
   contagemPorArea,
   podeEditarAreas,
@@ -729,12 +826,14 @@ export function Cadastros({
   onExcluirArea,
   onNomeArea,
   salvandoArea,
+  areasEditaveis,
+  dominio,
+  onCriarPessoa,
+  onCriarProduto,
 }: {
   tab: string;
   onTab: (k: string) => void;
   set: CadSet;
-  areaOptions: string[];
-  semEdicao: boolean;
   areas: AreaCadastro[];
   contagemPorArea: (id: string) => number;
   podeEditarAreas: boolean;
@@ -743,6 +842,11 @@ export function Cadastros({
   onExcluirArea: (id: string, label: string) => void;
   onNomeArea: (id: string, patch: { label?: string; short?: string }) => void;
   salvandoArea: boolean;
+  /** Produto é cadastro de admin, mas a lista respeita quem enxerga o quê. */
+  areasEditaveis: { id: string; label: string }[];
+  dominio: string;
+  onCriarPessoa: (d: { nome: string; email: string; papel: string }) => void;
+  onCriarProduto: (d: { label: string; area: string }) => void;
 }) {
   return (
     <>
@@ -806,33 +910,22 @@ export function Cadastros({
         </div>
 
         <div style={{ background: C.cell, padding: 22 }}>
-          <div style={{ ...eyebrow(11, C.dust), marginBottom: 18 }}>
-            {tab === "areas" ? "NOVA VERTICAL" : "NOVO REGISTRO"}
-          </div>
+          <div style={{ ...eyebrow(11, C.dust), marginBottom: 18 }}>{TITULO_NOVO[tab] ?? "NOVO REGISTRO"}</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {tab === "areas" ? (
-              podeEditarAreas ? (
-                <NovaArea salvando={salvandoArea} onCriar={onCriarArea} />
-              ) : (
-                <div style={{ fontSize: 13, lineHeight: 1.6, color: C.faint }}>
-                  Só a administração cadastra verticais.
-                </div>
-              )
+            {/* Um formulário por aba, e não um genérico com Nome/Área/Observação: pessoa e
+                produto não pedem os mesmos campos, e o formulário único não conseguia
+                enviar nenhum dos dois. Verticais e produtos são configuração do sistema —
+                só admin cadastra, como já valia para a cor da área. */}
+            {!podeEditarAreas ? (
+              <div style={{ fontSize: 13, lineHeight: 1.6, color: C.faint }}>
+                Só a administração faz cadastros. Peça a quem administra o sistema.
+              </div>
+            ) : tab === "areas" ? (
+              <NovaArea salvando={salvandoArea} onCriar={onCriarArea} />
+            ) : tab === "pessoas" ? (
+              <NovaPessoa salvando={salvandoArea} dominio={dominio} onCriar={onCriarPessoa} />
             ) : (
-              <>
-            <Field label="Nome">
-              <Input placeholder={set.ph} />
-            </Field>
-            <Field label="Área">
-              <Select options={areaOptions} />
-            </Field>
-            <Field label="Observação">
-              <Input placeholder="opcional" />
-            </Field>
-            <Button variant="outline" size="sm" disabled={semEdicao} style={{ justifyContent: "center" }}>
-              cadastrar
-            </Button>
-              </>
+              <NovoProduto salvando={salvandoArea} areas={areasEditaveis} onCriar={onCriarProduto} />
             )}
             <div style={{ fontSize: 12, lineHeight: 1.6, color: C.faint }}>
               Cadastros alimentam os seletores de atividades, oportunidades e permissões. Alterações entram na

@@ -92,7 +92,7 @@ export async function destroySession(): Promise<void> {
   jar.delete("session");
 }
 
-function iniciaisDe(nome: string): string {
+export function iniciaisDe(nome: string): string {
   const partes = nome.trim().split(/\s+/).filter(Boolean);
   if (!partes.length) return "?";
   const primeira = partes[0][0] ?? "";

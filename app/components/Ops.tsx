@@ -9,7 +9,6 @@ import { LiffMark, Button } from "./ds";
 import ThemeToggle from "./ThemeToggle";
 import {
   Admin,
-  Atividades,
   Auditoria,
   Aviso,
   Cadastros,
@@ -67,7 +66,7 @@ export default function Ops() {
 
   const [view, setView] = useState("overview");
   const [area, setArea] = useState("all");
-  const [cadTab, setCadTab] = useState<string>("oportunidades");
+  const [cadTab, setCadTab] = useState<string>("pessoas");
   const [selecionada, setSelecionada] = useState<number | null>(null);
   const [waAberto, setWaAberto] = useState(false);
   const [waArea, setWaArea] = useState("all");
@@ -223,7 +222,14 @@ export default function Ops() {
     if (cadTab === "pessoas") {
       return {
         head: ["PESSOA", "PAPEL", "E-MAIL"],
-        rows: estado.pessoas.map((u) => ({ key: `u${u.id}`, a: u.nome, b: u.papel, c: u.email })),
+        rows: estado.pessoas.map((u) => ({
+          key: `u${u.id}`,
+          // Quem não está ativo aparece marcado: senão o cadastro sugere um time maior do
+          // que o que de fato entra no sistema.
+          a: u.nome + (u.ativo ? "" : " (inativo)"),
+          b: u.papel,
+          c: u.email,
+        })),
         ph: "Nome completo",
       };
     }
@@ -239,35 +245,15 @@ export default function Ops() {
         ph: "Nome da área",
       };
     }
-    if (cadTab === "produtos") {
-      return {
-        head: ["PRODUTO", "ÁREA", "OPORTUNIDADES"],
-        rows: estado.produtos.map((p) => ({
-          key: p.id,
-          a: p.label + (p.ativo ? "" : " (arquivado)"),
-          b: areaOf(p.area).label,
-          c: estado.deals.filter((d) => d.produtoId === p.id).length + " no pipeline",
-        })),
-        ph: "Nome do produto",
-      };
-    }
-    // Não é cadastro de nada: é a lista das oportunidades do CRM, em formato de tabela.
-    // Clicar abre o mesmo formulário do card do pipeline.
     return {
-      head: ["OPORTUNIDADE", "ÁREA", "RESPONSÁVEL"],
-      rows: estado.deals.map((d) => ({
-        key: d.ref,
-        a: `${d.conta}${d.escopo ? ` · ${d.escopo}` : ""}`,
-        b: areaOf(d.area).label,
-        c: d.responsavel,
-        abrir: d.podeEditar
-          ? () => {
-              setErroForm(null);
-              setEditandoDeal(d.id);
-            }
-          : undefined,
+      head: ["PRODUTO", "ÁREA", "OPORTUNIDADES"],
+      rows: estado.produtos.map((p) => ({
+        key: p.id,
+        a: p.label + (p.ativo ? "" : " (arquivado)"),
+        b: areaOf(p.area).label,
+        c: estado.deals.filter((d) => d.produtoId === p.id).length + " no pipeline",
       })),
-      ph: "Razão social",
+      ph: "Nome do produto",
     };
   }, [estado, cadTab]);
 
@@ -351,7 +337,6 @@ export default function Ops() {
   const me = estado.me;
   const nav = NAV.filter((n) => n.key !== "admin" || estado.isAdmin);
   const contagens: Record<string, number> = {
-    atividades: dados.atividades.length,
     comercial: dados.oportunidades.length,
     operacoes: dados.atividades.length,
     auditoria: dados.logs.length,
@@ -415,20 +400,26 @@ export default function Ops() {
             onAbrir={setSelecionada}
           />
         );
-      case "atividades":
-        return <Atividades rows={dados.atividades} critico={critico} onAbrir={setSelecionada} />;
       case "cadastros":
         return (
           <Cadastros
             tab={cadTab}
             onTab={setCadTab}
             set={cadSet}
-            areaOptions={dados.areasVisiveis.map((a) => a.label)}
-            semEdicao={!dados.areasVisiveis.some((a) => estado.perms[a.id] === "edit")}
             areas={estado.areas.filter((a) => estado.areasVisiveis.includes(a.id))}
             contagemPorArea={(id) => estado.activities.filter((x) => x.area === id).length}
             podeEditarAreas={estado.isAdmin}
             salvandoArea={salvando}
+            areasEditaveis={dados.areasVisiveis.map((a) => ({ id: a.id, label: a.label }))}
+            dominio={estado.dominioLogin}
+            onCriarPessoa={(d) => {
+              setSalvando(true);
+              void acao(() => api.criarPessoa(d)).finally(() => setSalvando(false));
+            }}
+            onCriarProduto={(d) => {
+              setSalvando(true);
+              void acao(() => api.criarProduto(d)).finally(() => setSalvando(false));
+            }}
             onCorArea={(id, cor) => void acao(() => api.alterarArea(id, { cor }))}
             onNomeArea={(id, patch) => void acao(() => api.alterarArea(id, patch))}
             onCriarArea={(d) => {
@@ -585,10 +576,10 @@ export default function Ops() {
           {/* As ações ficam num grupo próprio para quebrarem juntas quando o cabeçalho
               não couber, em vez de uma delas cair sozinha para a linha de baixo. */}
           <div style={{ display: "flex", gap: 10, alignItems: "center", marginLeft: "auto" }}>
-            {/* Criar aparece onde a coisa vive: atividade em Atividades e no quadro,
+            {/* Criar aparece onde a coisa vive: atividade no quadro operacional,
                 oportunidade no pipeline. Desabilita quando não há área com permissão de
                 edição — o servidor recusaria de todo jeito. */}
-            {["atividades", "operacoes", "comercial"].includes(view) && (
+            {["operacoes", "comercial"].includes(view) && (
               <Button
                 variant="outline"
                 size="sm"

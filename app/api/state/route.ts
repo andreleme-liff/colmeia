@@ -5,6 +5,7 @@ import { getDb } from "@/lib/db";
 import { requireCtx } from "@/lib/perms";
 import { json } from "@/lib/http";
 import { porTexto } from "@/lib/domain";
+import { DOMINIO_PERMITIDO } from "@/lib/google-oauth";
 
 export type ActivityDTO = {
   id: number;
@@ -167,6 +168,9 @@ export async function GET() {
     areas: areasCadastro,
     produtos,
     isAdmin: ctx.isAdmin,
+    // O formulário de pré-cadastro precisa dizer qual domínio o login aceita, e a fonte
+    // dessa verdade é uma variável de ambiente do servidor.
+    dominioLogin: DOMINIO_PERMITIDO,
     activities: atividades.map((a) => ({
       id: a.id,
       ref: a.ref,

@@ -91,6 +91,8 @@ export type State = {
   areas: AreaCadastro[];
   produtos: ProdutoCadastro[];
   isAdmin: boolean;
+  /** Domínio aceito no login — vem do servidor, alimenta o cadastro de pessoa. */
+  dominioLogin: string;
   activities: Activity[];
   deals: Deal[];
   logs: LogEntry[];
@@ -183,6 +185,9 @@ export const api = {
 
   definirAtivo: (userId: number, ativo: boolean) =>
     req<{ ok: boolean }>(`/api/users/${userId}`, { method: "PATCH", body: JSON.stringify({ ativo }) }),
+
+  criarPessoa: (dados: { nome: string; email: string; papel: string }) =>
+    req<{ ok: boolean; id: number }>("/api/users", { method: "POST", body: JSON.stringify(dados) }),
 
   criarProduto: (dados: { label: string; area: string }) =>
     req<{ ok: boolean; id: string }>("/api/produtos", { method: "POST", body: JSON.stringify(dados) }),

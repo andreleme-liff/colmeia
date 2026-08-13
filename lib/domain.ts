@@ -67,11 +67,13 @@ export type Nivel = "view" | "edit";
 export const PAPEIS = ["admin", "gestor", "membro", "leitura"] as const;
 export type Papel = (typeof PAPEIS)[number];
 
+// "atividades" saiu: era a mesma coleção de Operações em forma de tabela plana. Duas
+// entradas de menu para o mesmo dado obrigam a escolher antes de olhar, e o quadro já
+// mostra área, responsável, prazo e prioridade em cada card.
 export const NAV = [
   { key: "overview", label: "visão geral" },
   { key: "comercial", label: "comercial" },
   { key: "operacoes", label: "operações" },
-  { key: "atividades", label: "atividades" },
   { key: "cadastros", label: "cadastros" },
   { key: "admin", label: "administração" },
   { key: "auditoria", label: "auditoria" },
@@ -81,7 +83,6 @@ export const TITLES: Record<string, string> = {
   overview: "Visão geral",
   comercial: "Pipeline comercial",
   operacoes: "Quadro operacional",
-  atividades: "Atividades",
   cadastros: "Cadastros",
   admin: "Administração",
   auditoria: "Auditoria",
