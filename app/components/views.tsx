@@ -100,20 +100,44 @@ export function Comercial({
   colunas,
   produtos,
   onMover,
+  onSoltar,
   onAbrir,
 }: {
   colunas: ColunaDeal[];
   produtos: { id: string; label: string }[];
   onMover: (id: number, dir: 1 | -1) => void;
+  /** Arrastar manda o estágio de destino; as setas mandam a direção. Ver o comentário abaixo. */
+  onSoltar: (id: number, estagio: string) => void;
   onAbrir: (id: number) => void;
 }) {
+  // Coluna sob o cursor durante o arraste. Sem esta marca, um funil de seis colunas não deixa
+  // claro onde o card vai cair.
+  const [alvo, setAlvo] = useState<string | null>(null);
+
   return (
     <div style={mesh({ display: "flex", gap: 1, overflowX: "auto" })}>
       {colunas.map((col) => (
         <div
           key={col.key}
+          onDragOver={(e) => {
+            e.preventDefault();
+            if (alvo !== col.key) setAlvo(col.key);
+          }}
+          onDragLeave={(e) => {
+            // Só limpa ao sair da coluna de verdade: entrar num filho dispara dragleave no pai.
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) setAlvo((a) => (a === col.key ? null : a));
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            setAlvo(null);
+            const id = Number(e.dataTransfer.getData("text/plain"));
+            if (!Number.isInteger(id)) return;
+            // Soltar na própria coluna não é alteração; sem isto viraria um PATCH à toa.
+            if (col.cards.some((c) => c.id === id)) return;
+            onSoltar(id, col.key);
+          }}
           style={{
-            background: C.cell,
+            background: alvo === col.key ? C.panel2 : C.cell,
             minWidth: 236,
             flex: 1,
             padding: 16,
@@ -132,8 +156,11 @@ export function Comercial({
               <div
                 key={d.id}
                 className={d.podeEditar ? "liff-hover-card" : undefined}
+                draggable={d.podeEditar}
+                onDragStart={(e) => e.dataTransfer.setData("text/plain", String(d.id))}
+                onDragEnd={() => setAlvo(null)}
                 onClick={() => d.podeEditar && onAbrir(d.id)}
-                title={d.podeEditar ? "Abrir para editar" : "Somente leitura nesta área"}
+                title={d.podeEditar ? "Arraste para mover de estágio, ou clique para editar" : "Somente leitura nesta área"}
                 style={{
                   background: C.panel,
                   border: `1px solid ${C.line}`,
@@ -186,15 +213,18 @@ export function Comercial({
                   }}
                 >
                   <span style={{ fontFamily: MONO, fontSize: 10, color: C.faint }}>{d.proximoPasso}</span>
+                  {/* As setas ficam mesmo com o arraste: arrastar não existe em navegador de
+                      celular, e sem elas o card ficaria imóvel no telefone. */}
                   <span style={{ display: "flex", gap: 6 }}>
                     {([-1, 1] as const).map((dir) => (
                       <span
                         key={dir}
+                        draggable={false}
                         onClick={(e) => {
                           e.stopPropagation();
                           if (d.podeEditar) onMover(d.id, dir);
                         }}
-                        title={d.podeEditar ? "Mover estágio" : "Sem permissão de edição nesta área"}
+                        title={d.podeEditar ? "Mover uma casa" : "Sem permissão de edição nesta área"}
                         style={{
                           cursor: d.podeEditar ? "pointer" : "not-allowed",
                           fontFamily: MONO,
@@ -232,20 +262,31 @@ export function Operacoes({
   onSoltar: (id: number, status: string) => void;
   onAbrir: (id: number) => void;
 }) {
+  const [alvo, setAlvo] = useState<string | null>(null);
+
   return (
     <>
       <div style={mesh({ display: "flex", gap: 1, overflowX: "auto", alignItems: "stretch" })}>
         {colunas.map((col) => (
           <div
             key={col.key}
-            onDragOver={(e) => e.preventDefault()}
+            onDragOver={(e) => {
+              e.preventDefault();
+              if (alvo !== col.key) setAlvo(col.key);
+            }}
+            onDragLeave={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) setAlvo((a) => (a === col.key ? null : a));
+            }}
             onDrop={(e) => {
               e.preventDefault();
+              setAlvo(null);
               const id = Number(e.dataTransfer.getData("text/plain"));
-              if (Number.isInteger(id)) onSoltar(id, col.key);
+              if (!Number.isInteger(id)) return;
+              if (col.cards.some((c) => c.id === id)) return;
+              onSoltar(id, col.key);
             }}
             style={{
-              background: C.cell,
+              background: alvo === col.key ? C.panel2 : C.cell,
               minWidth: 262,
               flex: 1,
               padding: 16,
@@ -275,6 +316,7 @@ export function Operacoes({
                   className="liff-hover-card"
                   draggable={c.podeEditar}
                   onDragStart={(e) => e.dataTransfer.setData("text/plain", String(c.id))}
+                  onDragEnd={() => setAlvo(null)}
                   onClick={() => onAbrir(c.id)}
                   style={{
                     background: C.panel,

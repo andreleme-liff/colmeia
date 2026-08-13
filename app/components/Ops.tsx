@@ -386,6 +386,9 @@ export default function Ops() {
             colunas={dados.colunasDeal}
             produtos={estado.produtos}
             onMover={(id, dir) => void acao(() => api.moverOportunidade(id, dir))}
+            // Arrastar manda o destino direto: a rota valida o estágio contra STAGE_KEYS e
+            // registra o par anterior/novo, igual ao movimento pelas setas.
+            onSoltar={(id, estagio) => void acao(() => api.alterarOportunidade(id, { estagio }))}
             onAbrir={(id) => {
               setErroForm(null);
               setEditandoDeal(id);
