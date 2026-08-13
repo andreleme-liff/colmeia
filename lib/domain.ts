@@ -47,6 +47,23 @@ export const STAGE_KEYS = STAGES.map((s) => s.key) as readonly string[];
 export const PRIORIDADES = ["alta", "media", "baixa"] as const;
 export type Prioridade = (typeof PRIORIDADES)[number];
 
+/** Tipos de atividade. Em ordem alfabética, como todo cadastro; o padrão é Operacional. */
+export const TIPOS_ATIVIDADE = ["Comercial", "Institucional", "Operacional", "Produto"] as const;
+export type TipoAtividade = (typeof TIPOS_ATIVIDADE)[number];
+
+/**
+ * Comparador de rótulo em português. `localeCompare` com pt-BR é o que faz "Ática" cair
+ * antes de "Atlas" e não depois de "Zurique" — ordenar por code point jogaria tudo que tem
+ * acento para o fim da lista.
+ *
+ * Vale para cadastro: pessoa, área, produto, conta. Não vale para `STAGES`, `STATUS` nem
+ * `PRIORIDADES` — essas listas são um funil, um fluxo e uma escala, e em ordem alfabética
+ * diriam a coisa errada (Ganho antes de Lead).
+ */
+export function porTexto(a: string, b: string): number {
+  return a.localeCompare(b, "pt-BR", { sensitivity: "base" });
+}
+
 /** Nível de acesso a uma área. Ausência de registro = sem acesso. */
 export type Nivel = "view" | "edit";
 

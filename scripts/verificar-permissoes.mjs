@@ -114,6 +114,12 @@ try {
       ?.nivel ?? null,
   };
 
+  // Marca d'água do log ANTES da primeira escrita. A seção 7 filtra por ela em vez de olhar
+  // as N últimas linhas: com LIMIT, bastava o teste ganhar uma seção nova para as escritas
+  // antigas saírem da janela e a asserção falhar sem nada estar quebrado — aconteceu duas
+  // vezes, e a segunda foi ao acrescentar situação/próximos passos.
+  const [{ max: logAntes }] = await sql`SELECT COALESCE(MAX(id), 0) AS max FROM audit_log`;
+
   console.log("\n2. ESCRITA — permitida onde há edit, recusada onde não há\n");
   const novoStatus = aLaw.status === "concluido" ? "andamento" : "concluido";
   const r1 = await req(marina.token, `/api/activities/${aLaw.id}`, {
@@ -297,6 +303,77 @@ try {
   checa(`título em branco → 400`, t2.status === 400, `veio ${t2.status}`);
   await sql`UPDATE activities SET titulo = ${tituloOriginal} WHERE id = ${aLaw.id}`;
 
+  console.log("\n5e. SITUAÇÃO E PRÓXIMOS PASSOS DA ATIVIDADE\n");
+  const sOrig = (await sql`SELECT situacao, proximo_passo FROM activities WHERE id = ${aLaw.id}`)[0];
+  const s1 = await req(marina.token, `/api/activities/${aLaw.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ situacao: "[teste] situação", proximoPasso: "[teste] próximo" }),
+  });
+  const s1json = await s1.json();
+  checa(
+    `os dois campos de uma vez → 200 com 2 mudanças`,
+    s1.status === 200 && s1json.mudancas === 2,
+    JSON.stringify(s1json)
+  );
+
+  const [sGravado] = await sql`SELECT situacao, proximo_passo FROM activities WHERE id = ${aLaw.id}`;
+  checa(
+    `e gravaram de fato`,
+    sGravado.situacao === "[teste] situação" && sGravado.proximo_passo === "[teste] próximo",
+    JSON.stringify(sGravado)
+  );
+
+  const sLog = await sql`
+    SELECT valor_anterior, valor_novo FROM audit_log
+    WHERE entidade = ${aLaw.ref} AND campo = 'situacao' ORDER BY id DESC LIMIT 1
+  `;
+  checa(
+    `a auditoria guardou o texto anterior, não só o novo`,
+    sLog[0]?.valor_novo === "[teste] situação" && sLog[0]?.valor_anterior !== undefined,
+    JSON.stringify(sLog[0] ?? null)
+  );
+
+  // Reenviar o mesmo texto não é alteração — senão abrir e fechar o drawer encheria o log.
+  const s2 = await req(marina.token, `/api/activities/${aLaw.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ situacao: "[teste] situação", proximoPasso: "[teste] próximo" }),
+  });
+  const s2json = await s2.json();
+  checa(`reenviar o mesmo texto → 0 mudanças`, s2.status === 200 && s2json.mudancas === 0, JSON.stringify(s2json));
+
+  const s3 = await req(rafael.token, `/api/activities/${aLaw.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ situacao: "[teste] invasão" }),
+  });
+  checa(`Rafael, que só lê law-firms, escrevendo situação → 403`, s3.status === 403, `veio ${s3.status}`);
+
+  await sql`
+    UPDATE activities SET situacao = ${sOrig.situacao}, proximo_passo = ${sOrig.proximo_passo}
+    WHERE id = ${aLaw.id}
+  `;
+
+  console.log("\n5f. ORDEM ALFABÉTICA DOS CADASTROS\n");
+  const ordenado = (lista, chave) =>
+    lista.every((x, i) => i === 0 || lista[i - 1][chave].localeCompare(x[chave], "pt-BR", { sensitivity: "base" }) <= 0);
+  checa(`pessoas vêm por nome`, ordenado(estados.andre.pessoas, "nome"), estados.andre.pessoas.map((p) => p.nome).join(", "));
+  checa(`áreas vêm por rótulo`, ordenado(estados.andre.areas, "label"), estados.andre.areas.map((a) => a.label).join(", "));
+  checa(`produtos vêm por rótulo`, ordenado(estados.andre.produtos, "label"), estados.andre.produtos.map((p) => p.label).join(", "));
+  checa(`oportunidades vêm por conta`, ordenado(estados.andre.deals, "conta"), estados.andre.deals.map((d) => d.conta).join(", "));
+  // O funil é a exceção deliberada: alfabético ele diria Ganho antes de Lead. Esta checagem
+  // existe para alguém não "consertar" a ordem achando que ficou de fora.
+  const [chkFunil] = await sql`
+    SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint
+    WHERE conrelid = 'deals'::regclass AND conname = 'deals_estagio_check'
+  `;
+  const posicoes = ["lead", "qualificacao", "validacao", "proposta", "negociacao", "ganho"].map((k) =>
+    chkFunil.def.indexOf(`'${k}'`)
+  );
+  checa(
+    `o funil NÃO é alfabético — segue o fluxo, e o CHECK confirma`,
+    posicoes.every((p, i) => p >= 0 && (i === 0 || posicoes[i - 1] < p)),
+    chkFunil.def
+  );
+
   const h1 = await req(marina.token, `/api/logs/${aLaw.ref}`);
   const h1json = await h1.json();
   checa(
@@ -358,8 +435,8 @@ try {
   const logs = await sql`
     SELECT l.entidade, l.campo, l.valor_anterior, l.valor_novo, u.nome AS autor
     FROM audit_log l LEFT JOIN users u ON u.id = l.actor_user_id
-    WHERE l.campo IS NOT NULL AND l.entidade = ANY(${alvos})
-    ORDER BY l.id DESC LIMIT 10
+    WHERE l.campo IS NOT NULL AND l.entidade = ANY(${alvos}) AND l.id > ${logAntes}
+    ORDER BY l.id DESC
   `;
   // Três escritas passaram nesta rodada (status, estágio, permissão). A quarta tentativa —
   // o admin se desativando — levou 409 e, corretamente, não deixa rastro.

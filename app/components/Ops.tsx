@@ -30,7 +30,7 @@ import ImportarPlanilha from "./ImportarPlanilha";
 import SeletorArea from "./SeletorArea";
 import { api, type Activity, type State } from "./api";
 import {
-  NAV, STAGES, STATUS, TITLES, areaOf, brl, ddmm, setAreas, stageLabel, statusLabel, todasAreas,
+  NAV, STAGES, STATUS, TIPOS_ATIVIDADE, TITLES, areaOf, brl, ddmm, setAreas, stageLabel, statusLabel, todasAreas,
 } from "@/lib/domain";
 
 const DIAS_CRITICO = 7;
@@ -217,12 +217,12 @@ export default function Ops() {
       const conta = (t: string) => estado.activities.filter((x) => x.tipo === t).length + " registros";
       return {
         head: ["TIPO", "FLUXO", "USO"],
-        rows: [
-          { key: "Comercial", a: "Comercial", b: "Pipeline CRM", c: conta("Comercial") },
-          { key: "Operacional", a: "Operacional", b: "Kanban", c: conta("Operacional") },
-          { key: "Produto", a: "Produto", b: "Kanban", c: conta("Produto") },
-          { key: "Institucional", a: "Institucional", b: "Kanban", c: conta("Institucional") },
-        ],
+        rows: TIPOS_ATIVIDADE.map((t) => ({
+          key: t,
+          a: t,
+          b: t === "Comercial" ? "Pipeline CRM" : "Kanban",
+          c: conta(t),
+        })),
         ph: "Nome do tipo",
       };
     }
@@ -607,6 +607,8 @@ export default function Ops() {
           onStatus={(k) => void acao(() => api.alterarAtividade(selecionadaObj.id, { status: k }))}
           onResponsavel={(id) => void acao(() => api.alterarAtividade(selecionadaObj.id, { responsavelId: id }))}
           onPrioridade={(p) => void acao(() => api.alterarAtividade(selecionadaObj.id, { prioridade: p }))}
+          onSituacao={(v) => void acao(() => api.alterarAtividade(selecionadaObj.id, { situacao: v }))}
+          onProximo={(v) => void acao(() => api.alterarAtividade(selecionadaObj.id, { proximoPasso: v }))}
         />
       )}
 

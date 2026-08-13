@@ -10,7 +10,9 @@ import { C, GHOST_FIX, MONO, SANS, dot, eyebrow, mesh, prioColor, statusColor } 
 import type { Activity, AreaCadastro, Deal, LogEntry, Pessoa } from "./api";
 import SeletorArea, { type OpcaoArea } from "./SeletorArea";
 import Historico from "./Historico";
-import { ADMIN_CARDS, STAGES, STATUS, areaOf, brl, ddmm, stamp, statusLabel, todasAreas } from "@/lib/domain";
+import {
+  ADMIN_CARDS, STAGES, STATUS, TIPOS_ATIVIDADE, areaOf, brl, ddmm, porTexto, stamp, statusLabel, todasAreas,
+} from "@/lib/domain";
 
 /* =========================================================
    Visão geral
@@ -289,6 +291,26 @@ export function Operacoes({
                   <div style={{ fontSize: 14, color: C.ink, lineHeight: 1.4, marginTop: 9, fontWeight: 600 }}>
                     {c.titulo}
                   </div>
+
+                  {/* Cortada em três linhas, como no card do Comercial: o card responde "onde
+                      isto está" de relance; o texto inteiro fica no drawer. */}
+                  {c.situacao && (
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: C.faint,
+                        marginTop: 8,
+                        lineHeight: 1.5,
+                        display: "-webkit-box",
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {c.situacao}
+                    </div>
+                  )}
+
                   <div
                     style={{
                       display: "flex",
@@ -302,6 +324,26 @@ export function Operacoes({
                     <span>{c.responsavel.split(" ")[0]}</span>
                     <span>{ddmm(c.prazo)}</span>
                   </div>
+
+                  {c.proximoPasso && (
+                    <div
+                      style={{
+                        marginTop: 10,
+                        borderTop: `1px solid ${C.line}`,
+                        paddingTop: 10,
+                        fontFamily: MONO,
+                        fontSize: 10,
+                        color: C.faint,
+                        lineHeight: 1.5,
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {c.proximoPasso}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -467,6 +509,51 @@ function TextoEditavel({
         outline: "none",
         fontFamily: "inherit",
       }}
+    />
+  );
+}
+
+/**
+ * Bloco de texto longo que salva ao sair do campo, não a cada tecla: a alteração vira uma
+ * linha de auditoria, e gravar por caractere encheria o histórico de ruído.
+ *
+ * `valor` reentra pelo props quando o estado recarrega — o `key` de quem monta cuida de
+ * descartar o rascunho ao trocar de registro.
+ */
+function TextoLongoEditavel({
+  valor,
+  editavel,
+  linhas,
+  placeholder,
+  onSalvar,
+}: {
+  valor: string;
+  editavel: boolean;
+  linhas: number;
+  placeholder: string;
+  onSalvar: (v: string) => void;
+}) {
+  const [texto, setTexto] = useState(valor);
+
+  if (!editavel) {
+    return (
+      <div style={{ fontSize: 13, lineHeight: 1.6, color: valor ? C.body : C.ghost, whiteSpace: "pre-wrap" }}>
+        {valor || "—"}
+      </div>
+    );
+  }
+
+  return (
+    <textarea
+      rows={linhas}
+      value={texto}
+      placeholder={placeholder}
+      onChange={(e) => setTexto(e.target.value)}
+      onBlur={() => {
+        const limpo = texto.trim();
+        if (limpo !== valor) onSalvar(limpo);
+      }}
+      style={{ ...campoNativo, resize: "vertical", lineHeight: 1.5 }}
     />
   );
 }
@@ -1194,6 +1281,8 @@ export function Drawer({
   onPrioridade,
   onArea,
   onTitulo,
+  onSituacao,
+  onProximo,
 }: {
   act: Activity;
   pessoas: Pessoa[];
@@ -1205,6 +1294,8 @@ export function Drawer({
   onPrioridade: (p: string) => void;
   onArea: (id: string) => void;
   onTitulo: (t: string) => void;
+  onSituacao: (v: string) => void;
+  onProximo: (v: string) => void;
 }) {
   const a = areaOf(act.area);
   const editavel = act.podeEditar;
@@ -1317,6 +1408,30 @@ export function Drawer({
                 <option value="baixa">baixa</option>
               </select>
             </div>
+          </div>
+
+          <div>
+            <div style={{ ...eyebrow(10, C.faint), marginBottom: 9 }}>SITUAÇÃO ATUAL</div>
+            <TextoLongoEditavel
+              key={`sit-${act.id}`}
+              valor={act.situacao}
+              editavel={editavel}
+              linhas={4}
+              placeholder="Onde a atividade está hoje."
+              onSalvar={onSituacao}
+            />
+          </div>
+
+          <div>
+            <div style={{ ...eyebrow(10, C.faint), marginBottom: 9 }}>PRÓXIMOS PASSOS</div>
+            <TextoLongoEditavel
+              key={`prox-${act.id}`}
+              valor={act.proximoPasso}
+              editavel={editavel}
+              linhas={2}
+              placeholder="O que vem depois."
+              onSalvar={onProximo}
+            />
           </div>
 
           <div style={{ fontFamily: MONO, fontSize: 11, lineHeight: 1.6, color: editavel ? C.faint : C.warning }}>
@@ -1498,9 +1613,11 @@ function Modal({ titulo, eyebrowTexto, children, onFechar }: {
 function opcoesArea(editaveis: { id: string; label: string }[], atual?: string) {
   const lista = editaveis.map((a) => ({ value: a.id, label: a.label }));
   if (atual && !editaveis.some((a) => a.id === atual)) {
-    lista.unshift({ value: atual, label: areaOf(atual).label });
+    lista.push({ value: atual, label: areaOf(atual).label });
   }
-  return lista;
+  // A área injetada acima entraria fora de ordem; reordenar aqui mantém a promessa
+  // alfabética que vale para o resto dos seletores.
+  return lista.sort((a, b) => porTexto(a.label, b.label));
 }
 
 export type OpcaoPessoa = { id: number; nome: string };
@@ -1525,6 +1642,8 @@ export function NovaAtividade({
     prioridade: string;
     prazo: string | null;
     responsavelId: number | null;
+    situacao: string;
+    proximoPasso: string;
   }) => void;
   onFechar: () => void;
 }) {
@@ -1535,6 +1654,8 @@ export function NovaAtividade({
   const [prioridade, setPrioridade] = useState("media");
   const [prazo, setPrazo] = useState("");
   const [responsavel, setResponsavel] = useState<string>("");
+  const [situacao, setSituacao] = useState("");
+  const [proximo, setProximo] = useState("");
 
   const enviar = () =>
     onSalvar({
@@ -1545,6 +1666,8 @@ export function NovaAtividade({
       prioridade,
       prazo: prazo || null,
       responsavelId: responsavel ? Number(responsavel) : null,
+      situacao,
+      proximoPasso: proximo,
     });
 
   return (
@@ -1562,7 +1685,7 @@ export function NovaAtividade({
           />
         </Field>
         <Field label="Tipo">
-          <Select options={["Operacional", "Comercial", "Produto", "Institucional"]} value={tipo} onChange={setTipo} />
+          <Select options={[...TIPOS_ATIVIDADE]} value={tipo} onChange={setTipo} />
         </Field>
       </div>
 
@@ -1599,6 +1722,29 @@ export function NovaAtividade({
           />
         </Field>
       </div>
+
+      <Field
+        label="Situação atual"
+        hint="Onde a atividade está hoje. Cada alteração guarda o texto anterior no histórico."
+      >
+        <textarea
+          rows={4}
+          value={situacao}
+          onChange={(e) => setSituacao(e.target.value)}
+          placeholder="Ambiente provisionado; aguardando o retorno do time de TI sobre o SSO."
+          style={{ ...campoNativo, resize: "vertical", lineHeight: 1.5 }}
+        />
+      </Field>
+
+      <Field label="Próximos passos">
+        <textarea
+          rows={2}
+          value={proximo}
+          onChange={(e) => setProximo(e.target.value)}
+          placeholder="Fechar o desenho de integração e agendar a virada."
+          style={{ ...campoNativo, resize: "vertical", lineHeight: 1.5 }}
+        />
+      </Field>
 
       {erro && <div style={{ fontFamily: MONO, fontSize: 11, lineHeight: 1.6, color: C.error }}>{erro}</div>}
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 4 }}>

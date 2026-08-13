@@ -12,6 +12,9 @@ export type Activity = {
   prazo: string | null;
   responsavelId: number | null;
   responsavel: string;
+  /** Onde a atividade está agora. O que já foi vive no audit_log. */
+  situacao: string;
+  proximoPasso: string;
   podeEditar: boolean;
 };
 
@@ -101,6 +104,8 @@ export type NovaAtividade = {
   prioridade: string;
   prazo: string | null;
   responsavelId: number | null;
+  situacao: string;
+  proximoPasso: string;
 };
 
 export type NovaOportunidade = {
@@ -150,7 +155,15 @@ export const api = {
 
   alterarAtividade: (
     id: number,
-    patch: { titulo?: string; status?: string; responsavelId?: number | null; prioridade?: string; area?: string }
+    patch: {
+      titulo?: string;
+      status?: string;
+      responsavelId?: number | null;
+      prioridade?: string;
+      area?: string;
+      situacao?: string;
+      proximoPasso?: string;
+    }
   ) => req<{ ok: boolean }>(`/api/activities/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
 
   /** Movimento de uma casa pelas setas do card — o servidor calcula o destino. */

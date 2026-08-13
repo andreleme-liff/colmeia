@@ -14,6 +14,8 @@ type Body = {
   responsavelId?: number | null;
   prioridade?: string;
   area?: string;
+  situacao?: string;
+  proximoPasso?: string;
 };
 
 export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/activities/[id]">) {
@@ -36,9 +38,11 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/activitie
     {
       id: number; ref: string; titulo: string; area: string; status: string;
       prioridade: string; responsavel_user_id: number | null; responsavel: string | null;
+      situacao: string; proximo_passo: string;
     }[]
   >`
-    SELECT a.id, a.ref, a.titulo, a.area, a.status, a.prioridade, a.responsavel_user_id, u.nome AS responsavel
+    SELECT a.id, a.ref, a.titulo, a.area, a.status, a.prioridade, a.responsavel_user_id,
+           a.situacao, a.proximo_passo, u.nome AS responsavel
     FROM activities a LEFT JOIN users u ON u.id = a.responsavel_user_id
     WHERE a.id = ${activityId}
   `;
@@ -104,6 +108,29 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/activitie
       texto: `Alterou prioridade de ${atual.prioridade} para ${body.prioridade}`,
     });
     await sql`UPDATE activities SET prioridade = ${body.prioridade}, atualizado_em = now() WHERE id = ${activityId}`;
+  }
+
+  // Texto livre: o log guarda o par anterior/novo, então o que estava escrito antes nunca se
+  // perde ao ser sobrescrito — é o mesmo tratamento que a oportunidade recebe.
+  const TEXTOS: { chave: "situacao" | "proximoPasso"; coluna: string; atual: string; rotulo: string; max: number }[] = [
+    { chave: "situacao", coluna: "situacao", atual: atual.situacao, rotulo: "a situação", max: 4000 },
+    { chave: "proximoPasso", coluna: "proximo_passo", atual: atual.proximo_passo, rotulo: "o próximo passo", max: 2000 },
+  ];
+  for (const t of TEXTOS) {
+    const bruto = body[t.chave];
+    if (bruto === undefined) continue;
+    const valor = String(bruto).trim().slice(0, t.max);
+    if (valor === t.atual) continue;
+    mudancas.push({
+      campo: t.coluna,
+      de: t.atual || "—",
+      para: valor || "—",
+      texto: `Alterou ${t.rotulo} de "${atual.titulo}"`,
+    });
+    await sql.unsafe(`UPDATE activities SET ${t.coluna} = $1, atualizado_em = now() WHERE id = $2`, [
+      valor,
+      activityId,
+    ]);
   }
 
   if (body.responsavelId !== undefined && body.responsavelId !== atual.responsavel_user_id) {

@@ -6,7 +6,7 @@ import { getDb } from "@/lib/db";
 import { requireCtx } from "@/lib/perms";
 import { json, err } from "@/lib/http";
 import { registrar } from "@/lib/log";
-import { PRIORIDADES, STATUS_KEYS, statusLabel } from "@/lib/domain";
+import { PRIORIDADES, STATUS_KEYS, TIPOS_ATIVIDADE, statusLabel } from "@/lib/domain";
 
 type Body = {
   titulo?: string;
@@ -16,10 +16,11 @@ type Body = {
   prioridade?: string;
   prazo?: string | null;
   responsavelId?: number | null;
+  situacao?: string;
+  proximoPasso?: string;
 };
 
 const DATA_RE = /^\d{4}-\d{2}-\d{2}$/;
-const TIPOS = ["Comercial", "Operacional", "Produto", "Institucional"];
 
 export async function POST(req: Request) {
   const ctx = await requireCtx();
@@ -47,9 +48,13 @@ export async function POST(req: Request) {
   if (!(PRIORIDADES as readonly string[]).includes(prioridade)) return err("Prioridade inválida.", 400);
 
   const tipo = body.tipo ?? "Operacional";
-  if (!TIPOS.includes(tipo)) return err("Tipo inválido.", 400);
+  if (!(TIPOS_ATIVIDADE as readonly string[]).includes(tipo)) return err("Tipo inválido.", 400);
 
   const prazo = body.prazo && DATA_RE.test(body.prazo) ? body.prazo : null;
+
+  // Mesmos limites da oportunidade: a situação é narrativa e cresce, o próximo passo é curto.
+  const situacao = String(body.situacao ?? "").trim().slice(0, 4000);
+  const proximoPasso = String(body.proximoPasso ?? "").trim().slice(0, 2000);
 
   const sql = await getDb();
 
@@ -65,8 +70,10 @@ export async function POST(req: Request) {
   const [{ ref }] = await sql<{ ref: string }[]>`SELECT 'A-' || nextval('activities_ref_seq') AS ref`;
 
   const [nova] = await sql<{ id: number }[]>`
-    INSERT INTO activities (ref, titulo, area, tipo, status, responsavel_user_id, prazo, prioridade)
-    VALUES (${ref}, ${titulo}, ${area}, ${tipo}, ${status}, ${responsavelId}, ${prazo}, ${prioridade})
+    INSERT INTO activities (ref, titulo, area, tipo, status, responsavel_user_id, prazo, prioridade,
+                            situacao, proximo_passo)
+    VALUES (${ref}, ${titulo}, ${area}, ${tipo}, ${status}, ${responsavelId}, ${prazo}, ${prioridade},
+            ${situacao}, ${proximoPasso})
     RETURNING id
   `;
 

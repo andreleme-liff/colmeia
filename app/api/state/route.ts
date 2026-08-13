@@ -4,6 +4,7 @@
 import { getDb } from "@/lib/db";
 import { requireCtx } from "@/lib/perms";
 import { json } from "@/lib/http";
+import { porTexto } from "@/lib/domain";
 
 export type ActivityDTO = {
   id: number;
@@ -16,6 +17,8 @@ export type ActivityDTO = {
   prazo: string | null;
   responsavelId: number | null;
   responsavel: string;
+  situacao: string;
+  proximoPasso: string;
   podeEditar: boolean;
 };
 
@@ -65,10 +68,11 @@ export async function GET() {
       {
         id: number; ref: string; titulo: string; area: string; tipo: string; status: string;
         prioridade: string; prazo: Date | null; responsavel_user_id: number | null; responsavel: string | null;
+        situacao: string; proximo_passo: string;
       }[]
     >`
       SELECT a.id, a.ref, a.titulo, a.area, a.tipo, a.status, a.prioridade, a.prazo,
-             a.responsavel_user_id, u.nome AS responsavel
+             a.responsavel_user_id, a.situacao, a.proximo_passo, u.nome AS responsavel
       FROM activities a
       LEFT JOIN users u ON u.id = a.responsavel_user_id
       WHERE a.area = ANY(${areas})
@@ -119,6 +123,20 @@ export async function GET() {
     SELECT id, label, area, ativo FROM produtos WHERE area = ANY(${areas}) ORDER BY ordem ASC, id ASC
   `;
 
+  /**
+   * Ordem alfabética dos cadastros, aqui e não no SQL: a collation do banco decide como
+   * "Ática" se compara com "Atlas", e ela não é a mesma em toda instalação. `porTexto` usa
+   * pt-BR e dá o mesmo resultado em qualquer ambiente.
+   *
+   * Ordenar de uma vez neste ponto vale por todos os consumidores — os seletores de área,
+   * responsável e produto, as tabelas de cadastro e a matriz de permissões saem daqui.
+   * O `ORDER BY` das queries continua valendo como desempate estável.
+   */
+  pessoas.sort((a, b) => porTexto(a.nome, b.nome));
+  areasCadastro.sort((a, b) => porTexto(a.label, b.label));
+  produtos.sort((a, b) => porTexto(a.label, b.label));
+  oportunidades.sort((a, b) => porTexto(a.conta, b.conta));
+
   const permLinhas = ctx.isAdmin
     ? await sql<{ user_id: number; area: string; nivel: string }[]>`
         SELECT user_id, area, nivel FROM user_area_perms
@@ -156,6 +174,8 @@ export async function GET() {
       prazo: a.prazo ? a.prazo.toISOString().slice(0, 10) : null,
       responsavelId: a.responsavel_user_id,
       responsavel: a.responsavel ?? "—",
+      situacao: a.situacao,
+      proximoPasso: a.proximo_passo,
       podeEditar: ctx.podeEditar(a.area),
     })),
     deals: oportunidades.map((d) => ({

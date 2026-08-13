@@ -170,6 +170,8 @@ async function migrate(): Promise<void> {
       responsavel_user_id INTEGER REFERENCES users(id),
       prazo               DATE,
       prioridade          TEXT NOT NULL DEFAULT 'media' CHECK (prioridade IN (${inList(PRIORIDADES)})),
+      situacao            TEXT NOT NULL DEFAULT '',
+      proximo_passo       TEXT NOT NULL DEFAULT '',
       criado_em           TIMESTAMPTZ NOT NULL DEFAULT now(),
       atualizado_em       TIMESTAMPTZ
     )
@@ -258,6 +260,11 @@ async function migrate(): Promise<void> {
     // Estado paralelo ao estágio: "não é o momento" não é uma casa do funil, e sem isto a
     // oportunidade fica parada num estágio que mente sobre ela.
     await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS pausado BOOLEAN NOT NULL DEFAULT false`;
+    // As mesmas duas colunas da oportunidade, agora na atividade: o quadro operacional tinha
+    // título, responsável e prazo, mas nenhum lugar para "onde isto está" e "o que vem
+    // depois" — que é justamente o que se pergunta olhando um card.
+    await sql`ALTER TABLE activities ADD COLUMN IF NOT EXISTS situacao TEXT NOT NULL DEFAULT ''`;
+    await sql`ALTER TABLE activities ADD COLUMN IF NOT EXISTS proximo_passo TEXT NOT NULL DEFAULT ''`;
     await sql.unsafe(`
       DO $$
       BEGIN

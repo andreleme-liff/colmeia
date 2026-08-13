@@ -13,7 +13,7 @@ import { useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import { Button, Field, Select } from "./ds";
 import { C, GHOST_FIX, MONO, eyebrow } from "./tokens";
-import { STAGES, areaOf, normalizarConta, slugificar } from "@/lib/domain";
+import { STAGES, areaOf, normalizarConta, porTexto, slugificar } from "@/lib/domain";
 import type { Deal, LinhaImport, ProdutoCadastro } from "./api";
 
 /**
@@ -104,7 +104,9 @@ export default function ImportarPlanilha({
       const id = slugificar(l.setorOriginal);
       if (id && !existentes.has(id)) faltam.set(id, l.setorOriginal);
     }
-    return [...faltam.entries()].map(([id, label]) => ({ id, label }));
+    return [...faltam.entries()]
+      .map(([id, label]) => ({ id, label }))
+      .sort((a, b) => porTexto(a.label, b.label));
   }, [linhas, produtosDaArea]);
 
   async function lerArquivo(file: File) {
