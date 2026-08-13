@@ -54,6 +54,13 @@ export type LinhaImport = {
   pausado: boolean;
 };
 
+export type LinhaImportAtividade = {
+  titulo: string;
+  status: string;
+  situacao: string;
+  proximoPasso: string;
+};
+
 export type LogEntry = {
   id: number;
   criadoEm: string;
@@ -200,6 +207,12 @@ export const api = {
   importarOportunidades: (area: string, linhas: LinhaImport[]) =>
     req<{ ok: boolean; criadas: number; atualizadas: number; ignoradas: { linha: number; motivo: string }[] }>(
       "/api/import/deals",
+      { method: "POST", body: JSON.stringify({ area, linhas }) }
+    ),
+
+  importarAtividades: (area: string, linhas: LinhaImportAtividade[]) =>
+    req<{ ok: boolean; criadas: number; atualizadas: number; ignoradas: { linha: number; motivo: string }[] }>(
+      "/api/import/activities",
       { method: "POST", body: JSON.stringify({ area, linhas }) }
     ),
 

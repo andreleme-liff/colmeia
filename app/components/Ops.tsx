@@ -596,7 +596,9 @@ export default function Ops() {
               </Button>
             )}
 
-            {view === "comercial" && (
+            {/* Também no quadro operacional: a importação passou a ler abas de to-dos, e
+                seria estranho ter de ir ao pipeline para trazer atividades. */}
+            {["comercial", "operacoes"].includes(view) && (
               <Button
                 variant="outline"
                 size="sm"
@@ -736,25 +738,47 @@ export default function Ops() {
           areasEditaveis={areasEditaveis}
           produtos={estado.produtos}
           deals={estado.deals}
+          atividades={estado.activities}
           salvando={salvando}
           erro={erroForm}
           onFechar={() => setImportando(false)}
           onCriarProduto={async (label, areaProduto) => {
             await criarSemFechar(() => api.criarProduto({ label, area: areaProduto }));
           }}
-          onImportar={(areaDestino, linhas) => {
+          onImportar={(areaDestino, { deals: linhasDeal, atividades: linhasAtiv }) => {
             setSalvando(true);
             setErroForm(null);
-            api
-              .importarOportunidades(areaDestino, linhas)
-              .then(async (r) => {
+            // Sequencial, e acumulando o que já entrou: se a segunda chamada falhar, a
+            // primeira já gravou, e a mensagem de erro precisa dizer isso — senão a pessoa
+            // reimporta tudo achando que nada passou.
+            const feito: string[] = [];
+            void (async () => {
+              try {
+                if (linhasDeal.length) {
+                  const r = await api.importarOportunidades(areaDestino, linhasDeal);
+                  feito.push(
+                    `${r.criadas} oportunidade(s) criada(s), ${r.atualizadas} atualizada(s)` +
+                      (r.ignoradas.length ? `, ${r.ignoradas.length} ignorada(s)` : "")
+                  );
+                }
+                if (linhasAtiv.length) {
+                  const r = await api.importarAtividades(areaDestino, linhasAtiv);
+                  feito.push(
+                    `${r.criadas} atividade(s) criada(s), ${r.atualizadas} atualizada(s)` +
+                      (r.ignoradas.length ? `, ${r.ignoradas.length} ignorada(s)` : "")
+                  );
+                }
                 await carregar();
                 setImportando(false);
-                const ign = r.ignoradas.length ? `, ${r.ignoradas.length} ignorada(s)` : "";
-                setAviso(`Importação concluída: ${r.criadas} criada(s), ${r.atualizadas} atualizada(s)${ign}.`);
-              })
-              .catch((e: unknown) => setErroForm(e instanceof Error ? e.message : "Falha na importação."))
-              .finally(() => setSalvando(false));
+                setAviso(`Importação concluída: ${feito.join(" · ")}.`);
+              } catch (e) {
+                const msg = e instanceof Error ? e.message : "Falha na importação.";
+                await carregar();
+                setErroForm(feito.length ? `${msg} Antes disso já entraram: ${feito.join(" · ")}.` : msg);
+              } finally {
+                setSalvando(false);
+              }
+            })();
           }}
         />
       )}

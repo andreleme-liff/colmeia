@@ -134,6 +134,20 @@ export function normalizarConta(nome: string): string {
     .trim();
 }
 
+/**
+ * Chave de comparação de texto livre, usada para deduplicar título de atividade na
+ * importação. Diferente de `normalizarConta`: não mexe em sufixo societário, porque um
+ * to-do não é razão social — só ignora caixa, acento e espaço repetido.
+ */
+export function normalizarTexto(texto: string): string {
+  return texto
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export type Area = { id: string; label: string; short: string; color: string };
 
 /**
