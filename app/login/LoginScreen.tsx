@@ -73,7 +73,10 @@ export default function LoginScreen({ erro, dominio }: { erro?: string; dominio:
             </div>
           )}
 
-          <a href="/api/auth/google/start" style={{ display: "block" }}>
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- não é página: é o
+            route handler que inicia o OAuth, e precisa de navegação do navegador, não do
+            router. O catch-all `[[...rota]]` faz a regra achar que todo caminho é página. */}
+        <a href="/api/auth/google/start" style={{ display: "block" }}>
             <Button variant="solid" size="lg" style={{ width: "100%", justifyContent: "center" }}>
               entrar com google
             </Button>

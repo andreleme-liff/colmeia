@@ -5,6 +5,7 @@
 // conjunto é pequeno e assim a tela nunca mostra algo que o banco não confirmou.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { LiffMark, Button } from "./ds";
 import ThemeToggle from "./ThemeToggle";
 import {
@@ -31,6 +32,7 @@ import { api, type Activity, type State } from "./api";
 import {
   NAV, STAGES, STATUS, TITLES, areaOf, brl, ddmm, setAreas, stageLabel, statusLabel, todasAreas,
 } from "@/lib/domain";
+import { caminhoDe, type Rota } from "@/lib/rotas";
 
 const DIAS_CRITICO = 7;
 
@@ -59,20 +61,19 @@ function resumirPasso(texto: string, limite = 80): string {
   return (espaco > limite * 0.6 ? corte.slice(0, espaco) : corte) + "…";
 }
 
-export default function Ops() {
+export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
+  const router = useRouter();
   const [estado, setEstado] = useState<State | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [theme, trocarTema] = useTheme();
 
-  const [view, setView] = useState("overview");
+  const [view, setView] = useState(rotaInicial.view);
   const [area, setArea] = useState("all");
-  const [cadTab, setCadTab] = useState<string>("pessoas");
-  const [selecionada, setSelecionada] = useState<number | null>(null);
+  const [cadTab, setCadTab] = useState<string>(rotaInicial.tab ?? "pessoas");
   const [waAberto, setWaAberto] = useState(false);
   const [waArea, setWaArea] = useState("all");
   const [copiado, setCopiado] = useState(false);
   const [criando, setCriando] = useState<null | "atividade" | "oportunidade">(null);
-  const [editandoDeal, setEditandoDeal] = useState<number | null>(null);
   const [importando, setImportando] = useState(false);
   /** Gaveta da navegação. Só tem efeito abaixo de 860px — no desktop a lateral é fixa. */
   const [menuAberto, setMenuAberto] = useState(false);
@@ -125,6 +126,40 @@ export default function Ops() {
       vivo = false;
     };
   }, []);
+
+  /**
+   * Único caminho de navegação: muda o estado e a barra de endereço na mesma ação, para as
+   * duas nunca discordarem. Sem isto, o link copiado apontaria para a tela anterior.
+   */
+  const navegar = useCallback(
+    (destino: Rota, { substituir = false } = {}) => {
+      setView(destino.view);
+      if (destino.view === "cadastros" && destino.tab) setCadTab(destino.tab);
+      const caminho = caminhoDe(destino);
+      if (caminho !== window.location.pathname) {
+        if (substituir) router.replace(caminho);
+        else router.push(caminho);
+      }
+    },
+    [router]
+  );
+
+  /**
+   * A view acompanha a URL quando ela muda por fora — voltar, avançar, ou um link colado numa
+   * aba já aberta. O ajuste acontece DURANTE o render, não num efeito: é o padrão do React
+   * para estado que segue uma prop, e evita o passe extra de renderização que o efeito
+   * causaria (a tela pintaria uma vez com a seção antiga antes de corrigir).
+   *
+   * `view` não é derivada direto da prop porque a rota é `force-dynamic`: derivar faria cada
+   * clique de menu esperar uma ida ao servidor, num app que já tem todos os dados em mãos.
+   */
+  const caminhoAtual = caminhoDe(rotaInicial);
+  const [caminhoVisto, setCaminhoVisto] = useState(caminhoAtual);
+  if (caminhoVisto !== caminhoAtual) {
+    setCaminhoVisto(caminhoAtual);
+    setView(rotaInicial.view);
+    if (rotaInicial.tab) setCadTab(rotaInicial.tab);
+  }
 
   /** Guarda a escolha no perfil. Falhar aqui não pode atrapalhar a navegação. */
   const lembrar = useCallback((patch: { tema?: string; area?: string }) => {
@@ -179,13 +214,26 @@ export default function Ops() {
   }, []);
 
   // ---------- recortes ----------
+  /**
+   * Um link para um card fora do filtro salvo abriria o drawer sobre um quadro onde o card
+   * não aparece. Nesse caso o filtro cede — só para esta visita, sem gravar no perfil.
+   */
+  const areaEfetiva = useMemo(() => {
+    const ref = rotaInicial.ref;
+    if (!ref || !estado || area === "all") return area;
+    const alvo =
+      estado.activities.find((a) => a.ref === ref) ?? estado.deals.find((d) => d.ref === ref);
+    return alvo && alvo.area !== area ? "all" : area;
+  }, [rotaInicial.ref, estado, area]);
+
   const dados = useMemo(() => {
     if (!estado) return null;
-    const noEscopo = <T extends { area: string }>(l: T[]) => l.filter((x) => area === "all" || x.area === area);
+    const noEscopo = <T extends { area: string }>(l: T[]) =>
+      l.filter((x) => areaEfetiva === "all" || x.area === areaEfetiva);
 
     const atividades = noEscopo(estado.activities);
     const oportunidades = noEscopo(estado.deals);
-    const logs = estado.logs.filter((l) => area === "all" || l.area === area);
+    const logs = estado.logs.filter((l) => areaEfetiva === "all" || l.area === areaEfetiva);
     const areasVisiveis = todasAreas().filter((a) => estado.areasVisiveis.includes(a.id));
     const atrasadas = atividades.filter(critico);
 
@@ -248,7 +296,7 @@ export default function Ops() {
     }));
 
     return { atividades, oportunidades, logs, areasVisiveis, kpis, carga, colunasDeal, colunasBoard };
-  }, [estado, area, critico]);
+  }, [estado, areaEfetiva, critico]);
 
   // ---------- cadastros ----------
   const cadSet: CadSet | null = useMemo(() => {
@@ -411,9 +459,19 @@ export default function Ops() {
       setSalvando(false);
     }
   };
-  const rotuloArea = area === "all" ? "todas as áreas" : areaOf(area).label;
-  const selecionadaObj = estado.activities.find((a) => a.id === selecionada) ?? null;
-  const dealEmEdicao = estado.deals.find((d) => d.id === editandoDeal) ?? null;
+  const rotuloArea = areaEfetiva === "all" ? "todas as áreas" : areaOf(areaEfetiva).label;
+  /**
+   * O card aberto é DERIVADO da URL, não guardado em estado. Assim não há o que sincronizar:
+   * voltar fecha o drawer, recarregar reabre no mesmo card, e o endereço na barra é sempre o
+   * link que a pessoa pode copiar.
+   */
+  const refAberta = rotaInicial.ref ?? null;
+  const selecionadaObj = refAberta ? (estado.activities.find((a) => a.ref === refAberta) ?? null) : null;
+  const dealEmEdicao = refAberta ? (estado.deals.find((d) => d.ref === refAberta) ?? null) : null;
+  const cardAberto = selecionadaObj ?? dealEmEdicao;
+  // Referência que não resolve: ou não existe, ou está em área fora do acesso desta pessoa.
+  // O aviso não distingue as duas — distinguir confirmaria a existência do registro.
+  const refPerdida = refAberta && !cardAberto;
 
   const conteudo = () => {
     // Rede de segurança: o menu já esconde estas telas de quem não é admin, mas um estado
@@ -433,7 +491,8 @@ export default function Ops() {
             onSoltar={(id, estagio) => void acao(() => api.alterarOportunidade(id, { estagio }))}
             onAbrir={(id) => {
               setErroForm(null);
-              setEditandoDeal(id);
+              const d = estado.deals.find((x) => x.id === id);
+              if (d) navegar({ view: "comercial", ref: d.ref });
             }}
           />
         );
@@ -442,14 +501,17 @@ export default function Ops() {
           <Operacoes
             colunas={dados.colunasBoard}
             onSoltar={(id, status) => void acao(() => api.alterarAtividade(id, { status }))}
-            onAbrir={setSelecionada}
+            onAbrir={(id) => {
+              const a = estado.activities.find((x) => x.id === id);
+              if (a) navegar({ view: "operacoes", ref: a.ref });
+            }}
           />
         );
       case "cadastros":
         return (
           <Cadastros
             tab={cadTab}
-            onTab={setCadTab}
+            onTab={(tab) => navegar({ view: "cadastros", tab })}
             set={cadSet}
             areas={estado.areas.filter((a) => estado.areasVisiveis.includes(a.id))}
             contagemPorArea={(id) => estado.activities.filter((x) => x.area === id).length}
@@ -518,7 +580,7 @@ export default function Ops() {
                 key={n.key}
                 className="liff-nav-item"
                 onClick={() => {
-                  setView(n.key);
+                  navegar({ view: n.key, tab: n.key === "cadastros" ? cadTab : undefined });
                   // Escolher um item é a razão de a gaveta existir; ela se fecha sozinha.
                   setMenuAberto(false);
                 }}
@@ -689,6 +751,22 @@ export default function Ops() {
               {aviso}
             </div>
           )}
+          {refPerdida && (
+            <div
+              style={{
+                border: `1px solid ${C.warning}`,
+                color: C.warning,
+                fontFamily: "var(--liff-font-mono)",
+                fontSize: 12,
+                padding: "10px 14px",
+                marginBottom: 18,
+                lineHeight: 1.6,
+              }}
+            >
+              Não encontrei {refAberta}. O registro pode ter sido excluído, ou estar numa área
+              fora do seu acesso.
+            </div>
+          )}
           {erro && (
             <div
               style={{
@@ -712,7 +790,7 @@ export default function Ops() {
         <Drawer
           act={selecionadaObj}
           pessoas={estado.pessoas}
-          onFechar={() => setSelecionada(null)}
+          onFechar={() => navegar({ view: "operacoes" })}
           areasEditaveis={areasEditaveis}
           onArea={(id) => void acao(() => api.alterarAtividade(selecionadaObj.id, { area: id }))}
           onTitulo={(t) => void acao(() => api.alterarAtividade(selecionadaObj.id, { titulo: t }))}
@@ -757,21 +835,21 @@ export default function Ops() {
               )
             )
               return;
-            void acao(() => api.excluirOportunidade(dealEmEdicao.id)).then(() => setEditandoDeal(null));
+            void acao(() => api.excluirOportunidade(dealEmEdicao.id)).then(() => navegar({ view: "comercial" }));
           }}
           areasEditaveis={areasEditaveis}
           pessoas={pessoasAtivas}
           produtos={estado.produtos}
           salvando={salvando}
           erro={erroForm}
-          onFechar={() => setEditandoDeal(null)}
+          onFechar={() => navegar({ view: "comercial" })}
           onSalvar={(d) => {
             setSalvando(true);
             setErroForm(null);
             api
               .alterarOportunidade(dealEmEdicao.id, d)
               .then(() => carregar())
-              .then(() => setEditandoDeal(null))
+              .then(() => navegar({ view: "comercial" }))
               .catch((e: unknown) => setErroForm(e instanceof Error ? e.message : "Não foi possível salvar."))
               .finally(() => setSalvando(false));
           }}
