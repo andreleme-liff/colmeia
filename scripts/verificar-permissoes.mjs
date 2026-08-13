@@ -359,6 +359,14 @@ try {
   checa(`áreas vêm por rótulo`, ordenado(estados.andre.areas, "label"), estados.andre.areas.map((a) => a.label).join(", "));
   checa(`produtos vêm por rótulo`, ordenado(estados.andre.produtos, "label"), estados.andre.produtos.map((p) => p.label).join(", "));
   checa(`oportunidades vêm por conta`, ordenado(estados.andre.deals, "conta"), estados.andre.deals.map((d) => d.conta).join(", "));
+
+  // O resumo p/ WhatsApp marca a oportunidade parada a partir deste campo. Se ele sumir do
+  // DTO, a marcação some em silêncio — nada quebra, o alerta simplesmente nunca aparece.
+  checa(
+    `toda oportunidade traz atualizadoEm como data válida`,
+    estados.andre.deals.every((d) => d.atualizadoEm && !Number.isNaN(Date.parse(d.atualizadoEm))),
+    estados.andre.deals.find((d) => !d.atualizadoEm)?.conta ?? "ok"
+  );
   // O funil é a exceção deliberada: alfabético ele diria Ganho antes de Lead. Esta checagem
   // existe para alguém não "consertar" a ordem achando que ficou de fora.
   const [chkFunil] = await sql`

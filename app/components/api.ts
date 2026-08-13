@@ -36,6 +36,8 @@ export type Deal = {
   produtoId: string | null;
   /** Paralelo ao estágio: "não é o momento" não é uma casa do funil. */
   pausado: boolean;
+  /** ISO da última mexida no card — ou da criação, se nunca foi editado. */
+  atualizadoEm: string;
   podeEditar: boolean;
 };
 

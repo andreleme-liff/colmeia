@@ -32,6 +32,8 @@ export type DealDTO = {
   valorCentavos: number;
   responsavel: string;
   proximoPasso: string;
+  /** Última mexida no card, ou a criação se nunca foi editado. */
+  atualizadoEm: string;
   podeEditar: boolean;
 };
 
@@ -83,12 +85,15 @@ export async function GET() {
         id: number; ref: string; conta: string; escopo: string; area: string; estagio: string;
         valor_centavos: string; responsavel: string | null; responsavel_user_id: number | null;
         proximo_passo: string; situacao: string; contato: string; responsavel_texto: string;
-        produto_id: string | null; pausado: boolean;
+        produto_id: string | null; pausado: boolean; mexido_em: Date;
       }[]
     >`
       SELECT d.id, d.ref, d.conta, d.escopo, d.area, d.estagio, d.valor_centavos,
              u.nome AS responsavel, d.responsavel_user_id, d.proximo_passo,
-             d.situacao, d.contato, d.responsavel_texto, d.produto_id, d.pausado
+             d.situacao, d.contato, d.responsavel_texto, d.produto_id, d.pausado,
+             -- Card nunca editado tem atualizado_em nulo; nesse caso a idade conta da criação,
+             -- que é o que faz sentido para "está parado há quanto tempo".
+             COALESCE(d.atualizado_em, d.criado_em) AS mexido_em
       FROM deals d
       LEFT JOIN users u ON u.id = d.responsavel_user_id
       WHERE d.area = ANY(${areas})
@@ -194,6 +199,7 @@ export async function GET() {
       contato: d.contato,
       produtoId: d.produto_id,
       pausado: d.pausado,
+      atualizadoEm: d.mexido_em.toISOString(),
       podeEditar: ctx.podeEditar(d.area),
     })),
     logs: logs.map((l) => ({

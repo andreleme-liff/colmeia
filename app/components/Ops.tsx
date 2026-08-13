@@ -35,6 +35,31 @@ import {
 
 const DIAS_CRITICO = 7;
 
+/**
+ * A partir de quantos dias sem mexer uma oportunidade entra no resumo como parada. Mais
+ * folgado que o prazo crítico das atividades de propósito: ciclo comercial anda mais devagar,
+ * e uma semana sem novidade em negociação é normal — duas já é sinal.
+ */
+const DIAS_SEM_MOVIMENTO = 14;
+
+/** Dias inteiros desde a última mexida no card. */
+function diasParado(iso: string): number {
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+}
+
+/**
+ * O próximo passo cabe em 2000 caracteres no banco, e os que vieram da planilha são frases
+ * inteiras. Numa mensagem de WhatsApp com o pipeline todo isso viraria parede de texto —
+ * corta na palavra, não no meio dela.
+ */
+function resumirPasso(texto: string, limite = 80): string {
+  const limpo = texto.replace(/\s+/g, " ").trim();
+  if (limpo.length <= limite) return limpo;
+  const corte = limpo.slice(0, limite);
+  const espaco = corte.lastIndexOf(" ");
+  return (espaco > limite * 0.6 ? corte.slice(0, espaco) : corte) + "…";
+}
+
 export default function Ops() {
   const [estado, setEstado] = useState<State | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -299,17 +324,24 @@ export default function Ops() {
       );
       const ganhos = deals.filter((x) => x.estagio === "ganho");
       if (ganhos.length) L.push(`- Ganhos no período: ${ganhos.map((g) => g.conta).join(", ")}`);
-      // Da validação em diante, exceto ganho: são as contas com trabalho em curso. Por índice
-      // e não por lista de chaves, para um estágio novo no meio do funil não sair do resumo
-      // sem ninguém perceber.
-      const iAtivo = STAGES.findIndex((s) => s.key === "validacao");
-      deals
-        .filter((x) => {
-          const i = STAGES.findIndex((s) => s.key === x.estagio);
-          return i >= iAtivo && x.estagio !== "ganho";
-        })
-        .slice(0, 3)
-        .forEach((x) => L.push(`- ${x.conta}: ${stageLabel(x.estagio)} - ${brl(x.valorCentavos)} (${x.proximoPasso})`));
+
+      // Todas as oportunidades abertas, do fim do funil para o começo. Antes eram três, de
+      // um trecho do funil — quem lia o resumo não tinha como saber que o resto existia.
+      // Desempate por valor: dentro do mesmo estágio, primeiro o que pesa mais.
+      const posicao = (k: string) => STAGES.findIndex((s) => s.key === k);
+      [...abertos]
+        .sort((a, b) => posicao(b.estagio) - posicao(a.estagio) || b.valorCentavos - a.valorCentavos)
+        .forEach((x) => {
+          const partes = [stageLabel(x.estagio), brl(x.valorCentavos)];
+          // Pausa é decisão, parada é esquecimento. Só a segunda merece alarme.
+          if (x.pausado) partes.push("em pausa");
+          else {
+            const dias = diasParado(x.atualizadoEm);
+            if (dias >= DIAS_SEM_MOVIMENTO) partes.push(`⚠ parada há ${dias}d`);
+          }
+          const passo = resumirPasso(x.proximoPasso);
+          L.push(`- ${x.conta}: ${partes.join(" · ")}${passo ? ` (${passo})` : ""}`);
+        });
       L.push("");
     }
 
@@ -527,23 +559,29 @@ export default function Ops() {
             aria-label={menuAberto ? "Fechar navegação" : "Abrir navegação"}
             aria-expanded={menuAberto}
             style={{
-              flexDirection: "column",
+              // `alignItems` faltava: sem ele o flex cai em `stretch`, que não se aplica a
+              // filho com largura definida, e as barras iam parar coladas na borda esquerda
+              // com 20px de vazio à direita — o ícone torto dentro do quadrado.
+              alignItems: "center",
               justifyContent: "center",
-              gap: 4,
               width: 38,
               height: 38,
               padding: 0,
               flexShrink: 0,
               background: "transparent",
               border: `1px solid ${C.line}`,
+              color: C.ink,
               cursor: "pointer",
             }}
           >
-            {/* Três barras desenhadas, não um glifo: a fonte mono não tem um traço de menu
-                que fique alinhado, e assim a espessura acompanha a hairline do sistema. */}
-            {[0, 1, 2].map((i) => (
-              <span key={i} style={{ display: "block", width: 16, height: 1, background: C.ink }} />
-            ))}
+            {/* SVG com retângulos em coordenadas inteiras, e não três spans espaçados por
+                `gap`: 18×12 dentro da caixa de 36×36 centraliza em 9 e 12, sem meio pixel
+                para o navegador arredondar de um jeito em cada barra. */}
+            <svg width="18" height="12" viewBox="0 0 18 12" aria-hidden="true" focusable="false">
+              {[0, 5, 10].map((y) => (
+                <rect key={y} x="0" y={y} width="18" height="1" fill="currentColor" />
+              ))}
+            </svg>
           </button>
 
           <div style={{ minWidth: 200 }}>
