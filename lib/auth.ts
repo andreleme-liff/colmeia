@@ -18,6 +18,8 @@ export type SessionUser = {
   iniciais: string;
   ativo: boolean;
   avatarUrl: string | null;
+  /** Tema e filtro de área escolhidos por esta pessoa. Vazio até ela escolher. */
+  preferencias: Record<string, string>;
 };
 
 export async function createSession(userId: number): Promise<void> {
@@ -55,9 +57,11 @@ export async function getSessionUser(): Promise<SessionUser | null> {
       iniciais: string;
       ativo: boolean;
       avatar_url: string | null;
+      preferencias: Record<string, string> | null;
     }[]
   >`
-    SELECT s.token, s.user_id, s.expires_at, u.nome, u.email, u.papel, u.iniciais, u.ativo, u.avatar_url
+    SELECT s.token, s.user_id, s.expires_at, u.nome, u.email, u.papel, u.iniciais, u.ativo,
+           u.avatar_url, u.preferencias
     FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ${token}
   `;
   if (!rows.length) return null;
@@ -79,6 +83,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     iniciais: row.iniciais,
     ativo: row.ativo,
     avatarUrl: row.avatar_url,
+    preferencias: row.preferencias ?? {},
   };
 }
 

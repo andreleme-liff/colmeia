@@ -145,6 +145,10 @@ async function migrate(): Promise<void> {
       ativo       BOOLEAN NOT NULL DEFAULT true,
       google_sub  TEXT,
       avatar_url  TEXT,
+      -- Escolhas da pessoa que devem sobreviver ao logout e valer em qualquer máquina:
+      -- tema e filtro de área. JSONB para não precisar de migração a cada preferência
+      -- nova; quem valida as chaves é a rota, que ignora o que não conhece.
+      preferencias JSONB NOT NULL DEFAULT '{}'::jsonb,
       criado_em   TIMESTAMPTZ NOT NULL DEFAULT now()
     )
     `);
@@ -268,6 +272,7 @@ async function migrate(): Promise<void> {
     // As mesmas duas colunas da oportunidade, agora na atividade: o quadro operacional tinha
     // título, responsável e prazo, mas nenhum lugar para "onde isto está" e "o que vem
     // depois" — que é justamente o que se pergunta olhando um card.
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS preferencias JSONB NOT NULL DEFAULT '{}'::jsonb`;
     await sql`ALTER TABLE activities ADD COLUMN IF NOT EXISTS situacao TEXT NOT NULL DEFAULT ''`;
     await sql`ALTER TABLE activities ADD COLUMN IF NOT EXISTS proximo_passo TEXT NOT NULL DEFAULT ''`;
     await sql.unsafe(`

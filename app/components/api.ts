@@ -87,6 +87,8 @@ export type Me = {
   papel: string;
   iniciais: string;
   avatarUrl: string | null;
+  /** Escolhas guardadas no perfil: `tema` e `area`. Ausentes até a pessoa escolher. */
+  preferencias: { tema?: string; area?: string };
 };
 
 export type AreaCadastro = { id: string; label: string; short: string; cor: string };
@@ -215,6 +217,9 @@ export const api = {
       "/api/import/activities",
       { method: "POST", body: JSON.stringify({ area, linhas }) }
     ),
+
+  salvarPreferencias: (patch: { tema?: string; area?: string }) =>
+    req<{ ok: boolean }>("/api/me/preferencias", { method: "PATCH", body: JSON.stringify(patch) }),
 
   sair: () => req<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
 };

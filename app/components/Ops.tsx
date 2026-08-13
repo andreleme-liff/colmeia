@@ -23,7 +23,7 @@ import {
   type CargaArea,
   type Kpi,
 } from "./views";
-import { C, GHOST_FIX, avatarStyle, eyebrow, markTone, useTheme } from "./tokens";
+import { C, GHOST_FIX, avatarStyle, eyebrow, markTone, useTheme, writeTheme, type Theme } from "./tokens";
 import CoresDasAreas from "./CoresDasAreas";
 import ImportarPlanilha from "./ImportarPlanilha";
 import SeletorArea from "./SeletorArea";
@@ -103,6 +103,19 @@ export default function Ops() {
         if (!vivo) return;
         setAreas(s.areas);
         setEstado(s);
+
+        /**
+         * Aplica o que a pessoa deixou guardado no perfil. O tema também vive no
+         * localStorage, que é quem pinta antes do primeiro paint; o perfil é a fonte
+         * durável, e sincronizar os dois aqui faz a escolha atravessar máquina e limpeza
+         * de cache. Só na carga inicial — recarregar depois de uma escrita não pode
+         * desfazer um filtro que a pessoa acabou de trocar.
+         */
+        const { tema, area: areaSalva } = s.me.preferencias ?? {};
+        if (tema === "dark" || tema === "light") writeTheme(tema);
+        // A área só volta se ainda for visível: permissão pode ter mudado desde a última
+        // sessão, e restaurar um filtro que não mostra nada pareceria dado sumido.
+        if (areaSalva && (areaSalva === "all" || s.areasVisiveis.includes(areaSalva))) setArea(areaSalva);
       },
       (e: unknown) => {
         if (vivo) setErro(e instanceof Error ? e.message : "Falha ao carregar.");
@@ -112,6 +125,27 @@ export default function Ops() {
       vivo = false;
     };
   }, []);
+
+  /** Guarda a escolha no perfil. Falhar aqui não pode atrapalhar a navegação. */
+  const lembrar = useCallback((patch: { tema?: string; area?: string }) => {
+    void api.salvarPreferencias(patch).catch(() => {});
+  }, []);
+
+  const trocarArea = useCallback(
+    (id: string) => {
+      setArea(id);
+      lembrar({ area: id });
+    },
+    [lembrar]
+  );
+
+  const trocarTemaSalvando = useCallback(
+    (t: Theme) => {
+      trocarTema(t);
+      lembrar({ tema: t });
+    },
+    [trocarTema, lembrar]
+  );
 
   // Esc fecha a gaveta — comportamento esperado de qualquer sobreposição, e o que salva
   // quem está numa janela estreita no desktop, onde o toque fora não é o gesto natural.
@@ -335,7 +369,10 @@ export default function Ops() {
   if (!estado || !dados || !cadSet) return <Aviso>carregando…</Aviso>;
 
   const me = estado.me;
-  const nav = NAV.filter((n) => n.key !== "admin" || estado.isAdmin);
+  // Cadastros e Administração são configuração do sistema — as três rotas de cadastro já
+  // exigem admin, e deixar as telas à vista só oferecia caminhos que terminam em 403.
+  const SO_ADMIN = ["admin", "cadastros"];
+  const nav = NAV.filter((n) => !SO_ADMIN.includes(n.key) || estado.isAdmin);
   const contagens: Record<string, number> = {
     comercial: dados.oportunidades.length,
     operacoes: dados.atividades.length,
@@ -379,6 +416,11 @@ export default function Ops() {
   const dealEmEdicao = estado.deals.find((d) => d.id === editandoDeal) ?? null;
 
   const conteudo = () => {
+    // Rede de segurança: o menu já esconde estas telas de quem não é admin, mas um estado
+    // antigo não pode virar uma tela vazia sem explicação.
+    if (SO_ADMIN.includes(view) && !estado.isAdmin) {
+      return <Overview kpis={dados.kpis} carga={dados.carga} logs={dados.logs.slice(0, 6)} />;
+    }
     switch (view) {
       case "comercial":
         return (
@@ -502,7 +544,7 @@ export default function Ops() {
         <div style={{ marginTop: "auto", padding: "26px 22px 0" }}>
           <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 18, marginBottom: 18 }}>
             <div style={{ ...eyebrow(10, C.faint, "0.14em"), marginBottom: 9 }}>FUNDO</div>
-            <ThemeToggle theme={theme} onChange={trocarTema} />
+            <ThemeToggle theme={theme} onChange={trocarTemaSalvando} />
           </div>
           <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 18 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
@@ -573,7 +615,7 @@ export default function Ops() {
           </div>
 
           <div className="liff-area-chips" style={{ marginLeft: "auto" }}>
-            <SeletorArea opcoes={chips} valor={area} onChange={setArea} />
+            <SeletorArea opcoes={chips} valor={area} onChange={trocarArea} />
           </div>
 
           {/* As ações ficam num grupo próprio para quebrarem juntas quando o cabeçalho

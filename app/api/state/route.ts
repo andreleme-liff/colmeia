@@ -162,6 +162,7 @@ export async function GET() {
       papel: ctx.user.papel,
       iniciais: ctx.user.iniciais,
       avatarUrl: ctx.user.avatarUrl,
+      preferencias: ctx.user.preferencias,
     },
     perms: ctx.perms,
     areasVisiveis: ctx.areasVisiveis,

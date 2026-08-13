@@ -386,6 +386,52 @@ export function Operacoes({
                       {c.proximoPasso}
                     </div>
                   )}
+
+                  {/* As mesmas setas do pipeline, pelo mesmo motivo: arrastar não existe em
+                      navegador de celular, e sem elas o card ficaria imóvel no telefone. */}
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "flex-end",
+                      gap: 6,
+                      marginTop: 10,
+                      borderTop: `1px solid ${C.line}`,
+                      paddingTop: 10,
+                    }}
+                  >
+                    {([-1, 1] as const).map((dir) => {
+                      const i = STATUS.findIndex((s) => s.key === c.status);
+                      const destino = STATUS[i + dir];
+                      const ativo = c.podeEditar && !!destino;
+                      return (
+                        <span
+                          key={dir}
+                          draggable={false}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (ativo) onSoltar(c.id, destino.key);
+                          }}
+                          title={
+                            !c.podeEditar
+                              ? "Sem permissão de edição nesta área"
+                              : destino
+                                ? `Mover para ${destino.label}`
+                                : "Já está na ponta do quadro"
+                          }
+                          style={{
+                            cursor: ativo ? "pointer" : "not-allowed",
+                            fontFamily: MONO,
+                            fontSize: 12,
+                            color: ativo ? C.dust : C.ghost,
+                            padding: "0 5px",
+                            border: `1px solid ${C.line}`,
+                          }}
+                        >
+                          {dir < 0 ? "←" : "→"}
+                        </span>
+                      );
+                    })}
+                  </div>
                 </div>
               );
             })}
@@ -393,8 +439,8 @@ export function Operacoes({
         ))}
       </div>
       <div style={{ fontFamily: MONO, fontSize: 11, color: C.faint, marginTop: 14, lineHeight: 1.6 }}>
-        Arraste os cards entre as colunas — o movimento é gravado no log com autor e horário. Cards de áreas sem
-        permissão de edição não se movem.
+        Arraste os cards entre as colunas, ou use as setas — o movimento é gravado no log com autor e horário.
+        Cards de áreas sem permissão de edição não se movem.
       </div>
     </>
   );
@@ -822,7 +868,7 @@ function NovoProduto({
   onCriar: (d: { label: string; area: string }) => void;
 }) {
   const [label, setLabel] = useState("");
-  const [area, setArea] = useState(areas[0]?.id ?? "");
+  const [area, setArea] = useState("");
 
   if (!areas.length) {
     return (
@@ -838,7 +884,7 @@ function NovoProduto({
         <Input placeholder="Regtrack Farma" value={label} onChange={setLabel} />
       </Field>
       <Field label="Vertical" required hint="O formulário de oportunidade só oferece os produtos da área escolhida.">
-        <Select options={areas.map((a) => ({ value: a.id, label: a.label }))} value={area} onChange={setArea} />
+        <Select options={opcoesArea(areas)} value={area} onChange={setArea} />
       </Field>
       <Button
         variant="outline"
@@ -1740,8 +1786,16 @@ function Modal({ titulo, eyebrowTexto, children, onFechar }: {
   );
 }
 
-/** A área atual entra na lista mesmo sem permissão de escrita nela, senão o campo mostraria
- *  algo diferente do que o registro realmente é. */
+/**
+ * Opções do seletor de área.
+ *
+ * A área atual entra na lista mesmo sem permissão de escrita nela, senão o campo mostraria
+ * algo diferente do que o registro realmente é.
+ *
+ * Sem `atual` — ou seja, na criação — a lista abre com uma opção vazia, e o botão de salvar
+ * fica desabilitado até alguém escolher. Não é firula: com a primeira vertical
+ * pré-selecionada, quem não reparava no campo cadastrava na área errada sem perceber.
+ */
 function opcoesArea(editaveis: { id: string; label: string }[], atual?: string) {
   const lista = editaveis.map((a) => ({ value: a.id, label: a.label }));
   if (atual && !editaveis.some((a) => a.id === atual)) {
@@ -1749,7 +1803,8 @@ function opcoesArea(editaveis: { id: string; label: string }[], atual?: string) 
   }
   // A área injetada acima entraria fora de ordem; reordenar aqui mantém a promessa
   // alfabética que vale para o resto dos seletores.
-  return lista.sort((a, b) => porTexto(a.label, b.label));
+  lista.sort((a, b) => porTexto(a.label, b.label));
+  return atual ? lista : [{ value: "", label: "— escolha a vertical —" }, ...lista];
 }
 
 export type OpcaoPessoa = { id: number; nome: string };
@@ -1779,7 +1834,9 @@ export function NovaAtividade({
   onFechar: () => void;
 }) {
   const [titulo, setTitulo] = useState("");
-  const [area, setArea] = useState(areasEditaveis[0]?.id ?? "");
+  // Em branco de propósito. Com a primeira área pré-selecionada, quem não olhava o campo
+  // cadastrava na vertical errada sem perceber — aconteceu com 40 atividades de uma vez.
+  const [area, setArea] = useState("");
   const [status, setStatus] = useState("backlog");
   const [prioridade, setPrioridade] = useState("media");
   const [prazo, setPrazo] = useState("");
@@ -1805,12 +1862,8 @@ export function NovaAtividade({
         <Input placeholder="O que precisa ser feito" value={titulo} onChange={setTitulo} />
       </Field>
 
-      <Field label="Área" required>
-        <Select
-          options={areasEditaveis.map((a) => ({ value: a.id, label: a.label }))}
-          value={area}
-          onChange={setArea}
-        />
+      <Field label="Área" required hint="Escolha antes de salvar — não há vertical pré-selecionada.">
+        <Select options={opcoesArea(areasEditaveis)} value={area} onChange={setArea} />
       </Field>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
@@ -1927,7 +1980,8 @@ export function FormOportunidade({
   const editando = !!inicial;
   const [conta, setConta] = useState(inicial?.conta ?? "");
   const [escopo, setEscopo] = useState(inicial?.escopo ?? "");
-  const [area, setArea] = useState(inicial?.area ?? areasEditaveis[0]?.id ?? "");
+  // Na edição vem a área do registro; na criação, em branco — ver NovaAtividade.
+  const [area, setArea] = useState(inicial?.area ?? "");
   const [estagio, setEstagio] = useState(inicial?.estagio ?? "lead");
   const [valor, setValor] = useState(inicial ? String(inicial.valorCentavos / 100) : "");
   const [proximo, setProximo] = useState(inicial?.proximoPasso ?? "");
@@ -1975,12 +2029,8 @@ export function FormOportunidade({
       </Field>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-        <Field label="Área" required>
-          <Select
-            options={opcoesArea(areasEditaveis, inicial?.area)}
-            value={area}
-            onChange={setArea}
-          />
+        <Field label="Área" required hint={editando ? undefined : "Escolha antes de salvar."}>
+          <Select options={opcoesArea(areasEditaveis, inicial?.area)} value={area} onChange={setArea} />
         </Field>
         <Field label="Estágio">
           <Select

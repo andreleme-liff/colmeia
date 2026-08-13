@@ -467,8 +467,11 @@ try {
   }
 
   console.log("\n8. TENTATIVA RECUSADA NÃO SUJA O LOG\n");
+  // Conta só o que ESTA rodada escreveu. Antes exigia zero registros na entidade desde
+  // sempre, o que é verdade só num banco que ninguém usou: bastou eu mover essa atividade
+  // uma vez pela interface para a asserção falhar sem nada estar quebrado.
   const suja = await sql`
-    SELECT COUNT(*)::int AS c FROM audit_log WHERE entidade = ${aTax.ref}
+    SELECT COUNT(*)::int AS c FROM audit_log WHERE entidade = ${aTax.ref} AND id > ${logAntes}
   `;
   checa(`a escrita que Marina levou 403 não gerou registro`, suja[0].c === 0, `${suja[0].c} registros`);
 
