@@ -21,20 +21,27 @@ import {
   Overview,
   WaModal,
   type CadSet,
-  type CargaArea,
-  type Kpi,
+  type PainelDados,
 } from "./views";
 import { C, GHOST_FIX, avatarStyle, eyebrow, markTone, useTheme, writeTheme, type Theme } from "./tokens";
 import CoresDasAreas from "./CoresDasAreas";
 import ImportarPlanilha from "./ImportarPlanilha";
 import SeletorArea from "./SeletorArea";
-import { api, type Activity, type State } from "./api";
+import { api, type State } from "./api";
 import {
   NAV, STAGES, STATUS, TITLES, areaOf, brl, ddmm, setAreas, stageLabel, statusLabel, todasAreas,
 } from "@/lib/domain";
 import { caminhoDe, type Rota } from "@/lib/rotas";
 
 const DIAS_CRITICO = 7;
+
+/** Dias inteiros entre hoje e o prazo. Negativo = atrasado, 0 = hoje. */
+function diasAtePrazo(prazo: string): number {
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const alvo = new Date(prazo + "T00:00:00");
+  return Math.round((alvo.getTime() - hoje.getTime()) / 86_400_000);
+}
 
 /**
  * A partir de quantos dias sem mexer uma oportunidade entra no resumo como parada. Mais
@@ -206,13 +213,6 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     [carregar]
   );
 
-  const critico = useCallback((a: Activity) => {
-    if (a.status === "concluido" || !a.prazo) return false;
-    const limite = new Date();
-    limite.setDate(limite.getDate() + DIAS_CRITICO);
-    return new Date(a.prazo + "T00:00:00") <= limite;
-  }, []);
-
   // ---------- recortes ----------
   /**
    * Um link para um card fora do filtro salvo abriria o drawer sobre um quadro onde o card
@@ -235,49 +235,118 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     const oportunidades = noEscopo(estado.deals);
     const logs = estado.logs.filter((l) => areaEfetiva === "all" || l.area === areaEfetiva);
     const areasVisiveis = todasAreas().filter((a) => estado.areasVisiveis.includes(a.id));
-    const atrasadas = atividades.filter(critico);
-
-    const kpis: Kpi[] = [
-      {
-        label: "ATIVIDADES ABERTAS",
-        value: atividades.filter((a) => a.status !== "concluido").length,
-        hint: "no seu escopo",
-        color: C.ink,
-      },
-      {
-        label: "EM ANDAMENTO",
-        value: atividades.filter((a) => a.status === "andamento").length,
-        hint: "execução ativa",
-        color: C.info,
-      },
-      {
-        label: "PIPELINE",
-        value: brl(oportunidades.filter((d) => d.estagio !== "ganho").reduce((s, d) => s + d.valorCentavos, 0)),
-        hint: oportunidades.length + " oportunidades",
-        color: C.accent,
-      },
-      {
-        label: "PRAZO CRÍTICO",
-        value: atrasadas.length,
-        hint: `vencendo em ${DIAS_CRITICO} dias`,
-        color: atrasadas.length ? C.error : C.success,
-      },
-    ];
-
-    const maxCarga = Math.max(
-      1,
-      ...areasVisiveis.map((a) => estado.activities.filter((x) => x.area === a.id).length)
-    );
-    const carga: CargaArea[] = areasVisiveis.map((a) => {
-      const lista = estado.activities.filter((x) => x.area === a.id);
-      const feitas = lista.filter((x) => x.status === "concluido").length;
-      return {
-        label: a.label,
-        color: a.color,
-        meta: `${lista.length} ativ. · ${feitas} concluídas`,
-        pct: Math.round((lista.length / maxCarga) * 100) + "%",
-      };
+    /**
+     * Painel inicial, no desenho novo. Tudo deriva do que já vem em `/api/state` — nenhuma
+     * consulta nova: o recorte por permissão já aconteceu no servidor.
+     */
+    const me = estado.me;
+    const abertas = atividades.filter((a) => a.status !== "concluido");
+    const minhas = abertas.filter((a) => a.responsavelId === me.id);
+    const comPrazo = abertas.filter((a) => a.prazo);
+    const hoje = comPrazo.filter((a) => diasAtePrazo(a.prazo!) === 0);
+    const proximos7 = comPrazo.filter((a) => {
+      const d = diasAtePrazo(a.prazo!);
+      return d > 0 && d <= DIAS_CRITICO;
     });
+    const emAtraso = comPrazo.filter((a) => diasAtePrazo(a.prazo!) < 0);
+    const emAberto = oportunidades.filter((d) => d.estagio !== "ganho");
+    const ganhas = oportunidades.filter((d) => d.estagio === "ganho");
+    const somaAberto = emAberto.reduce((s, d) => s + d.valorCentavos, 0);
+    const somaGanho = ganhas.reduce((s, d) => s + d.valorCentavos, 0);
+
+    const painel: PainelDados = {
+      escopoFrase:
+        `${me.nome.split(" ")[0]}, você vê ${areasVisiveis.length} de ${estado.areas.length} ` +
+        `área(s) — ${atividades.length} atividades e ${oportunidades.length} oportunidades.`,
+      // O sufixo "(ver)" marca onde a pessoa só lê. É a informação que evita descobrir a
+      // falta de permissão só na hora de tentar salvar.
+      escopoAreas: areasVisiveis
+        .map((a) => a.short + (estado.perms[a.id] === "edit" || estado.isAdmin ? "" : " (ver)"))
+        .join(" · "),
+
+      hero: [
+        {
+          label: "ABERTAS NO ESCOPO",
+          valor: String(abertas.length),
+          hint: `${atividades.length - abertas.length} concluídas no período`,
+          cor: C.ink,
+        },
+        {
+          label: "MINHA RESPONSABILIDADE",
+          valor: String(minhas.length),
+          hint: `${minhas.filter((a) => a.prioridade === "alta").length} de prioridade alta`,
+          cor: C.accent,
+        },
+        {
+          label: `HOJE / ${DIAS_CRITICO} DIAS`,
+          valor: `${hoje.length} / ${proximos7.length}`,
+          hint: emAtraso.length ? `${emAtraso.length} em atraso` : "nada em atraso",
+          cor: hoje.length || emAtraso.length ? C.error : C.success,
+        },
+        {
+          label: "PIPELINE ABERTO",
+          valor: brl(somaAberto),
+          hint: `${emAberto.length} oportunidades · ${brl(somaGanho)} ganhos`,
+          cor: C.ink,
+        },
+      ],
+
+      // Atrasadas primeiro, depois por proximidade do prazo. Seis linhas: o painel responde
+      // "o que exige atenção agora", e uma lista longa deixaria de responder isso.
+      foco: comPrazo
+        .filter((a) => diasAtePrazo(a.prazo!) <= DIAS_CRITICO)
+        .sort((a, b) => diasAtePrazo(a.prazo!) - diasAtePrazo(b.prazo!))
+        .slice(0, 6)
+        .map((a) => {
+          const d = diasAtePrazo(a.prazo!);
+          return {
+            ref: a.ref,
+            titulo: a.titulo,
+            tag: d < 0 ? "atraso" : d === 0 ? "hoje" : `D+${d}`,
+            tagCor: d <= 0 ? C.error : C.warning,
+            areaLabel: areaOf(a.area).label,
+            responsavel: a.responsavel,
+            statusLabel: statusLabel(a.status),
+            prazo: ddmm(a.prazo),
+          };
+        }),
+      focoMeta: comPrazo.some((a) => diasAtePrazo(a.prazo!) <= DIAS_CRITICO)
+        ? "CLIQUE PARA ABRIR"
+        : `NADA NOS PRÓXIMOS ${DIAS_CRITICO} DIAS`,
+
+      comercial: [
+        { label: "TOTAL EM JOGO", valor: brl(somaAberto + somaGanho), cor: C.ink },
+        {
+          label: "TICKET MÉDIO",
+          valor: brl(emAberto.length ? Math.round(somaAberto / emAberto.length) : 0),
+          cor: C.dust,
+        },
+        {
+          label: "FASE FINAL",
+          valor: brl(
+            oportunidades.filter((d) => d.estagio === "negociacao").reduce((s, d) => s + d.valorCentavos, 0)
+          ),
+          cor: C.warning,
+        },
+        { label: "GANHO", valor: brl(somaGanho), cor: C.success },
+      ],
+
+      topDeals: [...oportunidades]
+        .sort((a, b) => b.valorCentavos - a.valorCentavos)
+        .slice(0, 5)
+        .map((d) => ({
+          ref: d.ref,
+          conta: d.conta,
+          cor: areaOf(d.area).color,
+          estagio: stageLabel(d.estagio),
+          responsavel: d.responsavelTexto || d.responsavel,
+          proximo: resumirPasso(d.proximoPasso, 40),
+          valor: brl(d.valorCentavos),
+          podeAbrir: d.podeEditar,
+        })),
+
+      logs: logs.slice(0, 8),
+    };
 
     const colunasDeal = STAGES.map((s) => {
       const cards = oportunidades.filter((d) => d.estagio === s.key);
@@ -295,8 +364,8 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
       cards: atividades.filter((a) => a.status === s.key),
     }));
 
-    return { atividades, oportunidades, logs, areasVisiveis, kpis, carga, colunasDeal, colunasBoard };
-  }, [estado, areaEfetiva, critico]);
+    return { atividades, oportunidades, logs, areasVisiveis, painel, colunasDeal, colunasBoard };
+  }, [estado, areaEfetiva]);
 
   // ---------- cadastros ----------
   const cadSet: CadSet | null = useMemo(() => {
@@ -477,7 +546,13 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     // Rede de segurança: o menu já esconde estas telas de quem não é admin, mas um estado
     // antigo não pode virar uma tela vazia sem explicação.
     if (SO_ADMIN.includes(view) && !estado.isAdmin) {
-      return <Overview kpis={dados.kpis} carga={dados.carga} logs={dados.logs.slice(0, 6)} />;
+      return <Overview
+          dados={dados.painel}
+          onAbrirAtividade={(ref) => navegar({ view: "operacoes", ref })}
+          onAbrirDeal={(ref) => navegar({ view: "comercial", ref })}
+          onVerPipeline={() => navegar({ view: "comercial" })}
+          onVerAuditoria={() => navegar({ view: "auditoria" })}
+        />;
     }
     switch (view) {
       case "comercial":
@@ -552,7 +627,13 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
       case "auditoria":
         return <Auditoria logs={dados.logs} />;
       default:
-        return <Overview kpis={dados.kpis} carga={dados.carga} logs={dados.logs.slice(0, 6)} />;
+        return <Overview
+          dados={dados.painel}
+          onAbrirAtividade={(ref) => navegar({ view: "operacoes", ref })}
+          onAbrirDeal={(ref) => navegar({ view: "comercial", ref })}
+          onVerPipeline={() => navegar({ view: "comercial" })}
+          onVerAuditoria={() => navegar({ view: "auditoria" })}
+        />;
     }
   };
 

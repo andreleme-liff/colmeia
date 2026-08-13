@@ -159,6 +159,15 @@ body { background: var(--liff-canvas); color: var(--liff-text); }
 .liff-menu-botao,
 .liff-menu-fundo { display: none; }
 
+/* ---------- painel inicial ----------
+   A quarta coluna dos números é mais larga: é a do dinheiro, e o valor não quebra
+   (`white-space: nowrap` no componente). As linhas das listas são grids próprios em vez de
+   tabela — o desenho é documental, sem célula nem borda vertical. */
+.liff-hero { grid-template-columns: repeat(3, 1fr) 1.25fr; }
+.liff-painel-linha { grid-template-columns: 64px 1fr 190px 110px; }
+.liff-painel-deal { grid-template-columns: 1fr 150px 130px 100px; }
+.liff-painel-log { grid-template-columns: 86px 140px 1fr; }
+
 /* ---------- grades das seções ---------- */
 .liff-kpis { grid-template-columns: repeat(4, 1fr); }
 .liff-overview-split { grid-template-columns: 1.35fr 1fr; }
@@ -222,6 +231,8 @@ textarea::placeholder {
 /* ---------- responsivo ---------- */
 @media (max-width: 1100px) {
   .liff-kpis { grid-template-columns: repeat(2, 1fr); }
+  /* Quatro números de 60px não cabem lado a lado; em dois pares continuam legíveis. */
+  .liff-hero { grid-template-columns: repeat(2, 1fr); gap: 32px; }
   .liff-overview-split,
   .liff-cad-split { grid-template-columns: 1fr; }
   .liff-admin-cards { grid-template-columns: 1fr; }
@@ -273,6 +284,22 @@ textarea::placeholder {
   .liff-area-chips > * { flex: 1 1 auto; justify-content: center; }
 }
 
+@media (max-width: 860px) {
+  /* As linhas do painel viram bloco: título em cima, metadados empilhados embaixo. Uma grade
+     de quatro colunas em 375px espremeria cada uma até virar coluna de uma letra. */
+  .liff-painel-linha,
+  .liff-painel-deal,
+  .liff-painel-log {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .liff-painel-linha > *:last-child,
+  .liff-painel-deal > *:last-child {
+    text-align: left !important;
+  }
+}
+
 @media (max-width: 560px) {
   .liff-kpis { grid-template-columns: 1fr; }
+  .liff-hero { grid-template-columns: 1fr; gap: 28px; }
 }

@@ -17,77 +17,182 @@ import {
 /* =========================================================
    Visão geral
    ========================================================= */
-export type Kpi = { label: string; value: string | number; hint: string; color: string };
-export type CargaArea = { label: string; color: string; meta: string; pct: string };
 
-export function Overview({ kpis, carga, logs }: { kpis: Kpi[]; carga: CargaArea[]; logs: LogEntry[] }) {
+export type HeroNumero = { label: string; valor: string; hint: string; cor: string };
+export type LinhaPrazo = {
+  ref: string;
+  titulo: string;
+  tag: string;
+  tagCor: string;
+  areaLabel: string;
+  responsavel: string;
+  statusLabel: string;
+  prazo: string;
+};
+export type MetricaComercial = { label: string; valor: string; cor: string };
+export type LinhaTopDeal = {
+  ref: string;
+  conta: string;
+  cor: string;
+  estagio: string;
+  responsavel: string;
+  proximo: string;
+  valor: string;
+  podeAbrir: boolean;
+};
+export type PainelDados = {
+  escopoFrase: string;
+  escopoAreas: string;
+  hero: HeroNumero[];
+  foco: LinhaPrazo[];
+  focoMeta: string;
+  comercial: MetricaComercial[];
+  topDeals: LinhaTopDeal[];
+  logs: LogEntry[];
+};
+
+/** Título de seção com um link à direita. Repetido três vezes no painel. */
+function CabecalhoSecao({ titulo, meta, acao }: { titulo: string; meta?: string; acao?: { texto: string; onClick: () => void } }) {
   return (
-    <>
-      <div className="liff-kpis" style={mesh({ display: "grid", gap: 1, marginBottom: 28 })}>
-        {kpis.map((k) => (
-          <div key={k.label} style={{ background: C.cell, padding: "22px 20px" }}>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 16, marginBottom: 24 }}>
+      <div style={eyebrow(11, C.dust)}>{titulo}</div>
+      {meta && <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint, textAlign: "right" }}>{meta}</span>}
+      {acao && (
+        <span
+          role="button"
+          onClick={acao.onClick}
+          style={{ ...eyebrow(10, C.accent, "0.12em"), cursor: "pointer", whiteSpace: "nowrap" }}
+        >
+          {acao.texto}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Painel inicial. O desenho é documental de propósito: seções separadas por fio, sem card,
+ * sem sombra, sem canto arredondado — a hierarquia vem do tamanho do número e do espaço.
+ *
+ * As cores vêm dos tokens e não dos HEX do handoff: o desenho é só escuro, e o sistema tem
+ * os dois temas. Cada HEX do documento tem um alias equivalente aqui.
+ */
+export function Overview({
+  dados,
+  onAbrirAtividade,
+  onAbrirDeal,
+  onVerPipeline,
+  onVerAuditoria,
+}: {
+  dados: PainelDados;
+  onAbrirAtividade: (ref: string) => void;
+  onAbrirDeal: (ref: string) => void;
+  onVerPipeline: () => void;
+  onVerAuditoria: () => void;
+}) {
+  return (
+    <div style={{ maxWidth: 1180 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap", paddingBottom: 34 }}>
+        <span style={{ fontSize: 15, color: C.dust }}>{dados.escopoFrase}</span>
+        <span style={eyebrow(11, C.faint, "0.1em")}>{dados.escopoAreas}</span>
+      </div>
+
+      {/* `nowrap` no número: valores longos quebravam a coluna, e a forma curta do dinheiro
+          existe justamente para caber aqui. */}
+      <div className="liff-hero" style={{ display: "grid", gap: 40, paddingBottom: 44, borderBottom: `1px solid ${C.line}` }}>
+        {dados.hero.map((k) => (
+          <div key={k.label}>
             <div style={eyebrow(10, C.faint)}>{k.label}</div>
             <div
               style={{
-                fontSize: 38,
+                fontSize: 60,
                 fontWeight: 800,
-                letterSpacing: "-0.035em",
-                color: k.color,
-                lineHeight: 1.1,
-                marginTop: 8,
+                letterSpacing: "-0.04em",
+                color: k.cor,
+                lineHeight: 0.98,
+                marginTop: 10,
+                whiteSpace: "nowrap",
               }}
             >
-              {k.value}
+              {k.valor}
             </div>
-            <div style={{ fontSize: 13, color: C.faint }}>{k.hint}</div>
+            <div style={{ fontSize: 14, lineHeight: 1.55, color: C.faint, marginTop: 8 }}>{k.hint}</div>
           </div>
         ))}
       </div>
 
-      <div className="liff-overview-split" style={mesh({ display: "grid", gap: 1 })}>
-        <section style={{ background: C.cell, padding: 24 }}>
-          <div style={{ ...eyebrow(11, C.dust), marginBottom: 20 }}>CARGA POR ÁREA</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {carga.map((a) => (
-              <div key={a.label}>
-                <div
-                  style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: C.body, marginBottom: 7 }}
-                >
-                  <span style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                    <span style={{ ...dot(a.color), width: 8, height: 8 }} />
-                    {a.label}
-                  </span>
-                  <span style={{ fontFamily: MONO, fontSize: 12, color: C.faint }}>{a.meta}</span>
-                </div>
-                <div style={{ height: 6, background: C.canvas, border: `1px solid ${C.line}` }}>
-                  <div style={{ height: "100%", width: a.pct, background: a.color }} />
-                </div>
-              </div>
-            ))}
+      <section style={{ padding: "40px 0", borderBottom: `1px solid ${C.line}` }}>
+        <CabecalhoSecao titulo="FOCO DA SEMANA" meta={dados.focoMeta} />
+        {dados.foco.map((d) => (
+          <div
+            key={d.ref}
+            className="liff-hover-row liff-painel-linha"
+            onClick={() => onAbrirAtividade(d.ref)}
+            title="Abrir a atividade"
+            style={{ display: "grid", gap: 20, alignItems: "center", padding: "14px 0", borderTop: `1px solid ${C.panel2}`, cursor: "pointer" }}
+          >
+            <span style={{ fontFamily: MONO, fontSize: 12, color: d.tagCor }}>{d.tag}</span>
+            <span style={{ fontSize: 15, color: C.ink, lineHeight: 1.4 }}>{d.titulo}</span>
+            <span style={{ fontSize: 13, color: C.faint }}>
+              {d.areaLabel} · {d.responsavel}
+            </span>
+            <span style={{ ...eyebrow(11, C.faint, "0.08em"), textAlign: "right" }}>
+              {d.statusLabel} · {d.prazo}
+            </span>
           </div>
-        </section>
+        ))}
+      </section>
 
-        <section style={{ background: C.cell, padding: 24 }}>
-          <div style={{ ...eyebrow(11, C.dust), marginBottom: 20 }}>ÚLTIMAS ALTERAÇÕES</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {logs.length === 0 && <div style={{ fontSize: 13, color: C.faint }}>Nada registrado ainda.</div>}
-            {logs.map((l) => (
-              <div key={l.id} style={{ display: "flex", gap: 12 }}>
-                <div style={{ fontFamily: MONO, fontSize: 11, color: C.ghost, whiteSpace: "nowrap", paddingTop: 2 }}>
-                  {stamp(l.criadoEm)}
-                </div>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 13, color: C.body, lineHeight: 1.5 }}>{l.texto}</div>
-                  <div style={{ ...eyebrow(10, C.faint, "0.1em"), marginTop: 3 }}>
-                    {l.autor} · {l.area ? areaOf(l.area).label : "sistema"}
-                  </div>
-                </div>
+      <section style={{ padding: "40px 0", borderBottom: `1px solid ${C.line}` }}>
+        <CabecalhoSecao titulo="COMERCIAL" acao={{ texto: "ver pipeline →", onClick: onVerPipeline }} />
+        <div style={{ display: "flex", gap: 56, flexWrap: "wrap", marginBottom: 30 }}>
+          {dados.comercial.map((c) => (
+            <div key={c.label}>
+              <div style={eyebrow(10, C.faint, "0.14em")}>{c.label}</div>
+              <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.035em", color: c.cor, lineHeight: 1.1, marginTop: 6 }}>
+                {c.valor}
               </div>
-            ))}
+            </div>
+          ))}
+        </div>
+        {dados.topDeals.map((d) => (
+          <div
+            key={d.ref}
+            className={d.podeAbrir ? "liff-hover-row liff-painel-deal" : "liff-painel-deal"}
+            onClick={() => d.podeAbrir && onAbrirDeal(d.ref)}
+            title={d.podeAbrir ? "Abrir a oportunidade" : "Somente leitura nesta área"}
+            style={{ display: "grid", gap: 20, alignItems: "center", padding: "14px 0", borderTop: `1px solid ${C.panel2}`, cursor: d.podeAbrir ? "pointer" : "default" }}
+          >
+            <span style={{ display: "flex", alignItems: "center", gap: 11, fontSize: 15, color: C.ink, minWidth: 0 }}>
+              <span style={{ width: 8, height: 8, borderRadius: 2, background: d.cor, flex: "none" }} />
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.conta}</span>
+            </span>
+            <span style={eyebrow(11, C.dust, "0.08em")}>{d.estagio}</span>
+            <span style={{ fontSize: 13, color: C.faint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {d.responsavel}
+              {d.proximo && ` · ${d.proximo}`}
+            </span>
+            <span style={{ fontFamily: MONO, fontSize: 14, color: C.accent, textAlign: "right" }}>{d.valor}</span>
           </div>
-        </section>
-      </div>
-    </>
+        ))}
+      </section>
+
+      <section style={{ padding: "40px 0 12px" }}>
+        <CabecalhoSecao titulo="ALTERAÇÕES RECENTES" acao={{ texto: "auditoria completa →", onClick: onVerAuditoria }} />
+        {dados.logs.length === 0 && <div style={{ fontSize: 14, color: C.faint }}>Nada registrado ainda.</div>}
+        {dados.logs.map((l) => (
+          <div
+            key={l.id}
+            className="liff-painel-log"
+            style={{ display: "grid", gap: 20, alignItems: "baseline", padding: "13px 0", borderTop: `1px solid ${C.panel2}` }}
+          >
+            <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>{stamp(l.criadoEm)}</span>
+            <span style={{ fontSize: 14, color: C.dust }}>{l.autor}</span>
+            <span style={{ fontSize: 14, color: C.ink, lineHeight: 1.5 }}>{l.texto}</span>
+          </div>
+        ))}
+      </section>
+    </div>
   );
 }
 
