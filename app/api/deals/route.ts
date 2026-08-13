@@ -5,7 +5,7 @@ import { getDb } from "@/lib/db";
 import { requireCtx } from "@/lib/perms";
 import { json, err } from "@/lib/http";
 import { registrar } from "@/lib/log";
-import { STAGE_KEYS, brl, stageLabel } from "@/lib/domain";
+import { STAGE_KEYS, brlExato, stageLabel } from "@/lib/domain";
 
 type Body = {
   conta?: string;
@@ -88,7 +88,7 @@ export async function POST(req: Request) {
     campo: "criacao",
     de: null,
     para: stageLabel(estagio),
-    texto: `Criou a oportunidade ${conta} (${brl(valorCentavos)}) em ${ctx.labelArea(area)}`,
+    texto: `Criou a oportunidade ${conta} (${brlExato(valorCentavos)}) em ${ctx.labelArea(area)}`,
   });
 
   return json({ ok: true, id: nova.id, ref }, 201);

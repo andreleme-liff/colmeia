@@ -177,9 +177,35 @@ export function stageLabel(k: string): string {
   return STAGES.find((s) => s.key === k)?.label ?? k;
 }
 
-/** Valores monetários trafegam em centavos; a UI mostra em milhares de reais. */
+/** Uma casa decimal só quando ela diz alguma coisa: "1,5k" sim, "420,0k" não. */
+function compacto(n: number): string {
+  const arredondado = Math.round(n * 10) / 10;
+  return Number.isInteger(arredondado)
+    ? String(arredondado)
+    : arredondado.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
+
+/**
+ * Valor para leitura rápida — cabe no card e no total da coluna.
+ *
+ * A escala muda com a grandeza em vez de ser sempre em milhares. Fixo em "k", tudo abaixo de
+ * R$ 500 arredondava para zero: uma oportunidade salva com R$ 200 voltava do banco correta e
+ * aparecia no card como "R$ 0k", como se não valesse nada.
+ *
+ * Continua sendo aproximação acima de mil — para o valor exato existe `brlExato`, que é o que
+ * a auditoria usa.
+ */
 export function brl(centavos: number): string {
-  return "R$ " + Math.round(centavos / 100 / 1000) + "k";
+  const reais = centavos / 100;
+  const grandeza = Math.abs(reais);
+  if (grandeza < 1000) return "R$ " + Math.round(reais).toLocaleString("pt-BR");
+  if (grandeza < 1_000_000) return "R$ " + compacto(reais / 1000) + "k";
+  return "R$ " + compacto(reais / 1_000_000) + "M";
+}
+
+/** Valor exato, com centavos. Histórico de dinheiro não arredonda. */
+export function brlExato(centavos: number): string {
+  return (centavos / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
 /** Prazo em dd/MM, que é como o quadro sempre mostrou. */

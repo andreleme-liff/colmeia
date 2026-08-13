@@ -12,7 +12,7 @@ import { getDb } from "@/lib/db";
 import { requireCtx } from "@/lib/perms";
 import { json, err } from "@/lib/http";
 import { registrar } from "@/lib/log";
-import { STAGES, STAGE_KEYS, brl, stageLabel } from "@/lib/domain";
+import { STAGES, STAGE_KEYS, brlExato, stageLabel } from "@/lib/domain";
 
 type Body = {
   direcao?: number;
@@ -64,7 +64,7 @@ export async function DELETE(_req: Request, ctxRoute: RouteContext<"/api/deals/[
     campo: "exclusao",
     de: alvo.conta,
     para: null,
-    texto: `Excluiu a oportunidade ${alvo.conta} (${brl(Number(alvo.valor_centavos))})`,
+    texto: `Excluiu a oportunidade ${alvo.conta} (${brlExato(Number(alvo.valor_centavos))})`,
   });
 
   return json({ ok: true });
@@ -192,9 +192,9 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/deals/[id
     if (centavos !== Number(atual.valor_centavos)) {
       mudancas.push({
         campo: "valor",
-        de: brl(Number(atual.valor_centavos)),
-        para: brl(centavos),
-        texto: `Alterou o valor de ${atual.conta} de ${brl(Number(atual.valor_centavos))} para ${brl(centavos)}`,
+        de: brlExato(Number(atual.valor_centavos)),
+        para: brlExato(centavos),
+        texto: `Alterou o valor de ${atual.conta} de ${brlExato(Number(atual.valor_centavos))} para ${brlExato(centavos)}`,
       });
       await sql`UPDATE deals SET valor_centavos = ${centavos}, atualizado_em = now() WHERE id = ${dealId}`;
     }

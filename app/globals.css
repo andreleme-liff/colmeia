@@ -25,6 +25,16 @@
      (Charcoal), no claro precisa se separar dela para continuar legível. */
   --liff-app-ghost: var(--liff-charcoal);
 
+  /* Placeholder: um passo abaixo do cinza apagado, misturado com a própria
+     superfície. Derivado de tokens que os dois temas redefinem, então recalcula
+     sozinho no claro e no escuro — não precisa de par no bloco de baixo.
+
+     A proporção é medida, não estética: 78% dá 3,47:1 sobre a superfície, contra
+     17,2:1 do texto real. Distingue exemplo de conteúdo por um fator de cinco e
+     ainda fica acima de 3:1, o piso abaixo do qual quem enxerga pouco perde os
+     exemplos de vez. Mais claro que isto e o campo fica limpo demais para ajudar. */
+  --liff-app-placeholder: color-mix(in srgb, var(--liff-text-faint) 78%, var(--liff-surface));
+
   /* Cores de estado como TEXTO. No escuro são as do design system. */
   --liff-app-success-ink: var(--liff-success);
   --liff-app-warning-ink: var(--liff-warning);
@@ -143,6 +153,12 @@ body { background: var(--liff-canvas); color: var(--liff-text); }
 }
 .liff-main { flex: 1; overflow: auto; padding: 28px; }
 
+/* Botão e fundo da gaveta: só existem abaixo de 860px, onde a lateral sai do fluxo.
+   O `display: none` aqui não é só estética — segura o fundo escuro caso a janela seja
+   alargada com o menu aberto. */
+.liff-menu-botao,
+.liff-menu-fundo { display: none; }
+
 /* ---------- grades das seções ---------- */
 .liff-kpis { grid-template-columns: repeat(4, 1fr); }
 .liff-overview-split { grid-template-columns: 1.35fr 1fr; }
@@ -183,8 +199,19 @@ body { background: var(--liff-canvas); color: var(--liff-text); }
 :root[data-theme="light"] label { color: var(--liff-text-muted) !important; }
 /* Caret do Select — irmão do <select> dentro do wrapper do componente. */
 :root[data-theme="light"] select ~ span { color: var(--liff-text-faint) !important; }
-/* O placeholder também vem do kit e some no claro. */
-:root[data-theme="light"] input::placeholder { color: var(--liff-text-faint) !important; }
+/* ---------- placeholder ----------
+   Placeholder é exemplo, não conteúdo. A regra do tema claro acima fixa a cor do texto no
+   elemento, e o placeholder herda dela quando nada mais o alcança — era o que fazia um
+   formulário vazio parecer preenchido, sobretudo nos textarea, que a regra antiga (só
+   `input`) nunca cobriu.
+
+   Vale nos dois temas. `opacity: 1` explícito porque o Firefox aplica 0.54 por conta
+   própria, o que empilharia duas atenuações sobre uma cor que já é a mais fraca da escala. */
+input::placeholder,
+textarea::placeholder {
+  color: var(--liff-app-placeholder) !important;
+  opacity: 1;
+}
 
 /* ---------- hover: só troca de cor, sem transformações ---------- */
 .liff-hover-cell:hover,
@@ -208,8 +235,36 @@ body { background: var(--liff-canvas); color: var(--liff-text); }
   /* O display encolhe, mas o tracking nunca passa de -0.04em. */
   .liff-login__pitch h1 { font-size: clamp(30px, 8.6vw, 52px) !important; }
 
-  .liff-shell { grid-template-columns: 1fr; grid-template-rows: auto 1fr; height: auto; min-height: 100vh; }
-  .liff-aside { padding: 22px 0; }
+  /* A lateral vira gaveta. Antes ela virava um bloco de largura inteira no topo: navegação,
+     seletor de tema, usuário e o botão de sair, tudo empilhado ANTES do conteúdo — no
+     celular era preciso rolar a tela inteira para chegar no que importa.
+
+     Fora do fluxo, o grid fica com um item só; daí `grid-template-rows: 1fr`. */
+  .liff-shell { grid-template-columns: 1fr; grid-template-rows: 1fr; height: auto; min-height: 100vh; }
+  .liff-aside {
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    width: min(280px, 82vw);
+    padding: 22px 0;
+    z-index: 60;
+    border-right: 1px solid var(--liff-border);
+    transform: translateX(-100%);
+    transition: transform 160ms ease;
+  }
+  .liff-shell[data-menu="aberto"] .liff-aside { transform: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .liff-aside { transition: none; }
+  }
+
+  .liff-menu-botao { display: inline-flex; }
+  .liff-menu-fundo {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 59;
+    background: rgba(14, 16, 20, 0.72);
+  }
+
   .liff-header { padding: 16px 20px; }
   .liff-main { padding: 20px; }
 

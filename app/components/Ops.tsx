@@ -50,6 +50,8 @@ export default function Ops() {
   const [criando, setCriando] = useState<null | "atividade" | "oportunidade">(null);
   const [editandoDeal, setEditandoDeal] = useState<number | null>(null);
   const [importando, setImportando] = useState(false);
+  /** Gaveta da navegação. Só tem efeito abaixo de 860px — no desktop a lateral é fixa. */
+  const [menuAberto, setMenuAberto] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [erroForm, setErroForm] = useState<string | null>(null);
   /** Confirmação de operação concluída. Separado do erro: sucesso não pode ser vermelho. */
@@ -86,6 +88,17 @@ export default function Ops() {
       vivo = false;
     };
   }, []);
+
+  // Esc fecha a gaveta — comportamento esperado de qualquer sobreposição, e o que salva
+  // quem está numa janela estreita no desktop, onde o toque fora não é o gesto natural.
+  useEffect(() => {
+    if (!menuAberto) return;
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuAberto(false);
+    };
+    window.addEventListener("keydown", aoTeclar);
+    return () => window.removeEventListener("keydown", aoTeclar);
+  }, [menuAberto]);
 
   /** Executa uma escrita e recarrega; erro vira aviso no topo, sem perder a tela. */
   const acao = useCallback(
@@ -427,8 +440,14 @@ export default function Ops() {
   };
 
   return (
-    <div className="liff-shell">
+    <div className="liff-shell" data-menu={menuAberto ? "aberto" : "fechado"}>
       <CoresDasAreas areas={estado.areas} />
+
+      {/* Fundo da gaveta: fecha ao tocar fora, que é o gesto esperado no celular. */}
+      {menuAberto && (
+        <div className="liff-menu-fundo" onClick={() => setMenuAberto(false)} aria-hidden="true" />
+      )}
+
       {/* ---- barra lateral ---- */}
       <aside className="liff-aside">
         <div style={{ padding: "0 22px 26px" }}>
@@ -443,7 +462,11 @@ export default function Ops() {
               <div
                 key={n.key}
                 className="liff-nav-item"
-                onClick={() => setView(n.key)}
+                onClick={() => {
+                  setView(n.key);
+                  // Escolher um item é a razão de a gaveta existir; ela se fecha sozinha.
+                  setMenuAberto(false);
+                }}
                 style={{
                   padding: "11px 22px",
                   cursor: "pointer",
@@ -497,6 +520,32 @@ export default function Ops() {
       {/* ---- conteúdo ---- */}
       <div style={{ background: C.canvas, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <header className="liff-header">
+          <button
+            type="button"
+            className="liff-menu-botao"
+            onClick={() => setMenuAberto((v) => !v)}
+            aria-label={menuAberto ? "Fechar navegação" : "Abrir navegação"}
+            aria-expanded={menuAberto}
+            style={{
+              flexDirection: "column",
+              justifyContent: "center",
+              gap: 4,
+              width: 38,
+              height: 38,
+              padding: 0,
+              flexShrink: 0,
+              background: "transparent",
+              border: `1px solid ${C.line}`,
+              cursor: "pointer",
+            }}
+          >
+            {/* Três barras desenhadas, não um glifo: a fonte mono não tem um traço de menu
+                que fique alinhado, e assim a espessura acompanha a hairline do sistema. */}
+            {[0, 1, 2].map((i) => (
+              <span key={i} style={{ display: "block", width: 16, height: 1, background: C.ink }} />
+            ))}
+          </button>
+
           <div style={{ minWidth: 200 }}>
             <div style={eyebrow(10, C.faint)}>
               {`LIFF/ ${view === "overview" ? "PAINEL" : view.toUpperCase()} · ${rotuloArea.toUpperCase()}`}
