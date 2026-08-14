@@ -16,6 +16,7 @@ type Body = {
   area?: string;
   situacao?: string;
   proximoPasso?: string;
+  produtoId?: string | null;
 };
 
 export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/activities/[id]">) {
@@ -38,11 +39,11 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/activitie
     {
       id: number; ref: string; titulo: string; area: string; status: string;
       prioridade: string; responsavel_user_id: number | null; responsavel: string | null;
-      situacao: string; proximo_passo: string;
+      situacao: string; proximo_passo: string; produto_id: string | null;
     }[]
   >`
     SELECT a.id, a.ref, a.titulo, a.area, a.status, a.prioridade, a.responsavel_user_id,
-           a.situacao, a.proximo_passo, u.nome AS responsavel
+           a.situacao, a.proximo_passo, a.produto_id, u.nome AS responsavel
     FROM activities a LEFT JOIN users u ON u.id = a.responsavel_user_id
     WHERE a.id = ${activityId}
   `;
@@ -152,9 +153,52 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/activitie
     `;
   }
 
-  // A área pode ter acabado de mudar; a auditoria fica na de destino, senão o registro da
-  // própria mudança sumiria para quem enxerga a área nova.
   const areaFinal = mudancas.find((m) => m.campo === "area")?.para ?? atual.area;
+
+  /**
+   * Produto e área andam juntos: o produto pertence a uma vertical. Duas situações,
+   * resolvidas na mesma passagem porque uma requisição pode trazer as duas.
+   *
+   *  · Produto informado — tem de existir na área FINAL, que pode ter mudado agora mesmo.
+   *  · Produto NÃO informado, mas a área mudou — o produto que estava lá pode ter ficado
+   *    órfão. Nesse caso ele cai, com registro. Sem isto o card ficaria classificado com um
+   *    produto de outra vertical, que nenhuma tela ofereceria de volta.
+   */
+  if (body.produtoId !== undefined) {
+    let novo: string | null = null;
+    if (body.produtoId) {
+      const prod = await sql<{ id: string }[]>`
+        SELECT id FROM produtos WHERE id = ${body.produtoId} AND area = ${areaFinal}
+      `;
+      if (!prod.length) return err("Produto inválido para esta área.", 400);
+      novo = prod[0].id;
+    }
+    if (novo !== atual.produto_id) {
+      mudancas.push({
+        campo: "produto",
+        de: atual.produto_id ?? "—",
+        para: novo ?? "—",
+        texto: `Alterou o produto de "${atual.titulo}"`,
+      });
+      await sql`UPDATE activities SET produto_id = ${novo}, atualizado_em = now() WHERE id = ${activityId}`;
+    }
+  } else if (areaFinal !== atual.area && atual.produto_id) {
+    const aindaVale = await sql<{ id: string }[]>`
+      SELECT id FROM produtos WHERE id = ${atual.produto_id} AND area = ${areaFinal}
+    `;
+    if (!aindaVale.length) {
+      mudancas.push({
+        campo: "produto",
+        de: atual.produto_id,
+        para: "—",
+        texto: `Removeu o produto de "${atual.titulo}" — não pertence a ${ctx.labelArea(areaFinal)}`,
+      });
+      await sql`UPDATE activities SET produto_id = NULL, atualizado_em = now() WHERE id = ${activityId}`;
+    }
+  }
+
+  // A auditoria fica na área de destino, senão o registro da própria mudança sumiria para
+  // quem enxerga a área nova.
   for (const m of mudancas) {
     await registrar(sql, {
       actorUserId: ctx.user.userId,

@@ -14,6 +14,8 @@ export type Activity = {
   /** Onde a atividade está agora. O que já foi vive no audit_log. */
   situacao: string;
   proximoPasso: string;
+  /** Produto classificado, da mesma vertical da atividade. */
+  produtoId: string | null;
   podeEditar: boolean;
 };
 
@@ -117,6 +119,7 @@ export type NovaAtividade = {
   responsavelId: number | null;
   situacao: string;
   proximoPasso: string;
+  produtoId: string | null;
 };
 
 export type NovaOportunidade = {
@@ -174,6 +177,7 @@ export const api = {
       area?: string;
       situacao?: string;
       proximoPasso?: string;
+      produtoId?: string | null;
     }
   ) => req<{ ok: boolean }>(`/api/activities/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
 

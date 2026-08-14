@@ -254,6 +254,24 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/deals/[id
       texto: `Alterou o produto de ${atual.conta}`,
     });
     await sql`UPDATE deals SET produto_id = ${novo}, atualizado_em = now() WHERE id = ${dealId}`;
+  } else if (atual.produto_id) {
+    // Mudar SÓ a área deixava o produto da vertical antiga preso ao card: nenhuma tela
+    // oferecia aquele produto de volta, e a classificação virava mentira silenciosa.
+    const areaFinal = mudancas.find((m) => m.campo === "area")?.para ?? atual.area;
+    if (areaFinal !== atual.area) {
+      const aindaVale = await sql<{ id: string }[]>`
+        SELECT id FROM produtos WHERE id = ${atual.produto_id} AND area = ${areaFinal}
+      `;
+      if (!aindaVale.length) {
+        mudancas.push({
+          campo: "produto",
+          de: atual.produto_id,
+          para: "—",
+          texto: `Removeu o produto de ${atual.conta} — não pertence a ${ctx.labelArea(areaFinal)}`,
+        });
+        await sql`UPDATE deals SET produto_id = NULL, atualizado_em = now() WHERE id = ${dealId}`;
+      }
+    }
   }
 
   if (body.pausado !== undefined && body.pausado !== atual.pausado) {

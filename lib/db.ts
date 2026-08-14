@@ -123,8 +123,8 @@ async function migrate(): Promise<void> {
     }
 
     // Produto é o que se vende dentro de uma vertical — "Regtrack Farma" dentro de
-    // Regulatório. Fica só em oportunidades por enquanto: as planilhas que motivaram a
-    // entidade são comerciais, e ligá-la a atividades depois é acrescentar uma coluna.
+    // Regulatório. Vale para oportunidade E para atividade: o mesmo produto classifica a
+    // venda e o trabalho de implantação que vem depois dela.
     await sql`
       CREATE TABLE IF NOT EXISTS produtos (
         id     TEXT PRIMARY KEY,
@@ -181,6 +181,7 @@ async function migrate(): Promise<void> {
       prioridade          TEXT NOT NULL DEFAULT 'media' CHECK (prioridade IN (${inList(PRIORIDADES)})),
       situacao            TEXT NOT NULL DEFAULT '',
       proximo_passo       TEXT NOT NULL DEFAULT '',
+      produto_id          TEXT REFERENCES produtos(id) ON DELETE SET NULL,
       criado_em           TIMESTAMPTZ NOT NULL DEFAULT now(),
       atualizado_em       TIMESTAMPTZ
     )
@@ -275,6 +276,20 @@ async function migrate(): Promise<void> {
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS preferencias JSONB NOT NULL DEFAULT '{}'::jsonb`;
     await sql`ALTER TABLE activities ADD COLUMN IF NOT EXISTS situacao TEXT NOT NULL DEFAULT ''`;
     await sql`ALTER TABLE activities ADD COLUMN IF NOT EXISTS proximo_passo TEXT NOT NULL DEFAULT ''`;
+    // Produto deixa de ser só de oportunidade: "Regtrack Farma" classifica tanto a venda
+    // quanto o trabalho de implantação. ON DELETE SET NULL como em deals — perder a
+    // classificação é recuperável, perder a atividade não seria.
+    await sql.unsafe(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns WHERE table_name='activities' AND column_name='produto_id'
+        ) THEN
+          ALTER TABLE activities ADD COLUMN produto_id TEXT REFERENCES produtos(id) ON DELETE SET NULL;
+        END IF;
+      END $$;
+    `);
+    await sql`CREATE INDEX IF NOT EXISTS idx_activities_produto ON activities(produto_id)`;
     await sql.unsafe(`
       DO $$
       BEGIN

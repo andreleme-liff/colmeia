@@ -17,6 +17,7 @@ type Body = {
   responsavelId?: number | null;
   situacao?: string;
   proximoPasso?: string;
+  produtoId?: string | null;
 };
 
 const DATA_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -54,6 +55,17 @@ export async function POST(req: Request) {
 
   const sql = await getDb();
 
+  // Produto pertence a uma vertical; aceitar um de outra área criaria uma classificação que
+  // a tela de cadastros nunca mostraria junto.
+  let produtoId: string | null = null;
+  if (body.produtoId) {
+    const prod = await sql<{ id: string }[]>`
+      SELECT id FROM produtos WHERE id = ${body.produtoId} AND area = ${area}
+    `;
+    if (!prod.length) return err("Produto inválido para esta área.", 400);
+    produtoId = prod[0].id;
+  }
+
   let responsavelId: number | null = null;
   if (body.responsavelId != null) {
     const alvo = await sql<{ id: number }[]>`SELECT id FROM users WHERE id = ${body.responsavelId}`;
@@ -70,9 +82,9 @@ export async function POST(req: Request) {
     -- vocabulário do sistema. Era um rótulo escolhido na criação que ninguém podia
     -- corrigir depois e que não governava nada.
     INSERT INTO activities (ref, titulo, area, status, responsavel_user_id, prazo, prioridade,
-                            situacao, proximo_passo)
+                            situacao, proximo_passo, produto_id)
     VALUES (${ref}, ${titulo}, ${area}, ${status}, ${responsavelId}, ${prazo}, ${prioridade},
-            ${situacao}, ${proximoPasso})
+            ${situacao}, ${proximoPasso}, ${produtoId})
     RETURNING id
   `;
 

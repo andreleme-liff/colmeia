@@ -23,7 +23,7 @@ import {
   type CadSet,
   type PainelDados,
 } from "./views";
-import { C, GHOST_FIX, avatarStyle, eyebrow, markTone, useTheme, writeTheme, type Theme } from "./tokens";
+import { C, GHOST_FIX, avatarStyle, eyebrow, markTone, statusColor, useTheme, writeTheme, type Theme } from "./tokens";
 import CoresDasAreas from "./CoresDasAreas";
 import ImportarPlanilha from "./ImportarPlanilha";
 import SeletorArea from "./SeletorArea";
@@ -314,6 +314,51 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         ? "CLIQUE PARA ABRIR"
         : `NADA NOS PRÓXIMOS ${DIAS_CRITICO} DIAS`,
 
+      atividades: STATUS.map((s) => ({
+        label: s.label.toUpperCase(),
+        valor: String(atividades.filter((a) => a.status === s.key).length),
+        cor: statusColor(s.key),
+      })),
+
+      /**
+       * O que está em execução AGORA — andamento e revisão. Exclui o que já apareceu em
+       * FOCO DA SEMANA, que é a lista de prazo: repetir a mesma linha em duas seções
+       * gastaria espaço sem acrescentar nada.
+       *
+       * Alta prioridade primeiro; dentro do mesmo nível, quem tem prazo mais próximo.
+       */
+      emExecucao: (() => {
+        const jaNoFoco = new Set(
+          atividades
+            .filter((a) => a.prazo && diasAtePrazo(a.prazo) <= DIAS_CRITICO && a.status !== "concluido")
+            .sort((x, y) => diasAtePrazo(x.prazo!) - diasAtePrazo(y.prazo!))
+            .slice(0, 6)
+            .map((a) => a.ref)
+        );
+        const peso = (p: string) => (p === "alta" ? 0 : p === "media" ? 1 : 2);
+        return atividades
+          .filter((a) => (a.status === "andamento" || a.status === "revisao") && !jaNoFoco.has(a.ref))
+          .sort(
+            (x, y) =>
+              peso(x.prioridade) - peso(y.prioridade) ||
+              (x.prazo ? diasAtePrazo(x.prazo) : 9999) - (y.prazo ? diasAtePrazo(y.prazo) : 9999)
+          )
+          .slice(0, 6)
+          .map((a) => ({
+            ref: a.ref,
+            titulo: a.titulo,
+            areaLabel: areaOf(a.area).label,
+            produtoLabel: a.produtoId
+              ? (estado.produtos.find((p) => p.id === a.produtoId)?.label ?? null)
+              : null,
+            responsavel: a.responsavel,
+            statusLabel: statusLabel(a.status),
+            statusCor: statusColor(a.status),
+            prioridade: a.prioridade,
+          }));
+      })(),
+      execucaoMeta: "EM EXECUÇÃO · CLIQUE PARA ABRIR",
+
       comercial: [
         { label: "TOTAL EM JOGO", valor: brl(somaAberto + somaGanho), cor: C.ink },
         {
@@ -551,6 +596,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           onAbrirAtividade={(ref) => navegar({ view: "operacoes", ref })}
           onAbrirDeal={(ref) => navegar({ view: "comercial", ref })}
           onVerPipeline={() => navegar({ view: "comercial" })}
+          onVerQuadro={() => navegar({ view: "operacoes" })}
           onVerAuditoria={() => navegar({ view: "auditoria" })}
         />;
     }
@@ -575,6 +621,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         return (
           <Operacoes
             colunas={dados.colunasBoard}
+            produtos={estado.produtos}
             onSoltar={(id, status) => void acao(() => api.alterarAtividade(id, { status }))}
             onAbrir={(id) => {
               const a = estado.activities.find((x) => x.id === id);
@@ -632,6 +679,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           onAbrirAtividade={(ref) => navegar({ view: "operacoes", ref })}
           onAbrirDeal={(ref) => navegar({ view: "comercial", ref })}
           onVerPipeline={() => navegar({ view: "comercial" })}
+          onVerQuadro={() => navegar({ view: "operacoes" })}
           onVerAuditoria={() => navegar({ view: "auditoria" })}
         />;
     }
@@ -880,6 +928,8 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           onPrioridade={(p) => void acao(() => api.alterarAtividade(selecionadaObj.id, { prioridade: p }))}
           onSituacao={(v) => void acao(() => api.alterarAtividade(selecionadaObj.id, { situacao: v }))}
           onProximo={(v) => void acao(() => api.alterarAtividade(selecionadaObj.id, { proximoPasso: v }))}
+          onProduto={(id) => void acao(() => api.alterarAtividade(selecionadaObj.id, { produtoId: id }))}
+          produtos={estado.produtos}
         />
       )}
 
@@ -887,6 +937,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         <NovaAtividade
           areasEditaveis={areasEditaveis}
           pessoas={pessoasAtivas}
+          produtos={estado.produtos}
           salvando={salvando}
           erro={erroForm}
           onFechar={() => setCriando(null)}

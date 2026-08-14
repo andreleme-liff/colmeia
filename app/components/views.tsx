@@ -30,6 +30,16 @@ export type LinhaPrazo = {
   prazo: string;
 };
 export type MetricaComercial = { label: string; valor: string; cor: string };
+export type LinhaAtiva = {
+  ref: string;
+  titulo: string;
+  areaLabel: string;
+  produtoLabel: string | null;
+  responsavel: string;
+  statusLabel: string;
+  statusCor: string;
+  prioridade: string;
+};
 export type LinhaTopDeal = {
   ref: string;
   conta: string;
@@ -46,6 +56,9 @@ export type PainelDados = {
   hero: HeroNumero[];
   foco: LinhaPrazo[];
   focoMeta: string;
+  atividades: MetricaComercial[];
+  emExecucao: LinhaAtiva[];
+  execucaoMeta: string;
   comercial: MetricaComercial[];
   topDeals: LinhaTopDeal[];
   logs: LogEntry[];
@@ -82,12 +95,14 @@ export function Overview({
   onAbrirAtividade,
   onAbrirDeal,
   onVerPipeline,
+  onVerQuadro,
   onVerAuditoria,
 }: {
   dados: PainelDados;
   onAbrirAtividade: (ref: string) => void;
   onAbrirDeal: (ref: string) => void;
   onVerPipeline: () => void;
+  onVerQuadro: () => void;
   onVerAuditoria: () => void;
 }) {
   return (
@@ -139,6 +154,41 @@ export function Overview({
             <span style={{ ...eyebrow(11, C.faint, "0.08em"), textAlign: "right" }}>
               {d.statusLabel} · {d.prazo}
             </span>
+          </div>
+        ))}
+      </section>
+
+      {/* A seção de prazos só enxerga atividade COM data. As importadas de planilha não têm
+          nenhuma, e sem esta seção elas não apareceriam no painel em lugar algum. */}
+      <section style={{ padding: "40px 0", borderBottom: `1px solid ${C.line}` }}>
+        <CabecalhoSecao titulo="ATIVIDADES" acao={{ texto: "ver quadro →", onClick: onVerQuadro }} />
+        <div style={{ display: "flex", gap: 56, flexWrap: "wrap", marginBottom: 30 }}>
+          {dados.atividades.map((c) => (
+            <div key={c.label}>
+              <div style={eyebrow(10, C.faint, "0.14em")}>{c.label}</div>
+              <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.035em", color: c.cor, lineHeight: 1.1, marginTop: 6 }}>
+                {c.valor}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ ...eyebrow(10, C.faint, "0.12em"), marginBottom: 4 }}>{dados.execucaoMeta}</div>
+        {dados.emExecucao.map((a) => (
+          <div
+            key={a.ref}
+            className="liff-hover-row liff-painel-linha"
+            onClick={() => onAbrirAtividade(a.ref)}
+            title="Abrir a atividade"
+            style={{ display: "grid", gap: 20, alignItems: "center", padding: "14px 0", borderTop: `1px solid ${C.panel2}`, cursor: "pointer" }}
+          >
+            <span style={{ fontFamily: MONO, fontSize: 12, color: a.prioridade === "alta" ? C.error : C.faint }}>
+              {a.prioridade}
+            </span>
+            <span style={{ fontSize: 15, color: C.ink, lineHeight: 1.4 }}>{a.titulo}</span>
+            <span style={{ fontSize: 13, color: C.faint }}>
+              {a.produtoLabel ?? a.areaLabel} · {a.responsavel}
+            </span>
+            <span style={{ ...eyebrow(11, a.statusCor, "0.08em"), textAlign: "right" }}>{a.statusLabel}</span>
           </div>
         ))}
       </section>
@@ -360,10 +410,12 @@ export type ColunaBoard = { key: string; label: string; cards: Activity[] };
 
 export function Operacoes({
   colunas,
+  produtos,
   onSoltar,
   onAbrir,
 }: {
   colunas: ColunaBoard[];
+  produtos: { id: string; label: string }[];
   onSoltar: (id: number, status: string) => void;
   onAbrir: (id: number) => void;
 }) {
@@ -438,6 +490,14 @@ export function Operacoes({
                   <div style={{ fontSize: 14, color: C.ink, lineHeight: 1.4, marginTop: 9, fontWeight: 600 }}>
                     {c.titulo}
                   </div>
+
+                  {/* Produto abaixo do título, como no card do Comercial. A cor continua
+                      sendo a da área, para não haver duas dimensões cromáticas competindo. */}
+                  {c.produtoId && (
+                    <div style={{ ...eyebrow(9, C.dust, "0.12em"), marginTop: 6 }}>
+                      {produtos.find((p) => p.id === c.produtoId)?.label ?? c.produtoId}
+                    </div>
+                  )}
 
                   {/* Cortada em três linhas, como no card do Comercial: o card responde "onde
                       isto está" de relance; o texto inteiro fica no drawer. */}
@@ -1568,6 +1628,8 @@ export function Drawer({
   onTitulo,
   onSituacao,
   onProximo,
+  onProduto,
+  produtos,
 }: {
   act: Activity;
   pessoas: Pessoa[];
@@ -1581,6 +1643,8 @@ export function Drawer({
   onTitulo: (t: string) => void;
   onSituacao: (v: string) => void;
   onProximo: (v: string) => void;
+  onProduto: (id: string | null) => void;
+  produtos: { id: string; label: string; area: string; ativo: boolean }[];
 }) {
   const a = areaOf(act.area);
   const editavel = act.podeEditar;
@@ -1658,6 +1722,27 @@ export function Drawer({
                   {x.label}
                 </option>
               ))}
+            </select>
+          </div>
+
+          <div>
+            <div style={{ ...eyebrow(10, C.faint), marginBottom: 9 }}>PRODUTO</div>
+            <select
+              value={act.produtoId ?? ""}
+              onChange={(e) => onProduto(e.target.value || null)}
+              disabled={!editavel}
+              style={nativeSelectStyle}
+            >
+              <option value="">—</option>
+              {/* O produto atual entra mesmo se estiver arquivado: o campo tem de mostrar o
+                  que o registro realmente é, não só o que ainda se pode escolher. */}
+              {produtos
+                .filter((p) => p.area === act.area && (p.ativo || p.id === act.produtoId))
+                .map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
             </select>
           </div>
 
@@ -1917,6 +2002,7 @@ export type OpcaoPessoa = { id: number; nome: string };
 export function NovaAtividade({
   areasEditaveis,
   pessoas,
+  produtos,
   salvando,
   erro,
   onSalvar,
@@ -1924,6 +2010,7 @@ export function NovaAtividade({
 }: {
   areasEditaveis: { id: string; label: string }[];
   pessoas: OpcaoPessoa[];
+  produtos: { id: string; label: string; area: string; ativo: boolean }[];
   salvando: boolean;
   erro: string | null;
   onSalvar: (d: {
@@ -1935,6 +2022,7 @@ export function NovaAtividade({
     responsavelId: number | null;
     situacao: string;
     proximoPasso: string;
+    produtoId: string | null;
   }) => void;
   onFechar: () => void;
 }) {
@@ -1948,6 +2036,10 @@ export function NovaAtividade({
   const [responsavel, setResponsavel] = useState<string>("");
   const [situacao, setSituacao] = useState("");
   const [proximo, setProximo] = useState("");
+  const [produtoId, setProdutoId] = useState("");
+
+  // Produto pertence a uma vertical; trocar a área invalida a escolha anterior.
+  const produtosDaArea = produtos.filter((p) => p.area === area && p.ativo);
 
   const enviar = () =>
     onSalvar({
@@ -1959,6 +2051,7 @@ export function NovaAtividade({
       responsavelId: responsavel ? Number(responsavel) : null,
       situacao,
       proximoPasso: proximo,
+      produtoId: produtoId || null,
     });
 
   return (
@@ -1968,7 +2061,33 @@ export function NovaAtividade({
       </Field>
 
       <Field label="Área" required hint="Escolha antes de salvar — não há vertical pré-selecionada.">
-        <Select options={opcoesArea(areasEditaveis)} value={area} onChange={setArea} />
+        <Select
+          options={opcoesArea(areasEditaveis)}
+          value={area}
+          onChange={(v) => {
+            setArea(v);
+            // O produto da área anterior não existe na nova; deixá-lo no estado faria o
+            // servidor recusar o salvamento com um erro que não explica a causa.
+            setProdutoId("");
+          }}
+        />
+      </Field>
+
+      <Field
+        label="Produto"
+        hint={
+          !area
+            ? "Escolha a vertical primeiro."
+            : produtosDaArea.length
+              ? "O que está sendo implantado. Opcional."
+              : "Nenhum produto cadastrado nesta vertical — cadastre em Cadastros → produtos."
+        }
+      >
+        <Select
+          options={[{ value: "", label: "—" }, ...produtosDaArea.map((p) => ({ value: p.id, label: p.label }))]}
+          value={produtoId}
+          onChange={setProdutoId}
+        />
       </Field>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
@@ -2135,7 +2254,16 @@ export function FormOportunidade({
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         <Field label="Área" required hint={editando ? undefined : "Escolha antes de salvar."}>
-          <Select options={opcoesArea(areasEditaveis, inicial?.area)} value={area} onChange={setArea} />
+          <Select
+            options={opcoesArea(areasEditaveis, inicial?.area)}
+            value={area}
+            onChange={(v) => {
+              setArea(v);
+              // Mesma razão do formulário de atividade: o produto pertence à vertical
+              // anterior e o servidor recusaria o salvamento sem explicar a causa.
+              setProdutoId("");
+            }}
+          />
         </Field>
         <Field label="Estágio">
           <Select

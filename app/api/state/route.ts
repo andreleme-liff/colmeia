@@ -19,6 +19,7 @@ export type ActivityDTO = {
   responsavel: string;
   situacao: string;
   proximoPasso: string;
+  produtoId: string | null;
   podeEditar: boolean;
 };
 
@@ -70,11 +71,11 @@ export async function GET() {
       {
         id: number; ref: string; titulo: string; area: string; status: string;
         prioridade: string; prazo: Date | null; responsavel_user_id: number | null; responsavel: string | null;
-        situacao: string; proximo_passo: string;
+        situacao: string; proximo_passo: string; produto_id: string | null;
       }[]
     >`
       SELECT a.id, a.ref, a.titulo, a.area, a.status, a.prioridade, a.prazo,
-             a.responsavel_user_id, a.situacao, a.proximo_passo, u.nome AS responsavel
+             a.responsavel_user_id, a.situacao, a.proximo_passo, a.produto_id, u.nome AS responsavel
       FROM activities a
       LEFT JOIN users u ON u.id = a.responsavel_user_id
       WHERE a.area = ANY(${areas})
@@ -184,6 +185,7 @@ export async function GET() {
       responsavel: a.responsavel ?? "—",
       situacao: a.situacao,
       proximoPasso: a.proximo_passo,
+      produtoId: a.produto_id,
       podeEditar: ctx.podeEditar(a.area),
     })),
     deals: oportunidades.map((d) => ({
