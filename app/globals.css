@@ -164,7 +164,9 @@ body { background: var(--liff-canvas); color: var(--liff-text); }
    (`white-space: nowrap` no componente). As linhas das listas são grids próprios em vez de
    tabela — o desenho é documental, sem célula nem borda vertical. */
 .liff-hero { grid-template-columns: repeat(3, 1fr) 1.25fr; }
-.liff-painel-linha { grid-template-columns: 64px 1fr 190px 110px; }
+/* 78px e não 64: o sinal mais longo é "parada 31d", do foco comercial. Em 64 ele quebrava
+   em duas linhas contra um título de uma — desalinhava a régua da lista inteira. */
+.liff-painel-linha { grid-template-columns: 78px 1fr 190px 110px; }
 .liff-painel-deal { grid-template-columns: 1fr 150px 130px 100px; }
 .liff-painel-log { grid-template-columns: 86px 140px 1fr; }
 

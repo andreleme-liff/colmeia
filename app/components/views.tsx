@@ -19,48 +19,33 @@ import {
    ========================================================= */
 
 export type HeroNumero = { label: string; valor: string; hint: string; cor: string };
-export type LinhaPrazo = {
+/**
+ * Linha de foco. A mesma forma serve para atividade e para oportunidade: as duas listas
+ * respondem a mesma pergunta — o que merece atenção esta semana — e ficarem paralelas é o
+ * que deixa o painel legível de cima a baixo.
+ */
+export type LinhaFoco = {
   ref: string;
+  /** Por que está aqui: "atraso", "hoje", "D+3", "parada 23d", "alta". */
+  sinal: string;
+  sinalCor: string;
   titulo: string;
-  tag: string;
-  tagCor: string;
-  areaLabel: string;
-  responsavel: string;
-  statusLabel: string;
-  prazo: string;
-};
-export type MetricaComercial = { label: string; valor: string; cor: string };
-export type LinhaAtiva = {
-  ref: string;
-  titulo: string;
-  areaLabel: string;
-  produtoLabel: string | null;
-  responsavel: string;
-  statusLabel: string;
-  statusCor: string;
-  prioridade: string;
-};
-export type LinhaTopDeal = {
-  ref: string;
-  conta: string;
-  cor: string;
-  estagio: string;
-  responsavel: string;
-  proximo: string;
-  valor: string;
+  /** Quadradinho da vertical, à esquerda do título. Só no comercial. */
+  cor?: string;
+  contexto: string;
+  meta: string;
+  metaCor: string;
   podeAbrir: boolean;
 };
+export type MetricaComercial = { label: string; valor: string; cor: string };
 export type PainelDados = {
   escopoFrase: string;
   escopoAreas: string;
   hero: HeroNumero[];
-  foco: LinhaPrazo[];
-  focoMeta: string;
-  atividades: MetricaComercial[];
-  emExecucao: LinhaAtiva[];
-  execucaoMeta: string;
   comercial: MetricaComercial[];
-  topDeals: LinhaTopDeal[];
+  focoComercial: LinhaFoco[];
+  atividades: MetricaComercial[];
+  focoAtividades: LinhaFoco[];
   logs: LogEntry[];
 };
 
@@ -80,6 +65,69 @@ function CabecalhoSecao({ titulo, meta, acao }: { titulo: string; meta?: string;
         </span>
       )}
     </div>
+  );
+}
+
+/** Faixa de métricas de uma seção. Idêntica no comercial e nas atividades. */
+function FaixaMetricas({ itens }: { itens: MetricaComercial[] }) {
+  return (
+    <div style={{ display: "flex", gap: 56, flexWrap: "wrap", marginBottom: 30 }}>
+      {itens.map((c) => (
+        <div key={c.label}>
+          <div style={eyebrow(10, C.faint, "0.14em")}>{c.label}</div>
+          <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.035em", color: c.cor, lineHeight: 1.1, marginTop: 6 }}>
+            {c.valor}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Foco da semana de uma seção. A primeira coluna diz POR QUE a linha está ali — atraso,
+ * prazo, parada, prioridade —, que é a informação que a lista existe para dar.
+ */
+function ListaFoco({
+  linhas,
+  vazio,
+  onAbrir,
+}: {
+  linhas: LinhaFoco[];
+  vazio: string;
+  onAbrir: (ref: string) => void;
+}) {
+  return (
+    <>
+      <div style={{ ...eyebrow(10, C.faint, "0.12em"), marginBottom: 4 }}>FOCO DA SEMANA · CLIQUE PARA ABRIR</div>
+      {linhas.length === 0 && <div style={{ fontSize: 14, color: C.faint, paddingTop: 14 }}>{vazio}</div>}
+      {linhas.map((l) => (
+        <div
+          key={l.ref}
+          className={l.podeAbrir ? "liff-hover-row liff-painel-linha" : "liff-painel-linha"}
+          onClick={() => l.podeAbrir && onAbrir(l.ref)}
+          title={l.podeAbrir ? "Abrir" : "Somente leitura nesta área"}
+          style={{
+            display: "grid",
+            gap: 20,
+            alignItems: "center",
+            padding: "14px 0",
+            borderTop: `1px solid ${C.panel2}`,
+            cursor: l.podeAbrir ? "pointer" : "default",
+          }}
+        >
+          <span style={{ fontFamily: MONO, fontSize: 12, color: l.sinalCor }}>{l.sinal}</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 11, fontSize: 15, color: C.ink, lineHeight: 1.4, minWidth: 0 }}>
+            {l.cor && <span style={{ width: 8, height: 8, borderRadius: 2, background: l.cor, flex: "none" }} />}
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.titulo}</span>
+          </span>
+          <span style={{ fontSize: 13, color: C.faint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {l.contexto}
+          </span>
+          <span style={{ ...eyebrow(11, l.metaCor, "0.08em"), textAlign: "right" }}>{l.meta}</span>
+        </div>
+      ))}
+    </>
   );
 }
 
@@ -136,95 +184,26 @@ export function Overview({
         ))}
       </div>
 
-      <section style={{ padding: "40px 0", borderBottom: `1px solid ${C.line}` }}>
-        <CabecalhoSecao titulo="FOCO DA SEMANA" meta={dados.focoMeta} />
-        {dados.foco.map((d) => (
-          <div
-            key={d.ref}
-            className="liff-hover-row liff-painel-linha"
-            onClick={() => onAbrirAtividade(d.ref)}
-            title="Abrir a atividade"
-            style={{ display: "grid", gap: 20, alignItems: "center", padding: "14px 0", borderTop: `1px solid ${C.panel2}`, cursor: "pointer" }}
-          >
-            <span style={{ fontFamily: MONO, fontSize: 12, color: d.tagCor }}>{d.tag}</span>
-            <span style={{ fontSize: 15, color: C.ink, lineHeight: 1.4 }}>{d.titulo}</span>
-            <span style={{ fontSize: 13, color: C.faint }}>
-              {d.areaLabel} · {d.responsavel}
-            </span>
-            <span style={{ ...eyebrow(11, C.faint, "0.08em"), textAlign: "right" }}>
-              {d.statusLabel} · {d.prazo}
-            </span>
-          </div>
-        ))}
-      </section>
-
-      {/* A seção de prazos só enxerga atividade COM data. As importadas de planilha não têm
-          nenhuma, e sem esta seção elas não apareceriam no painel em lugar algum. */}
-      <section style={{ padding: "40px 0", borderBottom: `1px solid ${C.line}` }}>
-        <CabecalhoSecao titulo="ATIVIDADES" acao={{ texto: "ver quadro →", onClick: onVerQuadro }} />
-        <div style={{ display: "flex", gap: 56, flexWrap: "wrap", marginBottom: 30 }}>
-          {dados.atividades.map((c) => (
-            <div key={c.label}>
-              <div style={eyebrow(10, C.faint, "0.14em")}>{c.label}</div>
-              <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.035em", color: c.cor, lineHeight: 1.1, marginTop: 6 }}>
-                {c.valor}
-              </div>
-            </div>
-          ))}
-        </div>
-        <div style={{ ...eyebrow(10, C.faint, "0.12em"), marginBottom: 4 }}>{dados.execucaoMeta}</div>
-        {dados.emExecucao.map((a) => (
-          <div
-            key={a.ref}
-            className="liff-hover-row liff-painel-linha"
-            onClick={() => onAbrirAtividade(a.ref)}
-            title="Abrir a atividade"
-            style={{ display: "grid", gap: 20, alignItems: "center", padding: "14px 0", borderTop: `1px solid ${C.panel2}`, cursor: "pointer" }}
-          >
-            <span style={{ fontFamily: MONO, fontSize: 12, color: a.prioridade === "alta" ? C.error : C.faint }}>
-              {a.prioridade}
-            </span>
-            <span style={{ fontSize: 15, color: C.ink, lineHeight: 1.4 }}>{a.titulo}</span>
-            <span style={{ fontSize: 13, color: C.faint }}>
-              {a.produtoLabel ?? a.areaLabel} · {a.responsavel}
-            </span>
-            <span style={{ ...eyebrow(11, a.statusCor, "0.08em"), textAlign: "right" }}>{a.statusLabel}</span>
-          </div>
-        ))}
-      </section>
-
+      {/* Comercial antes de atividades: a pergunta "como está a receita" vem antes de "o que
+          estou executando" para quem abre o sistema de manhã. */}
       <section style={{ padding: "40px 0", borderBottom: `1px solid ${C.line}` }}>
         <CabecalhoSecao titulo="COMERCIAL" acao={{ texto: "ver pipeline →", onClick: onVerPipeline }} />
-        <div style={{ display: "flex", gap: 56, flexWrap: "wrap", marginBottom: 30 }}>
-          {dados.comercial.map((c) => (
-            <div key={c.label}>
-              <div style={eyebrow(10, C.faint, "0.14em")}>{c.label}</div>
-              <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.035em", color: c.cor, lineHeight: 1.1, marginTop: 6 }}>
-                {c.valor}
-              </div>
-            </div>
-          ))}
-        </div>
-        {dados.topDeals.map((d) => (
-          <div
-            key={d.ref}
-            className={d.podeAbrir ? "liff-hover-row liff-painel-deal" : "liff-painel-deal"}
-            onClick={() => d.podeAbrir && onAbrirDeal(d.ref)}
-            title={d.podeAbrir ? "Abrir a oportunidade" : "Somente leitura nesta área"}
-            style={{ display: "grid", gap: 20, alignItems: "center", padding: "14px 0", borderTop: `1px solid ${C.panel2}`, cursor: d.podeAbrir ? "pointer" : "default" }}
-          >
-            <span style={{ display: "flex", alignItems: "center", gap: 11, fontSize: 15, color: C.ink, minWidth: 0 }}>
-              <span style={{ width: 8, height: 8, borderRadius: 2, background: d.cor, flex: "none" }} />
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.conta}</span>
-            </span>
-            <span style={eyebrow(11, C.dust, "0.08em")}>{d.estagio}</span>
-            <span style={{ fontSize: 13, color: C.faint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {d.responsavel}
-              {d.proximo && ` · ${d.proximo}`}
-            </span>
-            <span style={{ fontFamily: MONO, fontSize: 14, color: C.accent, textAlign: "right" }}>{d.valor}</span>
-          </div>
-        ))}
+        <FaixaMetricas itens={dados.comercial} />
+        <ListaFoco
+          linhas={dados.focoComercial}
+          vazio="Nada exigindo atenção no pipeline esta semana."
+          onAbrir={onAbrirDeal}
+        />
+      </section>
+
+      <section style={{ padding: "40px 0", borderBottom: `1px solid ${C.line}` }}>
+        <CabecalhoSecao titulo="ATIVIDADES" acao={{ texto: "ver quadro →", onClick: onVerQuadro }} />
+        <FaixaMetricas itens={dados.atividades} />
+        <ListaFoco
+          linhas={dados.focoAtividades}
+          vazio="Nenhuma atividade em atraso, com prazo próximo ou em execução."
+          onAbrir={onAbrirAtividade}
+        />
       </section>
 
       <section style={{ padding: "40px 0 12px" }}>

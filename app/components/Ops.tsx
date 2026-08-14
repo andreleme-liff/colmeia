@@ -293,72 +293,6 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
 
       // Atrasadas primeiro, depois por proximidade do prazo. Seis linhas: o painel responde
       // "o que exige atenção agora", e uma lista longa deixaria de responder isso.
-      foco: comPrazo
-        .filter((a) => diasAtePrazo(a.prazo!) <= DIAS_CRITICO)
-        .sort((a, b) => diasAtePrazo(a.prazo!) - diasAtePrazo(b.prazo!))
-        .slice(0, 6)
-        .map((a) => {
-          const d = diasAtePrazo(a.prazo!);
-          return {
-            ref: a.ref,
-            titulo: a.titulo,
-            tag: d < 0 ? "atraso" : d === 0 ? "hoje" : `D+${d}`,
-            tagCor: d <= 0 ? C.error : C.warning,
-            areaLabel: areaOf(a.area).label,
-            responsavel: a.responsavel,
-            statusLabel: statusLabel(a.status),
-            prazo: ddmm(a.prazo),
-          };
-        }),
-      focoMeta: comPrazo.some((a) => diasAtePrazo(a.prazo!) <= DIAS_CRITICO)
-        ? "CLIQUE PARA ABRIR"
-        : `NADA NOS PRÓXIMOS ${DIAS_CRITICO} DIAS`,
-
-      atividades: STATUS.map((s) => ({
-        label: s.label.toUpperCase(),
-        valor: String(atividades.filter((a) => a.status === s.key).length),
-        cor: statusColor(s.key),
-      })),
-
-      /**
-       * O que está em execução AGORA — andamento e revisão. Exclui o que já apareceu em
-       * FOCO DA SEMANA, que é a lista de prazo: repetir a mesma linha em duas seções
-       * gastaria espaço sem acrescentar nada.
-       *
-       * Alta prioridade primeiro; dentro do mesmo nível, quem tem prazo mais próximo.
-       */
-      emExecucao: (() => {
-        const jaNoFoco = new Set(
-          atividades
-            .filter((a) => a.prazo && diasAtePrazo(a.prazo) <= DIAS_CRITICO && a.status !== "concluido")
-            .sort((x, y) => diasAtePrazo(x.prazo!) - diasAtePrazo(y.prazo!))
-            .slice(0, 6)
-            .map((a) => a.ref)
-        );
-        const peso = (p: string) => (p === "alta" ? 0 : p === "media" ? 1 : 2);
-        return atividades
-          .filter((a) => (a.status === "andamento" || a.status === "revisao") && !jaNoFoco.has(a.ref))
-          .sort(
-            (x, y) =>
-              peso(x.prioridade) - peso(y.prioridade) ||
-              (x.prazo ? diasAtePrazo(x.prazo) : 9999) - (y.prazo ? diasAtePrazo(y.prazo) : 9999)
-          )
-          .slice(0, 6)
-          .map((a) => ({
-            ref: a.ref,
-            titulo: a.titulo,
-            areaLabel: areaOf(a.area).label,
-            produtoLabel: a.produtoId
-              ? (estado.produtos.find((p) => p.id === a.produtoId)?.label ?? null)
-              : null,
-            responsavel: a.responsavel,
-            statusLabel: statusLabel(a.status),
-            statusCor: statusColor(a.status),
-            prioridade: a.prioridade,
-          }));
-      })(),
-      execucaoMeta: "EM EXECUÇÃO · CLIQUE PARA ABRIR",
-
       comercial: [
         { label: "TOTAL EM JOGO", valor: brl(somaAberto + somaGanho), cor: C.ink },
         {
@@ -376,19 +310,101 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         { label: "GANHO", valor: brl(somaGanho), cor: C.success },
       ],
 
-      topDeals: [...oportunidades]
-        .sort((a, b) => b.valorCentavos - a.valorCentavos)
-        .slice(0, 5)
-        .map((d) => ({
-          ref: d.ref,
-          conta: d.conta,
-          cor: areaOf(d.area).color,
-          estagio: stageLabel(d.estagio),
-          responsavel: d.responsavelTexto || d.responsavel,
-          proximo: resumirPasso(d.proximoPasso, 40),
-          valor: brl(d.valorCentavos),
-          podeAbrir: d.podeEditar,
-        })),
+      /**
+       * Foco da semana do comercial. Não é "as maiores": é o que exige ação.
+       *
+       * Parada há muito tempo vem primeiro, e a mais parada antes — é a que corre risco de
+       * ser esquecida. Depois as adiantadas no funil, onde a semana rende mais. Ganho fica
+       * de fora: fechado não é foco. Em pausa entra por último, sinalizada, porque foi
+       * decisão e não esquecimento.
+       */
+      focoComercial: (() => {
+        const posicao = (k: string) => STAGES.findIndex((s) => s.key === k);
+        return oportunidades
+          .filter((d) => d.estagio !== "ganho")
+          .map((d) => {
+            const dias = diasParado(d.atualizadoEm);
+            const parada = !d.pausado && dias >= DIAS_SEM_MOVIMENTO;
+            return { d, dias, parada };
+          })
+          .sort((x, y) => {
+            if (x.parada !== y.parada) return x.parada ? -1 : 1;
+            if (x.parada && y.parada) return y.dias - x.dias;
+            if (x.d.pausado !== y.d.pausado) return x.d.pausado ? 1 : -1;
+            return posicao(y.d.estagio) - posicao(x.d.estagio) || y.d.valorCentavos - x.d.valorCentavos;
+          })
+          .slice(0, 6)
+          .map(({ d, dias, parada }) => ({
+            ref: d.ref,
+            sinal: parada ? `parada ${dias}d` : d.pausado ? "em pausa" : stageLabel(d.estagio).toLowerCase(),
+            sinalCor: parada ? C.error : d.pausado ? C.warning : C.faint,
+            titulo: d.conta,
+            cor: areaOf(d.area).color,
+            contexto: [d.responsavelTexto || d.responsavel, resumirPasso(d.proximoPasso, 40)]
+              .filter(Boolean)
+              .join(" · "),
+            meta: brl(d.valorCentavos),
+            metaCor: C.accent,
+            podeAbrir: d.podeEditar,
+          }));
+      })(),
+
+      atividades: STATUS.map((s) => ({
+        label: s.label.toUpperCase(),
+        valor: String(atividades.filter((a) => a.status === s.key).length),
+        cor: statusColor(s.key),
+      })),
+
+      /**
+       * Foco da semana das atividades. Junta as duas leituras que antes eram seções
+       * separadas: o que tem prazo apertado E o que está em execução sem prazo nenhum.
+       *
+       * A separação anterior deixava as atividades importadas de planilha invisíveis — elas
+       * não têm data. Aqui a ordem é atraso, hoje, prazo próximo e, no fim, o que está sendo
+       * tocado agora, por prioridade.
+       */
+      focoAtividades: (() => {
+        const abertasOrdenadas = abertas
+          .map((a) => {
+            const dias = a.prazo ? diasAtePrazo(a.prazo) : null;
+            const noPrazo = dias !== null && dias <= DIAS_CRITICO;
+            const executando = a.status === "andamento" || a.status === "revisao";
+            return { a, dias, noPrazo, executando };
+          })
+          .filter((x) => x.noPrazo || x.executando);
+
+        const peso = (p: string) => (p === "alta" ? 0 : p === "media" ? 1 : 2);
+        return abertasOrdenadas
+          .sort((x, y) => {
+            // Com prazo apertado sempre antes de sem prazo, e o mais urgente primeiro.
+            if (x.noPrazo !== y.noPrazo) return x.noPrazo ? -1 : 1;
+            if (x.noPrazo && y.noPrazo) return x.dias! - y.dias!;
+            return peso(x.a.prioridade) - peso(y.a.prioridade);
+          })
+          .slice(0, 6)
+          .map(({ a, dias, noPrazo }) => ({
+            ref: a.ref,
+            sinal: noPrazo ? (dias! < 0 ? "atraso" : dias === 0 ? "hoje" : `D+${dias}`) : a.prioridade,
+            sinalCor: noPrazo
+              ? dias! <= 0
+                ? C.error
+                : C.warning
+              : a.prioridade === "alta"
+                ? C.error
+                : C.faint,
+            titulo: a.titulo,
+            contexto: [
+              a.produtoId ? (estado.produtos.find((p) => p.id === a.produtoId)?.label ?? null) : areaOf(a.area).label,
+              a.responsavel,
+            ]
+              .filter(Boolean)
+              .join(" · "),
+            meta: [statusLabel(a.status), a.prazo ? ddmm(a.prazo) : null].filter(Boolean).join(" · "),
+            metaCor: statusColor(a.status),
+            podeAbrir: a.podeEditar,
+          }));
+      })(),
+
 
       logs: logs.slice(0, 8),
     };
