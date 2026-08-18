@@ -20,6 +20,8 @@ export type ActivityDTO = {
   situacao: string;
   proximoPasso: string;
   produtoId: string | null;
+  /** Quando o próximo passo acontece. Nulo = sem data marcada. */
+  proximoPassoEm: string | null;
   podeEditar: boolean;
 };
 
@@ -71,11 +73,12 @@ export async function GET() {
       {
         id: number; ref: string; titulo: string; area: string; status: string;
         prioridade: string; prazo: Date | null; responsavel_user_id: number | null; responsavel: string | null;
-        situacao: string; proximo_passo: string; produto_id: string | null;
+        situacao: string; proximo_passo: string; proximo_passo_em: Date | null; produto_id: string | null;
       }[]
     >`
       SELECT a.id, a.ref, a.titulo, a.area, a.status, a.prioridade, a.prazo,
-             a.responsavel_user_id, a.situacao, a.proximo_passo, a.produto_id, u.nome AS responsavel
+             a.responsavel_user_id, a.situacao, a.proximo_passo, a.proximo_passo_em, a.produto_id,
+             u.nome AS responsavel
       FROM activities a
       LEFT JOIN users u ON u.id = a.responsavel_user_id
       WHERE a.area = ANY(${areas})
@@ -86,12 +89,12 @@ export async function GET() {
         id: number; ref: string; conta: string; escopo: string; area: string; estagio: string;
         valor_centavos: string; responsavel: string | null; responsavel_user_id: number | null;
         proximo_passo: string; situacao: string; contato: string; responsavel_texto: string;
-        produto_id: string | null; pausado: boolean; mexido_em: Date;
+        produto_id: string | null; pausado: boolean; mexido_em: Date; proximo_passo_em: Date | null;
       }[]
     >`
       SELECT d.id, d.ref, d.conta, d.escopo, d.area, d.estagio, d.valor_centavos,
              u.nome AS responsavel, d.responsavel_user_id, d.proximo_passo,
-             d.situacao, d.contato, d.responsavel_texto, d.produto_id, d.pausado,
+             d.situacao, d.contato, d.responsavel_texto, d.produto_id, d.pausado, d.proximo_passo_em,
              -- Card nunca editado tem atualizado_em nulo; nesse caso a idade conta da criação,
              -- que é o que faz sentido para "está parado há quanto tempo".
              COALESCE(d.atualizado_em, d.criado_em) AS mexido_em
@@ -186,6 +189,7 @@ export async function GET() {
       situacao: a.situacao,
       proximoPasso: a.proximo_passo,
       produtoId: a.produto_id,
+      proximoPassoEm: a.proximo_passo_em ? a.proximo_passo_em.toISOString().slice(0, 10) : null,
       podeEditar: ctx.podeEditar(a.area),
     })),
     deals: oportunidades.map((d) => ({
@@ -203,6 +207,7 @@ export async function GET() {
       situacao: d.situacao,
       contato: d.contato,
       produtoId: d.produto_id,
+      proximoPassoEm: d.proximo_passo_em ? d.proximo_passo_em.toISOString().slice(0, 10) : null,
       pausado: d.pausado,
       atualizadoEm: d.mexido_em.toISOString(),
       podeEditar: ctx.podeEditar(d.area),

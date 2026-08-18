@@ -383,6 +383,108 @@ export function Comercial({
 }
 
 /* =========================================================
+   Cronograma — a semana pela frente, misturando os dois tipos
+   ========================================================= */
+export type ItemCronograma = {
+  ref: string;
+  tipo: "oportunidade" | "atividade";
+  titulo: string;
+  detalhe: string;
+  quando: string;
+  semData: boolean;
+  atrasado: boolean;
+  podeAbrir: boolean;
+};
+export type BlocoArea = { areaId: string; label: string; cor: string; itens: ItemCronograma[] };
+export type Semana = { chave: string; rotulo: string; titulo: string; total: number; areas: BlocoArea[] };
+
+/**
+ * Cronograma. Uma linha do tempo por semana, e dentro dela um bloco por área.
+ *
+ * Oportunidade e atividade aparecem juntas de propósito: quem planeja a semana de uma
+ * vertical não separa "o que é venda" de "o que é execução" — separa por quando acontece. O
+ * tipo vira um rótulo na linha, não uma tela diferente.
+ */
+export function Cronograma({
+  semanas,
+  onAbrir,
+}: {
+  semanas: Semana[];
+  onAbrir: (ref: string, tipo: "oportunidade" | "atividade") => void;
+}) {
+  if (!semanas.length) {
+    return (
+      <div style={{ fontSize: 14, color: C.faint, lineHeight: 1.6, maxWidth: 560 }}>
+        Nada agendado. O cronograma se monta a partir da data do próximo passo de cada
+        oportunidade e atividade — preencha o campo “Quando” num card para ele aparecer aqui.
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ maxWidth: 1180 }}>
+      {semanas.map((s) => (
+        <section key={s.chave} style={{ paddingBottom: 40, marginBottom: 40, borderBottom: `1px solid ${C.line}` }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 16, marginBottom: 22 }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+              <span style={eyebrow(11, s.chave === "atrasado" ? C.error : C.dust)}>{s.titulo}</span>
+              <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>{s.rotulo}</span>
+            </div>
+            <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>
+              {s.total} {s.total === 1 ? "item" : "itens"}
+            </span>
+          </div>
+
+          {s.areas.map((bloco) => (
+            <div key={bloco.areaId} style={{ marginBottom: 26 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+                <span style={{ width: 8, height: 8, borderRadius: 2, background: bloco.cor, flex: "none" }} />
+                <span style={eyebrow(10, C.dust, "0.12em")}>{bloco.label}</span>
+                <span style={{ fontFamily: MONO, fontSize: 10, color: C.ghost }}>{bloco.itens.length}</span>
+              </div>
+              {bloco.itens.map((i) => (
+                <div
+                  key={i.ref}
+                  className={i.podeAbrir ? "liff-hover-row liff-cronograma-linha" : "liff-cronograma-linha"}
+                  onClick={() => i.podeAbrir && onAbrir(i.ref, i.tipo)}
+                  title={i.podeAbrir ? "Abrir" : "Somente leitura nesta área"}
+                  style={{
+                    display: "grid",
+                    gap: 20,
+                    alignItems: "baseline",
+                    padding: "12px 0",
+                    borderTop: `1px solid ${C.panel2}`,
+                    cursor: i.podeAbrir ? "pointer" : "default",
+                  }}
+                >
+                  {/* Data em itálico quando foi assumida e não informada: o cronograma não
+                      pode fingir que alguém marcou o dia. */}
+                  <span
+                    style={{
+                      fontFamily: MONO,
+                      fontSize: 11,
+                      color: i.atrasado ? C.error : i.semData ? C.ghost : C.faint,
+                      fontStyle: i.semData ? "italic" : "normal",
+                    }}
+                  >
+                    {i.quando}
+                  </span>
+                  <span style={eyebrow(9, i.tipo === "oportunidade" ? C.accent : C.info, "0.1em")}>
+                    {i.tipo === "oportunidade" ? "oport." : "ativ."}
+                  </span>
+                  <span style={{ fontSize: 14, color: C.ink, lineHeight: 1.4, minWidth: 0 }}>{i.titulo}</span>
+                  <span style={{ fontSize: 13, color: C.faint, lineHeight: 1.5, minWidth: 0 }}>{i.detalhe}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </section>
+      ))}
+    </div>
+  );
+}
+
+/* =========================================================
    Operações — kanban com arrastar e soltar
    ========================================================= */
 export type ColunaBoard = { key: string; label: string; cards: Activity[] };
@@ -1608,6 +1710,7 @@ export function Drawer({
   onSituacao,
   onProximo,
   onProduto,
+  onProximoEm,
   produtos,
 }: {
   act: Activity;
@@ -1623,6 +1726,7 @@ export function Drawer({
   onSituacao: (v: string) => void;
   onProximo: (v: string) => void;
   onProduto: (id: string | null) => void;
+  onProximoEm: (d: string | null) => void;
   produtos: { id: string; label: string; area: string; ativo: boolean }[];
 }) {
   const a = areaOf(act.area);
@@ -1779,6 +1883,19 @@ export function Drawer({
               placeholder="O que vem depois."
               onSalvar={onProximo}
             />
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10 }}>
+              <span style={eyebrow(10, C.faint, "0.1em")}>QUANDO</span>
+              <input
+                type="date"
+                value={act.proximoPassoEm ?? ""}
+                onChange={(e) => onProximoEm(e.target.value || null)}
+                disabled={!editavel}
+                style={{ ...nativeSelectStyle, width: "auto", flex: 1 }}
+              />
+            </div>
+            <div style={{ fontSize: 12, color: C.faint, marginTop: 6, lineHeight: 1.5 }}>
+              Sem data, o cronograma coloca no fim desta semana.
+            </div>
           </div>
 
           <div style={{ fontFamily: MONO, fontSize: 11, lineHeight: 1.6, color: editavel ? C.faint : C.warning }}>
@@ -2002,6 +2119,7 @@ export function NovaAtividade({
     situacao: string;
     proximoPasso: string;
     produtoId: string | null;
+    proximoPassoEm: string | null;
   }) => void;
   onFechar: () => void;
 }) {
@@ -2016,6 +2134,7 @@ export function NovaAtividade({
   const [situacao, setSituacao] = useState("");
   const [proximo, setProximo] = useState("");
   const [produtoId, setProdutoId] = useState("");
+  const [proximoEm, setProximoEm] = useState("");
 
   // Produto pertence a uma vertical; trocar a área invalida a escolha anterior.
   const produtosDaArea = produtos.filter((p) => p.area === area && p.ativo);
@@ -2031,6 +2150,7 @@ export function NovaAtividade({
       situacao,
       proximoPasso: proximo,
       produtoId: produtoId || null,
+      proximoPassoEm: proximoEm || null,
     });
 
   return (
@@ -2126,6 +2246,10 @@ export function NovaAtividade({
         />
       </Field>
 
+      <Field label="Quando" hint="Alimenta o cronograma. Em branco, entra no fim desta semana.">
+        <input type="date" value={proximoEm} onChange={(e) => setProximoEm(e.target.value)} style={campoNativo} />
+      </Field>
+
       {erro && <div style={{ fontFamily: MONO, fontSize: 11, lineHeight: 1.6, color: C.error }}>{erro}</div>}
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 4 }}>
         <Button variant="ghost" size="sm" onClick={onFechar} style={GHOST_FIX}>
@@ -2177,6 +2301,7 @@ export function FormOportunidade({
     responsavelTexto: string;
     produtoId: string | null;
     pausado: boolean;
+    proximoPassoEm: string | null;
   }) => void;
   onFechar: () => void;
 }) {
@@ -2196,6 +2321,7 @@ export function FormOportunidade({
   const [respTexto, setRespTexto] = useState(inicial?.responsavelTexto ?? "");
   const [produtoId, setProdutoId] = useState(inicial?.produtoId ?? "");
   const [pausado, setPausado] = useState(inicial?.pausado ?? false);
+  const [proximoEm, setProximoEm] = useState(inicial?.proximoPassoEm ?? "");
   // Fechado por padrão: o formulário existe para editar, o histórico é consulta.
   const [verHistorico, setVerHistorico] = useState(false);
 
@@ -2216,6 +2342,7 @@ export function FormOportunidade({
       responsavelTexto: respTexto,
       produtoId: produtoId || null,
       pausado,
+      proximoPassoEm: proximoEm || null,
     });
 
   return (
@@ -2295,6 +2422,10 @@ export function FormOportunidade({
           placeholder="Novo FUP e, se necessário, escalar para um interlocutor acima."
           style={{ ...campoNativo, resize: "vertical", lineHeight: 1.5 }}
         />
+      </Field>
+
+      <Field label="Quando" hint="Alimenta o cronograma. Em branco, entra no fim desta semana.">
+        <input type="date" value={proximoEm} onChange={(e) => setProximoEm(e.target.value)} style={campoNativo} />
       </Field>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>

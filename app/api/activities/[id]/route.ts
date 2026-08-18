@@ -16,8 +16,11 @@ type Body = {
   area?: string;
   situacao?: string;
   proximoPasso?: string;
+  proximoPassoEm?: string | null;
   produtoId?: string | null;
 };
+
+const DATA_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/activities/[id]">) {
   const ctx = await requireCtx();
@@ -39,11 +42,11 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/activitie
     {
       id: number; ref: string; titulo: string; area: string; status: string;
       prioridade: string; responsavel_user_id: number | null; responsavel: string | null;
-      situacao: string; proximo_passo: string; produto_id: string | null;
+      situacao: string; proximo_passo: string; proximo_passo_em: Date | null; produto_id: string | null;
     }[]
   >`
     SELECT a.id, a.ref, a.titulo, a.area, a.status, a.prioridade, a.responsavel_user_id,
-           a.situacao, a.proximo_passo, a.produto_id, u.nome AS responsavel
+           a.situacao, a.proximo_passo, a.proximo_passo_em, a.produto_id, u.nome AS responsavel
     FROM activities a LEFT JOIN users u ON u.id = a.responsavel_user_id
     WHERE a.id = ${activityId}
   `;
@@ -151,6 +154,23 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/activitie
       UPDATE activities SET responsavel_user_id = ${body.responsavelId}, atualizado_em = now()
       WHERE id = ${activityId}
     `;
+  }
+
+
+  // Data do próximo passo. `null` explícito limpa a data — é assim que se tira um item do
+  // cronograma sem apagar o texto do passo.
+  if (body.proximoPassoEm !== undefined) {
+    const nova = body.proximoPassoEm && DATA_RE.test(body.proximoPassoEm) ? body.proximoPassoEm : null;
+    const antiga = atual.proximo_passo_em ? atual.proximo_passo_em.toISOString().slice(0, 10) : null;
+    if (nova !== antiga) {
+      mudancas.push({
+        campo: "proximo_passo_em",
+        de: antiga ?? "—",
+        para: nova ?? "—",
+        texto: `Alterou a data do próximo passo de "${atual.titulo}"`,
+      });
+      await sql`UPDATE activities SET proximo_passo_em = ${nova}, atualizado_em = now() WHERE id = ${activityId}`;
+    }
   }
 
   const areaFinal = mudancas.find((m) => m.campo === "area")?.para ?? atual.area;

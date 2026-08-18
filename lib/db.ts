@@ -181,6 +181,9 @@ async function migrate(): Promise<void> {
       prioridade          TEXT NOT NULL DEFAULT 'media' CHECK (prioridade IN (${inList(PRIORIDADES)})),
       situacao            TEXT NOT NULL DEFAULT '',
       proximo_passo       TEXT NOT NULL DEFAULT '',
+      -- Quando o próximo passo acontece. Nulo é comum e não é erro: quem escreveu o passo
+      -- nem sempre sabe a data. O cronograma trata nulo como fim da semana corrente.
+      proximo_passo_em    DATE,
       produto_id          TEXT REFERENCES produtos(id) ON DELETE SET NULL,
       criado_em           TIMESTAMPTZ NOT NULL DEFAULT now(),
       atualizado_em       TIMESTAMPTZ
@@ -199,6 +202,7 @@ async function migrate(): Promise<void> {
       responsavel_user_id INTEGER REFERENCES users(id),
       proximo_passo       TEXT NOT NULL DEFAULT '',
       situacao            TEXT NOT NULL DEFAULT '',
+      proximo_passo_em    DATE,
       contato             TEXT NOT NULL DEFAULT '',
       responsavel_texto   TEXT NOT NULL DEFAULT '',
       produto_id          TEXT REFERENCES produtos(id) ON DELETE SET NULL,
@@ -290,6 +294,10 @@ async function migrate(): Promise<void> {
       END $$;
     `);
     await sql`CREATE INDEX IF NOT EXISTS idx_activities_produto ON activities(produto_id)`;
+    // A data do próximo passo é o que o cronograma ordena. Nas duas tabelas, porque ele
+    // mistura oportunidade e atividade na mesma linha do tempo.
+    await sql`ALTER TABLE activities ADD COLUMN IF NOT EXISTS proximo_passo_em DATE`;
+    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS proximo_passo_em DATE`;
     await sql.unsafe(`
       DO $$
       BEGIN

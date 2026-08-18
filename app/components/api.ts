@@ -16,6 +16,8 @@ export type Activity = {
   proximoPasso: string;
   /** Produto classificado, da mesma vertical da atividade. */
   produtoId: string | null;
+  /** Quando o próximo passo acontece. Nulo = sem data; o cronograma assume o fim da semana. */
+  proximoPassoEm: string | null;
   podeEditar: boolean;
 };
 
@@ -35,6 +37,8 @@ export type Deal = {
   situacao: string;
   contato: string;
   produtoId: string | null;
+  /** Quando o próximo passo acontece. Nulo = sem data; o cronograma assume o fim da semana. */
+  proximoPassoEm: string | null;
   /** Paralelo ao estágio: "não é o momento" não é uma casa do funil. */
   pausado: boolean;
   /** ISO da última mexida no card — ou da criação, se nunca foi editado. */
@@ -120,6 +124,7 @@ export type NovaAtividade = {
   situacao: string;
   proximoPasso: string;
   produtoId: string | null;
+  proximoPassoEm: string | null;
 };
 
 export type NovaOportunidade = {
@@ -135,6 +140,7 @@ export type NovaOportunidade = {
   responsavelTexto: string;
   produtoId: string | null;
   pausado: boolean;
+  proximoPassoEm: string | null;
 };
 
 async function req<T>(url: string, opts: RequestInit = {}): Promise<T> {
@@ -178,6 +184,7 @@ export const api = {
       situacao?: string;
       proximoPasso?: string;
       produtoId?: string | null;
+      proximoPassoEm?: string | null;
     }
   ) => req<{ ok: boolean }>(`/api/activities/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
 

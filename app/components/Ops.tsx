@@ -14,6 +14,7 @@ import {
   Aviso,
   Cadastros,
   Comercial,
+  Cronograma,
   Drawer,
   NovaAtividade,
   FormOportunidade,
@@ -22,6 +23,8 @@ import {
   WaModal,
   type CadSet,
   type PainelDados,
+  type ItemCronograma,
+  type Semana,
 } from "./views";
 import { C, GHOST_FIX, avatarStyle, eyebrow, markTone, statusColor, useTheme, writeTheme, type Theme } from "./tokens";
 import CoresDasAreas from "./CoresDasAreas";
@@ -29,7 +32,8 @@ import ImportarPlanilha from "./ImportarPlanilha";
 import SeletorArea from "./SeletorArea";
 import { api, type State } from "./api";
 import {
-  NAV, STAGES, STATUS, TITLES, areaOf, brl, ddmm, setAreas, stageLabel, statusLabel, todasAreas,
+  NAV, STAGES, STATUS, TITLES, areaOf, brl, daISO, ddmm, diaISO, fimDaSemana, inicioDaSemana,
+  porTexto, rotuloDaSemana, setAreas, stageLabel, statusLabel, todasAreas,
 } from "@/lib/domain";
 import { caminhoDe, type Rota } from "@/lib/rotas";
 
@@ -469,6 +473,105 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     };
   }, [estado, cadTab]);
 
+  // ---------- cronograma ----------
+  /**
+   * Linha do tempo por semana, e dentro dela por área, misturando oportunidade e atividade.
+   *
+   * A data vem do próximo passo. Quem não tem data entra no fim da semana corrente — é a
+   * regra que o formulário anuncia, e ela mantém no cronograma quem escreveu o passo sem
+   * saber o dia, em vez de deixar esse trabalho invisível.
+   *
+   * Já concluído e já ganho ficam de fora: cronograma é o que falta fazer.
+   */
+  const cronograma: Semana[] = useMemo(() => {
+    if (!dados) return [];
+    const padrao = fimDaSemana();
+    const hojeISO = diaISO(new Date());
+
+    type Bruto = { areaId: string; quando: string; semData: boolean; item: Omit<ItemCronograma, "quando" | "semData" | "atrasado"> };
+    const brutos: Bruto[] = [];
+
+    for (const d of dados.oportunidades) {
+      if (d.estagio === "ganho" || d.pausado) continue;
+      const semData = !d.proximoPassoEm;
+      brutos.push({
+        areaId: d.area,
+        quando: d.proximoPassoEm ?? padrao,
+        semData,
+        item: {
+          ref: d.ref,
+          tipo: "oportunidade",
+          titulo: d.conta,
+          detalhe: [stageLabel(d.estagio), resumirPasso(d.proximoPasso, 60) || "sem próximo passo escrito"]
+            .filter(Boolean)
+            .join(" · "),
+          podeAbrir: d.podeEditar,
+        },
+      });
+    }
+
+    for (const a of dados.atividades) {
+      if (a.status === "concluido") continue;
+      const semData = !a.proximoPassoEm;
+      brutos.push({
+        areaId: a.area,
+        quando: a.proximoPassoEm ?? padrao,
+        semData,
+        item: {
+          ref: a.ref,
+          tipo: "atividade",
+          titulo: a.titulo,
+          detalhe: [a.responsavel, resumirPasso(a.proximoPasso, 60) || "sem próximo passo escrito"]
+            .filter(Boolean)
+            .join(" · "),
+          podeAbrir: a.podeEditar,
+        },
+      });
+    }
+
+    // Agrupa por semana. O que já passou vai todo para um bloco só no topo — dividir o
+    // atraso em semanas antigas encheria a tela de cabeçalhos vazios de utilidade.
+    const porSemana = new Map<string, Bruto[]>();
+    for (const b of brutos) {
+      const chave = b.quando < hojeISO ? "atrasado" : diaISO(inicioDaSemana(daISO(b.quando)));
+      const lista = porSemana.get(chave) ?? [];
+      lista.push(b);
+      porSemana.set(chave, lista);
+    }
+
+    return [...porSemana.entries()]
+      .sort(([x], [y]) => (x === "atrasado" ? -1 : y === "atrasado" ? 1 : x.localeCompare(y)))
+      .map(([chave, lista]) => {
+        const porArea = new Map<string, Bruto[]>();
+        for (const b of lista) {
+          const atual = porArea.get(b.areaId) ?? [];
+          atual.push(b);
+          porArea.set(b.areaId, atual);
+        }
+        return {
+          chave,
+          titulo: chave === "atrasado" ? "ATRASADO" : `SEMANA DE ${rotuloDaSemana(chave).split(" a ")[0]}`,
+          rotulo: chave === "atrasado" ? "próximo passo com data já vencida" : rotuloDaSemana(chave),
+          total: lista.length,
+          areas: [...porArea.entries()]
+            .map(([areaId, itens]) => ({
+              areaId,
+              label: areaOf(areaId).label,
+              cor: areaOf(areaId).color,
+              itens: itens
+                .sort((x, y) => x.quando.localeCompare(y.quando) || porTexto(x.item.titulo, y.item.titulo))
+                .map((b) => ({
+                  ...b.item,
+                  quando: ddmm(b.quando),
+                  semData: b.semData,
+                  atrasado: b.quando < hojeISO,
+                })),
+            }))
+            .sort((x, y) => porTexto(x.label, y.label)),
+        };
+      });
+  }, [dados]);
+
   // ---------- resumo para WhatsApp ----------
   const waTexto = useMemo(() => {
     if (!estado) return "";
@@ -643,6 +746,15 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
               const a = estado.activities.find((x) => x.id === id);
               if (a) navegar({ view: "operacoes", ref: a.ref });
             }}
+          />
+        );
+      case "cronograma":
+        return (
+          <Cronograma
+            semanas={cronograma}
+            onAbrir={(ref, tipo) =>
+              navegar({ view: tipo === "oportunidade" ? "comercial" : "operacoes", ref })
+            }
           />
         );
       case "cadastros":
@@ -945,6 +1057,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           onSituacao={(v) => void acao(() => api.alterarAtividade(selecionadaObj.id, { situacao: v }))}
           onProximo={(v) => void acao(() => api.alterarAtividade(selecionadaObj.id, { proximoPasso: v }))}
           onProduto={(id) => void acao(() => api.alterarAtividade(selecionadaObj.id, { produtoId: id }))}
+          onProximoEm={(d) => void acao(() => api.alterarAtividade(selecionadaObj.id, { proximoPassoEm: d }))}
           produtos={estado.produtos}
         />
       )}

@@ -74,6 +74,7 @@ export const NAV = [
   { key: "overview", label: "visão geral" },
   { key: "comercial", label: "comercial" },
   { key: "operacoes", label: "operações" },
+  { key: "cronograma", label: "cronograma" },
   { key: "cadastros", label: "cadastros" },
   { key: "admin", label: "administração" },
   { key: "auditoria", label: "auditoria" },
@@ -83,6 +84,7 @@ export const TITLES: Record<string, string> = {
   overview: "Visão geral",
   comercial: "Pipeline comercial",
   operacoes: "Quadro operacional",
+  cronograma: "Cronograma",
   cadastros: "Cadastros",
   admin: "Administração",
   auditoria: "Auditoria",
@@ -231,4 +233,55 @@ export function stamp(iso: string): string {
   const d = new Date(iso);
   const p = (n: number) => String(n).padStart(2, "0");
   return `${p(d.getDate())}/${p(d.getMonth() + 1)} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+/* =========================================================
+   Semanas — base do cronograma
+   ========================================================= */
+
+/** Data local em ISO (yyyy-mm-dd), sem passar por UTC. `toISOString` desloca o dia. */
+export function diaISO(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/** Data de um `yyyy-mm-dd` à meia-noite local. */
+export function daISO(iso: string): Date {
+  return new Date(iso + "T00:00:00");
+}
+
+/** Segunda-feira da semana que contém a data. A semana de trabalho começa nela. */
+export function inicioDaSemana(d: Date): Date {
+  const seg = new Date(d);
+  seg.setHours(0, 0, 0, 0);
+  // getDay(): 0 é domingo. Domingo pertence à semana que começou na segunda anterior.
+  const desloca = (seg.getDay() + 6) % 7;
+  seg.setDate(seg.getDate() - desloca);
+  return seg;
+}
+
+/**
+ * Sexta-feira da semana corrente — o "fim da semana" que o cronograma assume para um
+ * próximo passo sem data.
+ *
+ * Se a sexta já passou (estamos no sábado ou domingo), vale a sexta seguinte: jogar o item
+ * para uma data no passado o marcaria como atrasado por causa do fim de semana, e não por
+ * causa de alguém ter deixado a bola cair.
+ */
+export function fimDaSemana(hoje = new Date()): string {
+  const sexta = inicioDaSemana(hoje);
+  sexta.setDate(sexta.getDate() + 4);
+  const base = new Date(hoje);
+  base.setHours(0, 0, 0, 0);
+  if (sexta < base) sexta.setDate(sexta.getDate() + 7);
+  return diaISO(sexta);
+}
+
+/** "Semana de 18/08" — rótulo do bloco no cronograma. */
+export function rotuloDaSemana(segundaISO: string): string {
+  const seg = daISO(segundaISO);
+  const sex = new Date(seg);
+  sex.setDate(sex.getDate() + 4);
+  const dm = (d: Date) => `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+  return `${dm(seg)} a ${dm(sex)}`;
 }

@@ -22,6 +22,7 @@ type Body = {
   estagio?: string;
   valorReais?: number;
   proximoPasso?: string;
+  proximoPassoEm?: string | null;
   responsavelId?: number | null;
   situacao?: string;
   contato?: string;
@@ -38,6 +39,8 @@ type Body = {
  * estrangeira, então a linha da exclusão sobrevive e o histórico anterior continua
  * consultável pela referência. Apagar o rastro junto com o dado esvaziaria o log.
  */
+const DATA_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 export async function DELETE(_req: Request, ctxRoute: RouteContext<"/api/deals/[id]">) {
   const ctx = await requireCtx();
   if (ctx instanceof Response) return ctx;
@@ -90,12 +93,13 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/deals/[id
     {
       id: number; ref: string; conta: string; escopo: string; area: string; estagio: string;
       valor_centavos: string; proximo_passo: string; responsavel_user_id: number | null; responsavel: string | null;
-      situacao: string; contato: string; responsavel_texto: string; produto_id: string | null; pausado: boolean;
+      situacao: string; contato: string; responsavel_texto: string; produto_id: string | null;
+      pausado: boolean; proximo_passo_em: Date | null;
     }[]
   >`
     SELECT d.id, d.ref, d.conta, d.escopo, d.area, d.estagio, d.valor_centavos, d.proximo_passo,
            d.responsavel_user_id, u.nome AS responsavel,
-           d.situacao, d.contato, d.responsavel_texto, d.produto_id, d.pausado
+           d.situacao, d.contato, d.responsavel_texto, d.produto_id, d.pausado, d.proximo_passo_em
     FROM deals d LEFT JOIN users u ON u.id = d.responsavel_user_id
     WHERE d.id = ${dealId}
   `;
@@ -234,6 +238,23 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/deals/[id
       texto: `Alterou ${t.rotulo} de ${atual.conta}`,
     });
     await sql.unsafe(`UPDATE deals SET ${t.coluna} = $1, atualizado_em = now() WHERE id = $2`, [valor, dealId]);
+  }
+
+
+  // Data do próximo passo. `null` explícito limpa a data — é assim que se tira um item do
+  // cronograma sem apagar o texto do passo.
+  if (body.proximoPassoEm !== undefined) {
+    const nova = body.proximoPassoEm && DATA_RE.test(body.proximoPassoEm) ? body.proximoPassoEm : null;
+    const antiga = atual.proximo_passo_em ? atual.proximo_passo_em.toISOString().slice(0, 10) : null;
+    if (nova !== antiga) {
+      mudancas.push({
+        campo: "proximo_passo_em",
+        de: antiga ?? "—",
+        para: nova ?? "—",
+        texto: `Alterou a data do próximo passo de ${atual.conta}`,
+      });
+      await sql`UPDATE deals SET proximo_passo_em = ${nova}, atualizado_em = now() WHERE id = ${dealId}`;
+    }
   }
 
   if (body.produtoId !== undefined && body.produtoId !== atual.produto_id) {

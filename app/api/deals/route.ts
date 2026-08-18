@@ -7,6 +7,8 @@ import { json, err } from "@/lib/http";
 import { registrar } from "@/lib/log";
 import { STAGE_KEYS, brlExato, stageLabel } from "@/lib/domain";
 
+const DATA_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 type Body = {
   conta?: string;
   escopo?: string;
@@ -20,6 +22,7 @@ type Body = {
   responsavelTexto?: string;
   produtoId?: string | null;
   pausado?: boolean;
+  proximoPassoEm?: string | null;
 };
 
 export async function POST(req: Request) {
@@ -73,9 +76,11 @@ export async function POST(req: Request) {
 
   const [nova] = await sql<{ id: number }[]>`
     INSERT INTO deals (ref, conta, escopo, area, estagio, valor_centavos, responsavel_user_id,
-                       proximo_passo, situacao, contato, responsavel_texto, produto_id, pausado)
+                       proximo_passo, proximo_passo_em, situacao, contato, responsavel_texto,
+                       produto_id, pausado)
     VALUES (${ref}, ${conta}, ${String(body.escopo ?? "").trim()}, ${area}, ${estagio},
             ${valorCentavos}, ${responsavelId}, ${String(body.proximoPasso ?? "").trim()},
+            ${body.proximoPassoEm && DATA_RE.test(body.proximoPassoEm) ? body.proximoPassoEm : null},
             ${String(body.situacao ?? "").trim()}, ${String(body.contato ?? "").trim()},
             ${String(body.responsavelTexto ?? "").trim()}, ${produtoId}, ${body.pausado ?? false})
     RETURNING id

@@ -18,6 +18,7 @@ type Body = {
   situacao?: string;
   proximoPasso?: string;
   produtoId?: string | null;
+  proximoPassoEm?: string | null;
 };
 
 const DATA_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -52,6 +53,9 @@ export async function POST(req: Request) {
   // Mesmos limites da oportunidade: a situação é narrativa e cresce, o próximo passo é curto.
   const situacao = String(body.situacao ?? "").trim().slice(0, 4000);
   const proximoPasso = String(body.proximoPasso ?? "").trim().slice(0, 2000);
+  // Data do próximo passo. Nula é comum — quem escreve o passo nem sempre sabe quando;
+  // o cronograma trata nulo como fim da semana corrente.
+  const proximoEm = body.proximoPassoEm && DATA_RE.test(body.proximoPassoEm) ? body.proximoPassoEm : null;
 
   const sql = await getDb();
 
@@ -82,9 +86,9 @@ export async function POST(req: Request) {
     -- vocabulário do sistema. Era um rótulo escolhido na criação que ninguém podia
     -- corrigir depois e que não governava nada.
     INSERT INTO activities (ref, titulo, area, status, responsavel_user_id, prazo, prioridade,
-                            situacao, proximo_passo, produto_id)
+                            situacao, proximo_passo, proximo_passo_em, produto_id)
     VALUES (${ref}, ${titulo}, ${area}, ${status}, ${responsavelId}, ${prazo}, ${prioridade},
-            ${situacao}, ${proximoPasso}, ${produtoId})
+            ${situacao}, ${proximoPasso}, ${proximoEm}, ${produtoId})
     RETURNING id
   `;
 
