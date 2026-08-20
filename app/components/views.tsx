@@ -4,7 +4,7 @@
 // devolvem eventos. Quem decide o que pode ser alterado é o servidor — `podeEditar` que
 // chega em cada registro é o eco daquela decisão, usado só para desenhar o estado.
 
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode, useRef } from "react";
 import { Button, Field, Input, Select, Switch } from "./ds";
 import { C, GHOST_FIX, MONO, SANS, dot, eyebrow, mesh, prioColor, statusColor } from "./tokens";
 import type { Activity, AreaCadastro, Deal, LogEntry, Pessoa } from "./api";
@@ -790,6 +790,49 @@ const TITULO_NOVO: Record<string, string> = {
 
 export type LinhaCad = { key: string; a: string; b: string; c: string; abrir?: () => void };
 export type CadSet = { head: string[]; rows: LinhaCad[]; ph: string };
+
+/**
+ * Campo de data. Por baixo continua sendo `input type="date"` — o seletor nativo é o melhor
+ * widget disponível: é traduzido, navegável pelo teclado e, no celular, abre a roda de data
+ * do próprio sistema, que nenhum calendário desenhado à mão alcança.
+ *
+ * O que faltava era achá-lo. O ícone do calendário é um glifo escuro que o navegador
+ * desenha por conta própria: sobre o fundo escuro do sistema ele some, e só abria clicando
+ * exatamente nele. Aqui o clique em qualquer ponto do campo abre o seletor, e o CSS
+ * (`globals.css`) inverte o ícone no tema escuro para ele existir aos olhos.
+ */
+function CampoData({
+  valor,
+  onChange,
+  desabilitado,
+  estilo,
+}: {
+  valor: string;
+  onChange: (v: string) => void;
+  desabilitado?: boolean;
+  estilo?: CSSProperties;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+
+  return (
+    <input
+      ref={ref}
+      type="date"
+      value={valor}
+      disabled={desabilitado}
+      onChange={(e) => onChange(e.target.value)}
+      onClick={() => {
+        // Clicar no ícone já abre o seletor sozinho, e aí esta chamada lança — daí o try.
+        try {
+          ref.current?.showPicker?.();
+        } catch {
+          /* já aberto, ou navegador sem suporte: o campo segue editável pelo teclado */
+        }
+      }}
+      style={{ ...campoNativo, cursor: desabilitado ? "default" : "pointer", ...estilo }}
+    />
+  );
+}
 
 /** Texto que vira campo ao clicar. Salva no Enter ou ao sair; Esc desfaz. */
 function TextoEditavel({
@@ -1850,12 +1893,11 @@ export function Drawer({
             </div>
             <div>
               <div style={{ ...eyebrow(10, C.faint), marginBottom: 9 }}>PRAZO</div>
-              <input
-                type="date"
-                value={act.prazo ?? ""}
-                onChange={(e) => onPrazo(e.target.value || null)}
-                disabled={!editavel}
-                style={nativeSelectStyle}
+              <CampoData
+                valor={act.prazo ?? ""}
+                onChange={(v) => onPrazo(v || null)}
+                desabilitado={!editavel}
+                estilo={nativeSelectStyle}
               />
             </div>
             <div>
@@ -1897,12 +1939,11 @@ export function Drawer({
             />
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10 }}>
               <span style={eyebrow(10, C.faint, "0.1em")}>QUANDO</span>
-              <input
-                type="date"
-                value={act.proximoPassoEm ?? ""}
-                onChange={(e) => onProximoEm(e.target.value || null)}
-                disabled={!editavel}
-                style={{ ...nativeSelectStyle, width: "auto", flex: 1 }}
+              <CampoData
+                valor={act.proximoPassoEm ?? ""}
+                onChange={(v) => onProximoEm(v || null)}
+                desabilitado={!editavel}
+                estilo={{ ...nativeSelectStyle, width: "auto", flex: 1 }}
               />
             </div>
             <div style={{ fontSize: 12, color: C.faint, marginTop: 6, lineHeight: 1.5 }}>
@@ -2224,7 +2265,7 @@ export function NovaAtividade({
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         <Field label="Prazo">
-          <input type="date" value={prazo} onChange={(e) => setPrazo(e.target.value)} style={campoNativo} />
+          <CampoData valor={prazo} onChange={setPrazo} />
         </Field>
         <Field label="Responsável">
           <Select
@@ -2259,7 +2300,7 @@ export function NovaAtividade({
       </Field>
 
       <Field label="Quando" hint="Alimenta o cronograma. Em branco, entra no fim desta semana.">
-        <input type="date" value={proximoEm} onChange={(e) => setProximoEm(e.target.value)} style={campoNativo} />
+        <CampoData valor={proximoEm} onChange={setProximoEm} />
       </Field>
 
       {erro && <div style={{ fontFamily: MONO, fontSize: 11, lineHeight: 1.6, color: C.error }}>{erro}</div>}
@@ -2437,7 +2478,7 @@ export function FormOportunidade({
       </Field>
 
       <Field label="Quando" hint="Alimenta o cronograma. Em branco, entra no fim desta semana.">
-        <input type="date" value={proximoEm} onChange={(e) => setProximoEm(e.target.value)} style={campoNativo} />
+        <CampoData valor={proximoEm} onChange={setProximoEm} />
       </Field>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>

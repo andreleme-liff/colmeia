@@ -312,3 +312,24 @@ textarea::placeholder {
 @media (max-width: 860px) {
   .liff-cronograma-linha { grid-template-columns: 1fr; gap: 4px; }
 }
+
+/* ---------- campo de data ----------
+   O seletor nativo é o widget certo (traduzido, com teclado, e no celular abre a roda do
+   próprio sistema). O problema era enxergá-lo: o navegador desenha o ícone do calendário
+   como um glifo ESCURO, que sobre o canvas Obsidiana simplesmente some — o campo parecia
+   texto livre. Inverter no escuro é o que o traz de volta.
+
+   `opacity` acima do padrão do navegador porque o ícone é pequeno e concorre com o próprio
+   valor da data ao lado. */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.7;
+}
+input[type="date"]:hover::-webkit-calendar-picker-indicator { opacity: 1; }
+:root:not([data-theme="light"]) input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+input[type="date"]:disabled::-webkit-calendar-picker-indicator {
+  cursor: default;
+  opacity: 0.25;
+}
