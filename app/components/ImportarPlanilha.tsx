@@ -15,6 +15,7 @@ import { Button, Field, Select } from "./ds";
 import { C, GHOST_FIX, MONO, eyebrow } from "./tokens";
 import { STAGES, areaOf, normalizarConta, normalizarTexto, porTexto, slugificar, statusLabel } from "@/lib/domain";
 import type { Activity, Deal, LinhaImport, ProdutoCadastro } from "./api";
+import { useFecharNoFundo } from "./views";
 
 /**
  * A planilha usa esta frase, em todas as colunas, para dizer "ainda não sabemos nada".
@@ -311,13 +312,17 @@ export default function ImportarPlanilha({
     );
   }
 
+  // Selecionar texto na prévia e soltar o mouse fora do painel fechava o modal no meio da
+  // seleção; ver o comentário de `useFecharNoFundo`.
+  const fundo = useFecharNoFundo(onFechar);
+
   const totalLinhas = abasAtivas.reduce((s, a) => s + a.linhas.length, 0);
   const novas = abasAtivas.reduce((s, a) => s + a.linhas.filter((l) => !l.existente).length, 0);
   const atualiza = totalLinhas - novas;
 
   return (
     <div
-      onClick={onFechar}
+      {...fundo}
       style={{
         position: "fixed",
         inset: 0,

@@ -4,7 +4,7 @@
 // devolvem eventos. Quem decide o que pode ser alterado é o servidor — `podeEditar` que
 // chega em cada registro é o eco daquela decisão, usado só para desenhar o estado.
 
-import { useState, type CSSProperties, type ReactNode, useRef } from "react";
+import { useState, type CSSProperties, type MouseEvent, type ReactNode, useRef } from "react";
 import { Button, Field, Input, Select, Switch } from "./ds";
 import { C, GHOST_FIX, MONO, SANS, dot, eyebrow, mesh, prioColor, statusColor } from "./tokens";
 import type { Activity, AreaCadastro, Deal, LogEntry, Pessoa } from "./api";
@@ -790,6 +790,30 @@ const TITULO_NOVO: Record<string, string> = {
 
 export type LinhaCad = { key: string; a: string; b: string; c: string; abrir?: () => void };
 export type CadSet = { head: string[]; rows: LinhaCad[]; ph: string };
+
+/**
+ * Fecha a sobreposição só quando o gesto COMEÇOU no fundo.
+ *
+ * Sem isto, selecionar texto num campo e soltar o mouse fora do painel fechava a janela no
+ * meio da seleção. O motivo é que o painel é filho do fundo: quando o `mousedown` e o
+ * `mouseup` caem em elementos diferentes, o navegador dispara o `click` no ancestral comum
+ * dos dois — que nesse caso é o próprio fundo. O `stopPropagation` do painel nunca chega a
+ * rodar, porque o alvo do clique nem passa por ele.
+ *
+ * Guardar de onde o gesto partiu é o que separa "cliquei fora para fechar" de "arrastei para
+ * fora enquanto selecionava".
+ */
+export function useFecharNoFundo(onFechar: () => void) {
+  const comecouNoFundo = useRef(false);
+  return {
+    onMouseDown: (e: MouseEvent) => {
+      comecouNoFundo.current = e.target === e.currentTarget;
+    },
+    onClick: (e: MouseEvent) => {
+      if (comecouNoFundo.current && e.target === e.currentTarget) onFechar();
+    },
+  };
+}
 
 /**
  * Campo de data. Por baixo continua sendo `input type="date"` — o seletor nativo é o melhor
@@ -1776,9 +1800,13 @@ export function Drawer({
 }) {
   const a = areaOf(act.area);
   const editavel = act.podeEditar;
+  // O fundo do drawer é IRMÃO do painel, não pai, então o arraste para fora já não o
+  // fechava. A guarda entra do mesmo jeito: mantém as sobreposições com um comportamento
+  // só, e protege caso a estrutura mude.
+  const fundo = useFecharNoFundo(onFechar);
   return (
     <>
-      <div onClick={onFechar} style={{ position: "fixed", inset: 0, background: "rgba(14,16,20,0.72)", zIndex: 40 }} />
+      <div {...fundo} style={{ position: "fixed", inset: 0, background: "rgba(14,16,20,0.72)", zIndex: 40 }} />
       <div className="liff-drawer">
         <div style={{ padding: "24px 26px", borderBottom: `1px solid ${C.line}` }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
@@ -1987,9 +2015,10 @@ export function WaModal({
   onCopiar: () => void;
   onFechar: () => void;
 }) {
+  const fundo = useFecharNoFundo(onFechar);
   return (
     <div
-      onClick={onFechar}
+      {...fundo}
       style={{
         position: "fixed",
         inset: 0,
@@ -2088,9 +2117,10 @@ function Modal({ titulo, eyebrowTexto, children, onFechar }: {
   children: ReactNode;
   onFechar: () => void;
 }) {
+  const fundo = useFecharNoFundo(onFechar);
   return (
     <div
-      onClick={onFechar}
+      {...fundo}
       style={{
         position: "fixed",
         inset: 0,
