@@ -352,6 +352,99 @@ try {
     WHERE id = ${aLaw.id}
   `;
 
+  console.log("\n5g. TODO CAMPO EDITÁVEL REALMENTE GRAVA\n");
+  /**
+   * Manda TODOS os campos de uma vez, com valores novos, e confere que a rota devolveu uma
+   * mudança por campo. É o teste que pega o campo mudo: um que a interface mostra, o cliente
+   * envia e a rota simplesmente ignora — foi assim que `prazo` ficou inalterável na atividade
+   * desde o começo, com o painel inteiro (atraso, hoje/7 dias, foco da semana) lendo um dado
+   * que ninguém podia corrigir.
+   */
+  const antesAtiv = (
+    await sql`SELECT titulo, status, prioridade, prazo, responsavel_user_id, situacao,
+                     proximo_passo, proximo_passo_em, produto_id FROM activities WHERE id = ${aLaw.id}`
+  )[0];
+  const camposAtiv = {
+    titulo: "[teste] todos os campos",
+    status: antesAtiv.status === "backlog" ? "revisao" : "backlog",
+    prioridade: antesAtiv.prioridade === "alta" ? "baixa" : "alta",
+    prazo: "2031-03-04",
+    situacao: "[teste] situação nova",
+    proximoPasso: "[teste] passo novo",
+    proximoPassoEm: "2031-03-05",
+  };
+  const todos = await req(marina.token, `/api/activities/${aLaw.id}`, {
+    method: "PATCH",
+    body: JSON.stringify(camposAtiv),
+  });
+  const todosJson = await todos.json();
+  checa(
+    `atividade: ${Object.keys(camposAtiv).length} campos enviados → ${Object.keys(camposAtiv).length} mudanças`,
+    todos.status === 200 && todosJson.mudancas === Object.keys(camposAtiv).length,
+    JSON.stringify(todosJson)
+  );
+
+  const depoisAtiv = (
+    await sql`SELECT titulo, status, prioridade, prazo, situacao, proximo_passo, proximo_passo_em
+              FROM activities WHERE id = ${aLaw.id}`
+  )[0];
+  const iso = (d) => (d ? d.toISOString().slice(0, 10) : null);
+  checa(
+    `e cada um chegou ao banco`,
+    depoisAtiv.titulo === camposAtiv.titulo &&
+      depoisAtiv.status === camposAtiv.status &&
+      depoisAtiv.prioridade === camposAtiv.prioridade &&
+      iso(depoisAtiv.prazo) === camposAtiv.prazo &&
+      depoisAtiv.situacao === camposAtiv.situacao &&
+      depoisAtiv.proximo_passo === camposAtiv.proximoPasso &&
+      iso(depoisAtiv.proximo_passo_em) === camposAtiv.proximoPassoEm,
+    JSON.stringify({ ...depoisAtiv, prazo: iso(depoisAtiv.prazo), proximo_passo_em: iso(depoisAtiv.proximo_passo_em) })
+  );
+
+  await sql`
+    UPDATE activities SET titulo = ${antesAtiv.titulo}, status = ${antesAtiv.status},
+      prioridade = ${antesAtiv.prioridade}, prazo = ${antesAtiv.prazo},
+      responsavel_user_id = ${antesAtiv.responsavel_user_id}, situacao = ${antesAtiv.situacao},
+      proximo_passo = ${antesAtiv.proximo_passo}, proximo_passo_em = ${antesAtiv.proximo_passo_em}
+    WHERE id = ${aLaw.id}
+  `;
+
+  const antesDeal = (
+    await sql`SELECT conta, escopo, estagio, valor_centavos, proximo_passo, proximo_passo_em,
+                     situacao, contato, responsavel_texto, pausado FROM deals WHERE id = ${dLaw.id}`
+  )[0];
+  const camposDeal = {
+    conta: "[teste] conta nova",
+    escopo: "[teste] escopo novo",
+    estagio: antesDeal.estagio === "lead" ? "proposta" : "lead",
+    valorReais: 4321,
+    proximoPasso: "[teste] passo",
+    proximoPassoEm: "2031-04-05",
+    situacao: "[teste] situação",
+    contato: "[teste] contato",
+    responsavelTexto: "[teste] responsável",
+    pausado: !antesDeal.pausado,
+  };
+  const todosD = await req(marina.token, `/api/deals/${dLaw.id}`, {
+    method: "PATCH",
+    body: JSON.stringify(camposDeal),
+  });
+  const todosDJson = await todosD.json();
+  checa(
+    `oportunidade: ${Object.keys(camposDeal).length} campos enviados → ${Object.keys(camposDeal).length} mudanças`,
+    todosD.status === 200 && todosDJson.mudancas === Object.keys(camposDeal).length,
+    JSON.stringify(todosDJson)
+  );
+
+  await sql`
+    UPDATE deals SET conta = ${antesDeal.conta}, escopo = ${antesDeal.escopo}, estagio = ${antesDeal.estagio},
+      valor_centavos = ${antesDeal.valor_centavos}, proximo_passo = ${antesDeal.proximo_passo},
+      proximo_passo_em = ${antesDeal.proximo_passo_em}, situacao = ${antesDeal.situacao},
+      contato = ${antesDeal.contato}, responsavel_texto = ${antesDeal.responsavel_texto},
+      pausado = ${antesDeal.pausado}
+    WHERE id = ${dLaw.id}
+  `;
+
   console.log("\n5f. ORDEM ALFABÉTICA DOS CADASTROS\n");
   const ordenado = (lista, chave) =>
     lista.every((x, i) => i === 0 || lista[i - 1][chave].localeCompare(x[chave], "pt-BR", { sensitivity: "base" }) <= 0);

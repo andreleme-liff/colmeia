@@ -181,6 +181,7 @@ export const api = {
       responsavelId?: number | null;
       prioridade?: string;
       area?: string;
+      prazo?: string | null;
       situacao?: string;
       proximoPasso?: string;
       produtoId?: string | null;

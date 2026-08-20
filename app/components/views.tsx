@@ -1711,6 +1711,7 @@ export function Drawer({
   onProximo,
   onProduto,
   onProximoEm,
+  onPrazo,
   produtos,
 }: {
   act: Activity;
@@ -1727,6 +1728,7 @@ export function Drawer({
   onProximo: (v: string) => void;
   onProduto: (id: string | null) => void;
   onProximoEm: (d: string | null) => void;
+  onPrazo: (d: string | null) => void;
   produtos: { id: string; label: string; area: string; ativo: boolean }[];
 }) {
   const a = areaOf(act.area);
@@ -1845,6 +1847,16 @@ export function Drawer({
                   </option>
                 ))}
               </select>
+            </div>
+            <div>
+              <div style={{ ...eyebrow(10, C.faint), marginBottom: 9 }}>PRAZO</div>
+              <input
+                type="date"
+                value={act.prazo ?? ""}
+                onChange={(e) => onPrazo(e.target.value || null)}
+                disabled={!editavel}
+                style={nativeSelectStyle}
+              />
             </div>
             <div>
               <div style={{ ...eyebrow(10, C.faint), marginBottom: 9 }}>PRIORIDADE</div>

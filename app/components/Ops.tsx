@@ -261,7 +261,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     const painel: PainelDados = {
       escopoFrase:
         `${me.nome.split(" ")[0]}, você vê ${areasVisiveis.length} de ${estado.areas.length} ` +
-        `área(s) — ${atividades.length} atividades e ${oportunidades.length} oportunidades.`,
+        `áreas — ${atividades.length} atividades e ${oportunidades.length} oportunidades.`,
       // O sufixo "(ver)" marca onde a pessoa só lê. É a informação que evita descobrir a
       // falta de permissão só na hora de tentar salvar.
       escopoAreas: areasVisiveis
@@ -1058,6 +1058,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           onProximo={(v) => void acao(() => api.alterarAtividade(selecionadaObj.id, { proximoPasso: v }))}
           onProduto={(id) => void acao(() => api.alterarAtividade(selecionadaObj.id, { produtoId: id }))}
           onProximoEm={(d) => void acao(() => api.alterarAtividade(selecionadaObj.id, { proximoPassoEm: d }))}
+          onPrazo={(d) => void acao(() => api.alterarAtividade(selecionadaObj.id, { prazo: d }))}
           produtos={estado.produtos}
         />
       )}

@@ -6,7 +6,7 @@ import { getDb } from "@/lib/db";
 import { requireCtx } from "@/lib/perms";
 import { json, err } from "@/lib/http";
 import { registrar } from "@/lib/log";
-import { PRIORIDADES, STATUS_KEYS, statusLabel } from "@/lib/domain";
+import { PRIORIDADES, STATUS_KEYS, ddmm, statusLabel } from "@/lib/domain";
 
 type Body = {
   titulo?: string;
@@ -14,6 +14,7 @@ type Body = {
   responsavelId?: number | null;
   prioridade?: string;
   area?: string;
+  prazo?: string | null;
   situacao?: string;
   proximoPasso?: string;
   proximoPassoEm?: string | null;
@@ -43,10 +44,11 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/activitie
       id: number; ref: string; titulo: string; area: string; status: string;
       prioridade: string; responsavel_user_id: number | null; responsavel: string | null;
       situacao: string; proximo_passo: string; proximo_passo_em: Date | null; produto_id: string | null;
+      prazo: Date | null;
     }[]
   >`
     SELECT a.id, a.ref, a.titulo, a.area, a.status, a.prioridade, a.responsavel_user_id,
-           a.situacao, a.proximo_passo, a.proximo_passo_em, a.produto_id, u.nome AS responsavel
+           a.situacao, a.proximo_passo, a.proximo_passo_em, a.produto_id, a.prazo, u.nome AS responsavel
     FROM activities a LEFT JOIN users u ON u.id = a.responsavel_user_id
     WHERE a.id = ${activityId}
   `;
@@ -156,6 +158,25 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/activitie
     `;
   }
 
+
+  /**
+   * Prazo. Faltava aqui desde o começo: dava para definir na criação e nunca mais corrigir,
+   * embora o drawer exibisse "vence dd/mm" e o painel inteiro — atraso, hoje/7 dias, foco da
+   * semana — se apoiasse neste campo. Uma data errada ficava errada para sempre.
+   */
+  if (body.prazo !== undefined) {
+    const novo = body.prazo && DATA_RE.test(body.prazo) ? body.prazo : null;
+    const antigo = atual.prazo ? atual.prazo.toISOString().slice(0, 10) : null;
+    if (novo !== antigo) {
+      mudancas.push({
+        campo: "prazo",
+        de: antigo ?? "—",
+        para: novo ?? "—",
+        texto: `Alterou o prazo de "${atual.titulo}" de ${ddmm(antigo)} para ${ddmm(novo)}`,
+      });
+      await sql`UPDATE activities SET prazo = ${novo}, atualizado_em = now() WHERE id = ${activityId}`;
+    }
+  }
 
   // Data do próximo passo. `null` explícito limpa a data — é assim que se tira um item do
   // cronograma sem apagar o texto do passo.
