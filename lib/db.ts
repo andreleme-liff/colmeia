@@ -207,6 +207,10 @@ async function migrate(): Promise<void> {
       responsavel_texto   TEXT NOT NULL DEFAULT '',
       produto_id          TEXT REFERENCES produtos(id) ON DELETE SET NULL,
       pausado             BOOLEAN NOT NULL DEFAULT false,
+      -- Oportunidade já registrada no ACE do AWS Partner Central. Vive aqui e não numa
+      -- integração porque o registro é feito à mão no portal da AWS: o sistema só precisa
+      -- lembrar quem já foi, para ninguém registrar duas vezes nem esquecer de registrar.
+      ace_aws             BOOLEAN NOT NULL DEFAULT false,
       criado_em           TIMESTAMPTZ NOT NULL DEFAULT now(),
       atualizado_em       TIMESTAMPTZ
     )
@@ -298,6 +302,7 @@ async function migrate(): Promise<void> {
     // mistura oportunidade e atividade na mesma linha do tempo.
     await sql`ALTER TABLE activities ADD COLUMN IF NOT EXISTS proximo_passo_em DATE`;
     await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS proximo_passo_em DATE`;
+    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS ace_aws BOOLEAN NOT NULL DEFAULT false`;
     await sql.unsafe(`
       DO $$
       BEGIN

@@ -29,6 +29,7 @@ type Body = {
   responsavelTexto?: string;
   produtoId?: string | null;
   pausado?: boolean;
+  aceAws?: boolean;
 };
 
 /**
@@ -94,12 +95,13 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/deals/[id
       id: number; ref: string; conta: string; escopo: string; area: string; estagio: string;
       valor_centavos: string; proximo_passo: string; responsavel_user_id: number | null; responsavel: string | null;
       situacao: string; contato: string; responsavel_texto: string; produto_id: string | null;
-      pausado: boolean; proximo_passo_em: Date | null;
+      pausado: boolean; proximo_passo_em: Date | null; ace_aws: boolean;
     }[]
   >`
     SELECT d.id, d.ref, d.conta, d.escopo, d.area, d.estagio, d.valor_centavos, d.proximo_passo,
            d.responsavel_user_id, u.nome AS responsavel,
-           d.situacao, d.contato, d.responsavel_texto, d.produto_id, d.pausado, d.proximo_passo_em
+           d.situacao, d.contato, d.responsavel_texto, d.produto_id, d.pausado, d.proximo_passo_em,
+           d.ace_aws
     FROM deals d LEFT JOIN users u ON u.id = d.responsavel_user_id
     WHERE d.id = ${dealId}
   `;
@@ -303,6 +305,16 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/deals/[id
       texto: `${body.pausado ? "Pausou" : "Retomou"} ${atual.conta}`,
     });
     await sql`UPDATE deals SET pausado = ${body.pausado}, atualizado_em = now() WHERE id = ${dealId}`;
+  }
+
+  if (body.aceAws !== undefined && body.aceAws !== atual.ace_aws) {
+    mudancas.push({
+      campo: "ace_aws",
+      de: String(atual.ace_aws),
+      para: String(body.aceAws),
+      texto: `${body.aceAws ? "Registrou" : "Desmarcou o registro de"} ${atual.conta} no ACE da AWS`,
+    });
+    await sql`UPDATE deals SET ace_aws = ${body.aceAws}, atualizado_em = now() WHERE id = ${dealId}`;
   }
 
   if (body.responsavelId !== undefined && body.responsavelId !== atual.responsavel_user_id) {

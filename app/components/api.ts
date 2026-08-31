@@ -41,6 +41,8 @@ export type Deal = {
   proximoPassoEm: string | null;
   /** Paralelo ao estágio: "não é o momento" não é uma casa do funil. */
   pausado: boolean;
+  /** Oportunidade já registrada no ACE do AWS Partner Central. */
+  aceAws: boolean;
   /** ISO da última mexida no card — ou da criação, se nunca foi editado. */
   atualizadoEm: string;
   podeEditar: boolean;
@@ -141,6 +143,7 @@ export type NovaOportunidade = {
   produtoId: string | null;
   pausado: boolean;
   proximoPassoEm: string | null;
+  aceAws: boolean;
 };
 
 async function req<T>(url: string, opts: RequestInit = {}): Promise<T> {

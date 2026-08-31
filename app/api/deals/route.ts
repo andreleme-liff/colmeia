@@ -23,6 +23,7 @@ type Body = {
   produtoId?: string | null;
   pausado?: boolean;
   proximoPassoEm?: string | null;
+  aceAws?: boolean;
 };
 
 export async function POST(req: Request) {
@@ -77,12 +78,13 @@ export async function POST(req: Request) {
   const [nova] = await sql<{ id: number }[]>`
     INSERT INTO deals (ref, conta, escopo, area, estagio, valor_centavos, responsavel_user_id,
                        proximo_passo, proximo_passo_em, situacao, contato, responsavel_texto,
-                       produto_id, pausado)
+                       produto_id, pausado, ace_aws)
     VALUES (${ref}, ${conta}, ${String(body.escopo ?? "").trim()}, ${area}, ${estagio},
             ${valorCentavos}, ${responsavelId}, ${String(body.proximoPasso ?? "").trim()},
             ${body.proximoPassoEm && DATA_RE.test(body.proximoPassoEm) ? body.proximoPassoEm : null},
             ${String(body.situacao ?? "").trim()}, ${String(body.contato ?? "").trim()},
-            ${String(body.responsavelTexto ?? "").trim()}, ${produtoId}, ${body.pausado ?? false})
+            ${String(body.responsavelTexto ?? "").trim()}, ${produtoId}, ${body.pausado ?? false},
+            ${body.aceAws ?? false})
     RETURNING id
   `;
 

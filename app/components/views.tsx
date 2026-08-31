@@ -305,7 +305,14 @@ export function Comercial({
               >
                 <div style={{ display: "flex", alignItems: "baseline", gap: 8, justifyContent: "space-between" }}>
                   <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, lineHeight: 1.35 }}>{d.conta}</div>
-                  {d.pausado && <span style={eyebrow(9, C.warning, "0.1em")}>pausada</span>}
+                  <span style={{ display: "flex", gap: 8, flex: "none" }}>
+                    {d.aceAws && (
+                      <span style={eyebrow(9, C.info, "0.1em")} title="Registrada no ACE da AWS">
+                        ace
+                      </span>
+                    )}
+                    {d.pausado && <span style={eyebrow(9, C.warning, "0.1em")}>pausada</span>}
+                  </span>
                 </div>
 
                 {/* Produto é o que se vende; a cor continua sendo a da área, para não haver
@@ -2385,6 +2392,7 @@ export function FormOportunidade({
     produtoId: string | null;
     pausado: boolean;
     proximoPassoEm: string | null;
+    aceAws: boolean;
   }) => void;
   onFechar: () => void;
 }) {
@@ -2405,6 +2413,7 @@ export function FormOportunidade({
   const [produtoId, setProdutoId] = useState(inicial?.produtoId ?? "");
   const [pausado, setPausado] = useState(inicial?.pausado ?? false);
   const [proximoEm, setProximoEm] = useState(inicial?.proximoPassoEm ?? "");
+  const [aceAws, setAceAws] = useState(inicial?.aceAws ?? false);
   // Fechado por padrão: o formulário existe para editar, o histórico é consulta.
   const [verHistorico, setVerHistorico] = useState(false);
 
@@ -2426,6 +2435,7 @@ export function FormOportunidade({
       produtoId: produtoId || null,
       pausado,
       proximoPassoEm: proximoEm || null,
+      aceAws,
     });
 
   return (
@@ -2524,6 +2534,14 @@ export function FormOportunidade({
         <Switch checked={pausado} onChange={setPausado} label="Em pausa" />
         <span style={{ fontSize: 12, color: C.faint, lineHeight: 1.5 }}>
           Marque quando o motivo da parada não é o estágio — &quot;não é o momento&quot;, aguardando terceiro.
+        </span>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <Switch checked={aceAws} onChange={setAceAws} label="ACE na AWS" />
+        <span style={{ fontSize: 12, color: C.faint, lineHeight: 1.5 }}>
+          Oportunidade já registrada no ACE do AWS Partner Central. O registro é feito à mão no
+          portal da AWS; aqui fica só a marca de quem já foi.
         </span>
       </div>
 
