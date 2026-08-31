@@ -2530,15 +2530,21 @@ export function FormOportunidade({
         </Field>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <Switch checked={pausado} onChange={setPausado} label="Em pausa" />
+      {/* `flex: none` no interruptor: sem isso o flex o encolhe e o rótulo quebra em uma
+          palavra por linha — "ACE / na / AWS". A explicação é que fica com a folga. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <span style={{ flex: "none" }}>
+          <Switch checked={pausado} onChange={setPausado} label="Em pausa" />
+        </span>
         <span style={{ fontSize: 12, color: C.faint, lineHeight: 1.5 }}>
           Marque quando o motivo da parada não é o estágio — &quot;não é o momento&quot;, aguardando terceiro.
         </span>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <Switch checked={aceAws} onChange={setAceAws} label="ACE na AWS" />
+      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <span style={{ flex: "none" }}>
+          <Switch checked={aceAws} onChange={setAceAws} label="ACE na AWS" />
+        </span>
         <span style={{ fontSize: 12, color: C.faint, lineHeight: 1.5 }}>
           Oportunidade já registrada no ACE do AWS Partner Central. O registro é feito à mão no
           portal da AWS; aqui fica só a marca de quem já foi.
