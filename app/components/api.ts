@@ -99,7 +99,7 @@ export type Me = {
   preferencias: { tema?: string; area?: string };
 };
 
-export type AreaCadastro = { id: string; label: string; short: string; cor: string };
+export type AreaCadastro = { id: string; label: string; short: string; cor: string; planilhaUrl: string | null };
 
 export type State = {
   me: Me;
@@ -110,6 +110,8 @@ export type State = {
   isAdmin: boolean;
   /** Domínio aceito no login — vem do servidor, alimenta o cadastro de pessoa. */
   dominioLogin: string;
+  /** Se esta pessoa já autorizou a leitura de planilhas do Drive. */
+  sheetsConectado: boolean;
   activities: Activity[];
   deals: Deal[];
   logs: LogEntry[];
@@ -168,7 +170,7 @@ export const api = {
   criarOportunidade: (dados: NovaOportunidade) =>
     req<{ ok: boolean; ref: string }>("/api/deals", { method: "POST", body: JSON.stringify(dados) }),
 
-  alterarArea: (id: string, patch: { cor?: string; label?: string; short?: string }) =>
+  alterarArea: (id: string, patch: { cor?: string; label?: string; short?: string; planilhaUrl?: string | null }) =>
     req<{ ok: boolean }>(`/api/areas/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
 
   criarArea: (dados: { label: string; short: string; cor: string }) =>
@@ -235,6 +237,12 @@ export const api = {
 
   salvarPreferencias: (patch: { tema?: string; area?: string }) =>
     req<{ ok: boolean }>("/api/me/preferencias", { method: "PATCH", body: JSON.stringify(patch) }),
+
+  /** Prévia da planilha do Drive. 428 = falta conectar a conta Google. */
+  previaPlanilha: (area: string) =>
+    req<{ ok: boolean; abas: unknown[] }>(`/api/sheets/preview?area=${encodeURIComponent(area)}`),
+
+  desconectarSheets: () => req<{ ok: boolean }>("/api/sheets/conectar", { method: "DELETE" }),
 
   sair: () => req<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
 };

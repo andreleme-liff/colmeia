@@ -125,8 +125,10 @@ export async function GET() {
 
   // Cadastro das verticais: rótulo, sigla e cor. Vai inteiro para o cliente, que transforma
   // a cor em variável CSS.
-  const areasCadastro = await sql<{ id: string; label: string; short: string; cor: string }[]>`
-    SELECT id, label, short, cor FROM areas ORDER BY ordem ASC, id ASC
+  const areasCadastro = await sql<
+    { id: string; label: string; short: string; cor: string; planilha_url: string | null }[]
+  >`
+    SELECT id, label, short, cor, planilha_url FROM areas ORDER BY ordem ASC, id ASC
   `;
 
   // Produtos de todas as áreas visíveis. O formulário só oferece os da área escolhida.
@@ -172,12 +174,13 @@ export async function GET() {
     },
     perms: ctx.perms,
     areasVisiveis: ctx.areasVisiveis,
-    areas: areasCadastro,
+    areas: areasCadastro.map((a) => ({ ...a, planilhaUrl: a.planilha_url })),
     produtos,
     isAdmin: ctx.isAdmin,
     // O formulário de pré-cadastro precisa dizer qual domínio o login aceita, e a fonte
     // dessa verdade é uma variável de ambiente do servidor.
     dominioLogin: DOMINIO_PERMITIDO,
+    sheetsConectado: ctx.user.temSheets,
     activities: atividades.map((a) => ({
       id: a.id,
       ref: a.ref,

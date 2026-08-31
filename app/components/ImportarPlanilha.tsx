@@ -14,54 +14,9 @@ import * as XLSX from "xlsx";
 import { Button, Field, Select } from "./ds";
 import { C, GHOST_FIX, MONO, eyebrow } from "./tokens";
 import { STAGES, areaOf, normalizarConta, normalizarTexto, porTexto, slugificar, statusLabel } from "@/lib/domain";
+import { lerAba, rendeLinhas, type Aba, type LinhaAtividadeImportada } from "@/lib/planilha";
 import type { Activity, Deal, LinhaImport, ProdutoCadastro } from "./api";
 import { useFecharNoFundo } from "./views";
-
-/**
- * A planilha usa esta frase, em todas as colunas, para dizer "ainda não sabemos nada".
- * Sem tratá-la como vazio, ela vira lixo em quatro campos de seis registros.
- */
-const PLACEHOLDER = /^descobrir contato no escrit/i;
-
-/** Aceita variações de acento e caixa nos cabeçalhos das planilhas de oportunidade. */
-const COLUNAS: Record<string, keyof LinhaImport | "setor"> = {
-  empresa: "conta",
-  conta: "conta",
-  "regtrack setor": "setor",
-  setor: "setor",
-  produto: "setor",
-  "situacao atual": "situacao",
-  situacao: "situacao",
-  "proximos passos": "proximoPasso",
-  "proximo passo": "proximoPasso",
-  "contato cargo": "contato",
-  contato: "contato",
-  responsavel: "responsavelTexto",
-};
-
-/** Cabeçalhos da aba de atividades. `to do` cobre "TO-DO", que a planilha escreve com hífen. */
-const COLUNAS_ATIVIDADE: Record<string, "titulo" | "status" | "situacao" | "proximoPasso"> = {
-  "to do": "titulo",
-  todo: "titulo",
-  tarefa: "titulo",
-  atividade: "titulo",
-  acao: "titulo",
-  item: "titulo",
-  status: "status",
-  "situacao atual": "situacao",
-  situacao: "situacao",
-  "proximos passos": "proximoPasso",
-  "proximo passo": "proximoPasso",
-};
-
-const chave = (s: string) =>
-  s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-
-/**
- * Linha de rodapé que a planilha usa para totalizar ("TOTAL: 4 empresas", "TOTAL: 13 itens").
- * Sem isto ela viraria uma conta chamada "TOTAL: 4 empresas" em toda importação.
- */
-const RODAPE = /^total\b/i;
 
 const COLS_DEAL = "1.5fr 1fr 1.1fr 2fr 0.7fr";
 const COLS_ATIV = "2.4fr 0.9fr 1.6fr 0.7fr";
@@ -74,79 +29,10 @@ const celaTexto = {
   overflow: "hidden",
 } as const;
 
-/** Status da atividade a partir do texto livre da planilha. Vazio é backlog, não erro. */
-function statusSugerido(bruto: string): string {
-  const t = chave(bruto);
-  if (!t) return "backlog";
-  if (/conclu|feito|final|entregue|done|ok/.test(t)) return "concluido";
-  if (/revis|valida|aprova/.test(t)) return "revisao";
-  if (/andamento|fazendo|progresso|curso|wip/.test(t)) return "andamento";
-  return "backlog";
-}
-
-/**
- * Estágio inferido do texto da situação. É deliberadamente conservador — na dúvida, o
- * estágio mais atrás, porque adiantar um card indevidamente engana o pipeline.
- *
- * NDA, POC, transferência de dados e refinamento de escopo caem todos em `validacao`: são
- * fases do mesmo trabalho de provar que dá para fazer, e nenhuma delas significa que existe
- * proposta comercial.
- *
- * A ORDEM dos testes é o que resolve o caso ambíguo. "Proposta de POC enviada" fala de
- * proposta e de POC, mas é a POC que está em jogo — checar POC/NDA primeiro devolve
- * `validacao`, que é o estágio mais atrás dos dois. Só cai em `proposta` quem fala de
- * proposta sem falar de POC, como "Proposta LIFF Tax enviada".
- */
-function estagioSugerido(situacao: string): string {
-  const t = situacao.toLowerCase();
-  if (!t || PLACEHOLDER.test(t)) return "lead";
-  // `tra\w*fer` de propósito: a planilha real escreve "tranferência", sem o s. Casar só a
-  // grafia correta jogaria o card para o início do funil por causa de um typo.
-  if (/\bnda\b|\bpoc\b|tra\w*fer[êe]ncia d[eo]s? dados|refinamento de escopo/.test(t)) return "validacao";
-  if (/proposta\b/.test(t)) return "proposta";
-  if (/reuni[ãa]o|apresenta[çc][ãa]o|fup|contato|aproxima[çc][ãa]o/.test(t)) return "qualificacao";
-  return "lead";
-}
-
-/** "não é o momento", "aguardar" — parado, mas não num estágio. */
-function pausaSugerida(situacao: string, proximo: string): boolean {
-  const t = (situacao + " " + proximo).toLowerCase();
-  return /n[ãa]o [ée] o momento|n[ãa]o insistir|aguardar|segundo momento|dificuldades financeiras/.test(t);
-}
-
-export type LinhaPrevia = LinhaImport & { setorOriginal: string; existente: boolean };
-export type LinhaAtividade = { titulo: string; status: string; situacao: string; proximoPasso: string };
-export type LinhaAtividadePrevia = LinhaAtividade & { existente: boolean };
-
-/**
- * Uma aba lida. A planilha real tem três — duas de oportunidade em estágios diferentes e uma
- * de to-dos — e cada uma vira uma importação própria, para a área escolhida.
- */
-type Aba =
-  | { nome: string; tipo: "oportunidades"; linhas: LinhaPrevia[] }
-  | { nome: string; tipo: "atividades"; linhas: LinhaAtividadePrevia[] }
-  | { nome: string; tipo: "ignorada"; motivo: string };
-
-/** Aba que rende importação. O predicado é explícito porque `filter` com condição composta
- *  não estreita a união sozinho, e o resto do componente precisa enxergar `linhas`. */
-type AbaComLinhas = Exclude<Aba, { tipo: "ignorada" }>;
-const rendeLinhas = (a: Aba): a is AbaComLinhas => a.tipo !== "ignorada";
-
-/** Índice da linha de cabeçalho e o mapa de colunas, ou -1 se a aba não é do tipo procurado. */
-function acharCabecalho(
-  grade: string[][],
-  dicionario: Record<string, string>,
-  obrigatoria: string
-): { i: number; mapa: (string | null)[] } | null {
-  // O cabeçalho quase nunca está na primeira linha: as planilhas trazem um título acima.
-  // Procura a primeira linha que contenha a coluna que define o tipo da aba.
-  const i = grade.findIndex((r) => r.some((c) => dicionario[chave(String(c))] === obrigatoria));
-  if (i < 0) return null;
-  return { i, mapa: grade[i].map((c) => dicionario[chave(String(c))] ?? null) };
-}
-
 export default function ImportarPlanilha({
   areasEditaveis,
+  areasComPlanilha,
+  sheetsConectado,
   produtos,
   deals,
   atividades,
@@ -157,6 +43,9 @@ export default function ImportarPlanilha({
   onFechar,
 }: {
   areasEditaveis: { id: string; label: string }[];
+  /** Verticais que têm planilha do Drive configurada — só nelas o botão de sincronizar faz sentido. */
+  areasComPlanilha: Set<string>;
+  sheetsConectado: boolean;
   produtos: ProdutoCadastro[];
   deals: Deal[];
   /** Para marcar na prévia o to-do que já existe na área — dedup é por título. */
@@ -165,7 +54,7 @@ export default function ImportarPlanilha({
   erro: string | null;
   /** As duas listas num handler só: disparadas em paralelo, cada uma fecharia o modal e
    *  sobrescreveria a mensagem da outra. */
-  onImportar: (area: string, dados: { deals: LinhaImport[]; atividades: LinhaAtividade[] }) => void;
+  onImportar: (area: string, dados: { deals: LinhaImport[]; atividades: LinhaAtividadeImportada[] }) => void;
   onCriarProduto: (label: string, area: string) => Promise<void>;
   onFechar: () => void;
 }) {
@@ -176,6 +65,9 @@ export default function ImportarPlanilha({
   const [escolhidas, setEscolhidas] = useState<Set<string>>(new Set());
   const [arquivo, setArquivo] = useState<string>("");
   const [erroLeitura, setErroLeitura] = useState<string | null>(null);
+  const [sincronizando, setSincronizando] = useState(false);
+  /** Quando o servidor devolve 428, falta autorizar o Google — vira um convite, não um erro. */
+  const [precisaConectar, setPrecisaConectar] = useState(false);
 
   const produtosDaArea = useMemo(() => produtos.filter((p) => p.area === area && p.ativo), [produtos, area]);
 
@@ -221,67 +113,7 @@ export default function ImportarPlanilha({
           blankrows: false,
           defval: "",
         });
-
-        const cabDeal = acharCabecalho(grade, COLUNAS, "conta");
-        if (cabDeal) {
-          const linhas: LinhaPrevia[] = [];
-          for (const linha of grade.slice(cabDeal.i + 1)) {
-            const campos: Record<string, string> = {};
-            cabDeal.mapa.forEach((destino, i) => {
-              if (!destino) return;
-              const bruto = String(linha[i] ?? "").trim();
-              campos[destino] = PLACEHOLDER.test(bruto) ? "" : bruto;
-            });
-            const conta = (campos.conta ?? "").trim();
-            if (!conta || RODAPE.test(conta)) continue;
-
-            const situacao = campos.situacao ?? "";
-            const proximo = campos.proximoPasso ?? "";
-            const setor = campos.setor ?? "";
-            linhas.push({
-              conta,
-              escopo: "",
-              estagio: estagioSugerido(situacao),
-              situacao,
-              proximoPasso: proximo,
-              contato: campos.contato ?? "",
-              responsavelTexto: campos.responsavelTexto ?? "",
-              produtoId: setor ? slugificar(setor) : null,
-              pausado: pausaSugerida(situacao, proximo),
-              setorOriginal: setor,
-              existente: contasExistentes.has(normalizarConta(conta)),
-            });
-          }
-          return linhas.length
-            ? { nome, tipo: "oportunidades" as const, linhas }
-            : { nome, tipo: "ignorada" as const, motivo: "tem cabeçalho de empresa, mas nenhuma linha preenchida" };
-        }
-
-        const cabAtiv = acharCabecalho(grade, COLUNAS_ATIVIDADE, "titulo");
-        if (cabAtiv) {
-          const linhas: LinhaAtividadePrevia[] = [];
-          for (const linha of grade.slice(cabAtiv.i + 1)) {
-            const campos: Record<string, string> = {};
-            cabAtiv.mapa.forEach((destino, i) => {
-              if (!destino) return;
-              campos[destino] = String(linha[i] ?? "").trim();
-            });
-            const titulo = (campos.titulo ?? "").trim();
-            if (!titulo || RODAPE.test(titulo)) continue;
-            linhas.push({
-              titulo,
-              status: statusSugerido(campos.status ?? ""),
-              situacao: campos.situacao ?? "",
-              proximoPasso: campos.proximoPasso ?? "",
-              existente: titulosExistentes.has(normalizarTexto(titulo)),
-            });
-          }
-          return linhas.length
-            ? { nome, tipo: "atividades" as const, linhas }
-            : { nome, tipo: "ignorada" as const, motivo: "tem cabeçalho de to-do, mas nenhuma linha preenchida" };
-        }
-
-        return { nome, tipo: "ignorada" as const, motivo: "sem coluna de empresa nem de to-do" };
+        return lerAba(nome, grade, { contas: contasExistentes, titulos: titulosExistentes });
       });
 
       if (!lidas.some(rendeLinhas)) {
@@ -298,6 +130,41 @@ export default function ImportarPlanilha({
       setAbas(null);
       setEscolhidas(new Set());
       setErroLeitura(e instanceof Error ? e.message : "Não consegui ler a planilha.");
+    }
+  }
+
+  /**
+   * Sincroniza com a planilha do Drive. O servidor lê e classifica exatamente como o leitor
+   * de arquivo, então daqui para baixo a prévia é a mesma — inclusive a marcação do que
+   * atualiza em vez de criar, e a edição do estágio linha a linha.
+   */
+  async function sincronizar() {
+    setErroLeitura(null);
+    setPrecisaConectar(false);
+    setSincronizando(true);
+    try {
+      const r = await fetch(`/api/sheets/preview?area=${encodeURIComponent(area)}`);
+      const dados = (await r.json()) as { abas?: Aba[]; error?: string };
+      if (r.status === 428) {
+        setPrecisaConectar(true);
+        setErroLeitura(dados.error ?? "Conecte sua conta Google para ler a planilha.");
+        return;
+      }
+      if (!r.ok) throw new Error(dados.error ?? "Não consegui ler a planilha.");
+
+      const lidas = dados.abas ?? [];
+      if (!lidas.some(rendeLinhas)) {
+        throw new Error("A planilha não tem nenhuma aba com coluna de empresa/conta ou de to-do.");
+      }
+      setAbas(lidas);
+      setEscolhidas(new Set(lidas.filter(rendeLinhas).map((a) => a.nome)));
+      setArquivo("planilha do Drive");
+    } catch (e) {
+      setAbas(null);
+      setEscolhidas(new Set());
+      setErroLeitura(e instanceof Error ? e.message : "Não consegui ler a planilha.");
+    } finally {
+      setSincronizando(false);
     }
   }
 
@@ -395,7 +262,49 @@ export default function ImportarPlanilha({
             </Field>
           </div>
 
-          {erroLeitura && (
+          {/* Sincronizar aparece só onde há planilha configurada — sem isso o botão
+              prometeria algo que a vertical não tem. */}
+          {area && areasComPlanilha.has(area) && (
+            <div
+              style={{
+                border: `1px solid ${C.line}`,
+                padding: "14px 16px",
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+                flexWrap: "wrap",
+              }}
+            >
+              <Button variant="outline" size="sm" disabled={sincronizando} onClick={() => void sincronizar()}>
+                {sincronizando ? "lendo a planilha…" : "sincronizar com o Drive"}
+              </Button>
+              <span style={{ fontSize: 12, color: C.faint, lineHeight: 1.5, flex: 1, minWidth: 220 }}>
+                Lê a planilha configurada em {areaOf(area).label} usando o seu acesso do Google. Nada
+                é gravado antes de você conferir a prévia.
+                {!sheetsConectado && " Na primeira vez, o Google vai pedir sua autorização."}
+              </span>
+            </div>
+          )}
+
+          {precisaConectar && (
+            <div style={{ border: `1px solid ${C.warning}`, padding: "12px 14px", display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+              <span style={{ fontSize: 13, color: C.body, lineHeight: 1.6, flex: 1, minWidth: 240 }}>
+                O sistema precisa da sua autorização para ler planilhas do seu Google. O acesso é
+                de leitura, e o login continua sem pedir isso de quem não sincroniza.
+              </span>
+              <Button
+                variant="solid"
+                size="sm"
+                onClick={() => {
+                  window.location.href = `/api/sheets/conectar?voltar=${encodeURIComponent(window.location.pathname)}`;
+                }}
+              >
+                autorizar no Google
+              </Button>
+            </div>
+          )}
+
+          {erroLeitura && !precisaConectar && (
             <div style={{ fontFamily: MONO, fontSize: 11, lineHeight: 1.6, color: C.error }}>{erroLeitura}</div>
           )}
 

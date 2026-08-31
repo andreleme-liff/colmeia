@@ -20,6 +20,8 @@ export type SessionUser = {
   avatarUrl: string | null;
   /** Tema e filtro de área escolhidos por esta pessoa. Vazio até ela escolher. */
   preferencias: Record<string, string>;
+  /** Se já autorizou leitura de planilhas. O TOKEN em si nunca sai da camada de servidor. */
+  temSheets: boolean;
 };
 
 export async function createSession(userId: number): Promise<void> {
@@ -58,10 +60,11 @@ export async function getSessionUser(): Promise<SessionUser | null> {
       ativo: boolean;
       avatar_url: string | null;
       preferencias: Record<string, string> | null;
+      tem_sheets: boolean;
     }[]
   >`
     SELECT s.token, s.user_id, s.expires_at, u.nome, u.email, u.papel, u.iniciais, u.ativo,
-           u.avatar_url, u.preferencias
+           u.avatar_url, u.preferencias, (u.google_refresh_token IS NOT NULL) AS tem_sheets
     FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ${token}
   `;
   if (!rows.length) return null;
@@ -84,6 +87,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     ativo: row.ativo,
     avatarUrl: row.avatar_url,
     preferencias: row.preferencias ?? {},
+    temSheets: !!row.tem_sheets,
   };
 }
 

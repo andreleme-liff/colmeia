@@ -65,3 +65,17 @@ export function caminhoDe({ view, tab, ref }: Rota): string {
   if (ref && REF_DA_VIEW[view]) return `/${view}/${ref}`;
   return `/${view}`;
 }
+
+/**
+ * Caminho interno seguro para voltar depois do consentimento.
+ *
+ * `startsWith("/")` sozinho NÃO basta: `//evil.com` também começa com barra, e é uma URL
+ * protocolo-relativa — `new URL("//evil.com", origin)` resolve para outro domínio. Seria um
+ * redirecionamento aberto, exatamente o tipo de coisa que se usa para phishing em cima de um
+ * domínio confiável.
+ */
+export function caminhoInternoSeguro(bruto: string | null | undefined, padrao = "/comercial"): string {
+  const v = (bruto ?? "").trim();
+  if (!v.startsWith("/") || v.startsWith("//") || v.startsWith("/\\")) return padrao;
+  return v;
+}

@@ -1124,6 +1124,8 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           produtos={estado.produtos}
           deals={estado.deals}
           atividades={estado.activities}
+          areasComPlanilha={new Set(estado.areas.filter((a) => a.planilhaUrl).map((a) => a.id))}
+          sheetsConectado={estado.sheetsConectado}
           salvando={salvando}
           erro={erroForm}
           onFechar={() => setImportando(false)}

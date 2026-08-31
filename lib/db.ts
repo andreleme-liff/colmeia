@@ -111,7 +111,8 @@ async function migrate(): Promise<void> {
         label  TEXT NOT NULL,
         short  TEXT NOT NULL,
         cor    TEXT NOT NULL,
-        ordem  INTEGER NOT NULL DEFAULT 0
+        ordem  INTEGER NOT NULL DEFAULT 0,
+        planilha_url TEXT
       )
     `;
     for (const [i, a] of AREAS_SEMENTE.entries()) {
@@ -149,6 +150,11 @@ async function migrate(): Promise<void> {
       -- tema e filtro de área. JSONB para não precisar de migração a cada preferência
       -- nova; quem valida as chaves é a rota, que ignora o que não conhece.
       preferencias JSONB NOT NULL DEFAULT '{}'::jsonb,
+      -- Refresh token do Google, concedido SÓ por quem clicou em sincronizar planilha — o
+      -- login não pede esse escopo. Fica em claro pelo mesmo motivo que o token de sessão:
+      -- o banco não é alcançável pela API pública (ver o REVOKE no fim desta migração) e o
+      -- app só fala com ele pelo servidor.
+      google_refresh_token TEXT,
       criado_em   TIMESTAMPTZ NOT NULL DEFAULT now()
     )
     `);
@@ -282,6 +288,10 @@ async function migrate(): Promise<void> {
     // título, responsável e prazo, mas nenhum lugar para "onde isto está" e "o que vem
     // depois" — que é justamente o que se pergunta olhando um card.
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS preferencias JSONB NOT NULL DEFAULT '{}'::jsonb`;
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS google_refresh_token TEXT`;
+    // Planilha do Drive de onde a vertical sincroniza. Fica na área e não numa configuração
+    // global porque cada vertical tem a sua, e o botão só aparece onde há uma.
+    await sql`ALTER TABLE areas ADD COLUMN IF NOT EXISTS planilha_url TEXT`;
     await sql`ALTER TABLE activities ADD COLUMN IF NOT EXISTS situacao TEXT NOT NULL DEFAULT ''`;
     await sql`ALTER TABLE activities ADD COLUMN IF NOT EXISTS proximo_passo TEXT NOT NULL DEFAULT ''`;
     // Produto deixa de ser só de oportunidade: "Regtrack Farma" classifica tanto a venda

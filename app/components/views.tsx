@@ -970,6 +970,8 @@ function TextoLongoEditavel({
   );
 }
 
+const COLS_AREA = "1.5fr 0.9fr 1.2fr 0.8fr 44px";
+
 /** Aba "áreas": a cor de cada vertical é configuração, e muda como todo mundo vê o quadro —
  *  por isso só admin edita. O `input type=color` devolve HEX, que é o que o servidor aceita. */
 function TabelaAreas({
@@ -985,19 +987,19 @@ function TabelaAreas({
   podeEditar: boolean;
   onCor: (id: string, cor: string) => void;
   onExcluir: (id: string, label: string) => void;
-  onNome: (id: string, patch: { label?: string; short?: string }) => void;
+  onNome: (id: string, patch: { label?: string; short?: string; planilhaUrl?: string | null }) => void;
 }) {
   return (
-    <div style={{ minWidth: 480 }}>
+    <div style={{ minWidth: 620 }}>
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "1.6fr 1fr 1fr 44px",
+          gridTemplateColumns: COLS_AREA,
           background: C.canvas,
           borderBottom: `1px solid ${C.line}`,
         }}
       >
-        {["ÁREA", "COR", "ATIVIDADES", ""].map((h, i) => (
+        {["ÁREA", "COR", "PLANILHA", "ATIVIDADES", ""].map((h, i) => (
           <div key={i} style={{ padding: "12px 16px", ...eyebrow(10, C.faint) }}>
             {h}
           </div>
@@ -1006,7 +1008,7 @@ function TabelaAreas({
       {areas.map((a) => (
         <div
           key={a.id}
-          style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr 44px", borderBottom: `1px solid ${C.line}`, alignItems: "center" }}
+          style={{ display: "grid", gridTemplateColumns: COLS_AREA, borderBottom: `1px solid ${C.line}`, alignItems: "center" }}
         >
           <div style={{ padding: "9px 16px", display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ ...dot(`var(--liff-app-area-${a.id})`), width: 9, height: 9, flex: "none" }} />
@@ -1050,6 +1052,22 @@ function TabelaAreas({
               }}
             />
             <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint, textTransform: "uppercase" }}>{a.cor}</span>
+          </div>
+          {/* Endereço da planilha do Drive de onde esta vertical sincroniza. Guardamos só o
+              id canônico; colar a URL inteira, com /edit e #gid, funciona. */}
+          <div style={{ padding: "9px 16px" }}>
+            {podeEditar ? (
+              <TextoEditavel
+                valor={a.planilhaUrl ?? "—"}
+                onSalvar={(v) => onNome(a.id, { planilhaUrl: v === "—" ? null : v })}
+                titulo="Clique para colar o endereço da planilha do Google"
+                estilo={{ fontFamily: MONO, fontSize: 11, color: a.planilhaUrl ? C.info : C.ghost, display: "block" }}
+              />
+            ) : (
+              <span style={{ fontFamily: MONO, fontSize: 11, color: a.planilhaUrl ? C.info : C.ghost }}>
+                {a.planilhaUrl ? "configurada" : "—"}
+              </span>
+            )}
           </div>
           <div style={{ padding: "13px 16px", fontFamily: MONO, fontSize: 11, color: C.faint }}>
             {contagem(a.id)} ativas
