@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">
+  <!-- Marca LIFF. Os paths são os mesmos do componente LiffMark em app/components/ds.tsx.
+       `currentColor` não vale em favicon, então a cor é explícita e segue o esquema do
+       sistema operacional: claro no escuro, escuro no claro. -->
+  <style>
+    .marca { fill: #0E1014 }
+    @media (prefers-color-scheme: dark) { .marca { fill: #FFFCF2 } }
+  </style>
+  <g class="marca" transform="translate(0,320)">
+    <path d="M639.0,0.0 380.0,0.0 380.0,359.0 479.0,359.0 480.0,219.0 609.0,219.0 609.0,140.0 480.0,140.0 479.0,80.0 639.0,79.0Z" />
+    <path d="M949.0,0.0 660.0,0.0 660.0,359.0 759.0,359.0 759.0,220.0 840.0,219.0 879.0,141.0 760.0,140.0 759.0,80.0 910.0,79.0Z" />
+    <path d="M0.0,0.0 0.0,359.0 229.0,359.0 229.0,280.0 99.0,279.0 99.0,0.0Z" />
+    <path d="M250.0,0.0 250.0,359.0 349.0,359.0 349.0,0.0Z" />
+    <path d="M999.0,0.0 979.0,0.0 800.0,359.0 820.0,359.0Z" />
+  </g>
+</svg>

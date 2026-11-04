@@ -80,8 +80,8 @@ export function prioColor(p: string): string {
    useSyncExternalStore — que é o caminho certo para ler estado que vive fora do React e
    evita divergência entre o HTML do servidor e a primeira renderização no cliente. */
 
-export const THEME_KEY = "liff-ops-theme";
-export const THEME_EVENT = "liff-ops-theme-change";
+export const THEME_KEY = "liff-tasks-theme";
+export const THEME_EVENT = "liff-tasks-theme-change";
 export type Theme = "dark" | "light";
 
 function assinar(cb: () => void): () => void {

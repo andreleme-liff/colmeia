@@ -642,7 +642,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
 
     const hojeISO = new Date().toISOString().slice(0, 10);
     L.push(`Alterações registradas hoje: ${estado.logs.filter((l) => l.criadoEm.slice(0, 10) === hojeISO).length}`);
-    L.push(`Reportado por ${estado.me.nome} via LIFF Ops`);
+    L.push(`Reportado por ${estado.me.nome} via LIFF tasks`);
     return L.join("\n");
   }, [estado, waArea]);
 

@@ -1,5 +1,5 @@
 {
-  "name": "liff-ops",
+  "name": "liff-tasks",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "fflate": "^0.8.3",
     "next": "16.2.11",
     "postgres": "^3.4.9",
     "react": "19.2.4",

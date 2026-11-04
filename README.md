@@ -1,4 +1,4 @@
-# LIFF Ops — sistema de gestão de atividades
+# LIFF tasks — gestão de atividades e pipeline comercial
 
 Atividade comercial, execução operacional, cadastros e administração da LIFF, organizados
 por área, com permissão por usuário e log de alterações em tudo.
@@ -162,24 +162,84 @@ sem alterar o kit.
 
 ## Deploy
 
-Produção: **https://liff-ops.vercel.app** (projeto `liff-ops`, time `liff-ai`).
-Repositório: `andreleme-liff/liff-ops`, privado.
+Destino: **https://tasks.liff.tech**, no **AWS Amplify Hosting**, a partir do GitHub
+(`andreleme-liff/liff-ops`, privado — o nome do repositório segue `liff-ops`, só o produto
+mudou de nome). Saindo da Vercel.
+
+### O impedimento a resolver primeiro
+
+A documentação da Amplify diz, textualmente, que ela suporta apps "built with Next.js
+versions up through Next.js 15", e que o compute "fully manages SSR for apps built with
+Next.js versions 12 through 15". **Este app é Next.js 16.2.11.** Não há anúncio da AWS
+adicionando a 16.
+
+Isso não prova que não funciona — prova que é configuração não suportada. Então a ordem
+importa: subir numa branch no Amplify e **confirmar que serve** antes de apontar DNS. O que
+precisa passar nesse primeiro deploy:
+
+1. o build termina (o adaptador de SSR aceita a saída do Next 16);
+2. `GET /api/state` responde **401** e não 404 — 404 significa que subiu como estático e
+   nenhuma rota de API existe;
+3. o ciclo de login do Google fecha e a sessão persiste entre requests;
+4. `POST`/`PATCH` gravam (é o que depende de Lambda com acesso ao pooler da Supabase).
+
+Se o build recusar a 16, as saídas são: fixar o Next em 15 (downgrade com quebras próprias —
+o `AGENTS.md` deste repo existe por causa delas), ou usar o Adapter API do Next 16 via
+OpenNext, que é experimental. Nenhuma das duas é barata, e por isso o teste empírico vem
+antes de qualquer trabalho de domínio.
+
+### Recursos da Amplify que este app NÃO usa
+
+Confirmado contra a lista de não suportados: não há `middleware.ts`, não há ISR sob demanda,
+não há `unstable_after`. Next.js streaming aparece como não suportado — o app é um shell
+cliente que busca `/api/state`, então não depende de streaming, mas é o item a observar se
+alguma página começar a renderizar em partes.
+
+### O que já está no repositório
+
+`amplify.yml` com a plataforma de compute. O build roda `tsc --noEmit`, `eslint` e
+`scripts/verificar-contrato.mjs` **antes** do `next build`: deploy que sobe com tipo quebrado
+é pior que deploy que não sobe, porque o erro aparece no request de um usuário.
+
+### O que precisa ser feito no console — não dá para fazer daqui
+
+1. **Criar o app no Amplify** ligado ao GitHub, branch `main`, e garantir que a plataforma é
+   **WEB_COMPUTE**, não WEB. Em WEB o app carrega a tela e todo `/api` devolve 404.
+2. **Variáveis de ambiente**, no app do Amplify: `DATABASE_URL` (Transaction Pooler, porta
+   6543), `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ADMIN_EMAIL`, `SEED_DEMO=0`.
+3. **Domínio**: `tasks.liff.tech` em Amplify → Domain management. Ele emite o certificado e
+   pede um registro de validação.
+4. **DNS no Cloudflare**: criar o CNAME que o Amplify indicar, com o proxy **desligado**
+   (nuvem cinza). Com o proxy laranja a validação do certificado não fecha — é o erro mais
+   comum nessa combinação. O proxy pode ser religado depois que o domínio ficar ativo.
+5. **Google Cloud Console**, no mesmo OAuth client: adicionar
+   `https://tasks.liff.tech/api/auth/google/callback` como Authorized redirect URI, e
+   `https://tasks.liff.tech` como Authorized JavaScript origin. O código monta o redirect a
+   partir do `origin` do request, então nada muda no app — mas o Google exige a URI exata
+   registrada, e sem isso o login devolve `redirect_uri_mismatch`.
+
+### Efeitos da troca de domínio
+
+- **Todos perdem a sessão** e entram de novo. O cookie está no domínio antigo.
+- **O `localStorage` zera** — origem nova. Tema e filtros voltam de `users.preferencias`, no
+  banco, no primeiro login. Foi para isso que a preferência saiu do navegador.
+- A URL da Vercel continua de pé até você desligar. Não desligue antes do passo 5 funcionar.
+
+### Um ponto a observar em Lambda
+
+A migração roda dentro do `getDb()`, em todo cold start: são cerca de 40 idas ao Postgres
+antes do primeiro request completar. Na Vercel isso já acontece e passa, mas cold start é
+mais frequente em Lambda. Se o primeiro acesso ficar lento depois da migração, o caminho é
+gatear a migração por uma versão de esquema gravada numa tabela, em vez de reexecutar os
+`ALTER ... IF NOT EXISTS` toda vez.
+
+### Histórico: a Vercel
 
 Durante um tempo todo deployment depois do primeiro travou em `UNKNOWN`, sem construir e sem
 logs, e a Vercel recusava promovê-lo (`422 ... is not ready`). A causa era o **e-mail do autor
 do commit**: os commits saíram com um endereço que a Vercel não reconhece como membro do time,
 e ela não constrói commit de autor desconhecido. Corrigido reescrevendo a autoria para
-`leme@getliff.ai` — os `git config` do repositório já estavam certos, bastava não sobrescrevê-los
-na hora de commitar.
+`leme@getliff.ai`.
 
-Separadamente, o time tem **Deployment Protection**: as URLs por deployment
-(`liff-<hash>-liff-ai.vercel.app`, `liff-ops-git-<branch>-liff-ai.vercel.app`) respondem 302
-para o SSO da Vercel e só abrem logado. Só o domínio de produção é público. Isso é esperado.
-
-O projeto na Vercel nasceu como site estático, então `vercel.json` declara
-`"framework": "nextjs"` — sem isso o build termina bem mas falha em
-`No Output Directory named "public" found`.
-
-Falta, antes de promover esta branch a produção: definir `DATABASE_URL`, `GOOGLE_CLIENT_ID`,
-`GOOGLE_CLIENT_SECRET` e `ADMIN_EMAIL` no projeto da Vercel (hoje não há **nenhuma** variável
-definida lá) e cadastrar o redirect URI de produção no Google Cloud Console.
+O time tem **Deployment Protection**: as URLs por deployment respondem 302 para o SSO da
+Vercel e só abrem logado. Só o domínio de produção era público. Isso era esperado.

@@ -7,13 +7,13 @@ import "./globals.css";
 // do fonts.gstatic.com derrubava o deploy inteiro.
 
 export const metadata: Metadata = {
-  title: "LIFF Ops — sistema de gestão de atividades",
+  title: "LIFF tasks — gestão de atividades e pipeline comercial",
   description: "Atividade comercial, execução operacional, cadastros e administração da LIFF.",
   robots: { index: false, follow: false },
 };
 
 // Aplica o tema antes do primeiro paint, senão a página pisca no fundo errado.
-const ANTI_FLASH = `(()=>{let t;try{t=localStorage.getItem("liff-ops-theme")}catch(e){}
+const ANTI_FLASH = `(()=>{let t;try{t=localStorage.getItem("liff-tasks-theme")}catch(e){}
 if(t!=="light"&&t!=="dark"){t=window.matchMedia&&window.matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"}
 document.documentElement.dataset.theme=t})()`;
 

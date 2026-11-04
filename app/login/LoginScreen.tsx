@@ -16,7 +16,7 @@ export default function LoginScreen({ erro, dominio }: { erro?: string; dominio:
       <div className="liff-login__pitch">
         <LiffMark height={34} tone={markTone(theme)} />
         <div>
-          <div style={{ ...eyebrow(12, C.accent), marginBottom: 24 }}>LIFF/ OPS</div>
+          <div style={{ ...eyebrow(12, C.accent), marginBottom: 24 }}>LIFF/ TASKS</div>
           <h1
             style={{
               fontSize: 52,
