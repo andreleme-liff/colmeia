@@ -493,15 +493,137 @@ export function textoMencionaPessoa(texto: string, nome: string, outrosNomes: st
   });
 }
 
+// ---------------------------------------------------------------------------
+// Filtro por responsável
+//
+// A lista de opções sai dos DADOS, e não da tabela de pessoas. A razão é a
+// importação de planilha: ela grava `responsavel_texto` e nunca
+// `responsavel_user_id`, então o pipeline inteiro é texto livre — "Bianka",
+// "Bruno Santo / Felipe Zambon", "Agente 2". Uma lista só com gente cadastrada
+// deixaria as linhas de "Agente 2" sem nenhuma opção que as alcance: fora de
+// todo filtro e visíveis apenas em "todos", que é a pior maneira de esconder o
+// trabalho de alguém.
+//
+// Daí três tipos de chave:
+//   u:<id>    pessoa cadastrada — o texto resolveu para ela, sem ambiguidade
+//   t:<slug>  texto que não resolveu: "Agente 2", ou "Bruno" com dois Brunos
+//   sem       responsável em branco
+// ---------------------------------------------------------------------------
+
+export const CHAVE_SEM_RESPONSAVEL = "sem";
+export const ROTULO_SEM_RESPONSAVEL = "Sem responsável";
+
+/** Teto de itens numa seleção gravada, para limitar o que vai à coluna de preferências. */
+export const MAX_RESPONSAVEIS_NA_SELECAO = 50;
+
+export type RegistroComResponsavel = { responsavelId?: number | null; responsavelTexto?: string };
+export type Pessoa = { id: number; nome: string };
+
+export type OpcaoResponsavel = {
+  chave: string;
+  label: string;
+  /** Quantos registros em escopo caem nesta chave. */
+  qtd: number;
+  /** Pessoa cadastrada, e não texto solto — ordena a lista e muda o marcador. */
+  cadastrada: boolean;
+};
+
+const slugDe = (texto: string) =>
+  normalizarTexto(texto).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
+/** A chave de um responsável em texto livre. Texto que vira slug vazio é "sem". */
+export function chaveDeTexto(texto: string): string {
+  const s = slugDe(texto);
+  return s ? `t:${s}` : CHAVE_SEM_RESPONSAVEL;
+}
+
+/** Chave e rótulo de cada responsável de um registro. */
+function resolver(registro: RegistroComResponsavel, pessoas: Pessoa[]): { chave: string; label: string }[] {
+  if (registro.responsavelId != null) {
+    const p = pessoas.find((x) => x.id === registro.responsavelId);
+    return [{ chave: `u:${registro.responsavelId}`, label: p?.nome ?? `#${registro.responsavelId}` }];
+  }
+
+  const trechos = nomesDoTexto(registro.responsavelTexto ?? "");
+  if (!trechos.length) return [{ chave: CHAVE_SEM_RESPONSAVEL, label: ROTULO_SEM_RESPONSAVEL }];
+
+  return trechos.map((trecho) => {
+    const candidatos = pessoas.filter((p) =>
+      textoMencionaPessoa(trecho, p.nome, pessoas.filter((o) => o.id !== p.id).map((o) => o.nome))
+    );
+    // Um candidato resolve. Zero é texto que não é ninguém da equipe; dois ou mais é
+    // ambiguidade. Nos dois casos o trecho vale por si mesmo: uma opção "Bruno" é melhor
+    // que atribuir o card ao Bruno errado.
+    return candidatos.length === 1
+      ? { chave: `u:${candidatos[0].id}`, label: candidatos[0].nome }
+      : { chave: chaveDeTexto(trecho), label: trecho };
+  });
+}
+
 /**
- * O registro é desta pessoa? `responsavelId` manda quando existe; o texto livre
- * é o reforço para o que veio de planilha.
+ * Para quais chaves de filtro um registro conta.
+ *
+ * Mais de uma quando o campo traz uma dupla: "Bruno Santo / Felipe Zambon" aparece no
+ * filtro do Bruno e no do Felipe, porque o card é dos dois.
  */
-export function ehMeu(
-  registro: { responsavelId?: number | null; responsavelTexto?: string },
-  eu: { id: number; nome: string },
-  outrosNomes: string[] = []
+export function chavesDoResponsavel(registro: RegistroComResponsavel, pessoas: Pessoa[]): string[] {
+  return [...new Set(resolver(registro, pessoas).map((r) => r.chave))];
+}
+
+/**
+ * As opções do filtro, tiradas dos registros em escopo.
+ *
+ * Tem de ser chamada ANTES de aplicar o próprio filtro, senão escolher uma pessoa colapsa
+ * a lista para ela só e não há como voltar.
+ */
+export function opcoesDeResponsavel(registros: RegistroComResponsavel[], pessoas: Pessoa[]): OpcaoResponsavel[] {
+  const acc = new Map<string, OpcaoResponsavel>();
+
+  for (const r of registros) {
+    const vistas = new Set<string>();
+    for (const { chave, label } of resolver(r, pessoas)) {
+      if (vistas.has(chave)) continue;
+      vistas.add(chave);
+      const atual = acc.get(chave);
+      if (atual) atual.qtd++;
+      else acc.set(chave, { chave, label, qtd: 1, cadastrada: chave.startsWith("u:") });
+    }
+  }
+
+  // Cadastradas primeiro, texto solto depois, "sem responsável" por último — o vazio é o
+  // que menos se procura e o que mais polui o topo de uma lista.
+  const peso = (o: OpcaoResponsavel) => (o.chave === CHAVE_SEM_RESPONSAVEL ? 2 : o.cadastrada ? 0 : 1);
+  return [...acc.values()].sort(
+    (a, b) => peso(a) - peso(b) || a.label.localeCompare(b.label, "pt-BR")
+  );
+}
+
+/** Seleção vazia é "todos" — é o estado inicial e o que o botão "Todos" devolve. */
+export function ehDoResponsavel(
+  registro: RegistroComResponsavel,
+  selecao: readonly string[],
+  pessoas: Pessoa[]
 ): boolean {
-  if (registro.responsavelId != null) return registro.responsavelId === eu.id;
-  return textoMencionaPessoa(registro.responsavelTexto ?? "", eu.nome, outrosNomes);
+  if (!selecao.length) return true;
+  return chavesDoResponsavel(registro, pessoas).some((c) => selecao.includes(c));
+}
+
+const RE_CHAVE = /^(?:sem|u:[0-9]{1,9}|t:[a-z0-9-]{1,60})$/;
+
+/**
+ * Lê a seleção gravada, descartando o que não for chave válida.
+ *
+ * Sem isto uma preferência antiga ou corrompida viraria um filtro que não casa com nada, e
+ * a tela apareceria vazia sem explicação — pior que voltar para "todos".
+ */
+export function lerSelecaoDeResponsaveis(bruto: string | null | undefined): string[] {
+  return [...new Set((bruto ?? "").split(",").map((s) => s.trim()).filter((s) => RE_CHAVE.test(s)))].slice(
+    0,
+    MAX_RESPONSAVEIS_NA_SELECAO
+  );
+}
+
+/** Forma canônica para gravar. Passa pelo leitor, então o que vai ao banco é sempre válido. */
+export function escreverSelecaoDeResponsaveis(selecao: readonly string[]): string {
+  return lerSelecaoDeResponsaveis(selecao.join(",")).join(",");
 }

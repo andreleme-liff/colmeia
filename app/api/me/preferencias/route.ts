@@ -10,8 +10,9 @@
 import { getDb } from "@/lib/db";
 import { requireCtx } from "@/lib/perms";
 import { json, err } from "@/lib/http";
+import { lerSelecaoDeResponsaveis, MAX_RESPONSAVEIS_NA_SELECAO } from "@/lib/domain";
 
-type Body = { tema?: string; area?: string; soMeus?: string };
+type Body = { tema?: string; area?: string; responsaveis?: string };
 
 const TEMAS = ["dark", "light"];
 
@@ -44,18 +45,26 @@ export async function PATCH(req: Request) {
   }
 
   /**
-   * Filtro "só o que é meu". "1" ou "0" e não booleano: a coluna é um JSONB de texto para
-   * texto, e misturar tipo aqui convidaria a um `=== true` falhando contra a string "true".
+   * Filtro por responsável: as chaves escolhidas, separadas por vírgula, ou vazio para
+   * "todos". Texto e não array porque a coluna é um JSONB de texto para texto.
    *
-   * A validação é estrita de propósito. Esta rota tem lista FECHADA de chaves — o que não
-   * está aqui é descartado sem erro, e a tela acha que gravou. Foi o que quase aconteceu
-   * com esta chave: o cliente mandava `soMeus` e a rota devolvia 200 com `mudancas: 0`.
+   * Recusa em vez de gravar o que sobrou da limpeza. Esta rota tem lista FECHADA de chaves e
+   * o que não está nela é descartado sem erro, com a tela achando que gravou — foi o que
+   * aconteceu na primeira versão deste filtro, que devolvia 200 com `mudancas: 0`. Descartar
+   * chave inválida em silêncio seria a mesma armadilha um nível abaixo: a tela seguiria
+   * mostrando um recorte que o banco não tem.
    */
-  if (body.soMeus !== undefined) {
-    if (body.soMeus !== "0" && body.soMeus !== "1") {
-      return err("Valor inválido para o filtro de responsável.", 400);
+  if (body.responsaveis !== undefined) {
+    if (typeof body.responsaveis !== "string") return err("Filtro de responsável inválido.", 400);
+    const pedidas = new Set(body.responsaveis.split(",").map((c) => c.trim()).filter(Boolean));
+    const limpas = lerSelecaoDeResponsaveis(body.responsaveis);
+    if (pedidas.size !== limpas.length) {
+      return err(
+        `Filtro de responsável inválido: chave fora do formato, ou mais de ${MAX_RESPONSAVEIS_NA_SELECAO} itens.`,
+        400
+      );
     }
-    patch.soMeus = body.soMeus;
+    patch.responsaveis = limpas.join(",");
   }
 
   if (!Object.keys(patch).length) return json({ ok: true, mudancas: 0 });

@@ -335,9 +335,8 @@ input[type="date"]:disabled::-webkit-calendar-picker-indicator {
   opacity: 0.25;
 }
 
-/* Os dois filtros do cabeçalho. No desktop ficam lado a lado; abaixo de 820px a faixa
-   ocupa a largura inteira e os chips de área se dividem nela, com o "MEUS" ao final —
-   sem isso o botão caía sozinho para a linha de baixo, parecendo desligado do filtro. */
+/* Os dois filtros do cabeçalho — área e responsável. No desktop ficam lado a lado; abaixo
+   de 820px a faixa ocupa a largura inteira e cada filtro ganha a própria linha. */
 .liff-filtros {
   display: flex;
   align-items: center;
@@ -347,13 +346,21 @@ input[type="date"]:disabled::-webkit-calendar-picker-indicator {
 .liff-filtros > .liff-area-chips { min-width: 0; }
 /* `flex: none` mora aqui e não no estilo inline: inline vence media query, e o chip ficava
    preso em largura automática no celular, encolhido num canto da própria linha. */
-.liff-chip-meus { flex: none; }
+.liff-filtro-quem { flex: none; }
+/* Largura FIXA do gatilho, e não automática. O cabeçalho cabe por poucos pixels em 1440:
+   um gatilho que cresce com o nome escolhido empurra o grupo de ações para a linha de
+   baixo no instante do clique, e a tela pula sob o cursor — o clique seguinte cai noutro
+   lugar. Nome comprido corta, com o inteiro no `title` e na lista aberta. */
+.liff-filtro-quem > [role="button"] { width: 165px; box-sizing: border-box; }
 @media (max-width: 820px) {
   /* Abaixo de 820px os chips de área já ocupam a largura inteira e quebram em duas linhas.
-     Com `nowrap` o "MEUS" ficava preso ao lado desse bloco de duas linhas, centralizado na
-     vertical, e a trilha cinza do seletor aparecia nas pontas — parecia defeito de render.
-     Cada filtro ganha a própria linha, que é o mesmo padrão que os chips já seguiam. */
+     Com `nowrap` o seletor de responsável ficava preso ao lado desse bloco de duas linhas,
+     centralizado na vertical, e a trilha cinza aparecia nas pontas — parecia defeito de
+     render. Cada filtro ganha a própria linha, o padrão que os chips já seguiam. */
   .liff-filtros { flex-wrap: wrap; }
   .liff-filtros > .liff-area-chips { flex: 1 1 100%; }
-  .liff-chip-meus { flex: 1 1 100%; text-align: center; }
+  .liff-filtro-quem { flex: 1 1 100%; }
+  /* Na largura inteira a largura fixa do gatilho sai de cena, e `text-align` não
+     centralizaria: ele é flex, quem manda é o eixo principal. */
+  .liff-filtro-quem > [role="button"] { width: 100%; justify-content: center; }
 }

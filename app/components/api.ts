@@ -95,12 +95,12 @@ export type Me = {
   papel: string;
   iniciais: string;
   avatarUrl: string | null;
-  /** Escolhas guardadas no perfil: `tema` e `area`. Ausentes até a pessoa escolher. */
   /**
-   * O que a pessoa deixou escolhido. Tudo string: é um JSONB de texto para texto, e um tipo
-   * misto aqui convidaria a um `=== true` falhando contra "true". `soMeus` é "1" ou "0".
+   * O que a pessoa deixou escolhido, ausente até ela escolher. Tudo string: é um JSONB de
+   * texto para texto, e um tipo misto aqui convidaria a um `=== true` falhando contra
+   * "true". `responsaveis` são as chaves do filtro separadas por vírgula; vazio é "todos".
    */
-  preferencias: { tema?: string; area?: string; soMeus?: string };
+  preferencias: { tema?: string; area?: string; responsaveis?: string };
 };
 
 export type AreaCadastro = { id: string; label: string; short: string; cor: string; planilhaUrl: string | null };
@@ -239,7 +239,7 @@ export const api = {
       { method: "POST", body: JSON.stringify({ area, linhas }) }
     ),
 
-  salvarPreferencias: (patch: { tema?: string; area?: string }) =>
+  salvarPreferencias: (patch: { tema?: string; area?: string; responsaveis?: string }) =>
     req<{ ok: boolean }>("/api/me/preferencias", { method: "PATCH", body: JSON.stringify(patch) }),
 
   /** Prévia da planilha do Drive. 428 = falta conectar a conta Google. */

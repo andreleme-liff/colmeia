@@ -30,10 +30,13 @@ import { C, GHOST_FIX, avatarStyle, eyebrow, markTone, statusColor, useTheme, wr
 import CoresDasAreas from "./CoresDasAreas";
 import ImportarPlanilha from "./ImportarPlanilha";
 import SeletorArea from "./SeletorArea";
+import SeletorResponsaveis from "./SeletorResponsaveis";
 import { api, type State } from "./api";
 import {
-  NAV, STAGES, STATUS, TITLES, areaOf, brl, daISO, ddmm, diaISO, ehMeu, fimDaSemana, inicioDaSemana,
-  porTexto, rotuloDaSemana, setAreas, stageLabel, statusLabel, todasAreas,
+  NAV, STAGES, STATUS, TITLES, areaOf, brl, daISO, ddmm, diaISO, ehDoResponsavel,
+  escreverSelecaoDeResponsaveis, fimDaSemana, inicioDaSemana, lerSelecaoDeResponsaveis,
+  opcoesDeResponsavel, porTexto, rotuloDaSemana, setAreas, stageLabel, statusLabel, todasAreas,
+  type RegistroComResponsavel,
 } from "@/lib/domain";
 import { caminhoDe, type Rota } from "@/lib/rotas";
 
@@ -82,7 +85,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
   const [area, setArea] = useState("all");
   // Filtro de responsável, paralelo ao de área: um recorta a vertical, o outro recorta a
   // carteira. Combinam — "só os meus" dentro de Tax é uma pergunta legítima.
-  const [soMeus, setSoMeus] = useState(false);
+  const [responsaveis, setResponsaveis] = useState<string[]>([]);
   const [cadTab, setCadTab] = useState<string>(rotaInicial.tab ?? "pessoas");
   const [waAberto, setWaAberto] = useState(false);
   const [waArea, setWaArea] = useState("all");
@@ -126,8 +129,11 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
          * de cache. Só na carga inicial — recarregar depois de uma escrita não pode
          * desfazer um filtro que a pessoa acabou de trocar.
          */
-        const { tema, area: areaSalva, soMeus: soMeusSalvo } = s.me.preferencias ?? {};
-        if (soMeusSalvo === "1") setSoMeus(true);
+        const { tema, area: areaSalva, responsaveis: respSalvos } = s.me.preferencias ?? {};
+        // O leitor descarta chave inválida, então preferência antiga ou corrompida volta
+        // como "todos" em vez de virar um filtro que não casa com nada.
+        const resp = lerSelecaoDeResponsaveis(respSalvos);
+        if (resp.length) setResponsaveis(resp);
         if (tema === "dark" || tema === "light") writeTheme(tema);
         // A área só volta se ainda for visível: permissão pode ter mudado desde a última
         // sessão, e restaurar um filtro que não mostra nada pareceria dado sumido.
@@ -177,7 +183,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
   }
 
   /** Guarda a escolha no perfil. Falhar aqui não pode atrapalhar a navegação. */
-  const lembrar = useCallback((patch: { tema?: string; area?: string; soMeus?: string }) => {
+  const lembrar = useCallback((patch: { tema?: string; area?: string; responsaveis?: string }) => {
     void api.salvarPreferencias(patch).catch(() => {});
   }, []);
 
@@ -189,12 +195,12 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     [lembrar]
   );
 
-  const trocarSoMeus = useCallback(
-    (v: boolean) => {
-      setSoMeus(v);
-      // "1"/"0" e não booleano: `preferencias` é JSONB de string para string, e o resto do
-      // mapa já é texto. Um tipo misto ali só convidaria a um `=== true` falhando em "true".
-      lembrar({ soMeus: v ? "1" : "0" });
+  const trocarResponsaveis = useCallback(
+    (sel: string[]) => {
+      setResponsaveis(sel);
+      // Texto e não array: `preferencias` é JSONB de string para string e o resto do mapa já
+      // é texto. A forma canônica vem do domínio, então o que vai ao banco é sempre válido.
+      lembrar({ responsaveis: escreverSelecaoDeResponsaveis(sel) });
     },
     [lembrar]
   );
@@ -253,16 +259,26 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
      * O recorte por responsável entra AQUI, no mesmo ponto do recorte por área: o painel, o
      * pipeline e o quadro operacional todos derivam destas duas listas, então uma mudança
      * só vale para as três telas. Filtrar em cada view convidaria a esquecer uma.
-     *
-     * Os nomes das outras pessoas vão junto porque `ehMeu` precisa deles para decidir se um
-     * primeiro nome solto na planilha ("Bianka") identifica alguém sem ambiguidade.
      */
-    const outrosNomes = estado.pessoas.filter((p) => p.id !== estado.me.id).map((p) => p.nome);
-    const meusApenas = <T extends { responsavelId?: number | null; responsavelTexto?: string }>(l: T[]) =>
-      soMeus ? l.filter((x) => ehMeu(x, { id: estado.me.id, nome: estado.me.nome }, outrosNomes)) : l;
+    const atividadesEmArea = noEscopo(estado.activities);
+    const oportunidadesEmArea = noEscopo(estado.deals);
 
-    const atividades = meusApenas(noEscopo(estado.activities));
-    const oportunidades = meusApenas(noEscopo(estado.deals));
+    /**
+     * As opções saem das listas ANTES do filtro por responsável. Depois dele, escolher uma
+     * pessoa deixaria só ela na lista — e não haveria como trocar para outra nem voltar.
+     *
+     * A lista de pessoas vai junto porque o filtro resolve texto livre de planilha
+     * ("Bianka") para quem está cadastrado, e precisa dos outros nomes para saber se um
+     * primeiro nome solto identifica alguém sem ambiguidade.
+     */
+    const pessoas = estado.pessoas.map((p) => ({ id: p.id, nome: p.nome }));
+    const opcoesResponsavel = opcoesDeResponsavel([...atividadesEmArea, ...oportunidadesEmArea], pessoas);
+
+    const porResponsavel = <T extends RegistroComResponsavel>(l: T[]) =>
+      l.filter((x) => ehDoResponsavel(x, responsaveis, pessoas));
+
+    const atividades = porResponsavel(atividadesEmArea);
+    const oportunidades = porResponsavel(oportunidadesEmArea);
     const logs = estado.logs.filter((l) => areaEfetiva === "all" || l.area === areaEfetiva);
     const areasVisiveis = todasAreas().filter((a) => estado.areasVisiveis.includes(a.id));
     /**
@@ -455,8 +471,11 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
       cards: atividades.filter((a) => a.status === s.key),
     }));
 
-    return { atividades, oportunidades, logs, areasVisiveis, painel, colunasDeal, colunasBoard };
-  }, [estado, areaEfetiva, soMeus]);
+    return {
+      atividades, oportunidades, logs, areasVisiveis, painel, colunasDeal, colunasBoard,
+      opcoesResponsavel,
+    };
+  }, [estado, areaEfetiva, responsaveis]);
 
   // ---------- cadastros ----------
   const cadSet: CadSet | null = useMemo(() => {
@@ -965,28 +984,21 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             <div className="liff-area-chips">
               <SeletorArea opcoes={chips} valor={area} onChange={trocarArea} />
             </div>
+            {/* O seletor de responsável fica ao lado do de área porque os dois recortam a
+                mesma lista. "Só eu" só aparece quando a pessoa tem algo em escopo — um
+                atalho que esvazia a tela sem dizer por quê não ajuda ninguém. */}
             {["overview", "comercial", "operacoes"].includes(view) && (
-              <button
-                type="button"
-                onClick={() => trocarSoMeus(!soMeus)}
-                aria-pressed={soMeus}
-                title={
-                  soMeus
-                    ? `Mostrando só o que está sob ${estado.me.nome}. Clique para ver tudo.`
-                    : `Mostrar só o que está sob ${estado.me.nome}`
+              <SeletorResponsaveis
+                className="liff-filtro-quem"
+                opcoes={dados.opcoesResponsavel}
+                selecao={responsaveis}
+                onChange={trocarResponsaveis}
+                chaveDoUsuario={
+                  dados.opcoesResponsavel.some((o) => o.chave === `u:${estado.me.id}`)
+                    ? `u:${estado.me.id}`
+                    : undefined
                 }
-                className="liff-chip-meus"
-                style={{
-                  ...eyebrow(10, soMeus ? C.canvas : C.dust, "0.1em"),
-                  background: soMeus ? C.ink : "transparent",
-                  border: `1px solid ${soMeus ? C.ink : C.line}`,
-                  padding: "7px 12px",
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {soMeus ? "✓ MEUS" : "MEUS"}
-              </button>
+              />
             )}
           </div>
 
