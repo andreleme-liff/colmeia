@@ -96,7 +96,11 @@ export type Me = {
   iniciais: string;
   avatarUrl: string | null;
   /** Escolhas guardadas no perfil: `tema` e `area`. Ausentes até a pessoa escolher. */
-  preferencias: { tema?: string; area?: string };
+  /**
+   * O que a pessoa deixou escolhido. Tudo string: é um JSONB de texto para texto, e um tipo
+   * misto aqui convidaria a um `=== true` falhando contra "true". `soMeus` é "1" ou "0".
+   */
+  preferencias: { tema?: string; area?: string; soMeus?: string };
 };
 
 export type AreaCadastro = { id: string; label: string; short: string; cor: string; planilhaUrl: string | null };

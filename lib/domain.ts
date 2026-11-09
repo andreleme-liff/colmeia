@@ -433,3 +433,75 @@ export function reaisEmPalavras(centavos: number): string {
   if (cents) partes.push(`${inteiroEmPalavras(cents)} ${cents === 1 ? "centavo" : "centavos"}`);
   return partes.join(" e ");
 }
+
+// ---------------------------------------------------------------------------
+// "Só o que é meu"
+//
+// O filtro de responsável não pode olhar apenas `responsavelId`. A importação de
+// planilha grava SÓ `responsavel_texto` — o responsável vem como texto livre na
+// coluna RESPONSÁVEL ("Bruno Santo", "Bianka", "Bruno Santo / Felipe Zambon") e
+// nenhuma linha ganha `responsavel_user_id`. Filtrar por id devolveria zero
+// oportunidades no pipeline inteiro do Tax, e o filtro pareceria quebrado.
+//
+// Então: id quando existe, nome quando não existe. O nome é heurística, e por
+// isso tem guarda de ambiguidade — ver `textoMencionaPessoa`.
+// ---------------------------------------------------------------------------
+
+/**
+ * Separadores que a planilha e o cadastro à mão usam para listar mais de uma
+ * pessoa no mesmo campo. O " e " cercado de espaço cobre "Vivi e Giordani" sem
+ * pegar o "e" dentro de palavra.
+ */
+const SEPARADORES_DE_NOME = /\s*(?:\/|,|;|&|\+|\se\s)\s*/;
+
+/** Os nomes que um campo de responsável em texto livre contém. */
+export function nomesDoTexto(texto: string): string[] {
+  return (texto ?? "")
+    .split(SEPARADORES_DE_NOME)
+    .map((p) => p.trim())
+    .filter(Boolean);
+}
+
+const palavrasDe = (s: string) => normalizarTexto(s).split(" ").filter(Boolean);
+/** `a` contém todas as palavras de `b`. */
+const cobre = (a: string[], b: string[]) => b.length > 0 && b.every((w) => a.includes(w));
+
+/**
+ * O texto livre de responsável se refere a `nome`?
+ *
+ * Duas direções, e a segunda é a que precisa de cuidado:
+ *
+ *  · o trecho contém o nome inteiro — "Bruno Santo Filho" para "Bruno Santo";
+ *  · o trecho é PARTE do nome — "Bianka" para "Bianka Moreira". Aqui mora o risco:
+ *    com "Bruno Santo" e "Bruno Costa" cadastrados, um "Bruno" solto não decide
+ *    de quem é. `outrosNomes` existe para isso — se o trecho couber em mais de
+ *    uma pessoa, não é de ninguém. Errar para menos esconde um card do dono;
+ *    errar para mais mostra a carteira de outra pessoa como se fosse sua, o que
+ *    é pior num filtro em que as pessoas confiam para saber o que lhes cabe.
+ */
+export function textoMencionaPessoa(texto: string, nome: string, outrosNomes: string[] = []): boolean {
+  const meu = palavrasDe(nome);
+  if (!meu.length) return false;
+
+  return nomesDoTexto(texto).some((trecho) => {
+    const dele = palavrasDe(trecho);
+    if (!dele.length) return false;
+    if (cobre(dele, meu)) return true;
+    if (!cobre(meu, dele)) return false;
+    // Parte do meu nome: só vale se não servir para mais ninguém.
+    return !outrosNomes.some((o) => cobre(palavrasDe(o), dele));
+  });
+}
+
+/**
+ * O registro é desta pessoa? `responsavelId` manda quando existe; o texto livre
+ * é o reforço para o que veio de planilha.
+ */
+export function ehMeu(
+  registro: { responsavelId?: number | null; responsavelTexto?: string },
+  eu: { id: number; nome: string },
+  outrosNomes: string[] = []
+): boolean {
+  if (registro.responsavelId != null) return registro.responsavelId === eu.id;
+  return textoMencionaPessoa(registro.responsavelTexto ?? "", eu.nome, outrosNomes);
+}

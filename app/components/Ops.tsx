@@ -32,7 +32,7 @@ import ImportarPlanilha from "./ImportarPlanilha";
 import SeletorArea from "./SeletorArea";
 import { api, type State } from "./api";
 import {
-  NAV, STAGES, STATUS, TITLES, areaOf, brl, daISO, ddmm, diaISO, fimDaSemana, inicioDaSemana,
+  NAV, STAGES, STATUS, TITLES, areaOf, brl, daISO, ddmm, diaISO, ehMeu, fimDaSemana, inicioDaSemana,
   porTexto, rotuloDaSemana, setAreas, stageLabel, statusLabel, todasAreas,
 } from "@/lib/domain";
 import { caminhoDe, type Rota } from "@/lib/rotas";
@@ -80,6 +80,9 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
 
   const [view, setView] = useState(rotaInicial.view);
   const [area, setArea] = useState("all");
+  // Filtro de responsável, paralelo ao de área: um recorta a vertical, o outro recorta a
+  // carteira. Combinam — "só os meus" dentro de Tax é uma pergunta legítima.
+  const [soMeus, setSoMeus] = useState(false);
   const [cadTab, setCadTab] = useState<string>(rotaInicial.tab ?? "pessoas");
   const [waAberto, setWaAberto] = useState(false);
   const [waArea, setWaArea] = useState("all");
@@ -123,7 +126,8 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
          * de cache. Só na carga inicial — recarregar depois de uma escrita não pode
          * desfazer um filtro que a pessoa acabou de trocar.
          */
-        const { tema, area: areaSalva } = s.me.preferencias ?? {};
+        const { tema, area: areaSalva, soMeus: soMeusSalvo } = s.me.preferencias ?? {};
+        if (soMeusSalvo === "1") setSoMeus(true);
         if (tema === "dark" || tema === "light") writeTheme(tema);
         // A área só volta se ainda for visível: permissão pode ter mudado desde a última
         // sessão, e restaurar um filtro que não mostra nada pareceria dado sumido.
@@ -173,7 +177,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
   }
 
   /** Guarda a escolha no perfil. Falhar aqui não pode atrapalhar a navegação. */
-  const lembrar = useCallback((patch: { tema?: string; area?: string }) => {
+  const lembrar = useCallback((patch: { tema?: string; area?: string; soMeus?: string }) => {
     void api.salvarPreferencias(patch).catch(() => {});
   }, []);
 
@@ -181,6 +185,16 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     (id: string) => {
       setArea(id);
       lembrar({ area: id });
+    },
+    [lembrar]
+  );
+
+  const trocarSoMeus = useCallback(
+    (v: boolean) => {
+      setSoMeus(v);
+      // "1"/"0" e não booleano: `preferencias` é JSONB de string para string, e o resto do
+      // mapa já é texto. Um tipo misto ali só convidaria a um `=== true` falhando em "true".
+      lembrar({ soMeus: v ? "1" : "0" });
     },
     [lembrar]
   );
@@ -235,8 +249,20 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     const noEscopo = <T extends { area: string }>(l: T[]) =>
       l.filter((x) => areaEfetiva === "all" || x.area === areaEfetiva);
 
-    const atividades = noEscopo(estado.activities);
-    const oportunidades = noEscopo(estado.deals);
+    /**
+     * O recorte por responsável entra AQUI, no mesmo ponto do recorte por área: o painel, o
+     * pipeline e o quadro operacional todos derivam destas duas listas, então uma mudança
+     * só vale para as três telas. Filtrar em cada view convidaria a esquecer uma.
+     *
+     * Os nomes das outras pessoas vão junto porque `ehMeu` precisa deles para decidir se um
+     * primeiro nome solto na planilha ("Bianka") identifica alguém sem ambiguidade.
+     */
+    const outrosNomes = estado.pessoas.filter((p) => p.id !== estado.me.id).map((p) => p.nome);
+    const meusApenas = <T extends { responsavelId?: number | null; responsavelTexto?: string }>(l: T[]) =>
+      soMeus ? l.filter((x) => ehMeu(x, { id: estado.me.id, nome: estado.me.nome }, outrosNomes)) : l;
+
+    const atividades = meusApenas(noEscopo(estado.activities));
+    const oportunidades = meusApenas(noEscopo(estado.deals));
     const logs = estado.logs.filter((l) => areaEfetiva === "all" || l.area === areaEfetiva);
     const areasVisiveis = todasAreas().filter((a) => estado.areasVisiveis.includes(a.id));
     /**
@@ -430,7 +456,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     }));
 
     return { atividades, oportunidades, logs, areasVisiveis, painel, colunasDeal, colunasBoard };
-  }, [estado, areaEfetiva]);
+  }, [estado, areaEfetiva, soMeus]);
 
   // ---------- cadastros ----------
   const cadSet: CadSet | null = useMemo(() => {
@@ -933,8 +959,35 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em", color: C.ink }}>{TITLES[view]}</div>
           </div>
 
-          <div className="liff-area-chips" style={{ marginLeft: "auto" }}>
-            <SeletorArea opcoes={chips} valor={area} onChange={trocarArea} />
+          {/* Os dois filtros do cabeçalho moram juntos: área recorta a vertical, "meus"
+              recorta a carteira. Separá-los faria parecer que um é filtro e o outro é modo. */}
+          <div className="liff-filtros" style={{ marginLeft: "auto" }}>
+            <div className="liff-area-chips">
+              <SeletorArea opcoes={chips} valor={area} onChange={trocarArea} />
+            </div>
+            {["overview", "comercial", "operacoes"].includes(view) && (
+              <button
+                type="button"
+                onClick={() => trocarSoMeus(!soMeus)}
+                aria-pressed={soMeus}
+                title={
+                  soMeus
+                    ? `Mostrando só o que está sob ${estado.me.nome}. Clique para ver tudo.`
+                    : `Mostrar só o que está sob ${estado.me.nome}`
+                }
+                className="liff-chip-meus"
+                style={{
+                  ...eyebrow(10, soMeus ? C.canvas : C.dust, "0.1em"),
+                  background: soMeus ? C.ink : "transparent",
+                  border: `1px solid ${soMeus ? C.ink : C.line}`,
+                  padding: "7px 12px",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {soMeus ? "✓ MEUS" : "MEUS"}
+              </button>
+            )}
           </div>
 
           {/* As ações ficam num grupo próprio para quebrarem juntas quando o cabeçalho

@@ -282,6 +282,7 @@ textarea::placeholder {
   .liff-main { padding: 20px; }
 
   /* Chips ocupam a linha inteira ao quebrar, senão sobra o fundo da malha. */
+  .liff-filtros { width: 100%; margin-left: 0 !important; }
   .liff-area-chips { width: 100%; margin-left: 0 !important; }
   .liff-area-chips > * { flex: 1 1 auto; justify-content: center; }
 }
@@ -332,4 +333,27 @@ input[type="date"]:hover::-webkit-calendar-picker-indicator { opacity: 1; }
 input[type="date"]:disabled::-webkit-calendar-picker-indicator {
   cursor: default;
   opacity: 0.25;
+}
+
+/* Os dois filtros do cabeçalho. No desktop ficam lado a lado; abaixo de 820px a faixa
+   ocupa a largura inteira e os chips de área se dividem nela, com o "MEUS" ao final —
+   sem isso o botão caía sozinho para a linha de baixo, parecendo desligado do filtro. */
+.liff-filtros {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.liff-filtros > .liff-area-chips { min-width: 0; }
+/* `flex: none` mora aqui e não no estilo inline: inline vence media query, e o chip ficava
+   preso em largura automática no celular, encolhido num canto da própria linha. */
+.liff-chip-meus { flex: none; }
+@media (max-width: 820px) {
+  /* Abaixo de 820px os chips de área já ocupam a largura inteira e quebram em duas linhas.
+     Com `nowrap` o "MEUS" ficava preso ao lado desse bloco de duas linhas, centralizado na
+     vertical, e a trilha cinza do seletor aparecia nas pontas — parecia defeito de render.
+     Cada filtro ganha a própria linha, que é o mesmo padrão que os chips já seguiam. */
+  .liff-filtros { flex-wrap: wrap; }
+  .liff-filtros > .liff-area-chips { flex: 1 1 100%; }
+  .liff-chip-meus { flex: 1 1 100%; text-align: center; }
 }

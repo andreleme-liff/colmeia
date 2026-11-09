@@ -30,6 +30,7 @@ frontend:
         # Testes que não precisam de banco. Os do contrato cobrem o extenso em português,
         # que é o que prevalece juridicamente se divergir do algarismo.
         - node --experimental-strip-types scripts/verificar-contrato.mjs
+        - node --experimental-strip-types scripts/verificar-filtro.mjs
         - npm run build
   artifacts:
     # Saída do adaptador de SSR da Amplify para Next.js. Não é `.next` nem `out`.

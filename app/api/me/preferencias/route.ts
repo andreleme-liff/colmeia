@@ -1,4 +1,4 @@
-// Preferências da própria pessoa: tema e filtro de área.
+// Preferências da própria pessoa: tema, filtro de área e filtro de responsável.
 //
 // Guardadas no perfil, e não só no navegador, porque a promessa é "o sistema abre do jeito
 // que você deixou" — inclusive em outra máquina, e inclusive depois de limpar o cache.
@@ -11,7 +11,7 @@ import { getDb } from "@/lib/db";
 import { requireCtx } from "@/lib/perms";
 import { json, err } from "@/lib/http";
 
-type Body = { tema?: string; area?: string };
+type Body = { tema?: string; area?: string; soMeus?: string };
 
 const TEMAS = ["dark", "light"];
 
@@ -41,6 +41,21 @@ export async function PATCH(req: Request) {
       return err("Área inválida.", 400);
     }
     patch.area = body.area;
+  }
+
+  /**
+   * Filtro "só o que é meu". "1" ou "0" e não booleano: a coluna é um JSONB de texto para
+   * texto, e misturar tipo aqui convidaria a um `=== true` falhando contra a string "true".
+   *
+   * A validação é estrita de propósito. Esta rota tem lista FECHADA de chaves — o que não
+   * está aqui é descartado sem erro, e a tela acha que gravou. Foi o que quase aconteceu
+   * com esta chave: o cliente mandava `soMeus` e a rota devolvia 200 com `mudancas: 0`.
+   */
+  if (body.soMeus !== undefined) {
+    if (body.soMeus !== "0" && body.soMeus !== "1") {
+      return err("Valor inválido para o filtro de responsável.", 400);
+    }
+    patch.soMeus = body.soMeus;
   }
 
   if (!Object.keys(patch).length) return json({ ok: true, mudancas: 0 });
