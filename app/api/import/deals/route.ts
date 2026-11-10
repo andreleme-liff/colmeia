@@ -66,7 +66,7 @@ export async function POST(req: Request) {
 
   // Cadastros resolvidos uma vez para o arquivo inteiro.
   const [pessoas, produtos, origens, existentes] = await Promise.all([
-    sql<Pessoa[]>`SELECT id, nome FROM users`,
+    sql<Pessoa[]>`SELECT id, nome FROM users WHERE excluido_em IS NULL`,
     sql<{ id: string; label: string }[]>`SELECT id, label FROM produtos WHERE area = ${area}`,
     sql<{ id: string; label: string; ativo: boolean }[]>`SELECT id, label, ativo FROM origens`,
     sql<{ id: number; conta: string }[]>`SELECT id, conta FROM deals WHERE area = ${area}`,

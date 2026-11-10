@@ -427,6 +427,10 @@ async function migrate(): Promise<void> {
     );
     await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS motivo_perda_detalhe TEXT NOT NULL DEFAULT ''`;
     await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS notas TEXT NOT NULL DEFAULT ''`;
+    // Pessoa excluída do cadastro. A linha NÃO some: `audit_log.actor_user_id` aponta para ela,
+    // e o histórico precisa continuar dizendo quem fez o quê. Excluída = sem acesso, sem
+    // permissões, fora de todo seletor e de toda lista — só o nome sobrevive no histórico.
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS excluido_em TIMESTAMPTZ`;
 
     // Módulos de interesse: vários por oportunidade, cada um um produto da área. Tabela de
     // ligação com chave estrangeira dos dois lados — produto excluído sai das oportunidades

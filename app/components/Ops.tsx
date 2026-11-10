@@ -32,6 +32,7 @@ import ImportarPlanilha from "./ImportarPlanilha";
 import SeletorArea from "./SeletorArea";
 import SeletorResponsaveis from "./SeletorResponsaveis";
 import Conexoes from "./Conexoes";
+import { EditarPessoa, EditarProduto } from "./EditarCadastro";
 import { api, type State } from "./api";
 import {
   NAV, STAGES, STATUS, TITLES, areaOf, brl, daISO, ddmm, diaISO, ehDoResponsavel, estagioEmAberto,
@@ -88,6 +89,8 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
   // carteira. Combinam — "só os meus" dentro de Tax é uma pergunta legítima.
   const [responsaveis, setResponsaveis] = useState<string[]>([]);
   const [cadTab, setCadTab] = useState<string>(rotaInicial.tab ?? "pessoas");
+  // Produto ou pessoa aberto para edição/exclusão em Cadastros (só administração).
+  const [cadEditando, setCadEditando] = useState<{ tipo: "produto"; id: string } | { tipo: "pessoa"; id: number } | null>(null);
   const [waAberto, setWaAberto] = useState(false);
   const [waArea, setWaArea] = useState("all");
   const [copiado, setCopiado] = useState(false);
@@ -493,6 +496,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           a: u.nome + (u.ativo ? "" : " (inativo)"),
           b: u.papel,
           c: u.email,
+          abrir: estado.isAdmin ? () => setCadEditando({ tipo: "pessoa", id: u.id }) : undefined,
         })),
         ph: "Nome completo",
       };
@@ -537,6 +541,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         b: areaOf(p.area).label,
         // Na oportunidade o produto virou "módulo de interesse" — uma pode ter vários.
         c: estado.deals.filter((d) => d.modulos.includes(p.id)).length + " no pipeline",
+        abrir: estado.isAdmin ? () => setCadEditando({ tipo: "produto", id: p.id }) : undefined,
       })),
       ph: "Nome do produto",
     };
@@ -826,8 +831,30 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             }
           />
         );
-      case "cadastros":
+      case "cadastros": {
+        const prodEdit = cadEditando?.tipo === "produto" ? estado.produtos.find((p) => p.id === cadEditando.id) : undefined;
+        const pessoaEdit = cadEditando?.tipo === "pessoa" ? estado.pessoas.find((p) => p.id === cadEditando.id) : undefined;
         return (
+          <>
+          {prodEdit && (
+            <EditarProduto
+              key={prodEdit.id}
+              produto={prodEdit}
+              areas={dados.areasVisiveis.map((a) => ({ id: a.id, label: a.label }))}
+              onFechar={() => setCadEditando(null)}
+              onMudou={carregar}
+            />
+          )}
+          {pessoaEdit && (
+            <EditarPessoa
+              key={pessoaEdit.id}
+              pessoa={pessoaEdit}
+              meuId={me.id}
+              dominio={estado.dominioLogin}
+              onFechar={() => setCadEditando(null)}
+              onMudou={carregar}
+            />
+          )}
           <Cadastros
             tab={cadTab}
             onTab={(tab) => navegar({ view: "cadastros", tab })}
@@ -862,7 +889,9 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
               void acao(() => api.excluirArea(id));
             }}
           />
+          </>
         );
+      }
       case "admin":
         return (
           <Admin

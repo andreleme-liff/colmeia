@@ -48,7 +48,7 @@ export type Mudanca = { campo: string; de: string | null; para: string | null; t
 
 export type Fatos = {
   /** Toda pessoa cadastrada: id → nome. Ativa ou não — a regra de responsável sempre foi
-   *  "existe", não "está ativa", e o núcleo não muda isso por conta própria. */
+   *  "existe", não "está ativa". Excluída do cadastro fica de fora: não é mais ninguém. */
   pessoas: Map<number, string>;
   /** Todo produto: para conferir que pertence à área (final) do registro. */
   produtos: { id: string; area: string; label?: string }[];

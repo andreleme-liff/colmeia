@@ -134,7 +134,7 @@ export async function GET() {
   // permissões só é montada para quem administra.
   const pessoas = await sql<
     { id: number; nome: string; email: string; papel: string; iniciais: string; ativo: boolean }[]
-  >`SELECT id, nome, email, papel, iniciais, ativo FROM users ORDER BY id ASC`;
+  >`SELECT id, nome, email, papel, iniciais, ativo FROM users WHERE excluido_em IS NULL ORDER BY id ASC`;
 
   // Cadastro das verticais: rótulo, sigla e cor. Vai inteiro para o cliente, que transforma
   // a cor em variável CSS.

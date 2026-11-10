@@ -2229,7 +2229,7 @@ const campoNativo: CSSProperties = {
   padding: "11px 13px",
 };
 
-function Modal({ titulo, eyebrowTexto, children, onFechar }: {
+export function Modal({ titulo, eyebrowTexto, children, onFechar }: {
   titulo: string;
   eyebrowTexto: string;
   children: ReactNode;
@@ -2283,7 +2283,7 @@ function Modal({ titulo, eyebrowTexto, children, onFechar }: {
  * fica desabilitado até alguém escolher. Não é firula: com a primeira vertical
  * pré-selecionada, quem não reparava no campo cadastrava na área errada sem perceber.
  */
-function opcoesArea(editaveis: { id: string; label: string }[], atual?: string) {
+export function opcoesArea(editaveis: { id: string; label: string }[], atual?: string) {
   const lista = editaveis.map((a) => ({ value: a.id, label: a.label }));
   if (atual && !editaveis.some((a) => a.id === atual)) {
     lista.push({ value: atual, label: areaOf(atual).label });

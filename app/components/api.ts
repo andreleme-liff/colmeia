@@ -96,6 +96,9 @@ export type LogEntry = {
   texto: string;
 };
 
+/** O que acontece com os registros ligados a um cadastro que vai ser excluído. */
+export type DestinoExclusao = { acao: "migrar"; para: string | number } | { acao: "excluir" } | { acao: "desvincular" };
+
 export type Pessoa = {
   id: number;
   nome: string;
@@ -264,7 +267,37 @@ export const api = {
   alterarProduto: (id: string, patch: { label?: string; area?: string; ativo?: boolean }) =>
     req<{ ok: boolean }>(`/api/produtos/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
 
-  excluirProduto: (id: string) => req<{ ok: boolean }>(`/api/produtos/${id}`, { method: "DELETE" }),
+  usosDoProduto: (id: string) =>
+    req<{
+      atividades: { ref: string; titulo: string }[];
+      oportunidades: { ref: string; conta: string; modulos: number }[];
+      destinos: { id: string; label: string }[];
+    }>(`/api/produtos/${encodeURIComponent(id)}/usos`),
+
+  /** Sem `destino` só passa quando não há nada ligado ao produto. */
+  excluirProduto: (id: string, destino?: DestinoExclusao) =>
+    req<{ ok: boolean; ligados: number }>(`/api/produtos/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      body: destino ? JSON.stringify(destino) : undefined,
+    }),
+
+  alterarPessoa: (id: number, patch: { nome?: string; email?: string; papel?: string }) =>
+    req<{ ok: boolean }>(`/api/users/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+
+  usosDaPessoa: (id: number) =>
+    req<{
+      atividades: { ref: string; titulo: string }[];
+      oportunidades: { ref: string; conta: string }[];
+      blockers: { ref: string; conta: string }[];
+      conexoes: number;
+      destinos: { id: number; nome: string }[];
+    }>(`/api/users/${id}/usos`),
+
+  excluirPessoa: (id: number, destino?: DestinoExclusao) =>
+    req<{ ok: boolean; ligados: number }>(`/api/users/${id}`, {
+      method: "DELETE",
+      body: destino ? JSON.stringify(destino) : undefined,
+    }),
 
   importarOportunidades: (area: string, linhas: LinhaImport[]) =>
     req<{

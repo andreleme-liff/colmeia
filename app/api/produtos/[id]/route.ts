@@ -2,8 +2,10 @@
 
 import { getDb } from "@/lib/db";
 import { requireAdmin } from "@/lib/perms";
-import { json, err } from "@/lib/http";
+import { json, err, deFalha, lerCorpo } from "@/lib/http";
 import { registrar } from "@/lib/log";
+import { ehFalha, falha } from "@/lib/ops/comum";
+import { excluirAtividade, excluirOportunidade, lerDestino } from "@/lib/exclusao";
 
 
 type Body = { label?: string; area?: string; ativo?: boolean };
@@ -73,35 +75,98 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/produtos/
 }
 
 /**
- * Exclusão. Diferente da área, não bloqueia quando há oportunidades: a FK é
- * ON DELETE SET NULL, então os cards sobrevivem sem produto. Perder a classificação é
- * recuperável; perder a oportunidade não seria. Mesmo assim a resposta diz quantos ficaram
- * sem produto, para a decisão não ser cega.
+ * Exclusão. Quando há registros ligados, o corpo diz o que fazer com eles:
+ *  · `{ acao: "migrar", para }` — atividades e oportunidades passam para outro produto da
+ *    mesma área (a regra de que o produto pertence à área do registro continua valendo);
+ *  · `{ acao: "excluir" }` — as atividades e as oportunidades ligadas são excluídas junto.
+ *    Uma oportunidade com vários módulos também vai — a tela avisa antes;
+ *  · `{ acao: "desvincular" }` — os registros ficam, só sem este produto.
+ * Sem registro ligado, o corpo é dispensável. Tudo numa transação: ou o produto sai com o
+ * destino de cada registro resolvido e auditado, ou nada muda.
  */
-export async function DELETE(_req: Request, ctxRoute: RouteContext<"/api/produtos/[id]">) {
+export async function DELETE(req: Request, ctxRoute: RouteContext<"/api/produtos/[id]">) {
   const ctx = await requireAdmin();
   if (ctx instanceof Response) return ctx;
 
   const { id } = await ctxRoute.params;
+  const destino = lerDestino(await lerCorpo(req));
   const sql = await getDb();
+  const autor = ctx.user.userId;
 
-  const alvos = await sql<{ label: string; area: string }[]>`SELECT label, area FROM produtos WHERE id = ${id}`;
-  if (!alvos.length) return err("Produto não encontrado.", 404);
+  const r = await sql.begin(async (tx) => {
+    const alvos = await tx<{ label: string; area: string }[]>`SELECT label, area FROM produtos WHERE id = ${id} FOR UPDATE`;
+    if (!alvos.length) return falha("Produto não encontrado.", 404);
+    const alvo = alvos[0];
+    const motivo = `ao excluir o produto ${alvo.label}`;
 
-  const [{ usos }] = await sql<{ usos: number }[]>`
-    SELECT COUNT(*)::int AS usos FROM deals WHERE produto_id = ${id}
-  `;
+    const atividades = await tx<{ id: number; ref: string; titulo: string; area: string }[]>`
+      SELECT id, ref, titulo, area FROM activities WHERE produto_id = ${id} FOR UPDATE
+    `;
+    const oportunidades = await tx<{ id: number; ref: string; conta: string; area: string; valor_centavos: string }[]>`
+      SELECT d.id, d.ref, d.conta, d.area, d.valor_centavos
+      FROM deals d JOIN oportunidade_modulos m ON m.deal_id = d.id AND m.produto_id = ${id}
+      FOR UPDATE OF d
+    `;
+    const ligados = atividades.length + oportunidades.length;
+    if (ligados && !destino) {
+      return falha(`Há ${ligados} registro(s) ligados a ${alvo.label}: escolha migrar, excluir junto ou desvincular.`, 409);
+    }
 
-  await sql`DELETE FROM produtos WHERE id = ${id}`;
-  await registrar(sql, {
-    actorUserId: ctx.user.userId,
-    area: alvos[0].area,
-    entidade: `PROD-${id}`,
-    campo: "exclusao",
-    de: alvos[0].label,
-    para: null,
-    texto: `Excluiu o produto ${alvos[0].label}${usos > 0 ? `; ${usos} oportunidade(s) ficaram sem produto` : ""}`,
+    if (ligados && destino?.acao === "migrar") {
+      const para = String(destino.para);
+      const novos = await tx<{ label: string; area: string }[]>`SELECT label, area FROM produtos WHERE id = ${para}`;
+      if (!novos.length || para === id) return falha("Produto de destino inválido.", 400);
+      if (novos[0].area !== alvo.area) return falha("O produto de destino precisa ser da mesma área.", 400);
+      const novo = novos[0];
+      for (const a of atividades) {
+        await tx`UPDATE activities SET produto_id = ${para}, atualizado_em = now() WHERE id = ${a.id}`;
+        await registrar(tx, {
+          actorUserId: autor, area: a.area, entidade: a.ref, campo: "produto", de: alvo.label, para: novo.label,
+          texto: `Produto de "${a.titulo}" passou de ${alvo.label} para ${novo.label} ${motivo}`,
+        });
+      }
+      for (const o of oportunidades) {
+        await tx`
+          INSERT INTO oportunidade_modulos (deal_id, produto_id) VALUES (${o.id}, ${para}) ON CONFLICT DO NOTHING
+        `;
+        await tx`UPDATE deals SET atualizado_em = now() WHERE id = ${o.id}`;
+        await registrar(tx, {
+          actorUserId: autor, area: o.area, entidade: o.ref, campo: "modulos", de: alvo.label, para: novo.label,
+          texto: `Módulo de ${o.conta} passou de ${alvo.label} para ${novo.label} ${motivo}`,
+        });
+      }
+      // Campo legado (produto único da oportunidade, fora da interface): acompanha a troca.
+      await tx`UPDATE deals SET produto_id = ${para} WHERE produto_id = ${id}`;
+    } else if (ligados && destino?.acao === "excluir") {
+      for (const a of atividades) await excluirAtividade(tx, a, autor, motivo);
+      for (const o of oportunidades) await excluirOportunidade(tx, o, autor, motivo);
+    } else if (ligados) {
+      for (const a of atividades) {
+        await registrar(tx, {
+          actorUserId: autor, area: a.area, entidade: a.ref, campo: "produto", de: alvo.label, para: "—",
+          texto: `"${a.titulo}" ficou sem produto ${motivo}`,
+        });
+      }
+      for (const o of oportunidades) {
+        await registrar(tx, {
+          actorUserId: autor, area: o.area, entidade: o.ref, campo: "modulos", de: alvo.label, para: "—",
+          texto: `${o.conta} perdeu o módulo ${alvo.label} ${motivo}`,
+        });
+      }
+    }
+
+    // As chaves estrangeiras fazem o resto: atividade fica sem produto (SET NULL) e o módulo
+    // sai da oportunidade (CASCADE) — só sobra alguma coisa no caso "desvincular".
+    await tx`DELETE FROM produtos WHERE id = ${id}`;
+    const resumo =
+      !ligados ? "" : destino?.acao === "migrar" ? `; ${ligados} registro(s) migrados` :
+      destino?.acao === "excluir" ? `; ${ligados} registro(s) excluídos junto` : `; ${ligados} registro(s) desvinculados`;
+    await registrar(tx, {
+      actorUserId: autor, area: alvo.area, entidade: `PROD-${id}`, campo: "exclusao", de: alvo.label, para: null,
+      texto: `Excluiu o produto ${alvo.label}${resumo}`,
+    });
+    return { ok: true as const, ligados };
   });
-
-  return json({ ok: true, semProduto: usos });
+  if (ehFalha(r)) return deFalha(r);
+  return json(r);
 }

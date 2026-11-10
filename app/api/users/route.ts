@@ -46,7 +46,23 @@ export async function POST(req: Request) {
   if (!(PAPEIS as readonly string[]).includes(papel)) return err("Papel inválido.", 400);
 
   const sql = await getDb();
-  const jaExiste = await sql<{ nome: string }[]>`SELECT nome FROM users WHERE lower(email) = ${email}`;
+  const jaExiste = await sql<{ id: number; nome: string; excluido: boolean }[]>`
+    SELECT id, nome, excluido_em IS NOT NULL AS excluido FROM users WHERE lower(email) = ${email}
+  `;
+  // Quem foi excluído do cadastro continua na tabela (o histórico aponta para a linha). Cadastrar
+  // o mesmo e-mail de novo traz a pessoa de volta, sem permissão nenhuma — como um convite novo.
+  if (jaExiste.length && jaExiste[0].excluido) {
+    const id = jaExiste[0].id;
+    await sql`
+      UPDATE users SET nome = ${nome}, papel = ${papel}, iniciais = ${iniciaisDe(nome)}, ativo = true, excluido_em = NULL
+      WHERE id = ${id}
+    `;
+    await registrar(sql, {
+      actorUserId: ctx.user.userId, area: null, entidade: `U-${id}`, campo: "criacao", de: null, para: email,
+      texto: `Cadastrou de novo ${nome} (${email}) como ${papel}, depois de uma exclusão`,
+    });
+    return json({ ok: true, id }, 201);
+  }
   if (jaExiste.length) return err(`${jaExiste[0].nome} já está cadastrado com esse e-mail.`, 409);
 
   // Sem google_sub de propósito: é o que marca a linha como "convidada, ainda não entrou".

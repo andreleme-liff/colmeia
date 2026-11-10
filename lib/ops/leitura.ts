@@ -26,7 +26,7 @@ function areasDoFiltro(ctx: Ctx, area?: string): string[] {
 }
 
 async function pessoasDe(sql: Queryable): Promise<Pessoa[]> {
-  return [...(await sql<Pessoa[]>`SELECT id, nome FROM users`)];
+  return [...(await sql<Pessoa[]>`SELECT id, nome FROM users WHERE excluido_em IS NULL`)];
 }
 
 type LinhaAtividade = {
@@ -290,7 +290,7 @@ export async function listarCadastros(sql: Queryable, ctx: Ctx) {
     `,
     // Sem e-mail: o modelo precisa de id e nome para atribuir responsável, não de contato.
     sql<{ id: number; nome: string; papel: string; ativo: boolean }[]>`
-      SELECT id, nome, papel, ativo FROM users ORDER BY nome
+      SELECT id, nome, papel, ativo FROM users WHERE excluido_em IS NULL ORDER BY nome
     `,
     sql<{ id: string; label: string; ativo: boolean }[]>`SELECT id, label, ativo FROM origens ORDER BY ordem, label`,
   ]);

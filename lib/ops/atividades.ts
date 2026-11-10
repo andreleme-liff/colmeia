@@ -12,7 +12,7 @@ import { planejarAtualizacaoAtividade, planejarCriacaoAtividade, type AtividadeA
 
 export async function carregarFatos(tx: Queryable): Promise<Fatos> {
   const [pessoas, produtos, oportunidades, origens] = await Promise.all([
-    tx<{ id: number; nome: string }[]>`SELECT id, nome FROM users`,
+    tx<{ id: number; nome: string }[]>`SELECT id, nome FROM users WHERE excluido_em IS NULL`,
     tx<{ id: string; area: string; label: string }[]>`SELECT id, area, label FROM produtos`,
     tx<{ id: number; ref: string; conta: string; area: string }[]>`SELECT id, ref, conta, area FROM deals`,
     tx<{ id: string; label: string; ativo: boolean }[]>`SELECT id, label, ativo FROM origens`,
