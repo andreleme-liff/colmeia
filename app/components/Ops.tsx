@@ -932,7 +932,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
       <aside className="liff-aside">
         <div style={{ padding: "0 22px 26px" }}>
           <LiffMark height={24} tone={markTone(theme)} />
-          <div style={{ ...eyebrow(10, C.accent, "0.18em"), marginTop: 10 }}>OPS · GESTÃO INTERNA</div>
+          <div style={{ ...eyebrow(10, C.accent, "0.18em"), marginTop: 10 }}>GESTÃO INTERNA</div>
         </div>
 
         <nav style={{ display: "flex", flexDirection: "column" }}>
