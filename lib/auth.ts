@@ -91,6 +91,38 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   };
 }
 
+/**
+ * A pessoa pelo id, no mesmo formato da sessão — para o MCP, que identifica a pessoa pela
+ * concessão e não por cookie. `token` vazio: não há sessão de navegador por trás.
+ */
+export async function carregarUsuario(userId: number): Promise<SessionUser | null> {
+  const sql = await getDb();
+  const rows = await sql<
+    {
+      id: number; nome: string; email: string; papel: Papel; iniciais: string; ativo: boolean;
+      avatar_url: string | null; preferencias: Record<string, string> | null; tem_sheets: boolean;
+    }[]
+  >`
+    SELECT id, nome, email, papel, iniciais, ativo, avatar_url, preferencias,
+           (google_refresh_token IS NOT NULL) AS tem_sheets
+    FROM users WHERE id = ${userId}
+  `;
+  const u = rows[0];
+  if (!u || !u.ativo) return null;
+  return {
+    token: "",
+    userId: u.id,
+    nome: u.nome,
+    email: u.email,
+    papel: u.papel,
+    iniciais: u.iniciais,
+    ativo: u.ativo,
+    avatarUrl: u.avatar_url,
+    preferencias: u.preferencias ?? {},
+    temSheets: !!u.tem_sheets,
+  };
+}
+
 export async function destroySession(): Promise<void> {
   const jar = await cookies();
   const token = jar.get("session")?.value;

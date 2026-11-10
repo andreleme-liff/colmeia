@@ -4,7 +4,7 @@
 // dados de verdade. Aqui TODA leitura filtra pelas áreas visíveis e TODA escrita exige nível
 // `edit` na área do registro, sempre a partir da sessão — nunca de algo que o cliente mandou.
 
-import { getSessionUser, type SessionUser } from "./auth";
+import { carregarUsuario, getSessionUser, type SessionUser } from "./auth";
 import { getDb } from "./db";
 import { err } from "./http";
 import type { Nivel } from "./domain";
@@ -75,15 +75,30 @@ export function montarCtx(
   };
 }
 
-/** Contexto da requisição, ou a Response de erro apropriada. */
-export async function requireCtx(): Promise<Ctx | Response> {
-  const user = await getSessionUser();
-  if (!user) return err("Não autenticado.", 401);
+/** Monta o contexto de permissão de uma pessoa já identificada. */
+async function ctxDe(user: SessionUser): Promise<Ctx> {
   const sql = await getDb();
   const cadastro = await sql<{ id: string; label: string }[]>`
     SELECT id, label FROM areas ORDER BY ordem ASC, id ASC
   `;
   return montarCtx(user, await carregarPerms(user, cadastro.map((a) => a.id)), cadastro);
+}
+
+/** Contexto da requisição, ou a Response de erro apropriada. */
+export async function requireCtx(): Promise<Ctx | Response> {
+  const user = await getSessionUser();
+  if (!user) return err("Não autenticado.", 401);
+  return ctxDe(user);
+}
+
+/**
+ * O MESMO contexto, para quem chega por um token de acesso do MCP em vez de cookie. A pessoa
+ * é a dona da concessão; a permissão por área é recalculada agora, do banco — o token não
+ * carrega permissão nenhuma. Pessoa desativada → `null`, como na sessão.
+ */
+export async function ctxDoUsuario(userId: number): Promise<Ctx | null> {
+  const user = await carregarUsuario(userId);
+  return user ? ctxDe(user) : null;
 }
 
 /** Só admin mexe em permissões e em usuários. */

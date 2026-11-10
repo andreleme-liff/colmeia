@@ -31,6 +31,11 @@ frontend:
         # que é o que prevalece juridicamente se divergir do algarismo.
         - node --experimental-strip-types scripts/verificar-contrato.mjs
         - node --experimental-strip-types scripts/verificar-filtro.mjs
+        # Núcleo de atividade/oportunidade, OAuth e MCP. Os dois últimos cobrem a porta de
+        # entrada de sistemas externos — permissão, PKCE, redirect, escopo, esquemas.
+        - node --experimental-strip-types scripts/verificar-ops.mjs
+        - node --experimental-strip-types scripts/verificar-oauth.mjs
+        - node --experimental-strip-types scripts/verificar-mcp.mjs
         - npm run build
   artifacts:
     # Saída do adaptador de SSR da Amplify para Next.js. Não é `.next` nem `out`.
