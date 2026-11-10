@@ -33,17 +33,17 @@ type Serie = { key: string; label: string; cor: string; textura?: boolean; valor
 const S_ASSINATURA: Serie = { key: "assinatura", label: "Assinatura", cor: "var(--rec-assinatura)", valor: (m) => m.assinatura };
 const S_IMPLANTACAO: Serie = { key: "implantacao", label: "Implantação", cor: "var(--rec-implantacao)", valor: (m) => m.implantacao };
 const S_CUSTOMIZACAO: Serie = { key: "customizacao", label: "Customização", cor: "var(--rec-customizacao)", valor: (m) => m.customizacao };
-const S_CONTRATADA: Serie = { key: "contratada", label: "Contratada", cor: "var(--rec-assinatura)", valor: contratadaDoMes };
+const S_CONTRATADA: Serie = { key: "contratada", label: "Contratada", cor: "var(--rec-contratada)", valor: contratadaDoMes };
 const S_PROVAVEL: Serie = { key: "provavel", label: "Provável", cor: "var(--rec-prevista)", valor: (m) => m.provavel };
 const S_POSSIVEL: Serie = { key: "possivel", label: "Possível", cor: "var(--rec-prevista)", textura: true, valor: (m) => m.possivel };
 
-/** Como a receita contratada aparece: um total só, ou aberta por tipo. */
-type Visao = "contratada" | "tipo";
+/** Como a receita contratada aparece: um total só (consolidada), ou aberta nos três tipos. */
+type Visao = "consolidada" | "detalhada";
 
-/** Séries de baixo para cima: a contratada (total ou por tipo) e, se pedido, a previsão por cima. */
-function seriesDe(visao: Visao, comPrevisao: boolean): Serie[] {
-  const base = visao === "tipo" ? [S_ASSINATURA, S_IMPLANTACAO, S_CUSTOMIZACAO] : [S_CONTRATADA];
-  return comPrevisao ? [...base, S_PROVAVEL, S_POSSIVEL] : base;
+/** Séries de baixo para cima: a contratada e, se pedidas, provável e possível por cima. */
+function seriesDe(visao: Visao, provavel: boolean, possivel: boolean): Serie[] {
+  const base = visao === "detalhada" ? [S_ASSINATURA, S_IMPLANTACAO, S_CUSTOMIZACAO] : [S_CONTRATADA];
+  return [...base, ...(provavel ? [S_PROVAVEL] : []), ...(possivel ? [S_POSSIVEL] : [])];
 }
 
 const fundoSerie = (s: Serie): CSSProperties =>
@@ -82,8 +82,9 @@ export default function Receita({
   const [versao, setVersao] = useState(0);
   const [horizonte, setHorizonte] = useState<(typeof HORIZONTES)[number]>(12);
   const [verTabela, setVerTabela] = useState(false);
-  const [visao, setVisao] = useState<Visao>("tipo");
-  const [comPrevisao, setComPrevisao] = useState(true);
+  const [visao, setVisao] = useState<Visao>("consolidada");
+  const [comProvavel, setComProvavel] = useState(false);
+  const [comPossivel, setComPossivel] = useState(false);
   const [editando, setEditando] = useState<Partial<Contrato> | null>(null);
 
   useEffect(() => {
@@ -136,7 +137,7 @@ export default function Receita({
     linhas: [],
   });
 
-  const series = seriesDe(visao, comPrevisao);
+  const series = seriesDe(visao, comProvavel, comPossivel);
   const pendencias = calc.ganhosSemReceita.length + calc.finaisFora.length + calc.previsoesFora.length;
 
   return (
@@ -172,17 +173,27 @@ export default function Receita({
       <section>
         <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", marginBottom: 14 }}>
           <div style={eyebrow(11, C.dust, "0.14em")}>RECEITA POR MÊS</div>
-          <div role="group" aria-label="Receita contratada" className="liff-densidade">
-            {([["contratada", "contratada"], ["tipo", "por tipo"]] as const).map(([v, rotulo]) => (
-              <button key={v} type="button" aria-pressed={visao === v} onClick={() => setVisao(v)}>
-                {rotulo}
-              </button>
-            ))}
+          {/* Contratada sempre aparece; consolidada é um total, detalhada abre os três tipos. Provável
+              e possível entram por cima, cada um com o seu botão. */}
+          <div className="rec-controles">
+            <span style={eyebrow(10, C.faint, "0.12em")}>Contratada</span>
+            <div role="group" aria-label="Receita contratada" className="liff-densidade">
+              {(["consolidada", "detalhada"] as const).map((v) => (
+                <button key={v} type="button" aria-pressed={visao === v} onClick={() => setVisao(v)}>
+                  {v}
+                </button>
+              ))}
+            </div>
+            <span style={eyebrow(10, C.faint, "0.12em")}>+</span>
+            <button type="button" className="rec-alterna" aria-pressed={comProvavel} onClick={() => setComProvavel((v) => !v)}>
+              <span aria-hidden className="rec-legenda__marca" style={fundoSerie(S_PROVAVEL)} />
+              provável
+            </button>
+            <button type="button" className="rec-alterna" aria-pressed={comPossivel} onClick={() => setComPossivel((v) => !v)}>
+              <span aria-hidden className="rec-legenda__marca" style={fundoSerie(S_POSSIVEL)} />
+              possível
+            </button>
           </div>
-          <label className="rec-check">
-            <input type="checkbox" checked={comPrevisao} onChange={(e) => setComPrevisao(e.target.checked)} />
-            com previsão
-          </label>
           <ul className="rec-legenda" aria-label="Legenda">
             {series.map((s) => (
               <li key={s.key}>

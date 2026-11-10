@@ -141,19 +141,21 @@ body { background: var(--liff-canvas); color: var(--liff-text); }
 
 /* ---------- forecast de receita ----------
    Cores das séries: paleta categórica validada (dataviz) contra o fundo do card nos dois
-   temas — escuro é o padrão; o claro tem contraste < 3:1 em duas cores, e por isso a tela
-   oferece a tabela equivalente. A previsão "possível" é a mesma cor da "provável" com textura. */
+   temas, na ordem em que empilham. Contratada parte do paprika da marca; previsão é violeta
+   (provável sólida, possível com textura), longe do paprika e das outras duas. */
 :root {
-  --rec-assinatura: #3987e5;
-  --rec-implantacao: #d95926;
-  --rec-customizacao: #199e70;
-  --rec-prevista: #c98500;
+  --rec-contratada: #EB5E28;
+  --rec-assinatura: #EB5E28;
+  --rec-implantacao: #1E9FAF;
+  --rec-customizacao: #B8891A;
+  --rec-prevista: #8E74E6;
 }
 :root[data-theme="light"] {
-  --rec-assinatura: #2a78d6;
-  --rec-implantacao: #eb6834;
-  --rec-customizacao: #1baf7a;
-  --rec-prevista: #eda100;
+  --rec-contratada: #D9531F;
+  --rec-assinatura: #D9531F;
+  --rec-implantacao: #008FA3;
+  --rec-customizacao: #B8860B;
+  --rec-prevista: #6E52C9;
 }
 .rec-numeros { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--liff-border); border: 1px solid var(--liff-border); }
 .rec-numero { background: var(--liff-app-card); padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; }
@@ -176,9 +178,13 @@ body { background: var(--liff-canvas); color: var(--liff-text); }
 .rec-grafico__plot { position: absolute; inset: 0 0 22px 0; pointer-events: none; }
 .rec-grafico__grade { position: absolute; left: 0; right: 0; border-top: 1px solid var(--liff-border); }
 .rec-grafico__grade:first-child { border-top-color: var(--liff-text-faint); }
-.rec-check { display: inline-flex; align-items: center; gap: 6px; font-family: var(--liff-font-mono); font-size: 11px; letter-spacing: .08em;
-  text-transform: uppercase; color: var(--liff-text-muted); cursor: pointer; }
-.rec-check input { accent-color: var(--liff-accent); margin: 0; }
+.rec-controles { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.rec-alterna { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 10px; box-sizing: border-box; cursor: pointer;
+  border: 1px solid var(--liff-border); background: transparent; color: var(--liff-text-muted);
+  font-family: var(--liff-font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+.rec-alterna[aria-pressed="false"] .rec-legenda__marca { opacity: .35; }
+.rec-alterna[aria-pressed="true"] { color: var(--liff-text); border-color: var(--liff-text-faint); background: var(--liff-surface-2); }
+.rec-alterna:focus-visible { outline: 2px solid var(--liff-accent); outline-offset: 2px; }
 .rec-grafico__vazio { position: absolute; inset: 0 0 22px; display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--liff-text-faint); }
 .rec-grafico__barras { position: absolute; inset: 0; display: flex; gap: 6px; align-items: stretch; }
 .rec-grafico__coluna { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 22px; outline: none; }
