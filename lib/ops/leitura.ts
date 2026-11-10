@@ -59,7 +59,7 @@ function atividadeDto(a: LinhaAtividade, ctx: Ctx, base: string) {
       a.oportunidade_id && a.op_area && ctx.podeVer(a.op_area)
         ? { ref: a.op_ref, conta: a.op_conta, url: base + caminhoDe({ view: "comercial", ref: a.op_ref ?? undefined }) }
         : a.oportunidade_id
-          ? "ligada a uma oportunidade de área sem acesso"
+          ? "ligada a uma oportunidade de vertical sem acesso"
           : null,
     pode_editar: ctx.podeEditar(a.area),
     url: base + caminhoDe({ view: "operacoes", ref: a.ref }),

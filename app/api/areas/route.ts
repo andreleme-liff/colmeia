@@ -25,7 +25,7 @@ export async function POST(req: Request) {
   }
 
   const label = String(body.label ?? "").trim();
-  if (!label) return err("A área precisa de um nome.", 400);
+  if (!label) return err("A vertical precisa de um nome.", 400);
   if (label.length > 60) return err("Nome longo demais.", 400);
 
   const id = slugificar(label);
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
 
   const sql = await getDb();
   const jaExiste = await sql<{ id: string }[]>`SELECT id FROM areas WHERE id = ${id}`;
-  if (jaExiste.length) return err(`Já existe uma área com esse nome (${id}).`, 409);
+  if (jaExiste.length) return err(`Já existe uma vertical com esse nome (${id}).`, 409);
 
   const [{ proxima }] = await sql<{ proxima: number }[]>`
     SELECT COALESCE(MAX(ordem), -1) + 1 AS proxima FROM areas
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
     campo: "criacao",
     de: null,
     para: label,
-    texto: `Criou a área ${label} (${short})`,
+    texto: `Criou a vertical ${label} (${short})`,
   });
 
   return json({ ok: true, id, label, short, cor }, 201);

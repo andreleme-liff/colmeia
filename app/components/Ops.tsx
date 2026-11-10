@@ -344,7 +344,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     const painel: PainelDados = {
       escopoFrase:
         `${me.nome.split(" ")[0]}, você vê ${areasVisiveis.length} de ${estado.areas.length} ` +
-        `áreas — ${atividades.length} atividades e ${oportunidades.length} oportunidades.`,
+        `verticais — ${atividades.length} atividades e ${oportunidades.length} oportunidades.`,
       // O sufixo "(ver)" marca onde a pessoa só lê. É a informação que evita descobrir a
       // falta de permissão só na hora de tentar salvar.
       escopoAreas: areasVisiveis
@@ -559,18 +559,18 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     }
     if (cadTab === "areas") {
       return {
-        head: ["ÁREA", "VERTICAL", "ATIVIDADES"],
+        head: ["VERTICAL", "SIGLA", "ATIVIDADES"],
         rows: todasAreas().filter((a) => estado.areasVisiveis.includes(a.id)).map((a) => ({
           key: a.id,
           a: "LIFF " + a.label,
           b: a.short,
           c: estado.activities.filter((x) => x.area === a.id).length + " ativas",
         })),
-        ph: "Nome da área",
+        ph: "Nome da vertical",
       };
     }
     return {
-      head: ["PRODUTO", "ÁREA", "OPORTUNIDADES"],
+      head: ["MÓDULO / PRODUTO", "VERTICAL", "OPORTUNIDADES"],
       rows: estado.produtos.map((p) => ({
         key: p.id,
         a: p.label + (p.ativo ? "" : " (arquivado)"),
@@ -579,7 +579,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         c: estado.deals.filter((d) => d.modulos.includes(p.id)).length + " no pipeline",
         abrir: estado.isAdmin ? () => setCadEditando({ tipo: "produto", id: p.id }) : undefined,
       })),
-      ph: "Nome do produto",
+      ph: "Nome do módulo / produto",
     };
   }, [estado, cadTab, acao]);
 
@@ -803,7 +803,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
       setSalvando(false);
     }
   };
-  const rotuloArea = areaEfetiva === "all" ? "todas as áreas" : areaOf(areaEfetiva).label;
+  const rotuloArea = areaEfetiva === "all" ? "todas as verticais" : areaOf(areaEfetiva).label;
   /**
    * O card aberto é DERIVADO da URL, não guardado em estado. Assim não há o que sincronizar:
    * voltar fecha o drawer, recarregar reabre no mesmo card, e o endereço na barra é sempre o
@@ -1194,7 +1194,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             )}
 
             {/* Criar aparece onde a coisa vive: atividade no quadro operacional,
-                oportunidade no pipeline. Desabilita quando não há área com permissão de
+                oportunidade no pipeline. Desabilita quando não há vertical com permissão de
                 edição — o servidor recusaria de todo jeito. */}
             {["operacoes", "comercial"].includes(view) && (
               <Button
@@ -1202,7 +1202,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
                 size="sm"
                 disabled={areasEditaveis.length === 0}
                 title={
-                  areasEditaveis.length === 0 ? "Você não tem permissão de edição em nenhuma área" : undefined
+                  areasEditaveis.length === 0 ? "Você não tem permissão de edição em nenhuma vertical" : undefined
                 }
                 onClick={() => {
                   setErroForm(null);
@@ -1273,7 +1273,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
                 lineHeight: 1.6,
               }}
             >
-              Não encontrei {refAberta}. O registro pode ter sido excluído, ou estar numa área
+              Não encontrei {refAberta}. O registro pode ter sido excluído, ou estar numa vertical
               fora do seu acesso.
             </div>
           )}

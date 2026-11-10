@@ -22,18 +22,18 @@ export async function POST(req: Request) {
   }
 
   const label = String(body.label ?? "").trim();
-  if (!label) return err("O produto precisa de um nome.", 400);
+  if (!label) return err("O módulo / produto precisa de um nome.", 400);
   if (label.length > 80) return err("Nome longo demais.", 400);
 
   const area = String(body.area ?? "");
-  if (!ctx.areasExistentes.includes(area)) return err("Área inválida.", 400);
+  if (!ctx.areasExistentes.includes(area)) return err("Vertical inválida.", 400);
 
   const id = slugificar(label);
   if (!id) return err("Nome inválido — use letras ou números.", 400);
 
   const sql = await getDb();
   const jaExiste = await sql<{ id: string }[]>`SELECT id FROM produtos WHERE id = ${id}`;
-  if (jaExiste.length) return err(`Já existe um produto com esse nome (${id}).`, 409);
+  if (jaExiste.length) return err(`Já existe um módulo / produto com esse nome (${id}).`, 409);
 
   const [{ proxima }] = await sql<{ proxima: number }[]>`
     SELECT COALESCE(MAX(ordem), -1) + 1 AS proxima FROM produtos
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     campo: "criacao",
     de: null,
     para: label,
-    texto: `Criou o produto ${label} em ${ctx.labelArea(area)}`,
+    texto: `Criou o módulo / produto ${label} em ${ctx.labelArea(area)}`,
   });
 
   return json({ ok: true, id, label, area }, 201);

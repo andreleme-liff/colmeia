@@ -171,7 +171,7 @@ async function migrate(): Promise<void> {
       google_sub  TEXT,
       avatar_url  TEXT,
       -- Escolhas da pessoa que devem sobreviver ao logout e valer em qualquer máquina:
-      -- tema e filtro de área. JSONB para não precisar de migração a cada preferência
+      -- tema e filtro de vertical. JSONB para não precisar de migração a cada preferência
       -- nova; quem valida as chaves é a rota, que ignora o que não conhece.
       preferencias JSONB NOT NULL DEFAULT '{}'::jsonb,
       -- Refresh token do Google, concedido SÓ por quem clicou em sincronizar planilha — o

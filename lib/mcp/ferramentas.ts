@@ -71,7 +71,7 @@ const EXECUTORES: Record<NomeFerramenta, Executor> = {
         escopos: c.acesso.escopos.split(" "),
         pode_gravar: temEscopo(c.acesso.escopos, "escrita"),
         observacao: temEscopo(c.acesso.escopos, "escrita")
-          ? "Grava só nas áreas com nível 'editar'. Nada pode ser excluído por esta conexão."
+          ? "Grava só nas verticais com nível 'editar'. Nada pode ser excluído por esta conexão."
           : "Esta conexão só lê. Para gravar, a pessoa precisa reconectar marcando 'Gravar' na tela de autorização.",
       },
       areas: c.ctx.areasVisiveis.map((a) => ({ id: a, nome: c.ctx.labelArea(a), nivel: c.ctx.podeEditar(a) ? "editar" : "ver" })),

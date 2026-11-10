@@ -108,11 +108,11 @@ export const TITLES: Record<string, string> = {
 export const ADMIN_CARDS = [
   {
     title: "PAPÉIS",
-    body: "Admin, Gestor, Membro e Leitura. O papel define o teto de permissão; a lista acima refina por área.",
+    body: "Admin, Gestor, Membro e Leitura. O papel define o teto de permissão; a lista acima refina por vertical.",
   },
   {
     title: "SSO GOOGLE",
-    body: "Login restrito ao domínio getliff.ai. Novos usuários entram sem área atribuída até liberação.",
+    body: "Login restrito ao domínio getliff.ai. Novos usuários entram sem vertical atribuída até liberação.",
   },
   {
     title: "RETENÇÃO DE LOG",
@@ -683,7 +683,7 @@ export function tipoDaRef(ref: string | null | undefined): "oportunidade" | "ati
 export const BLOCKER_TIPOS = [
   { key: "operacao", label: "Operação" },
   { key: "seguranca", label: "Segurança" },
-  { key: "produto", label: "Produto" },
+  { key: "produto", label: "Módulo / Produto" },
   { key: "preco", label: "Preço" },
 ] as const;
 export const BLOCKER_TIPO_KEYS = BLOCKER_TIPOS.map((b) => b.key) as readonly string[];

@@ -41,7 +41,7 @@ export async function DELETE(_req: Request, ctxRoute: RouteContext<"/api/deals/[
     const alvo = linhas[0];
 
     if (!ctx.podeVer(alvo.area)) return { ok: false as const, erro: "Oportunidade não encontrada.", status: 404 };
-    if (!ctx.podeEditar(alvo.area)) return { ok: false as const, erro: "Sem permissão de edição nesta área.", status: 403 };
+    if (!ctx.podeEditar(alvo.area)) return { ok: false as const, erro: "Sem permissão de edição nesta vertical.", status: 403 };
 
     // Exclusão e auditoria na mesma transação: não existe registro apagado sem a linha que
     // conta quem apagou. As tarefas ligadas ficam, com o vínculo desfeito e registrado.

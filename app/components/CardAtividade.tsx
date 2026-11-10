@@ -59,7 +59,7 @@ export function CardAtividade({
         className="cop-seta"
         disabled={desabilitado}
         aria-label={rotulo}
-        title={!editavel ? "Sem permissão de edição nesta área" : rotulo}
+        title={!editavel ? "Sem permissão de edição nesta vertical" : rotulo}
         draggable={false}
         // O card inteiro é clicável e arrastável: o botão não pode abrir o card nem iniciar o arraste.
         onClick={(e) => {
@@ -80,12 +80,12 @@ export function CardAtividade({
     <article
       className="cop cop--ativo"
       style={corArea}
-      aria-label={`Atividade ${c.titulo} · área ${area.label}`}
+      aria-label={`Atividade ${c.titulo} · vertical ${area.label}`}
       draggable={editavel}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onClick={onAbrir}
-      title={`${area.label} · ${editavel ? "Arraste para mover de status, ou clique para abrir" : "Somente leitura nesta área"}`}
+      title={`${area.label} · ${editavel ? "Arraste para mover de status, ou clique para abrir" : "Somente leitura nesta vertical"}`}
     >
       {/* ---------- 1 · identificação ---------- */}
       <div className="cop-bloco">
@@ -115,8 +115,8 @@ export function CardAtividade({
         {(produto || prazo || prio) && (
           <div className="cop-tags">
             {produto && <span className="cop-pill">{produto}</span>}
-            {prio && <Etiqueta tom={prio.tom} title="Prioridade">{prio.texto}</Etiqueta>}
-            {prazo && <Etiqueta tom={prazo.tom} title="Prazo da atividade">{prazo.texto}</Etiqueta>}
+            {prio && <Etiqueta tom={prio.tom} semPonto title="Prioridade">{prio.texto}</Etiqueta>}
+            {prazo && <Etiqueta tom={prazo.tom} semPonto title="Prazo da atividade">{prazo.texto}</Etiqueta>}
           </div>
         )}
       </div>

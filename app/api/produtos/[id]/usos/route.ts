@@ -14,7 +14,7 @@ export async function GET(_req: Request, ctxRoute: RouteContext<"/api/produtos/[
 
   const sql = await getDb();
   const alvo = await sql<{ area: string }[]>`SELECT area FROM produtos WHERE id = ${id}`;
-  if (!alvo.length) return err("Produto não encontrado.", 404);
+  if (!alvo.length) return err("Módulo / produto não encontrado.", 404);
 
   const [atividades, oportunidades, destinos] = await Promise.all([
     sql<{ ref: string; titulo: string }[]>`SELECT ref, titulo FROM activities WHERE produto_id = ${id} ORDER BY ref`,

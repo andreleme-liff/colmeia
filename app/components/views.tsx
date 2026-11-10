@@ -109,7 +109,7 @@ function ListaFoco({
           key={l.ref}
           className={l.podeAbrir ? "liff-hover-row liff-painel-linha" : "liff-painel-linha"}
           onClick={() => l.podeAbrir && onAbrir(l.ref)}
-          title={l.podeAbrir ? "Abrir" : "Somente leitura nesta área"}
+          title={l.podeAbrir ? "Abrir" : "Somente leitura nesta vertical"}
           style={{
             display: "grid",
             gap: 20,
@@ -380,7 +380,7 @@ export function Cronograma({
                   key={i.ref}
                   className={i.podeAbrir ? "liff-hover-row liff-cronograma-linha" : "liff-cronograma-linha"}
                   onClick={() => i.podeAbrir && onAbrir(i.ref, i.tipo)}
-                  title={i.podeAbrir ? "Abrir" : "Somente leitura nesta área"}
+                  title={i.podeAbrir ? "Abrir" : "Somente leitura nesta vertical"}
                   style={{
                     display: "grid",
                     gap: 20,
@@ -403,7 +403,7 @@ export function Cronograma({
                     {i.quando}
                   </span>
                   <span style={eyebrow(9, i.tipo === "oportunidade" ? C.accent : C.info, "0.1em")}>
-                    {i.tipo === "oportunidade" ? "oport." : "ativ."}
+                    {i.tipo === "oportunidade" ? "Comercial" : "Operações"}
                   </span>
                   <span style={{ fontSize: 14, color: C.ink, lineHeight: 1.4, minWidth: 0 }}>{i.titulo}</span>
                   <span style={{ fontSize: 13, color: C.faint, lineHeight: 1.5, minWidth: 0 }}>{i.detalhe}</span>
@@ -488,7 +488,7 @@ export function Operacoes({
       </div>
       <div style={{ fontFamily: MONO, fontSize: 11, color: C.faint, marginTop: 14, lineHeight: 1.6 }}>
         Arraste os cards entre as colunas, ou use as setas — o movimento é gravado no log com autor e horário.
-        Cards de áreas sem permissão de edição não se movem.
+        Cards de verticais sem permissão de edição não se movem.
       </div>
     </>
   );
@@ -520,7 +520,7 @@ export function Atividades({
             borderBottom: `1px solid ${C.line}`,
           }}
         >
-          {["ATIVIDADE", "ÁREA", "RESPONSÁVEL", "PRAZO", "STATUS"].map((h) => (
+          {["ATIVIDADE", "VERTICAL", "RESPONSÁVEL", "PRAZO", "STATUS"].map((h) => (
             <div key={h} style={{ padding: "12px 16px", ...eyebrow(10, C.faint) }}>
               {h}
             </div>
@@ -580,15 +580,15 @@ export function Atividades({
 // lugar delas — com estágio, valor e histórico, que a tabela não mostrava.
 export const CAD_TABS = [
   { key: "pessoas", label: "pessoas" },
-  { key: "produtos", label: "produtos" },
-  { key: "areas", label: "áreas" },
+  { key: "produtos", label: "módulos / produtos" },
+  { key: "areas", label: "verticais" },
   // De onde vêm as oportunidades (Base Fius, AWS, Evento…) — o select do card comercial.
   { key: "origens", label: "origens" },
 ] as const;
 
 const TITULO_NOVO: Record<string, string> = {
   pessoas: "NOVA PESSOA",
-  produtos: "NOVO PRODUTO",
+  produtos: "NOVO MÓDULO / PRODUTO",
   areas: "NOVA VERTICAL",
   origens: "NOVA ORIGEM",
 };
@@ -799,7 +799,7 @@ function TabelaAreas({
           borderBottom: `1px solid ${C.line}`,
         }}
       >
-        {["ÁREA", "COR", "PLANILHA", "ATIVIDADES", ""].map((h, i) => (
+        {["VERTICAL", "COR", "PLANILHA", "ATIVIDADES", ""].map((h, i) => (
           <div key={i} style={{ padding: "12px 16px", ...eyebrow(10, C.faint) }}>
             {h}
           </div>
@@ -974,7 +974,7 @@ function NovaPessoa({
       <Field label="E-mail" required hint={`Precisa ser @${dominio} — é o domínio aceito no login.`}>
         <Input placeholder={`larissa@${dominio}`} value={email} onChange={setEmail} />
       </Field>
-      <Field label="Papel" hint="O papel é o teto; o acesso por área se define depois, abrindo a linha da pessoa na lista.">
+      <Field label="Papel" hint="O papel é o teto; o acesso por vertical se define depois, abrindo a linha da pessoa na lista.">
         <Select options={[...PAPEIS]} value={papel} onChange={setPapel} />
       </Field>
       <Button
@@ -1037,17 +1037,17 @@ function NovoProduto({
   if (!areas.length) {
     return (
       <div style={{ fontSize: 13, lineHeight: 1.6, color: C.faint }}>
-        Cadastre uma vertical antes: todo produto pertence a uma.
+        Cadastre uma vertical antes: todo módulo / produto pertence a uma.
       </div>
     );
   }
 
   return (
     <>
-      <Field label="Nome do produto" required>
+      <Field label="Nome do módulo / produto" required>
         <Input placeholder="Regtrack Farma" value={label} onChange={setLabel} />
       </Field>
-      <Field label="Vertical" required hint="O formulário de oportunidade só oferece os produtos da área escolhida.">
+      <Field label="Vertical" required hint="O formulário de oportunidade só oferece os módulos / produtos da vertical escolhida.">
         <Select options={opcoesArea(areas)} value={area} onChange={setArea} />
       </Field>
       <Button
@@ -1060,7 +1060,7 @@ function NovoProduto({
           setLabel("");
         }}
       >
-        {salvando ? "cadastrando…" : "cadastrar produto"}
+        {salvando ? "cadastrando…" : "cadastrar módulo / produto"}
       </Button>
     </>
   );
@@ -1189,7 +1189,7 @@ export function Cadastros({
             {/* Um formulário por aba, e não um genérico com Nome/Área/Observação: pessoa e
                 produto não pedem os mesmos campos, e o formulário único não conseguia
                 enviar nenhum dos dois. Verticais e produtos são configuração do sistema —
-                só admin cadastra, como já valia para a cor da área. */}
+                só admin cadastra, como já valia para a cor da vertical. */}
             {!podeEditarAreas ? (
               <div style={{ fontSize: 13, lineHeight: 1.6, color: C.faint }}>
                 Só a administração faz cadastros. Peça a quem administra o sistema.
@@ -1330,7 +1330,7 @@ function PermissoesPorPessoa({
                 </div>
               </div>
               <div style={{ ...eyebrow(10, C.faint, "0.1em"), whiteSpace: "nowrap" }}>
-                {u.papel === "admin" ? "todas as áreas" : `${edita} editar · ${ve} ver`}
+                {u.papel === "admin" ? "todas as verticais" : `${edita} editar · ${ve} ver`}
               </div>
               {onEditar && (
                 // O clique no botão não pode também abrir/fechar as permissões da linha.
@@ -1455,7 +1455,7 @@ export function Auditoria({ area, busca, gatilho }: { area: string; busca: strin
             borderBottom: `1px solid ${C.line}`,
           }}
         >
-          {["QUANDO", "QUEM", "ÁREA", "O QUE MUDOU"].map((h) => (
+          {["QUANDO", "QUEM", "VERTICAL", "O QUE MUDOU"].map((h) => (
             <div key={h} style={{ padding: "12px 16px", ...eyebrow(10, C.faint) }}>
               {h}
             </div>
@@ -1705,7 +1705,7 @@ export function Drawer({
           </div>
 
           <div>
-            <div style={{ ...eyebrow(10, C.faint), marginBottom: 9 }}>ÁREA</div>
+            <div style={{ ...eyebrow(10, C.faint), marginBottom: 9 }}>VERTICAL</div>
             <select
               value={act.area}
               onChange={(e) => onArea(e.target.value)}
@@ -1724,7 +1724,7 @@ export function Drawer({
           </div>
 
           <div>
-            <div style={{ ...eyebrow(10, C.faint), marginBottom: 9 }}>PRODUTO</div>
+            <div style={{ ...eyebrow(10, C.faint), marginBottom: 9 }}>MÓDULO / PRODUTO</div>
             <select
               value={act.produtoId ?? ""}
               onChange={(e) => onProduto(e.target.value || null)}
@@ -1745,7 +1745,7 @@ export function Drawer({
           </div>
 
           {/* A oportunidade comercial a que esta tarefa serve — o elo entre o pipeline e o
-              quadro. Qualquer oportunidade que a pessoa enxergue, de qualquer área: a tarefa
+              quadro. Qualquer oportunidade que a pessoa enxergue, de qualquer vertical: a tarefa
               de implantação em Tax costuma servir a uma venda fechada em Corporate. */}
           <div>
             <div style={{ ...eyebrow(10, C.faint), marginBottom: 9 }}>OPORTUNIDADE</div>
@@ -1753,7 +1753,7 @@ export function Drawer({
               // Ligada a uma oportunidade de área que esta pessoa não vê: mostrar que o vínculo
               // existe, sem o nome da conta — e sem oferecer um seletor que o desfaria às cegas.
               <div style={{ fontSize: 13, color: C.faint, lineHeight: 1.5 }}>
-                Ligada a uma oportunidade de uma área que você não acessa.
+                Ligada a uma oportunidade de uma vertical que você não acessa.
               </div>
             ) : (
               <select
@@ -1851,7 +1851,7 @@ export function Drawer({
 
           <div style={{ fontFamily: MONO, fontSize: 11, lineHeight: 1.6, color: editavel ? C.faint : C.warning }}>
             {editavel
-              ? "Você tem permissão de edição nesta área. Toda alteração é registrada no log."
+              ? "Você tem permissão de edição nesta vertical. Toda alteração é registrada no log."
               : `Somente leitura — seu perfil não tem permissão de edição em ${a.label}.`}
           </div>
           {/* Excluir fica sozinho, embaixo e em vermelho: é a única ação irreversível aqui. */}
@@ -2132,7 +2132,7 @@ export function NovaAtividade({
         <Input placeholder="O que precisa ser feito" value={titulo} onChange={setTitulo} />
       </Field>
 
-      <Field label="Área" required hint="Escolha antes de salvar — não há vertical pré-selecionada.">
+      <Field label="Vertical" required hint="Escolha antes de salvar — não há vertical pré-selecionada.">
         <Select
           options={opcoesArea(areasEditaveis)}
           value={area}
@@ -2146,13 +2146,13 @@ export function NovaAtividade({
       </Field>
 
       <Field
-        label="Produto"
+        label="Módulo / Produto"
         hint={
           !area
             ? "Escolha a vertical primeiro."
             : produtosDaArea.length
               ? "O que está sendo implantado. Opcional."
-              : "Nenhum produto cadastrado nesta vertical — cadastre em Cadastros → produtos."
+              : "Nenhum módulo / produto cadastrado nesta vertical — cadastre em Cadastros → módulos / produtos."
         }
       >
         <Select
@@ -2359,7 +2359,7 @@ export function FormOportunidade({
       </Field>
 
       <div style={duas}>
-        <Field label="Área" required hint={editando ? undefined : "Escolha antes de salvar."}>
+        <Field label="Vertical" required hint={editando ? undefined : "Escolha antes de salvar."}>
           <Select
             options={opcoesArea(areasEditaveis, inicial?.area)}
             value={area}
@@ -2412,7 +2412,7 @@ export function FormOportunidade({
       <Field label="Dor principal">
         <Input placeholder="Conferir a apuração" value={dor} onChange={setDor} />
       </Field>
-      <Field label="Módulos de interesse" hint={area ? undefined : "Escolha a área para ver os módulos."}>
+      <Field label="Módulos / Produtos de interesse" hint={area ? undefined : "Escolha a vertical para ver os módulos / produtos."}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {modulosDaArea.length ? (
             modulosDaArea.map((p) => {
@@ -2439,7 +2439,7 @@ export function FormOportunidade({
             })
           ) : (
             <span style={{ fontSize: 12, color: C.faint }}>
-              {area ? "Nenhum módulo cadastrado nesta área (Cadastros → produtos)." : "—"}
+              {area ? "Nenhum módulo / produto cadastrado nesta vertical (Cadastros → módulos / produtos)." : "—"}
             </span>
           )}
         </div>
@@ -2551,7 +2551,7 @@ export function FormOportunidade({
       </Field>
 
       {/* O lado operacional desta venda: as tarefas ligadas a ela. Só as que a pessoa
-          enxerga — tarefa de área sem acesso não aparece, como em todo o sistema. */}
+          enxerga — tarefa de vertical sem acesso não aparece, como em todo o sistema. */}
       {editando && (
         <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 18 }}>
           <div style={{ ...eyebrow(11, C.dust), marginBottom: 12 }}>TAREFAS LIGADAS</div>

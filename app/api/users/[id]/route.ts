@@ -49,7 +49,7 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/users/[id
 
   if (body.ciclarArea !== undefined) {
     const area = body.ciclarArea;
-    if (!ctx.areasExistentes.includes(area)) return err("Área inválida.", 400);
+    if (!ctx.areasExistentes.includes(area)) return err("Vertical inválida.", 400);
     // Admin tem edit em tudo por definição do papel; a matriz não se aplica a ele.
     if (alvo.papel === "admin") return err("Permissões de admin não são editáveis.", 409);
 

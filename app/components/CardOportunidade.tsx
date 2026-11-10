@@ -124,7 +124,7 @@ export function CardOportunidade({
         className="cop-seta"
         disabled={desabilitado}
         aria-label={rotulo}
-        title={!editavel ? "Sem permissão de edição nesta área" : rotulo}
+        title={!editavel ? "Sem permissão de edição nesta vertical" : rotulo}
         draggable={false}
         // O card inteiro é clicável e arrastável: o botão não pode abrir o card nem iniciar o arraste.
         onClick={(e) => {
@@ -152,12 +152,12 @@ export function CardOportunidade({
     <article
       className={`cop${compacto ? " cop--compacto" : ""}${editavel ? " cop--ativo" : ""}`}
       style={corArea}
-      aria-label={`Oportunidade ${d.conta} · área ${area.label}`}
+      aria-label={`Oportunidade ${d.conta} · vertical ${area.label}`}
       draggable={editavel}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onClick={() => editavel && onAbrir()}
-      title={`${area.label} · ${editavel ? "Arraste para mover de estágio, ou clique para editar" : "Somente leitura nesta área"}`}
+      title={`${area.label} · ${editavel ? "Arraste para mover de estágio, ou clique para editar" : "Somente leitura nesta vertical"}`}
     >
       {/* ---------- 1 · identificação ---------- */}
       <div className="cop-bloco">
@@ -183,7 +183,7 @@ export function CardOportunidade({
         </div>
 
         {modulos.length > 0 && (
-          <div className="cop-modulos" aria-label="Módulos da proposta">
+          <div className="cop-modulos" aria-label="Módulos / Produtos da proposta">
             {visiveis.map((m) => (
               <span key={m} className="cop-pill">
                 {m}

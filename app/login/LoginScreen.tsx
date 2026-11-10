@@ -32,7 +32,7 @@ export default function LoginScreen({ erro, dominio }: { erro?: string; dominio:
             Toda a operação da LIFF em um único sistema.
           </h1>
           <p style={{ fontSize: 16, lineHeight: 1.62, color: C.body, margin: 0, maxWidth: "46ch" }}>
-            Atividade comercial, execução operacional, cadastros e administração — organizados por área, com permissão
+            Atividade comercial, execução operacional, cadastros e administração — organizados por vertical, com permissão
             por usuário e log de alterações em tudo.
           </p>
         </div>
@@ -53,7 +53,7 @@ export default function LoginScreen({ erro, dominio }: { erro?: string; dominio:
             Entrar com Google
           </h2>
           <p style={{ fontSize: 14, lineHeight: 1.6, color: C.faint, margin: "0 0 28px" }}>
-            SSO restrito ao domínio {dominio}. O acesso a cada área é definido pela administração.
+            SSO restrito ao domínio {dominio}. O acesso a cada vertical é definido pela administração.
           </p>
 
           {erro && (

@@ -54,7 +54,7 @@ export function planejarCriacaoAtividade(
   if (titulo.length > LIMITES.titulo) return falha("Título longo demais.");
 
   const area = typeof body.area === "string" ? body.area : "";
-  if (!perm.areasExistentes.includes(area)) return falha("Área inválida.");
+  if (!perm.areasExistentes.includes(area)) return falha("Vertical inválida.");
   if (!perm.podeEditar(area)) return falha(`Sem permissão de edição em ${perm.labelArea(area)}.`, 403);
 
   const status = body.status ?? "backlog";
@@ -70,7 +70,7 @@ export function planejarCriacaoAtividade(
   let produtoId: string | null = null;
   if (body.produtoId) {
     produtoId = produtoNaArea(fatos, body.produtoId, area);
-    if (!produtoId) return falha("Produto inválido para esta área.");
+    if (!produtoId) return falha("Módulo / produto inválido para esta vertical.");
   }
 
   let responsavelId: number | null = null;
@@ -139,7 +139,7 @@ export function planejarAtualizacaoAtividade(
 ): Falha | PlanoAtualizacao {
   // 404 e não 403: quem não enxerga a área não deve nem saber que o registro existe.
   if (!perm.podeVer(atual.area)) return falha("Atividade não encontrada.", 404);
-  if (!perm.podeEditar(atual.area)) return falha("Sem permissão de edição nesta área.", 403);
+  if (!perm.podeEditar(atual.area)) return falha("Sem permissão de edição nesta vertical.", 403);
 
   const sets: PlanoAtualizacao["sets"] = {};
   const mudancas: Mudanca[] = [];
@@ -149,7 +149,7 @@ export function planejarAtualizacaoAtividade(
   // destino deixaria tirar trabalho de uma área alheia.
   if (body.area !== undefined && body.area !== atual.area) {
     const destino = typeof body.area === "string" ? body.area : "";
-    if (!perm.areasExistentes.includes(destino)) return falha("Área inválida.");
+    if (!perm.areasExistentes.includes(destino)) return falha("Vertical inválida.");
     if (!perm.podeEditar(destino)) return falha(`Sem permissão de edição em ${perm.labelArea(destino)}.`, 403);
     mudancas.push({
       campo: "area",
@@ -278,14 +278,14 @@ export function planejarAtualizacaoAtividade(
     let novo: string | null = null;
     if (body.produtoId) {
       novo = produtoNaArea(fatos, body.produtoId, areaFinal);
-      if (!novo) return falha("Produto inválido para esta área.");
+      if (!novo) return falha("Módulo / produto inválido para esta vertical.");
     }
     if (novo !== atual.produto_id) {
       mudancas.push({
         campo: "produto",
         de: atual.produto_id ?? "—",
         para: novo ?? "—",
-        texto: `Alterou o produto de "${atual.titulo}"`,
+        texto: `Alterou o módulo / produto de "${atual.titulo}"`,
       });
       sets.produto_id = novo;
     }
@@ -294,7 +294,7 @@ export function planejarAtualizacaoAtividade(
       campo: "produto",
       de: atual.produto_id,
       para: "—",
-      texto: `Removeu o produto de "${atual.titulo}" — não pertence a ${perm.labelArea(areaFinal)}`,
+      texto: `Removeu o módulo / produto de "${atual.titulo}" — não pertence a ${perm.labelArea(areaFinal)}`,
     });
     sets.produto_id = null;
   }

@@ -30,7 +30,7 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/areas/[id
   const atuais = await sql<{ label: string; short: string; cor: string; planilha_url: string | null }[]>`
     SELECT label, short, cor, planilha_url FROM areas WHERE id = ${id}
   `;
-  if (!atuais.length) return err("Área não encontrada.", 404);
+  if (!atuais.length) return err("Vertical não encontrada.", 404);
   const atual = atuais[0];
 
   const mudancas: { campo: string; de: string; para: string; texto: string }[] = [];
@@ -53,7 +53,7 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/areas/[id
       campo: "label",
       de: atual.label,
       para: label,
-      texto: `Renomeou a área ${atual.label} para ${label}`,
+      texto: `Renomeou a vertical ${atual.label} para ${label}`,
     });
     await sql`UPDATE areas SET label = ${label} WHERE id = ${id}`;
   }
@@ -123,7 +123,7 @@ export async function DELETE(_req: Request, ctxRoute: RouteContext<"/api/areas/[
   const sql = await getDb();
 
   const alvos = await sql<{ label: string }[]>`SELECT label FROM areas WHERE id = ${id}`;
-  if (!alvos.length) return err("Área não encontrada.", 404);
+  if (!alvos.length) return err("Vertical não encontrada.", 404);
 
   const [{ atividades, oportunidades }] = await sql<{ atividades: number; oportunidades: number }[]>`
     SELECT
@@ -150,7 +150,7 @@ export async function DELETE(_req: Request, ctxRoute: RouteContext<"/api/areas/[
     campo: "exclusao",
     de: alvos[0].label,
     para: null,
-    texto: `Excluiu a área ${alvos[0].label}${perms > 0 ? ` e ${perms} permissão(ões) nela` : ""}`,
+    texto: `Excluiu a vertical ${alvos[0].label}${perms > 0 ? ` e ${perms} permissão(ões) nela` : ""}`,
   });
 
   return json({ ok: true });

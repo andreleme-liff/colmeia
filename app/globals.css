@@ -472,7 +472,7 @@ textarea::placeholder {
 
 /* Cronograma: data, tipo, título e detalhe. O tipo é uma etiqueta curta porque a linha
    mistura oportunidade e atividade e é preciso saber qual é sem abrir. */
-.liff-cronograma-linha { grid-template-columns: 64px 52px 1.4fr 1fr; }
+.liff-cronograma-linha { grid-template-columns: 64px 84px 1.4fr 1fr; }
 @media (max-width: 860px) {
   .liff-cronograma-linha { grid-template-columns: 1fr; gap: 4px; }
 }

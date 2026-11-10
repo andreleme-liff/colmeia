@@ -226,7 +226,7 @@ export default function ImportarPlanilha({
         <div style={{ padding: "24px 26px", display: "flex", flexDirection: "column", gap: 18 }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <Field
-              label="Área de destino"
+              label="Vertical de destino"
               required
               hint="Todas as linhas entram nesta vertical. Escolha antes de abrir o arquivo."
             >
@@ -385,8 +385,8 @@ export default function ImportarPlanilha({
                   }}
                 >
                   <div style={{ fontSize: 13, lineHeight: 1.6, color: C.body }}>
-                    A planilha traz {modulosFaltando.length === 1 ? "um módulo que ainda não é" : "módulos que ainda não são"}{" "}
-                    produto em {areaOf(area).label}. Sem cadastrar, {modulosFaltando.length === 1 ? "ele será ignorado" : "eles serão ignorados"} nos
+                    A planilha traz {modulosFaltando.length === 1 ? "um módulo / produto que ainda não está cadastrado" : "módulos / produtos que ainda não estão cadastrados"}{" "}
+                    em {areaOf(area).label}. Sem cadastrar, {modulosFaltando.length === 1 ? "ele será ignorado" : "eles serão ignorados"} nos
                     cards.
                   </div>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -424,7 +424,7 @@ export default function ImportarPlanilha({
                       >
                         {(aba.tipo === "atividades"
                           ? ["ATIVIDADE", "STATUS", "SITUAÇÃO", ""]
-                          : ["CONTA", "MÓDULOS", "ESTÁGIO", "DONO", "VALOR", ""]
+                          : ["CONTA", "MÓDULOS / PRODUTOS", "ESTÁGIO", "DONO", "VALOR", ""]
                         ).map((h, i) => (
                           <div key={i} style={{ padding: "10px 12px", ...eyebrow(10, C.faint) }}>
                             {h}

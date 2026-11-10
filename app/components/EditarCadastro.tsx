@@ -154,8 +154,8 @@ export function EditarProduto({
       grupos: [
         { titulo: "ATIVIDADES", itens: u.atividades.map((a) => ({ ref: a.ref, texto: a.titulo })) },
         {
-          titulo: "OPORTUNIDADES (MÓDULO)",
-          itens: u.oportunidades.map((o) => ({ ref: o.ref, texto: o.conta + (o.modulos > 1 ? ` (+${o.modulos - 1} módulo)` : "") })),
+          titulo: "OPORTUNIDADES (MÓDULO / PRODUTO)",
+          itens: u.oportunidades.map((o) => ({ ref: o.ref, texto: o.conta + (o.modulos > 1 ? ` (+${o.modulos - 1} módulo / produto)` : "") })),
         },
       ],
       destinos: u.destinos.map((d) => ({ value: d.id, label: d.label })),
@@ -163,11 +163,11 @@ export function EditarProduto({
   });
 
   return (
-    <Modal titulo={produto.label} eyebrowTexto="LIFF/ CADASTROS · PRODUTO" onFechar={onFechar}>
-      <Field label="Nome do produto" required>
+    <Modal titulo={produto.label} eyebrowTexto="LIFF/ CADASTROS · MÓDULO / PRODUTO" onFechar={onFechar}>
+      <Field label="Nome do módulo / produto" required>
         <Input value={label} onChange={setLabel} />
       </Field>
-      <Field label="Vertical" required hint="Mudar a vertical não mexe nos registros que já usam o produto.">
+      <Field label="Vertical" required hint="Mudar a vertical não mexe nos registros que já usam o módulo / produto.">
         <Select options={opcoesArea(areas, area)} value={area} onChange={setArea} />
       </Field>
       <label style={{ display: "flex", gap: 8, fontSize: 13, color: C.ink, cursor: "pointer" }}>
@@ -193,15 +193,15 @@ export function EditarProduto({
         {salvando ? "salvando…" : "salvar"}
       </Button>
 
-      <Divisor titulo="EXCLUIR PRODUTO" />
+      <Divisor titulo="EXCLUIR MÓDULO / PRODUTO" />
       <SecaoExclusao
-        nome={`o produto ${produto.label}`}
+        nome={`o módulo / produto ${produto.label}`}
         carregar={carregar}
         rotulos={{
-          migrar: "Migrar os registros para outro produto da mesma vertical",
+          migrar: "Migrar os registros para outro módulo / produto da mesma vertical",
           excluir: "Excluir junto as atividades e oportunidades ligadas",
-          desvincular: "Só desvincular: os registros ficam, sem este produto",
-          botao: "excluir produto",
+          desvincular: "Só desvincular: os registros ficam, sem este módulo / produto",
+          botao: "excluir módulo / produto",
         }}
         onExcluir={async (destino) => {
           await api.excluirProduto(produto.id, destino);
@@ -244,7 +244,7 @@ export function EditarPessoa({
       ],
       destinos: u.destinos.map((d) => ({ value: String(d.id), label: d.nome })),
       extra:
-        "A pessoa perde o acesso na hora: sessões, permissões por área" +
+        "A pessoa perde o acesso na hora: sessões, permissões por vertical" +
         (u.conexoes ? ` e ${u.conexoes} conexão(ões) do Claude` : " e conexões do Claude") +
         ". O nome continua no histórico do que ela fez.",
     };
@@ -258,7 +258,7 @@ export function EditarPessoa({
       <Field label="E-mail" required hint={`Precisa ser @${dominio} — é o e-mail do login pelo Google.`}>
         <Input value={email} onChange={setEmail} />
       </Field>
-      <Field label="Papel" hint={souEu && pessoa.papel === "admin" ? "Você não pode mudar o próprio papel de admin." : "O acesso por área se define na lista de pessoas, abrindo a linha."}>
+      <Field label="Papel" hint={souEu && pessoa.papel === "admin" ? "Você não pode mudar o próprio papel de admin." : "O acesso por vertical se define na lista de pessoas, abrindo a linha."}>
         <Select options={[...PAPEIS]} value={papel} onChange={setPapel} disabled={souEu && pessoa.papel === "admin"} />
       </Field>
       {erro && <div style={{ fontSize: 13, color: C.error }}>{erro}</div>}

@@ -38,9 +38,9 @@ const OPORTUNIDADE: Prop = {
   pattern: "^[CcDd]-\\d+$",
   description: "Oportunidade comercial a que a tarefa serve, ex.: C-0104. null desliga. Precisa ser uma que esta conexão enxerga.",
 };
-const AREA: Prop = { type: "string", maxLength: 60, description: "Id da área (ver `listar_cadastros`)." };
+const AREA: Prop = { type: "string", maxLength: 60, description: "Id da vertical (ver `listar_cadastros`)." };
 const RESP: Prop = { type: ["integer", "null"], minimum: 1, description: "Id da pessoa responsável (ver `listar_cadastros`); null remove." };
-const PRODUTO: Prop = { type: ["string", "null"], maxLength: 80, description: "Id do produto; precisa ser da mesma área. null remove." };
+const PRODUTO: Prop = { type: ["string", "null"], maxLength: 80, description: "Id do módulo / produto; precisa ser da mesma vertical. null remove." };
 const LIMITE_LISTA: Prop = { type: "integer", minimum: 1, maximum: 200, description: "Máximo de itens (padrão 50)." };
 const BUSCA: Prop = { type: "string", maxLength: 100, description: "Texto contido no título/conta, situação, próximo passo ou contato." };
 const CHAVE: Prop = {
@@ -92,7 +92,7 @@ const CAMPOS_OPORTUNIDADE: Record<string, Prop> = {
     type: "array",
     items: { type: "string", maxLength: 80 },
     maxItems: LIMITES.modulos,
-    description: "Módulos de interesse: ids dos produtos da área (ver `listar_cadastros`). Substitui a lista inteira; [] limpa.",
+    description: "Módulos / produtos de interesse: ids dos módulos / produtos da vertical (ver `listar_cadastros`). Substitui a lista inteira; [] limpa.",
   },
   erp: { type: "string", maxLength: LIMITES.erp, description: "ERP do cliente, ex.: SAP ECC, SAP S/4HANA, TOTVS Protheus." },
   situacao: { type: "string", maxLength: LIMITES.situacao, description: "Só a situação de hoje; o histórico guarda as anteriores." },
@@ -119,15 +119,15 @@ export const CATALOGO = [
     name: "contexto",
     title: "Quem sou e o que posso",
     description:
-      "Mostra em nome de quem esta conexão age, as áreas que ela vê e edita, os escopos concedidos e o vocabulário do sistema (status, estágios, prioridades). Chame primeiro.",
+      "Mostra em nome de quem esta conexão age, as verticais que ela vê e edita, os escopos concedidos e o vocabulário do sistema (status, estágios, prioridades). Chame primeiro.",
     escrita: false,
     inputSchema: objeto({}),
     annotations: LEITURA,
   },
   {
     name: "listar_cadastros",
-    title: "Áreas, produtos e pessoas",
-    description: "Áreas visíveis (com nível), produtos dessas áreas (os módulos de interesse das oportunidades), origens e pessoas cadastradas (id e nome, para atribuir dono e quem resolve blocker).",
+    title: "Verticais, módulos / produtos e pessoas",
+    description: "Verticais visíveis (com nível), módulos / produtos dessas verticais (os de interesse das oportunidades), origens e pessoas cadastradas (id e nome, para atribuir dono e quem resolve blocker).",
     escrita: false,
     inputSchema: objeto({}),
     annotations: LEITURA,
@@ -136,7 +136,7 @@ export const CATALOGO = [
     name: "listar_atividades",
     title: "Listar atividades",
     description:
-      "Tarefas do quadro operacional nas áreas visíveis, com filtros. Com `oportunidade`, só as ligadas àquela venda — é como responder \"o que falta na operação para a conta X\". Devolve também o total encontrado.",
+      "Tarefas do quadro operacional nas verticais visíveis, com filtros. Com `oportunidade`, só as ligadas àquela venda — é como responder \"o que falta na operação para a conta X\". Devolve também o total encontrado.",
     escrita: false,
     inputSchema: objeto({
       area: AREA,
@@ -152,7 +152,7 @@ export const CATALOGO = [
     name: "listar_oportunidades",
     title: "Listar oportunidades",
     description:
-      "Oportunidades do pipeline comercial nas áreas visíveis, com filtros. O filtro de responsável também reconhece o nome escrito em texto livre.",
+      "Oportunidades do pipeline comercial nas verticais visíveis, com filtros. O filtro de responsável também reconhece o nome escrito em texto livre.",
     escrita: false,
     inputSchema: objeto({
       area: AREA,
@@ -175,7 +175,7 @@ export const CATALOGO = [
   {
     name: "criar_atividade",
     title: "Criar atividade",
-    description: `Cria uma atividade no quadro operacional. Exige nível 'editar' na área. Status padrão backlog (${statusLabel("backlog")}), prioridade padrão media.`,
+    description: `Cria uma atividade no quadro operacional. Exige nível 'editar' na vertical. Status padrão backlog (${statusLabel("backlog")}), prioridade padrão media.`,
     escrita: true,
     inputSchema: objeto({ ...CAMPOS_ATIVIDADE, chave_idempotencia: CHAVE }, ["titulo", "area"]),
     annotations: CRIACAO,
@@ -184,7 +184,7 @@ export const CATALOGO = [
     name: "atualizar_atividade",
     title: "Atualizar atividade",
     description:
-      "Altera só os campos enviados de uma atividade. Mudar de área exige 'editar' nas duas áreas. Cada campo alterado fica no histórico com o valor anterior.",
+      "Altera só os campos enviados de uma atividade. Mudar de vertical exige 'editar' nas duas verticais. Cada campo alterado fica no histórico com o valor anterior.",
     escrita: true,
     inputSchema: objeto({ ref: REF_A, ...CAMPOS_ATIVIDADE }, ["ref"]),
     annotations: ATUALIZACAO,
@@ -192,7 +192,7 @@ export const CATALOGO = [
   {
     name: "criar_oportunidade",
     title: "Criar oportunidade",
-    description: `Cria uma oportunidade no pipeline comercial. Exige nível 'editar' na área. Estágio padrão ${ESTAGIO_INICIAL} (${stageLabel(ESTAGIO_INICIAL)}).`,
+    description: `Cria uma oportunidade no pipeline comercial. Exige nível 'editar' na vertical. Estágio padrão ${ESTAGIO_INICIAL} (${stageLabel(ESTAGIO_INICIAL)}).`,
     escrita: true,
     inputSchema: objeto({ ...CAMPOS_OPORTUNIDADE, chave_idempotencia: CHAVE }, ["conta", "area"]),
     annotations: CRIACAO,
@@ -201,7 +201,7 @@ export const CATALOGO = [
     name: "atualizar_oportunidade",
     title: "Atualizar oportunidade",
     description:
-      "Altera só os campos enviados de uma oportunidade (estágio, valor, próximo passo…). Mudar de área exige 'editar' nas duas. Cada campo alterado fica no histórico com o valor anterior.",
+      "Altera só os campos enviados de uma oportunidade (estágio, valor, próximo passo…). Mudar de vertical exige 'editar' nas duas. Cada campo alterado fica no histórico com o valor anterior.",
     escrita: true,
     inputSchema: objeto({ ref: REF_D, ...CAMPOS_OPORTUNIDADE }, ["ref"]),
     annotations: ATUALIZACAO,
@@ -222,7 +222,7 @@ export function descreverFerramentas(escopos: string) {
 
 export const INSTRUCOES = [
   "LIFF tasks: quadro operacional (tarefas, refs T-0000) e pipeline comercial (oportunidades, refs C-0000) da LIFF.",
-  "Chame `contexto` primeiro: ele diz em nome de quem você age, as áreas que vê e edita, e o vocabulário de status e estágios.",
+  "Chame `contexto` primeiro: ele diz em nome de quem você age, as verticais que vê e edita, e o vocabulário de status e estágios.",
   "Valores em reais; datas AAAA-MM-DD. Responsável: use o id de `listar_cadastros`.",
   "Tarefa e oportunidade se ligam pelo campo `oportunidade` da tarefa (ex.: C-0104). Ao criar uma tarefa que serve a uma venda, ligue-a.",
   "Grave só quando a pessoa pedir. Toda gravação fica no histórico do registro, com o nome desta conexão, e nada pode ser excluído por aqui.",
