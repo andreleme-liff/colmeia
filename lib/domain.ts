@@ -85,13 +85,14 @@ export const NAV = [
   { key: "comercial", label: "comercial" },
   { key: "operacoes", label: "operações" },
   { key: "cronograma", label: "cronograma" },
-  { key: "cadastros", label: "cadastros" },
-  { key: "admin", label: "administração" },
   { key: "auditoria", label: "auditoria" },
   // Aplicativos externos (o Claude) que alguém autorizou a agir em seu nome pelo MCP. Para
   // TODOS, não só admin: cada pessoa revoga as próprias conexões — por isso não mora em
   // Cadastros, que é só da administração.
   { key: "conexoes", label: "conexões" },
+  // Só admin, e por isso no fim do menu, num grupo separado. A antiga "administração" (a
+  // matriz de permissões) virou parte de Cadastros → Pessoas; `/admin` redireciona para lá.
+  { key: "cadastros", label: "cadastros", soAdmin: true },
 ] as const;
 
 export const TITLES: Record<string, string> = {
@@ -100,7 +101,6 @@ export const TITLES: Record<string, string> = {
   operacoes: "Quadro operacional",
   cronograma: "Cronograma",
   cadastros: "Cadastros",
-  admin: "Administração",
   auditoria: "Auditoria",
   conexoes: "Conexões",
 };
@@ -108,7 +108,7 @@ export const TITLES: Record<string, string> = {
 export const ADMIN_CARDS = [
   {
     title: "PAPÉIS",
-    body: "Admin, Gestor, Membro e Leitura. O papel define o teto de permissão; a matriz acima refina por área.",
+    body: "Admin, Gestor, Membro e Leitura. O papel define o teto de permissão; a lista acima refina por área.",
   },
   {
     title: "SSO GOOGLE",

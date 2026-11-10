@@ -4,12 +4,11 @@
 // despacha as alterações. Depois de cada escrita o estado é recarregado do servidor — o
 // conjunto é pequeno e assim a tela nunca mostra algo que o banco não confirmou.
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LiffMark, Button } from "./ds";
 import ThemeToggle from "./ThemeToggle";
 import {
-  Admin,
   Auditoria,
   Aviso,
   Cadastros,
@@ -728,10 +727,11 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
   if (!estado || !dados || !cadSet) return <Aviso>carregando…</Aviso>;
 
   const me = estado.me;
-  // Cadastros e Administração são configuração do sistema — as três rotas de cadastro já
-  // exigem admin, e deixar as telas à vista só oferecia caminhos que terminam em 403.
-  const SO_ADMIN = ["admin", "cadastros"];
-  const nav = NAV.filter((n) => !SO_ADMIN.includes(n.key) || estado.isAdmin);
+  // Cadastros (que inclui pessoas e permissões) é configuração do sistema — as rotas já exigem
+  // admin, e deixar a tela à vista só oferecia caminhos que terminam em 403. No menu, o que é
+  // só de admin fica num grupo à parte, no fim.
+  const navComum = NAV.filter((n) => !("soAdmin" in n));
+  const navAdmin = estado.isAdmin ? NAV.filter((n) => "soAdmin" in n) : [];
   const contagens: Record<string, number> = {
     comercial: dados.oportunidades.length,
     operacoes: dados.atividades.length,
@@ -787,7 +787,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
   const conteudo = () => {
     // Rede de segurança: o menu já esconde estas telas de quem não é admin, mas um estado
     // antigo não pode virar uma tela vazia sem explicação.
-    if (SO_ADMIN.includes(view) && !estado.isAdmin) {
+    if (NAV.some((n) => n.key === view && "soAdmin" in n) && !estado.isAdmin) {
       return <Overview
           dados={dados.painel}
           onAbrirAtividade={(ref) => navegar({ view: "operacoes", ref })}
@@ -865,6 +865,11 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             tab={cadTab}
             onTab={(tab) => navegar({ view: "cadastros", tab })}
             set={cadSet}
+            pessoas={estado.pessoas}
+            meuId={me.id}
+            onCiclarPermissao={(uid, a) => void acao(() => api.ciclarPermissao(uid, a))}
+            onAtivoPessoa={(uid, v) => void acao(() => api.definirAtivo(uid, v))}
+            onEditarPessoa={(id) => setCadEditando({ tipo: "pessoa", id })}
             areas={estado.areas.filter((a) => estado.areasVisiveis.includes(a.id))}
             contagemPorArea={(id) => estado.activities.filter((x) => x.area === id).length}
             podeEditarAreas={estado.isAdmin}
@@ -898,15 +903,6 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           </>
         );
       }
-      case "admin":
-        return (
-          <Admin
-            pessoas={estado.pessoas}
-            meuId={me.id}
-            onCiclar={(uid, a) => void acao(() => api.ciclarPermissao(uid, a))}
-            onAtivo={(uid, v) => void acao(() => api.definirAtivo(uid, v))}
-          />
-        );
       case "auditoria":
         return <Auditoria logs={dados.logs} />;
       case "conexoes":
@@ -940,34 +936,45 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         </div>
 
         <nav style={{ display: "flex", flexDirection: "column" }}>
-          {nav.map((n) => {
-            const on = view === n.key;
-            return (
-              <div
-                key={n.key}
-                className="liff-nav-item"
-                onClick={() => {
-                  navegar({ view: n.key, tab: n.key === "cadastros" ? cadTab : undefined });
-                  // Escolher um item é a razão de a gaveta existir; ela se fecha sozinha.
-                  setMenuAberto(false);
-                }}
-                style={{
-                  padding: "11px 22px",
-                  cursor: "pointer",
-                  ...eyebrow(12, on ? C.ink : C.dust, "0.1em"),
-                  borderLeft: `2px solid ${on ? C.accent : "transparent"}`,
-                  background: on ? C.panel : "transparent",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 8,
-                }}
-              >
-                <span>/ {n.label}</span>
-                <span style={{ fontSize: 10, color: C.faint }}>{contagens[n.key] ?? ""}</span>
-              </div>
-            );
-          })}
+          {[navComum, navAdmin].map((grupo, gi) =>
+            grupo.length === 0 ? null : (
+              <Fragment key={gi}>
+                {gi > 0 && (
+                  <div className="liff-nav-grupo" aria-hidden>
+                    <span style={eyebrow(9, C.faint, "0.16em")}>só admin</span>
+                  </div>
+                )}
+              {grupo.map((n) => {
+                const on = view === n.key;
+                return (
+                  <div
+                    key={n.key}
+                    className="liff-nav-item"
+                    onClick={() => {
+                      navegar({ view: n.key, tab: n.key === "cadastros" ? cadTab : undefined });
+                      // Escolher um item é a razão de a gaveta existir; ela se fecha sozinha.
+                      setMenuAberto(false);
+                    }}
+                    style={{
+                      padding: "11px 22px",
+                      cursor: "pointer",
+                      ...eyebrow(12, on ? C.ink : C.dust, "0.1em"),
+                      borderLeft: `2px solid ${on ? C.accent : "transparent"}`,
+                      background: on ? C.panel : "transparent",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <span>/ {n.label}</span>
+                    <span style={{ fontSize: 10, color: C.faint }}>{contagens[n.key] ?? ""}</span>
+                  </div>
+                );
+              })}
+              </Fragment>
+            )
+          )}
         </nav>
 
         <div style={{ marginTop: "auto", padding: "26px 22px 0" }}>

@@ -258,7 +258,7 @@ export function EditarPessoa({
       <Field label="E-mail" required hint={`Precisa ser @${dominio} — é o e-mail do login pelo Google.`}>
         <Input value={email} onChange={setEmail} />
       </Field>
-      <Field label="Papel" hint={souEu && pessoa.papel === "admin" ? "Você não pode mudar o próprio papel de admin." : "O acesso por área se define em Administração."}>
+      <Field label="Papel" hint={souEu && pessoa.papel === "admin" ? "Você não pode mudar o próprio papel de admin." : "O acesso por área se define na lista de pessoas, abrindo a linha."}>
         <Select options={[...PAPEIS]} value={papel} onChange={setPapel} disabled={souEu && pessoa.papel === "admin"} />
       </Field>
       {erro && <div style={{ fontSize: 13, color: C.error }}>{erro}</div>}

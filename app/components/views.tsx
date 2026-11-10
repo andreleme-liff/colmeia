@@ -974,7 +974,7 @@ function NovaPessoa({
       <Field label="E-mail" required hint={`Precisa ser @${dominio} — é o domínio aceito no login.`}>
         <Input placeholder={`larissa@${dominio}`} value={email} onChange={setEmail} />
       </Field>
-      <Field label="Papel" hint="O papel é o teto; o acesso por área se define em Administração.">
+      <Field label="Papel" hint="O papel é o teto; o acesso por área se define depois, abrindo a linha da pessoa na lista.">
         <Select options={[...PAPEIS]} value={papel} onChange={setPapel} />
       </Field>
       <Button
@@ -1083,10 +1083,21 @@ export function Cadastros({
   onCriarPessoa,
   onCriarProduto,
   onCriarOrigem,
+  pessoas,
+  meuId,
+  onCiclarPermissao,
+  onAtivoPessoa,
+  onEditarPessoa,
 }: {
   tab: string;
   onTab: (k: string) => void;
   set: CadSet;
+  /** Aba Pessoas: a lista com papel, e-mail, acesso e as permissões por área (a antiga Administração). */
+  pessoas: Pessoa[];
+  meuId: number;
+  onCiclarPermissao: (userId: number, area: string) => void;
+  onAtivoPessoa: (userId: number, ativo: boolean) => void;
+  onEditarPessoa: (id: number) => void;
   areas: AreaCadastro[];
   contagemPorArea: (id: string) => number;
   podeEditarAreas: boolean;
@@ -1123,7 +1134,16 @@ export function Cadastros({
 
       <div className="liff-cad-split" style={mesh({ display: "grid", gap: 1 })}>
         <div className="liff-scroll-x" style={{ background: C.cell }}>
-          {tab === "areas" ? (
+          {tab === "pessoas" ? (
+            <PermissoesPorPessoa
+              pessoas={pessoas}
+              areas={todasAreas()}
+              meuId={meuId}
+              onCiclar={onCiclarPermissao}
+              onAtivo={onAtivoPessoa}
+              onEditar={podeEditarAreas ? onEditarPessoa : undefined}
+            />
+          ) : tab === "areas" ? (
             <TabelaAreas areas={areas} contagem={contagemPorArea} podeEditar={podeEditarAreas} onCor={onCorArea} onExcluir={onExcluirArea} onNome={onNomeArea} />
           ) : (
           <div style={{ minWidth: 480 }}>
@@ -1190,16 +1210,25 @@ export function Cadastros({
           </div>
         </div>
       </div>
+
+      {/* Referência rápida das regras de acesso, que antes morava na Administração. */}
+      {tab === "pessoas" && (
+        <div className="liff-admin-cards" style={mesh({ display: "grid", gap: 1, marginTop: 22 })}>
+          {ADMIN_CARDS.map((c) => (
+            <div key={c.title} style={{ background: C.cell, padding: 22 }}>
+              <div style={{ ...eyebrow(11, C.accent), marginBottom: 10 }}>{c.title}</div>
+              <div style={{ fontSize: 13, lineHeight: 1.6, color: C.body }}>{c.body}</div>
+            </div>
+          ))}
+        </div>
+      )}
     </>
   );
 }
 
 /* =========================================================
-   Administração — matriz de permissões
+   Pessoas e permissões (Cadastros → Pessoas; antes, a Administração)
    ========================================================= */
-/** Acima disto a matriz vira rolagem horizontal sem fim e para de servir. */
-const LIMITE_MATRIZ = 8;
-const permCols = (n: number) => `1.5fr repeat(${n},1fr) 0.9fr`;
 const PERM_STYLE: Record<string, { label: string; bg: string; bd: string; ink: string }> = {
   edit: {
     label: "editar",
@@ -1251,25 +1280,28 @@ function CelulaPerm({
   );
 }
 
-/** Formato longo: uma pessoa por vez, áreas em grade que quebra. Vale quando a matriz
- *  deixaria de caber — ver tudo de uma vez só ajuda enquanto cabe numa tela. */
+/** Uma pessoa por linha; as permissões por área abrem embaixo dela, em grade que quebra.
+ *  Serve com qualquer número de áreas — a antiga matriz só cabia até umas oito. */
 function PermissoesPorPessoa({
   pessoas,
   areas,
   meuId,
   onCiclar,
   onAtivo,
+  onEditar,
 }: {
   pessoas: Pessoa[];
   areas: { id: string; label: string; short: string; color: string }[];
   meuId: number;
   onCiclar: (userId: number, area: string) => void;
   onAtivo: (userId: number, ativo: boolean) => void;
+  /** Abre o cadastro da pessoa (nome, e-mail, papel, exclusão). */
+  onEditar?: (id: number) => void;
 }) {
-  const [aberto, setAberto] = useState<number | null>(pessoas[0]?.id ?? null);
+  const [aberto, setAberto] = useState<number | null>(null);
 
   return (
-    <div style={{ border: `1px solid ${C.line}`, marginBottom: 28 }}>
+    <div>
       {pessoas.map((u) => {
         const expandido = aberto === u.id;
         const edita = u.papel === "admin" ? areas.length : Object.values(u.perms).filter((n) => n === "edit").length;
@@ -1289,12 +1321,25 @@ function PermissoesPorPessoa({
             >
               <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint, width: 12 }}>{expandido ? "−" : "+"}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, color: C.ink, fontWeight: 600 }}>{u.nome}</div>
-                <div style={eyebrow(10, C.faint, "0.1em")}>{u.papel}</div>
+                <div style={{ fontSize: 14, color: u.ativo ? C.ink : C.faint, fontWeight: 600 }}>
+                  {u.nome}
+                  {u.ativo ? "" : " (inativo)"}
+                </div>
+                <div style={{ fontSize: 12, color: C.faint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <span style={eyebrow(10, C.faint, "0.1em")}>{u.papel}</span> · <span style={{ fontFamily: MONO, fontSize: 11 }}>{u.email}</span>
+                </div>
               </div>
-              <div style={eyebrow(10, C.faint, "0.1em")}>
+              <div style={{ ...eyebrow(10, C.faint, "0.1em"), whiteSpace: "nowrap" }}>
                 {u.papel === "admin" ? "todas as áreas" : `${edita} editar · ${ve} ver`}
               </div>
+              {onEditar && (
+                // O clique no botão não pode também abrir/fechar as permissões da linha.
+                <span onClick={(e) => e.stopPropagation()}>
+                  <Button variant="ghost" size="sm" style={GHOST_FIX} onClick={() => onEditar(u.id)}>
+                    editar
+                  </Button>
+                </span>
+              )}
               <Switch
                 checked={u.ativo}
                 disabled={u.id === meuId}
@@ -1355,114 +1400,6 @@ function PermissoesPorPessoa({
         );
       })}
     </div>
-  );
-}
-
-export function Admin({
-  pessoas,
-  meuId,
-  onCiclar,
-  onAtivo,
-}: {
-  pessoas: Pessoa[];
-  meuId: number;
-  onCiclar: (userId: number, area: string) => void;
-  onAtivo: (userId: number, ativo: boolean) => void;
-}) {
-  const areas = todasAreas();
-
-  // Com poucas verticais a matriz é imbatível: dá para ler a política inteira de uma vez.
-  // Passando do limite ela só produz rolagem horizontal, e a leitura por pessoa passa a
-  // valer mais.
-  if (areas.length > LIMITE_MATRIZ) {
-    return (
-      <>
-        <PermissoesPorPessoa
-          pessoas={pessoas}
-          areas={areas}
-          meuId={meuId}
-          onCiclar={onCiclar}
-          onAtivo={onAtivo}
-        />
-        <div className="liff-admin-cards" style={mesh({ display: "grid", gap: 1 })}>
-          {ADMIN_CARDS.map((c) => (
-            <div key={c.title} style={{ background: C.cell, padding: 22 }}>
-              <div style={{ ...eyebrow(11, C.accent), marginBottom: 10 }}>{c.title}</div>
-              <div style={{ fontSize: 13, lineHeight: 1.6, color: C.body }}>{c.body}</div>
-            </div>
-          ))}
-        </div>
-      </>
-    );
-  }
-
-  return (
-    <>
-      <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}`, marginBottom: 28 }}>
-        <div style={{ minWidth: 160 + areas.length * 110 }}>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: permCols(areas.length),
-              background: C.canvas,
-              borderBottom: `1px solid ${C.line}`,
-            }}
-          >
-            <div style={{ padding: "12px 16px", ...eyebrow(10, C.faint) }}>USUÁRIO</div>
-            {areas.map((a) => (
-              <div key={a.id} style={{ padding: "12px 10px", ...eyebrow(10, a.color, "0.1em"), textAlign: "center" }}>
-                {a.short}
-              </div>
-            ))}
-            <div style={{ padding: "12px 16px", ...eyebrow(10, C.faint), textAlign: "center" }}>ATIVO</div>
-          </div>
-
-          {pessoas.map((u) => (
-            <div
-              key={u.id}
-              style={{
-                display: "grid",
-                gridTemplateColumns: permCols(areas.length),
-                background: C.cell,
-                borderBottom: `1px solid ${C.line}`,
-                alignItems: "center",
-              }}
-            >
-              <div style={{ padding: "13px 16px" }}>
-                <div style={{ fontSize: 14, color: C.ink, fontWeight: 600 }}>{u.nome}</div>
-                <div style={eyebrow(10, C.faint, "0.1em")}>{u.papel}</div>
-              </div>
-              {areas.map((a) => (
-                <CelulaPerm
-                  key={a.id}
-                  nivel={u.papel === "admin" ? "edit" : u.perms[a.id] ?? "none"}
-                  travado={u.papel === "admin"}
-                  onClick={() => onCiclar(u.id, a.id)}
-                  style={{ margin: 8 }}
-                />
-              ))}
-              <div style={{ display: "flex", justifyContent: "center" }}>
-                <Switch
-                  checked={u.ativo}
-                  disabled={u.id === meuId}
-                  title={u.id === meuId ? "Você não pode desativar a própria conta" : "Ativa ou corta o acesso"}
-                  onChange={(v) => onAtivo(u.id, v)}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="liff-admin-cards" style={mesh({ display: "grid", gap: 1 })}>
-        {ADMIN_CARDS.map((c) => (
-          <div key={c.title} style={{ background: C.cell, padding: 22 }}>
-            <div style={{ ...eyebrow(11, C.accent), marginBottom: 10 }}>{c.title}</div>
-            <div style={{ fontSize: 13, lineHeight: 1.6, color: C.body }}>{c.body}</div>
-          </div>
-        ))}
-      </div>
-    </>
   );
 }
 

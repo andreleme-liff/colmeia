@@ -258,6 +258,8 @@ textarea::placeholder {
 .liff-seta { border-radius: 4px; transition: background .15s, color .15s; }
 .liff-seta--ativa:hover { background: var(--liff-surface-2); color: var(--liff-text) !important; }
 .liff-nav-item:hover { color: var(--liff-text) !important; }
+/* Grupo do menu que só admin vê: fio e rótulo discretos separando dos itens de todos. */
+.liff-nav-grupo { margin: 14px 22px 4px; padding-top: 12px; border-top: 1px solid var(--liff-border); }
 
 
 /* ---------- card da oportunidade (v4) ----------

@@ -42,6 +42,8 @@ export function lerRota(segmentos: string[] | undefined): Rota | null {
   if (resto.length) return null;
 
   const view = primeiro.toLowerCase();
+  // A Administração virou parte de Cadastros → Pessoas: o endereço antigo continua valendo.
+  if (view === "admin") return segundo ? null : { view: "cadastros", tab: "pessoas" };
   if (!VIEWS.includes(view)) return null;
   // `/overview` existe como caminho, mas a forma canônica da visão geral é a raiz.
   if (view === "overview") return segundo ? null : { view: "overview" };
