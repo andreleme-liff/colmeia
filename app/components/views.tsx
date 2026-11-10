@@ -349,8 +349,8 @@ export function Comercial({
 
                 {/* O card fechado responde, de relance, o que a coluna pede. Em Prospecção ainda
                     não há valor: mostra de onde veio e quem abre a porta. Em Lost, só o porquê.
-                    No resto do funil: o que se vende, quanto, de quem e o que trava. A situação
-                    (texto longo) fica no card aberto. */}
+                    No resto do funil: o que se vende, quanto, de quem e o que trava. Abaixo, em
+                    todos menos Lost, a situação atual cortada em duas linhas. */}
                 {d.estagio === "lost" ? (
                   <div style={{ fontSize: 12, color: C.faint, marginTop: 6, lineHeight: 1.45 }}>
                     {motivoPerdaLabel(d.motivoPerda) || "Motivo não informado"}
@@ -382,6 +382,26 @@ export function Comercial({
                       </div>
                     )}
                   </>
+                )}
+                {/* Situação atual: o estado de hoje, em até duas linhas. O texto inteiro fica
+                    no card aberto (e no `title`, ao passar o mouse). Em Lost o motivo já diz. */}
+                {d.estagio !== "lost" && d.situacao && (
+                  <div
+                    title={d.situacao}
+                    style={{
+                      fontSize: 12,
+                      color: C.dust,
+                      marginTop: 8,
+                      lineHeight: 1.45,
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                      overflowWrap: "anywhere",
+                    }}
+                  >
+                    {d.situacao}
+                  </div>
                 )}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginTop: 10 }}>
                   {d.estagio === "lost" ? (
