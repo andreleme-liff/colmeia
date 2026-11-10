@@ -14,9 +14,9 @@ import { STATUS, areaOf, hojeISO, prazoRelativo } from "@/lib/domain";
 
 // Prioridade é mais uma etiqueta da linha de chips, com o tom do quanto pesa.
 const PRIORIDADE: Record<string, { texto: string; tom: "erro" | "warning" | "neutro" }> = {
-  alta: { texto: "Prioridade alta", tom: "erro" },
-  media: { texto: "Prioridade média", tom: "warning" },
-  baixa: { texto: "Prioridade baixa", tom: "neutro" },
+  alta: { texto: "Alta", tom: "erro" },
+  media: { texto: "Média", tom: "warning" },
+  baixa: { texto: "Baixa", tom: "neutro" },
 };
 
 export function CardAtividade({
@@ -115,8 +115,8 @@ export function CardAtividade({
         {(produto || prazo || prio) && (
           <div className="cop-tags">
             {produto && <span className="cop-pill">{produto}</span>}
-            {prio && <Etiqueta tom={prio.tom}>{prio.texto}</Etiqueta>}
-            {prazo && <Etiqueta tom={prazo.tom}>{c.prazo ? `Prazo ${prazo.texto}` : prazo.texto}</Etiqueta>}
+            {prio && <Etiqueta tom={prio.tom} title="Prioridade">{prio.texto}</Etiqueta>}
+            {prazo && <Etiqueta tom={prazo.tom} title="Prazo da atividade">{prazo.texto}</Etiqueta>}
           </div>
         )}
       </div>
