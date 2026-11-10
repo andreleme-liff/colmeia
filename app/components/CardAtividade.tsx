@@ -3,8 +3,8 @@
 // Card da atividade no quadro operacional — o mesmo desenho do card do comercial
 // (`CardOportunidade`), sem o que só existe na venda (valor, ACE, módulos, bloqueio).
 //
-// De cima para baixo: identificação (título + prioridade, oportunidade ligada, produto, prazo
-// da atividade) → andamento (situação, próximo passo com a data dele) → rodapé (responsável e
+// De cima para baixo: identificação (título, oportunidade ligada, e os chips: produto, prioridade e
+// prazo da atividade) → andamento (situação, próximo passo com a data dele) → rodapé (responsável e
 // as setas). A área é o contorno superior, na cor dela; o nome fica no aria-label e no title.
 
 import type { CSSProperties, DragEvent } from "react";
@@ -12,7 +12,12 @@ import type { Activity } from "./api";
 import { Chevron, Etiqueta } from "./CardOportunidade";
 import { STATUS, areaOf, hojeISO, prazoRelativo } from "@/lib/domain";
 
-const PRIORIDADE: Record<string, string> = { alta: "Alta", media: "Média", baixa: "Baixa" };
+// Prioridade é mais uma etiqueta da linha de chips, com o tom do quanto pesa.
+const PRIORIDADE: Record<string, { texto: string; tom: "erro" | "warning" | "neutro" }> = {
+  alta: { texto: "Prioridade alta", tom: "erro" },
+  media: { texto: "Prioridade média", tom: "warning" },
+  baixa: { texto: "Prioridade baixa", tom: "neutro" },
+};
 
 export function CardAtividade({
   c,
@@ -40,6 +45,7 @@ export function CardAtividade({
   const prazo = prazoRelativo(c.prazo, hoje, aberta);
   const prazoPasso = aberta ? prazoRelativo(c.proximoPassoEm, hoje, true) : null;
   const datado = !!c.proximoPassoEm;
+  const prio = PRIORIDADE[c.prioridade] ?? null;
 
   const i = STATUS.findIndex((s) => s.key === c.status);
   const seta = (dir: -1 | 1) => {
@@ -97,9 +103,6 @@ export function CardAtividade({
               {c.titulo}
             </button>
           </h3>
-          <p className={`cop-prio cop-prio--${c.prioridade}`} title="Prioridade">
-            {PRIORIDADE[c.prioridade] ?? c.prioridade}
-          </p>
         </div>
 
         {/* A oportunidade a que a tarefa serve: é o que liga o quadro ao pipeline. */}
@@ -109,9 +112,10 @@ export function CardAtividade({
           </p>
         )}
 
-        {(produto || prazo) && (
+        {(produto || prazo || prio) && (
           <div className="cop-tags">
             {produto && <span className="cop-pill">{produto}</span>}
+            {prio && <Etiqueta tom={prio.tom}>{prio.texto}</Etiqueta>}
             {prazo && <Etiqueta tom={prazo.tom}>{c.prazo ? `Prazo ${prazo.texto}` : prazo.texto}</Etiqueta>}
           </div>
         )}
