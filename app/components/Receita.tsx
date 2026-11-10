@@ -34,8 +34,8 @@ const S_ASSINATURA: Serie = { key: "assinatura", label: "Assinatura", cor: "var(
 const S_IMPLANTACAO: Serie = { key: "implantacao", label: "Implantação", cor: "var(--rec-implantacao)", valor: (m) => m.implantacao };
 const S_CUSTOMIZACAO: Serie = { key: "customizacao", label: "Customização", cor: "var(--rec-customizacao)", valor: (m) => m.customizacao };
 const S_CONTRATADA: Serie = { key: "contratada", label: "Contratada", cor: "var(--rec-contratada)", valor: contratadaDoMes };
-const S_PROVAVEL: Serie = { key: "provavel", label: "Provável", cor: "var(--rec-prevista)", valor: (m) => m.provavel };
-const S_POSSIVEL: Serie = { key: "possivel", label: "Possível", cor: "var(--rec-prevista)", textura: true, valor: (m) => m.possivel };
+const S_PROVAVEL: Serie = { key: "provavel", label: "Em assinatura", cor: "var(--rec-prevista)", valor: (m) => m.provavel };
+const S_POSSIVEL: Serie = { key: "possivel", label: "Em proposta", cor: "var(--rec-prevista)", textura: true, valor: (m) => m.possivel };
 
 /** Como a receita contratada aparece: um total só (consolidada), ou aberta nos três tipos. */
 type Visao = "consolidada" | "detalhada";
@@ -173,25 +173,25 @@ export default function Receita({
       <section>
         <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", marginBottom: 14 }}>
           <div style={eyebrow(11, C.dust, "0.14em")}>RECEITA POR MÊS</div>
-          {/* Contratada sempre aparece; consolidada é um total, detalhada abre os três tipos. Provável
-              e possível entram por cima, cada um com o seu botão. */}
+          {/* Contratada sempre aparece: um total (Contratada) ou aberta nos três tipos (Detalhado).
+              Em assinatura (chance alta) e Em proposta (chance baixa) entram por cima, cada um com
+              o seu botão. */}
           <div className="rec-controles">
-            <span style={eyebrow(10, C.faint, "0.12em")}>Contratada</span>
             <div role="group" aria-label="Receita contratada" className="liff-densidade">
-              {(["consolidada", "detalhada"] as const).map((v) => (
+              {([["consolidada", "Contratada"], ["detalhada", "Detalhado"]] as const).map(([v, rotulo]) => (
                 <button key={v} type="button" aria-pressed={visao === v} onClick={() => setVisao(v)}>
-                  {v}
+                  {rotulo}
                 </button>
               ))}
             </div>
             <span style={eyebrow(10, C.faint, "0.12em")}>+</span>
             <button type="button" className="rec-alterna" aria-pressed={comProvavel} onClick={() => setComProvavel((v) => !v)}>
               <span aria-hidden className="rec-legenda__marca" style={fundoSerie(S_PROVAVEL)} />
-              provável
+              {S_PROVAVEL.label}
             </button>
             <button type="button" className="rec-alterna" aria-pressed={comPossivel} onClick={() => setComPossivel((v) => !v)}>
               <span aria-hidden className="rec-legenda__marca" style={fundoSerie(S_POSSIVEL)} />
-              possível
+              {S_POSSIVEL.label}
             </button>
           </div>
           <ul className="rec-legenda" aria-label="Legenda">
