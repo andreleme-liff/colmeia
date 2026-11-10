@@ -2577,13 +2577,13 @@ export function FormOportunidade({
       </div>
       {mostraNegocio && (
         // `flex: none` no interruptor: sem isso o flex o encolhe e o rótulo quebra em uma
-        // palavra por linha — "ACE / na / AWS". A explicação é que fica com a folga.
+        // palavra por linha. A explicação é que fica com a folga.
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <span style={{ flex: "none" }}>
-            <Switch checked={aceAws} onChange={setAceAws} label="ACE na AWS" />
+            <Switch checked={aceAws} onChange={setAceAws} label="ACE" />
           </span>
           <span style={{ fontSize: 12, color: C.faint, lineHeight: 1.5 }}>
-            Registrada no ACE do AWS Partner Central. O registro é feito à mão no portal da AWS; aqui fica a marca.
+            ACE criada no AWS Partner Central.
           </span>
         </div>
       )}

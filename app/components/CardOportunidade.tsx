@@ -168,7 +168,7 @@ export function CardOportunidade({
           {/* ACE só aparece quando existe, colado ao valor (com ou sem valor preenchido). */}
           <p className="cop-valor">
             {d.aceAws && (
-              <span className="cop-ace" title="Registrada no ACE da AWS">
+              <span className="cop-ace" title="ACE criada no AWS Partner Central">
                 ACE
               </span>
             )}
