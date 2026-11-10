@@ -27,9 +27,9 @@ checa("curto futuro", etiquetaPrazo("contrato", "2026-11-24", HOJE, true).texto,
 checa("sem data no funil aberto", etiquetaPrazo("proposta", null, HOJE), { texto: "Sem prazo", tom: "neutro" });
 checa("ganho com data é neutro", etiquetaPrazo("ganho", "2026-10-01", HOJE), { texto: "Prazo 01/10", tom: "neutro" });
 checa("lost sem data: nada", etiquetaPrazo("lost", null, HOJE), null);
-checa("passo vencido", prazoDoPasso("contrato", "2026-10-27", HOJE), { texto: "27/10 · há 14 dias", tom: "erro" });
-checa("passo a vencer", prazoDoPasso("proposta", "2026-11-26", HOJE), { texto: "26/11 · em 16 dias", tom: "sucesso" });
-checa("passo próximo", prazoDoPasso("proposta", "2026-11-12", HOJE), { texto: "12/11 · em 2 dias", tom: "warning" });
+checa("passo vencido", prazoDoPasso("contrato", "2026-10-27", HOJE), { texto: "27/10 · −14d", tom: "erro" });
+checa("passo a vencer", prazoDoPasso("proposta", "2026-11-26", HOJE), { texto: "26/11 · +16d", tom: "sucesso" });
+checa("passo próximo", prazoDoPasso("proposta", "2026-11-12", HOJE), { texto: "12/11 · +2d", tom: "warning" });
 checa("passo hoje", prazoDoPasso("proposta", HOJE, HOJE), { texto: "10/11 · hoje", tom: "warning" });
 checa("passo sem data", prazoDoPasso("proposta", null, HOJE), { texto: "Sem prazo", tom: "neutro" });
 checa("passo fora do funil", prazoDoPasso("ganho", "2026-10-01", HOJE), { texto: "01/10", tom: "neutro" });

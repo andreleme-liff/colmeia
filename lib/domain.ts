@@ -898,8 +898,8 @@ export function etiquetaPrazo(
 }
 
 /**
- * Prazo ao lado do rótulo PRÓXIMO PASSO, sem prefixo (o rótulo já diz o que é): "27/10 · há 14 dias",
- * "26/11 · em 16 dias", "10/11 · hoje". O tom segue `etiquetaPrazo`.
+ * Prazo ao lado do rótulo PRÓXIMO PASSO, sem prefixo (o rótulo já diz o que é): "27/10 · −14d",
+ * "26/11 · +16d", "10/11 · hoje" (a tela mostra em maiúsculas). O tom segue `etiquetaPrazo`.
  */
 export function prazoDoPasso(
   estagio: string,
@@ -910,10 +910,9 @@ export function prazoDoPasso(
   if (!base || !prazo || base.tom === "neutro") return base && prazo ? { texto: ddmm(prazo), tom: "neutro" } : base;
   const dm = ddmm(prazo);
   const n = diasEntre(hoje, prazo);
-  const dias = (k: number) => `${k} ${k === 1 ? "dia" : "dias"}`;
-  if (n < 0) return { texto: `${dm} · há ${dias(-n)}`, tom: base.tom };
+  if (n < 0) return { texto: `${dm} · −${-n}d`, tom: base.tom };
   if (n === 0) return { texto: `${dm} · hoje`, tom: base.tom };
-  return { texto: `${dm} · em ${dias(n)}`, tom: base.tom };
+  return { texto: `${dm} · +${n}d`, tom: base.tom };
 }
 
 /** "1 módulo", "3 módulos". */
