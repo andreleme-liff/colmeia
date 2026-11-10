@@ -2,18 +2,18 @@
 
 // Card da oportunidade no kanban comercial (v4) — completo e compacto.
 //
-// De cima para baixo: identificação (área, cliente + valor, módulos, ACE e prazo) → andamento
+// De cima para baixo: identificação (cliente + valor com ACE, módulos; a área é o contorno superior) → andamento
 // (situação com a data dela, próximo passo, bloqueio) → rodapé (responsável e as setas, pequenas).
 // Estilo em `globals.css` (`.cop-*`): o tema escuro, o foco de teclado e o hover moram lá.
 //
-// Cor de área identifica, nunca indica estado: o nome da área vem sempre junto do quadrado, e
-// estado (prazo, ACE, bloqueio) usa só as cores semânticas.
+// Cor de área identifica, nunca indica estado: vai no contorno superior do card (o nome da área fica
+// no aria-label e no title), e estado (prazo, ACE, bloqueio) usa só as cores semânticas.
 
 import type { CSSProperties, DragEvent, ReactNode } from "react";
 import type { Deal } from "./api";
 import {
   areaOf, blockerTipoLabel, brl, diaMes, etiquetaPrazo, hojeISO, motivoPerdaLabel, prazoDoPasso,
-  rotuloModulos, stageLabel, vizinhosNoFunil, type TomPrazo,
+  stageLabel, vizinhosNoFunil, type TomPrazo,
 } from "@/lib/domain";
 
 type Produto = { id: string; label: string };
@@ -132,21 +132,15 @@ export function CardOportunidade({
     <article
       className={`cop${compacto ? " cop--compacto" : ""}${editavel ? " cop--ativo" : ""}`}
       style={corArea}
-      aria-label={`Oportunidade ${d.conta}`}
+      aria-label={`Oportunidade ${d.conta} · área ${area.label}`}
       draggable={editavel}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onClick={() => editavel && onAbrir()}
-      title={editavel ? "Arraste para mover de estágio, ou clique para editar" : "Somente leitura nesta área"}
+      title={`${area.label} · ${editavel ? "Arraste para mover de estágio, ou clique para editar" : "Somente leitura nesta área"}`}
     >
       {/* ---------- 1 · identificação ---------- */}
       <div className="cop-bloco">
-        <p className="cop-area">
-          <span aria-hidden className="cop-area__quadrado" />
-          {area.label}
-          {modulos.length > 0 && <span className="cop-area__extra">· {rotuloModulos(modulos.length)}</span>}
-        </p>
-
         <div className="cop-titulo">
           {/* O nome é o alvo do teclado: abrir o card sem mouse. */}
           {editavel ? (

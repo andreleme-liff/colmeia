@@ -282,7 +282,7 @@ textarea::placeholder {
 .cop {
   --cop-area-ink: color-mix(in srgb, var(--cop-area) 58%, var(--liff-text));
   display: flex; flex-direction: column; gap: 14px; padding: 16px;
-  background: var(--liff-app-card); border: 1px solid var(--liff-border); border-radius: 0; box-shadow: none;
+  background: var(--liff-app-card); border: 1px solid var(--liff-border); border-top: 3px solid var(--cop-area); border-radius: 0; box-shadow: none;
   font-family: var(--liff-font-body); color: var(--liff-text); transition: background .15s;
 }
 .cop--ativo { cursor: pointer; }
@@ -290,10 +290,6 @@ textarea::placeholder {
 .cop p, .cop h3 { margin: 0; }
 .cop-bloco { display: flex; flex-direction: column; gap: 10px; }
 .cop-bloco--fio { border-top: 1px solid var(--liff-border); padding-top: 14px; gap: 12px; }
-.cop-area { display: flex; align-items: center; gap: 8px; font-family: var(--liff-font-mono); font-size: 11px; font-weight: 600;
-  letter-spacing: .16em; text-transform: uppercase; color: var(--liff-text-body); }
-.cop-area__quadrado { width: 10px; height: 10px; border-radius: 3px; background: var(--cop-area); flex: none; }
-.cop-area__extra { color: var(--liff-text-muted); font-weight: 500; letter-spacing: .1em; }
 .cop-titulo { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
 .cop-cliente { font-size: 18px; font-weight: 700; line-height: 1.25; color: var(--liff-text); min-width: 0;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
