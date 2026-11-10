@@ -25,10 +25,23 @@ function valorCurto(centavos: number): string {
   return brl(centavos);
 }
 
-export function Etiqueta({ tom, children, title, icone }: { tom: TomPrazo | "info"; children: string; title?: string; icone?: ReactNode }) {
+export function Etiqueta({
+  tom,
+  children,
+  title,
+  icone,
+  semPonto,
+}: {
+  tom: TomPrazo | "info";
+  children: string;
+  title?: string;
+  icone?: ReactNode;
+  /** Sem a bolinha: quando a cor da etiqueta já basta para dizer o estado. */
+  semPonto?: boolean;
+}) {
   return (
     <span className={`cop-tag cop-tag--${tom}`} title={title}>
-      {icone ?? <span aria-hidden className="cop-tag__dot" />}
+      {icone ?? (semPonto ? null : <span aria-hidden className="cop-tag__dot" />)}
       {children}
     </span>
   );
@@ -192,7 +205,11 @@ export function CardOportunidade({
 
         {(prazo || (compacto && (temBloqueio || ace))) && (
           <div className="cop-tags">
-            {prazo && <Etiqueta tom={prazo.tom}>{prazo.texto}</Etiqueta>}
+            {prazo && (
+              <Etiqueta tom={prazo.tom} semPonto title="Prazo do próximo passo">
+                {prazo.texto}
+              </Etiqueta>
+            )}
             {compacto && etiquetaBloqueio}
             {compacto && ace}
           </div>
