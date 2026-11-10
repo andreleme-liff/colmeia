@@ -10,7 +10,8 @@
 import type { Queryable } from "./db";
 
 export type Mudanca = {
-  actorUserId: number;
+  /** Nulo quando quem age é o próprio sistema — ex.: revogação automática por token reusado. */
+  actorUserId: number | null;
   area: string | null;
   entidade: string;
   campo?: string | null;

@@ -70,6 +70,8 @@ export function Button({
   style,
   onClick,
   title,
+  type = "button",
+  formAction,
 }: {
   children: ReactNode;
   variant?: "solid" | "outline" | "ghost";
@@ -79,6 +81,9 @@ export function Button({
   style?: CSSProperties;
   onClick?: () => void;
   title?: string;
+  /** `submit` para enviar um formulário — ex.: a tela de consentimento, que é uma Server Action. */
+  type?: "button" | "submit";
+  formAction?: (form: FormData) => void | Promise<void>;
 }) {
   const pads = { sm: "7px 12px", md: "10px 16px", lg: "13px 22px" };
   const fonts = { sm: "11px", md: "12px", lg: "13px" };
@@ -105,7 +110,14 @@ export function Button({
     ghost: { background: "transparent", color: "var(--liff-floral)", borderColor: "var(--liff-charcoal)" },
   };
   return (
-    <button type="button" disabled={disabled} onClick={onClick} title={title} style={{ ...base, ...variants[variant], ...style }}>
+    <button
+      type={type}
+      formAction={formAction}
+      disabled={disabled}
+      onClick={onClick}
+      title={title}
+      style={{ ...base, ...variants[variant], ...style }}
+    >
       {children}
     </button>
   );

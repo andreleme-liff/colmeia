@@ -52,5 +52,7 @@ export async function GET(req: Request) {
 
   const userId = await findOrCreateGoogleUser(profile.email, profile.name, profile.sub, profile.picture);
   await createSession(userId);
-  return NextResponse.redirect(`${url.origin}/`);
+  const voltar = caminhoInternoSeguro(jar.get("google_oauth_voltar")?.value, "/");
+  jar.delete("google_oauth_voltar");
+  return NextResponse.redirect(new URL(voltar, url.origin));
 }
