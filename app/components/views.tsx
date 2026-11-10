@@ -11,8 +11,9 @@ import type { Activity, AreaCadastro, Deal, LogEntry, NovaOportunidade, Origem, 
 import SeletorArea, { type OpcaoArea } from "./SeletorArea";
 import Historico from "./Historico";
 import ViaConexao from "./ViaConexao";
+import { CardOportunidade } from "./CardOportunidade";
 import {
-  ADMIN_CARDS, BLOCKER_TIPOS, ERP_SUGESTOES, ESTAGIO_INICIAL, FUNIL, MOTIVOS_PERDA, PAPEIS, STAGES, STATUS, STATUS_FUP_LABEL, areaOf, blockerTipoLabel, motivoPerdaLabel, statusFup, brl, ddmm, porTexto, stamp, statusLabel, todasAreas,
+  ADMIN_CARDS, BLOCKER_TIPOS, ERP_SUGESTOES, ESTAGIO_INICIAL, MOTIVOS_PERDA, PAPEIS, STAGES, STATUS, areaOf, ddmm, porTexto, stamp, statusLabel, todasAreas,
 } from "@/lib/domain";
 
 /* =========================================================
@@ -234,44 +235,19 @@ export function Overview({
    ========================================================= */
 export type ColunaDeal = { key: string; label: string; total: string; cards: Deal[] };
 
-/** Primeiro nome do dono: a pessoa cadastrada, ou o texto livre quando não há cadastro. */
-function primeiroNome(d: Deal): string {
-  const nome = d.responsavelId ? d.responsavel : d.responsavelTexto || d.responsavel;
-  return (nome || "—").split(/[\s/]+/)[0] || "—";
-}
-
-/** Corte em duas linhas para o card fechado; o texto inteiro fica no `title` e no card aberto. */
-const duasLinhas: CSSProperties = {
-  lineHeight: 1.45,
-  display: "-webkit-box",
-  WebkitLineClamp: 2,
-  WebkitBoxOrient: "vertical",
-  overflow: "hidden",
-  overflowWrap: "anywhere",
-};
-
-/**
- * O prazo (data do próximo passo) com a cor do status do FUP — o que a coluna "Status FUP" da
- * planilha calculava, aqui calculado na hora: atrasado em vermelho, próximos 7 dias em âmbar.
- */
-function Prazo({ estagio, data }: { estagio: string; data: string | null }) {
-  const st = statusFup(estagio, data);
-  if (st === null) return data ? <span style={{ color: C.ghost }}>{ddmm(data)}</span> : null;
-  const cor = st === "atrasado" ? C.error : st === "proximos7" ? C.warning : st === "sem_data" ? C.ghost : C.faint;
-  return (
-    <span style={{ color: cor }} title={STATUS_FUP_LABEL[st]}>
-      {data ? ddmm(data) : "sem data"}
-    </span>
-  );
-}
-
 export function Comercial({
   colunas,
+  densidade = "completo",
+  produtos,
+  pessoas,
   onMover,
   onSoltar,
   onAbrir,
 }: {
   colunas: ColunaDeal[];
+  densidade?: "completo" | "compacto";
+  produtos: { id: string; label: string }[];
+  pessoas: { id: number; nome: string; iniciais: string }[];
   onMover: (id: number, dir: 1 | -1) => void;
   /** Arrastar manda o estágio de destino; as setas mandam a direção. Ver o comentário abaixo. */
   onSoltar: (id: number, estagio: string) => void;
@@ -306,7 +282,8 @@ export function Comercial({
             onSoltar(id, col.key);
           }}
           style={{
-            minWidth: 236,
+            // O card v4 foi desenhado a 320px; abaixo de ~300 o nome do dono e as setas de 44px brigam.
+            minWidth: densidade === "compacto" ? 272 : 300,
             flex: 1,
             padding: 12,
             display: "flex",
@@ -318,108 +295,19 @@ export function Comercial({
             <span style={eyebrow(11, C.dust, "0.14em")}>{col.label}</span>
             <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>{col.total}</span>
           </div>
-          {col.cards.map((d) => {
-            const cor = areaOf(d.area).color;
-            const dono = primeiroNome(d);
-            // Alertas: o que trava (blocker) e, em Lost, o porquê da perda.
-            const alerta =
-              d.estagio === "lost"
-                ? [motivoPerdaLabel(d.motivoPerda) || "Motivo da perda não informado", d.motivoPerdaDetalhe].filter(Boolean).join(" · ")
-                : d.blocker || d.blockerTipo
-                  ? [blockerTipoLabel(d.blockerTipo), d.blocker].filter(Boolean).join(" · ")
-                  : "";
-            const noFunil = (FUNIL as readonly string[]).includes(d.estagio);
-            return (
-              <div
-                key={d.id}
-                className={d.podeEditar ? "liff-card liff-card--ativo" : "liff-card"}
-                draggable={d.podeEditar}
-                onDragStart={(e) => e.dataTransfer.setData("text/plain", String(d.id))}
-                onDragEnd={() => setAlvo(null)}
-                onClick={() => d.podeEditar && onAbrir(d.id)}
-                title={d.podeEditar ? "Arraste para mover de estágio, ou clique para editar" : "Somente leitura nesta área"}
-                style={{ padding: 14, cursor: d.podeEditar ? "pointer" : "default" }}
-              >
-                {/* Ordem fixa, de cima para baixo: quem é → de quem e para quando → como está →
-                    o que vem → o que trava → quanto vale. Tudo alinhado ao nome da empresa. */}
-                <div style={{ display: "flex", alignItems: "baseline", gap: 8, justifyContent: "space-between" }}>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0 }}>
-                    <span aria-hidden style={{ ...dot(cor), flex: "none", transform: "translateY(-1px)" }} />
-                    <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, lineHeight: 1.35 }}>{d.conta}</div>
-                  </div>
-                  {d.aceAws && (
-                    <span style={{ ...eyebrow(9, C.info, "0.1em"), flex: "none" }} title="Registrada no ACE da AWS">
-                      ace
-                    </span>
-                  )}
-                </div>
-
-                <div style={{ paddingLeft: 15 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginTop: 6 }}>
-                    <span style={eyebrow(10, C.faint, "0.1em")}>{dono}</span>
-                    {d.estagio !== "lost" && (
-                      <span style={{ fontFamily: MONO, fontSize: 10, flex: "none" }}>
-                        <Prazo estagio={d.estagio} data={d.proximoPassoEm} />
-                      </span>
-                    )}
-                  </div>
-
-                  {d.situacao && d.estagio !== "lost" && (
-                    <div title={d.situacao} style={{ ...duasLinhas, fontSize: 12, color: C.dust, marginTop: 8 }}>
-                      {d.situacao}
-                    </div>
-                  )}
-
-                  {d.proximoPasso && d.estagio !== "lost" && (
-                    <div title={d.proximoPasso} style={{ ...duasLinhas, fontFamily: MONO, fontSize: 10, color: C.faint, marginTop: 6 }}>
-                      → {d.proximoPasso}
-                    </div>
-                  )}
-
-                  {alerta && (
-                    <div
-                      style={{ fontSize: 11, color: d.estagio === "lost" ? C.faint : C.warning, marginTop: 8, lineHeight: 1.4 }}
-                      title={d.blockerDono ? `Resolve: ${d.blockerDono}` : undefined}
-                    >
-                      {d.estagio === "lost" ? "✕" : "▲"} {alerta}
-                    </div>
-                  )}
-
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginTop: 10 }}>
-                    <span style={{ fontFamily: MONO, fontSize: 13, color: d.valorCentavos ? cor : C.ghost }}>
-                      {d.valorCentavos ? brl(d.valorCentavos) : "—"}
-                    </span>
-                    {/* As setas ficam mesmo com o arraste: arrastar não existe em navegador de
-                        celular. On hold e Lost não são casas do funil: a seta não tira o card de
-                        lá — sai arrastando, ou pelo formulário. */}
-                    <span style={{ display: "flex", gap: 6, visibility: noFunil ? undefined : "hidden" }}>
-                      {([-1, 1] as const).map((dir) => (
-                        <span
-                          key={dir}
-                          draggable={false}
-                          className={d.podeEditar ? "liff-seta liff-seta--ativa" : "liff-seta"}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (d.podeEditar) onMover(d.id, dir);
-                          }}
-                          title={d.podeEditar ? "Mover uma casa" : "Sem permissão de edição nesta área"}
-                          style={{
-                            cursor: d.podeEditar ? "pointer" : "not-allowed",
-                            fontFamily: MONO,
-                            fontSize: 12,
-                            color: d.podeEditar ? C.dust : C.ghost,
-                            padding: "2px 6px",
-                          }}
-                        >
-                          {dir < 0 ? "←" : "→"}
-                        </span>
-                      ))}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {col.cards.map((d) => (
+            <CardOportunidade
+              key={d.id}
+              d={d}
+              produtos={produtos}
+              pessoas={pessoas}
+              compacto={densidade === "compacto"}
+              onAbrir={() => onAbrir(d.id)}
+              onMover={(dir) => onMover(d.id, dir)}
+              onDragStart={(e) => e.dataTransfer.setData("text/plain", String(d.id))}
+              onDragEnd={() => setAlvo(null)}
+            />
+          ))}
         </div>
       ))}
     </div>

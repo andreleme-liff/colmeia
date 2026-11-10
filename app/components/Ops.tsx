@@ -85,6 +85,8 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
 
   const [view, setView] = useState(rotaInicial.view);
   const [area, setArea] = useState("all");
+  // Densidade do kanban comercial: card completo (padrão) ou compacto, guardada no perfil.
+  const [densidade, setDensidade] = useState<"completo" | "compacto">("completo");
   // Filtro de responsável, paralelo ao de área: um recorta a vertical, o outro recorta a
   // carteira. Combinam — "só os meus" dentro de Tax é uma pergunta legítima.
   const [responsaveis, setResponsaveis] = useState<string[]>([]);
@@ -133,7 +135,8 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
          * de cache. Só na carga inicial — recarregar depois de uma escrita não pode
          * desfazer um filtro que a pessoa acabou de trocar.
          */
-        const { tema, area: areaSalva, responsaveis: respSalvos } = s.me.preferencias ?? {};
+        const { tema, area: areaSalva, responsaveis: respSalvos, densidade: densSalva } = s.me.preferencias ?? {};
+        if (densSalva === "compacto") setDensidade("compacto");
         // O leitor descarta chave inválida, então preferência antiga ou corrompida volta
         // como "todos" em vez de virar um filtro que não casa com nada.
         const resp = lerSelecaoDeResponsaveis(respSalvos);
@@ -187,7 +190,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
   }
 
   /** Guarda a escolha no perfil. Falhar aqui não pode atrapalhar a navegação. */
-  const lembrar = useCallback((patch: { tema?: string; area?: string; responsaveis?: string }) => {
+  const lembrar = useCallback((patch: { tema?: string; area?: string; responsaveis?: string; densidade?: string }) => {
     void api.salvarPreferencias(patch).catch(() => {});
   }, []);
 
@@ -799,6 +802,9 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         return (
           <Comercial
             colunas={dados.colunasDeal}
+            densidade={densidade}
+            produtos={estado.produtos}
+            pessoas={estado.pessoas}
             onMover={(id, dir) => void acao(() => api.moverOportunidade(id, dir))}
             // Arrastar manda o destino direto: a rota valida o estágio contra STAGE_KEYS e
             // registra o par anterior/novo, igual ao movimento pelas setas.
@@ -1088,6 +1094,25 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
               >
                 + {view === "comercial" ? "oportunidade" : "atividade"}
               </Button>
+            )}
+
+            {/* Densidade do kanban comercial. Fica no perfil: abre do jeito que a pessoa deixou. */}
+            {view === "comercial" && (
+              <div role="group" aria-label="Densidade dos cards" className="liff-densidade">
+                {(["completo", "compacto"] as const).map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    aria-pressed={densidade === d}
+                    onClick={() => {
+                      setDensidade(d);
+                      lembrar({ densidade: d });
+                    }}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
             )}
 
             {/* Também no quadro operacional: a importação passou a ler abas de to-dos, e

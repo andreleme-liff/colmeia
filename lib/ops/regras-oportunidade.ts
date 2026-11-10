@@ -10,7 +10,7 @@
 
 import {
   BLOCKER_TIPO_KEYS, ESTAGIO_INICIAL, FUNIL, MOTIVO_PERDA_KEYS, STAGE_KEYS, blockerTipoLabel, brlExato,
-  motivoPerdaLabel, stageLabel,
+  hojeISO, motivoPerdaLabel, stageLabel,
 } from "../domain.ts";
 import {
   LIMITES, dataOuNula, falha, idDePessoa, isoDoBanco, texto,
@@ -26,6 +26,8 @@ export type OportunidadeNova = {
   proximoPasso: string;
   proximoPassoEm: string | null;
   situacao: string;
+  /** Quando a situação foi escrita. Hoje, salvo se quem cria disser outra (a importação diz). */
+  situacaoEm: string | null;
   contato: string;
   responsavelTexto: string;
   aceAws: boolean;
@@ -57,6 +59,7 @@ export type OportunidadeAtual = {
   responsavel_user_id: number | null;
   responsavel: string | null;
   situacao: string;
+  situacao_em?: Date | null;
   contato: string;
   responsavel_texto: string;
   proximo_passo_em: Date | null;
@@ -184,6 +187,7 @@ export function planejarCriacaoOportunidade(
     proximoPasso: texto(body.proximoPasso, LIMITES.proximoPassoOportunidade),
     proximoPassoEm: dataOuNula(body.proximoPassoEm),
     situacao: texto(body.situacao, LIMITES.situacao),
+    situacaoEm: texto(body.situacao, LIMITES.situacao) ? (dataOuNula(body.situacaoEm) ?? hojeISO()) : null,
     contato: texto(body.contato, LIMITES.contato),
     responsavelTexto: texto(body.responsavelTexto, LIMITES.responsavelTexto),
     aceAws: aceAws ?? false,
@@ -216,7 +220,7 @@ export function planejarCriacaoOportunidade(
 
 export type ColunaOportunidade =
   | "area" | "conta" | "estagio" | "valor_centavos" | "proximo_passo"
-  | "situacao" | "contato" | "responsavel_texto" | "proximo_passo_em"
+  | "situacao" | "situacao_em" | "contato" | "responsavel_texto" | "proximo_passo_em"
   | "ace_aws" | "responsavel_user_id"
   | "origem_id" | "ponte" | "contato_operacional" | "dor" | "erp" | "ultima_interacao"
   | "blocker" | "blocker_tipo" | "blocker_dono_id" | "motivo_perda" | "motivo_perda_detalhe" | "notas";
@@ -376,6 +380,9 @@ export function planejarAtualizacaoOportunidade(
     if (valor === t.atual) continue;
     mudancas.push({ campo: t.coluna, de: t.atual || "—", para: valor || "—", texto: `Alterou ${t.rotulo} de ${atual.conta}` });
     sets[t.coluna] = valor;
+    // A data da situação anda junto com o texto: é o "19/OUT" do card. Quem atualiza pode dizer
+    // a data (a importação diz a da planilha); sem isso, é hoje.
+    if (t.coluna === "situacao") sets.situacao_em = valor ? (dataOuNula(body.situacaoEm) ?? hojeISO()) : null;
   }
 
   // `null` explícito limpa a data — é assim que se tira um item do cronograma sem apagar o

@@ -186,7 +186,7 @@ checa("chave desconhecida na entrada é ignorada", Object.keys(intruso.sets), ["
 const COLUNAS = new Set(["area", "conta", "estagio", "valor_centavos", "proximo_passo", "situacao", "contato",
   "responsavel_texto", "proximo_passo_em", "ace_aws", "responsavel_user_id",
   "origem_id", "ponte", "contato_operacional", "dor", "erp", "ultima_interacao", "blocker", "blocker_tipo",
-  "blocker_dono_id", "motivo_perda", "motivo_perda_detalhe", "notas"]);
+  "blocker_dono_id", "motivo_perda", "motivo_perda_detalhe", "notas", "situacao_em"]);
 const tudo = planejarAtualizacaoOportunidade(OPOR, {
   area: "tech", conta: "B", escopo: "c", estagio: "prospeccao", valorReais: 1, proximoPasso: "p", situacao: "s",
   contato: "k", responsavelTexto: "r", proximoPassoEm: "2026-12-01", produtoId: "observa", pausado: true,
@@ -197,7 +197,14 @@ const tudo = planejarAtualizacaoOportunidade(OPOR, {
 checa("pausado (legado) não vira coluna nenhuma", "pausado" in tudo.sets, false);
 checa("todas as colunas possíveis estão na lista conhecida", Object.keys(tudo.sets).every((k) => COLUNAS.has(k)), true);
 checa("escopo e produto_id (removidos) não voltam", "escopo" in tudo.sets || "produto_id" in tudo.sets, false);
-checa("e são todas as 23 da oportunidade", Object.keys(tudo.sets).length, 23);
+checa("e são todas as 24 da oportunidade", Object.keys(tudo.sets).length, 24);
+checa("mudar a situação grava a data dela", typeof tudo.sets.situacao_em, "string");
+checa("a data dita por quem atualiza vale",
+  planejarAtualizacaoOportunidade(OPOR, { situacao: "nova", situacaoEm: "2026-10-19" }, perm, fatos).sets.situacao_em, "2026-10-19");
+checa("situação igual não mexe na data",
+  "situacao_em" in planejarAtualizacaoOportunidade(OPOR, { situacao: "" }, perm, fatos).sets, false);
+checa("criar com situação data hoje", typeof planejarCriacaoOportunidade({ conta: "X", area: "tax", situacao: "s" }, perm, fatos).linha.situacaoEm, "string");
+checa("criar sem situação: sem data", planejarCriacaoOportunidade({ conta: "X", area: "tax" }, perm, fatos).linha.situacaoEm, null);
 checa("módulos da área nova", tudo.modulos, ["observa"]);
 
 console.log("\n6. as mensagens de erro são as mesmas de antes da refatoração");

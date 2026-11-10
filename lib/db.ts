@@ -5,7 +5,7 @@
 import postgres from "postgres";
 import {
   BLOCKER_TIPO_KEYS, MOTIVO_PERDA_KEYS, ORIGENS_INICIAIS, PAPEIS, PRIORIDADES, STAGE_KEYS, STATUS_KEYS,
-  refCanonica, slugificar,
+  hojeISO, refCanonica, separarDataDaSituacao, slugificar,
 } from "./domain";
 
 export type Db = ReturnType<typeof postgres>;
@@ -431,6 +431,37 @@ async function migrate(): Promise<void> {
     // e o histórico precisa continuar dizendo quem fez o quê. Excluída = sem acesso, sem
     // permissões, fora de todo seletor e de toda lista — só o nome sobrevive no histórico.
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS excluido_em TIMESTAMPTZ`;
+
+    // Data da situação atual: o card mostra "SITUAÇÃO · 19/OUT". Gravada pelo núcleo toda vez
+    // que a situação muda. As que vieram antes disso (planilha importada) traziam a data no
+    // começo do texto ("19/Out: …"): ela sai do texto e vem para cá. Sem data no texto, vale a
+    // última alteração da situação no histórico, ou a criação do card. Idempotente: só toca
+    // quem ainda não tem data.
+    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS situacao_em DATE`;
+    const semData = await sql<{ id: number; situacao: string; em: Date }[]>`
+      SELECT d.id, d.situacao,
+             COALESCE((SELECT max(a.criado_em) FROM audit_log a WHERE a.entidade = d.ref AND a.campo IN ('situacao', 'criacao')), d.criado_em) AS em
+      FROM deals d WHERE d.situacao_em IS NULL AND d.situacao <> ''
+    `;
+    const hoje = hojeISO();
+    let tirouDoTexto = 0;
+    for (const d of semData) {
+      if (separarDataDaSituacao(d.situacao, hoje).data) tirouDoTexto++;
+      const { data, texto } = separarDataDaSituacao(d.situacao, hoje);
+      await sql`
+        UPDATE deals SET situacao_em = ${data ?? hojeISO(new Date(d.em))}, situacao = ${data ? texto : d.situacao}
+        WHERE id = ${d.id}
+      `;
+    }
+    // O texto de alguns cards mudou (perdeu o prefixo de data) sem passar pelo núcleo: uma linha
+    // de auditoria diz quando e quantos, para ninguém estranhar a diferença.
+    if (tirouDoTexto) {
+      await sql`
+        INSERT INTO audit_log (actor_user_id, area, entidade, campo, valor_anterior, valor_novo, texto)
+        VALUES (NULL, NULL, 'migracao', 'situacao_em', NULL, ${String(tirouDoTexto)},
+                ${`Data da situação tirada do começo do texto e gravada à parte em ${tirouDoTexto} oportunidade(s)`})
+      `;
+    }
 
     // Módulos de interesse: vários por oportunidade, cada um um produto da área. Tabela de
     // ligação com chave estrangeira dos dois lados — produto excluído sai das oportunidades

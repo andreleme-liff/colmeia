@@ -91,7 +91,7 @@ export async function GET() {
       {
         id: number; ref: string; conta: string; area: string; estagio: string;
         valor_centavos: string; responsavel: string | null; responsavel_user_id: number | null;
-        proximo_passo: string; situacao: string; contato: string; responsavel_texto: string;
+        proximo_passo: string; situacao: string; situacao_em: Date | null; contato: string; responsavel_texto: string;
         mexido_em: Date; proximo_passo_em: Date | null; ace_aws: boolean;
         origem_id: string | null; ponte: string; contato_operacional: string; dor: string; erp: string;
         ultima_interacao: Date | null; blocker: string; blocker_tipo: string | null;
@@ -101,7 +101,7 @@ export async function GET() {
     >`
       SELECT d.id, d.ref, d.conta, d.area, d.estagio, d.valor_centavos,
              u.nome AS responsavel, d.responsavel_user_id, d.proximo_passo,
-             d.situacao, d.contato, d.responsavel_texto, d.proximo_passo_em, d.ace_aws,
+             d.situacao, d.situacao_em, d.contato, d.responsavel_texto, d.proximo_passo_em, d.ace_aws,
              d.origem_id, d.ponte, d.contato_operacional, d.dor, d.erp, d.ultima_interacao,
              d.blocker, d.blocker_tipo, d.blocker_dono_id, bd.nome AS blocker_dono,
              d.motivo_perda, d.motivo_perda_detalhe, d.notas,
@@ -235,6 +235,7 @@ export async function GET() {
       responsavelTexto: d.responsavel_texto,
       proximoPasso: d.proximo_passo,
       situacao: d.situacao,
+      situacaoEm: d.situacao_em ? d.situacao_em.toISOString().slice(0, 10) : null,
       contato: d.contato,
       proximoPassoEm: d.proximo_passo_em ? d.proximo_passo_em.toISOString().slice(0, 10) : null,
       aceAws: d.ace_aws,

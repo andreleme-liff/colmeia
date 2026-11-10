@@ -69,7 +69,7 @@ function atividadeDto(a: LinhaAtividade, ctx: Ctx, base: string) {
 type LinhaOportunidade = {
   ref: string; conta: string; area: string; estagio: string; valor_centavos: string;
   responsavel_user_id: number | null; responsavel: string | null; responsavel_texto: string;
-  proximo_passo: string; proximo_passo_em: Date | null; situacao: string; contato: string;
+  proximo_passo: string; proximo_passo_em: Date | null; situacao: string; situacao_em: Date | null; contato: string;
   ace_aws: boolean; atualizado_em: Date | null; criado_em: Date;
   origem: string | null; ponte: string; contato_operacional: string; dor: string; erp: string;
   ultima_interacao: Date | null; blocker: string; blocker_tipo: string | null; blocker_dono: string | null;
@@ -80,7 +80,7 @@ type LinhaOportunidade = {
 /** Colunas da oportunidade nas leituras do MCP — as mesmas nas duas consultas. */
 const COLUNAS_OPORTUNIDADE = `
   d.ref, d.conta, d.area, d.estagio, d.valor_centavos, d.responsavel_user_id, u.nome AS responsavel,
-  d.responsavel_texto, d.proximo_passo, d.proximo_passo_em, d.situacao, d.contato, d.ace_aws,
+  d.responsavel_texto, d.proximo_passo, d.proximo_passo_em, d.situacao, d.situacao_em, d.contato, d.ace_aws,
   d.atualizado_em, d.criado_em, o.label AS origem, d.ponte, d.contato_operacional, d.dor, d.erp,
   d.ultima_interacao, d.blocker, d.blocker_tipo, bd.nome AS blocker_dono, d.motivo_perda,
   d.motivo_perda_detalhe, d.notas,
@@ -109,6 +109,7 @@ function oportunidadeDto(d: LinhaOportunidade, ctx: Ctx, base: string) {
     proximo_passo: d.proximo_passo,
     proximo_passo_em: iso(d.proximo_passo_em),
     situacao: d.situacao,
+    situacao_em: iso(d.situacao_em),
     // Contato / sponsor: quem decide no cliente.
     contato: d.contato,
     contato_operacional: d.contato_operacional,

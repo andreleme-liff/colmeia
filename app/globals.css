@@ -259,6 +259,101 @@ textarea::placeholder {
 .liff-seta--ativa:hover { background: var(--liff-surface-2); color: var(--liff-text) !important; }
 .liff-nav-item:hover { color: var(--liff-text) !important; }
 
+
+/* ---------- card da oportunidade (v4) ----------
+   Fundo do card, borda de 1px, cantos retos, sem sombra. Cor de área só identifica (quadrado,
+   pills de módulo); estado usa só as semânticas. As tintas de texto de estado no claro são mais
+   escuras que as do resto do app: aqui elas ficam sobre um fundo já tingido, e 11px pede 4,5:1. */
+:root {
+  /* No escuro, info e erro puros não seguram 4,5:1 sobre o card: clareiam para o Floral. */
+  --cop-ink-info: color-mix(in srgb, var(--liff-info) 50%, var(--liff-floral));
+  --cop-ink-error: color-mix(in srgb, var(--liff-error) 62%, var(--liff-floral));
+  --cop-ink-success: var(--liff-success);
+  --cop-ink-warning: var(--liff-warning);
+  --cop-ink-bloqueio: var(--liff-warning);
+}
+:root[data-theme="light"] {
+  --cop-ink-info: color-mix(in srgb, var(--liff-info) 85%, var(--liff-obsidiana));
+  --cop-ink-error: color-mix(in srgb, var(--liff-error) 80%, var(--liff-obsidiana));
+  --cop-ink-success: color-mix(in srgb, var(--liff-success) 62%, var(--liff-obsidiana));
+  --cop-ink-warning: color-mix(in srgb, var(--liff-warning) 50%, var(--liff-obsidiana));
+  --cop-ink-bloqueio: color-mix(in srgb, var(--liff-warning) 42%, var(--liff-obsidiana));
+}
+.cop {
+  --cop-area-ink: color-mix(in srgb, var(--cop-area) 58%, var(--liff-text));
+  display: flex; flex-direction: column; gap: 14px; padding: 16px;
+  background: var(--liff-app-card); border: 1px solid var(--liff-border); border-radius: 0; box-shadow: none;
+  font-family: var(--liff-font-body); color: var(--liff-text); transition: background .15s;
+}
+.cop--ativo { cursor: pointer; }
+.cop--ativo:hover { background: var(--liff-app-card-hover); }
+.cop p, .cop h3 { margin: 0; }
+.cop-bloco { display: flex; flex-direction: column; gap: 10px; }
+.cop-bloco--fio { border-top: 1px solid var(--liff-border); padding-top: 14px; gap: 12px; }
+.cop-area { display: flex; align-items: center; gap: 8px; font-family: var(--liff-font-mono); font-size: 11px; font-weight: 600;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--liff-text-body); }
+.cop-area__quadrado { width: 10px; height: 10px; border-radius: 3px; background: var(--cop-area); flex: none; }
+.cop-area__extra { color: var(--liff-text-muted); font-weight: 500; letter-spacing: .1em; }
+.cop-titulo { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.cop-cliente { font-size: 18px; font-weight: 700; line-height: 1.25; color: var(--liff-text); min-width: 0;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.cop-cliente__botao { all: unset; cursor: pointer; border-radius: 2px; }
+.cop-cliente__botao:focus-visible { outline: 2px solid var(--liff-accent); outline-offset: 2px; }
+.cop-valor { font-family: var(--liff-font-mono); font-size: 16px; font-weight: 600; white-space: nowrap; color: var(--liff-text); }
+.cop-modulos, .cop-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.cop-pill { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; box-sizing: border-box;
+  background: color-mix(in srgb, var(--cop-area) 12%, transparent); border: 1px solid color-mix(in srgb, var(--cop-area) 40%, transparent);
+  color: var(--cop-area-ink); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.cop-pill--mais { background: transparent; border-style: dashed; border-color: color-mix(in srgb, var(--cop-area) 55%, transparent);
+  font-family: var(--liff-font-mono); font-size: 11px; padding: 0 8px; }
+.cop-tag { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 3px; box-sizing: border-box;
+  font-family: var(--liff-font-mono); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap;
+  --cop-tom: var(--liff-text-faint); --cop-tom-ink: var(--liff-text-body);
+  background: color-mix(in srgb, var(--cop-tom) 10%, transparent); border: 1px solid color-mix(in srgb, var(--cop-tom) 35%, transparent); color: var(--cop-tom-ink); }
+.cop-tag__dot { width: 6px; height: 6px; border-radius: 3px; background: var(--cop-tom); flex: none; }
+.cop-tag--info { --cop-tom: var(--liff-info); --cop-tom-ink: var(--cop-ink-info); }
+.cop-tag--erro { --cop-tom: var(--liff-error); --cop-tom-ink: var(--cop-ink-error); }
+.cop-tag--sucesso { --cop-tom: var(--liff-success); --cop-tom-ink: var(--cop-ink-success); }
+.cop-tag--warning { --cop-tom: var(--liff-warning); --cop-tom-ink: var(--cop-ink-warning); }
+.cop-tag--neutro { background: transparent; border-color: var(--liff-border); }
+.cop-rotulo { font-family: var(--liff-font-mono); font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--liff-text-muted); margin-bottom: 4px !important; }
+.cop-texto { font-size: 14px; line-height: 1.5; color: var(--liff-text-body); overflow-wrap: anywhere; }
+.cop-texto--3l { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.cop-texto--forte { font-weight: 600; color: var(--liff-text); }
+.cop-bloqueio { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 6px;
+  background: color-mix(in srgb, var(--liff-warning) 12%, transparent); border: 1px solid color-mix(in srgb, var(--liff-warning) 45%, transparent);
+  color: var(--cop-ink-bloqueio); }
+.cop-bloqueio__icone { flex: none; margin-top: 1px; }
+.cop-bloqueio__rotulo, .cop-bloqueio__texto { color: var(--cop-ink-bloqueio) !important; }
+.cop-proximo-curto { font-size: 14px; line-height: 1.4; color: var(--liff-text-body);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.cop-proximo-curto .cop-rotulo { margin: 0 !important; }
+.cop-rodape { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid var(--liff-border); padding-top: 12px; }
+.cop-dono { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.cop-avatar { width: 28px; height: 28px; flex: none; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px;
+  background: var(--liff-text-body); color: var(--liff-app-card); font-family: var(--liff-font-mono); font-size: 11px; font-weight: 600; }
+.cop-dono__nome { font-size: 14px; color: var(--liff-text-body); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cop-setas { display: flex; gap: 6px; flex: none; }
+.cop-seta { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; padding: 0;
+  border: 1px solid var(--liff-border); border-radius: 6px; background: transparent; color: var(--liff-text-body); cursor: pointer; transition: background .15s; }
+.cop-seta:hover:not(:disabled) { background: var(--liff-surface-2); color: var(--liff-text); }
+.cop-seta:focus-visible { outline: 2px solid var(--liff-accent); outline-offset: 2px; }
+.cop-seta:disabled { opacity: .45; cursor: not-allowed; }
+.cop--compacto { gap: 10px; padding: 12px 12px 12px 14px; }
+.cop--compacto .cop-cliente { font-size: 16px; }
+.cop--compacto .cop-valor { font-size: 14px; }
+.cop--compacto .cop-rodape { border-top: 0; padding-top: 0; }
+.cop--compacto .cop-avatar { width: 24px; height: 24px; font-size: 10px; }
+.cop--compacto .cop-dono__nome { font-size: 13px; }
+
+/* Densidade do kanban: segmentado de dois botões no topo do Comercial. */
+.liff-densidade { display: inline-flex; border: 1px solid var(--liff-border); }
+.liff-densidade button { all: unset; cursor: pointer; padding: 6px 12px; font-family: var(--liff-font-mono); font-size: 11px;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--liff-text-muted); }
+.liff-densidade button[aria-pressed="true"] { background: var(--liff-surface-2); color: var(--liff-text); }
+.liff-densidade button:focus-visible { outline: 2px solid var(--liff-accent); outline-offset: -2px; }
+
 /* ---------- responsivo ---------- */
 @media (max-width: 1100px) {
   .liff-kpis { grid-template-columns: repeat(2, 1fr); }

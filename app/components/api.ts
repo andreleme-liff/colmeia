@@ -42,6 +42,8 @@ export type Deal = {
   proximoPasso: string;
   /** Onde a conversa está agora. O histórico do que já foi vive no audit_log. */
   situacao: string;
+  /** Quando a situação foi escrita (o "19/OUT" do card). */
+  situacaoEm: string | null;
   /** Contato / sponsor: quem decide no cliente. */
   contato: string;
   /** Quando o próximo passo acontece. Nulo = sem data; o cronograma assume o fim da semana. */
@@ -121,7 +123,7 @@ export type Me = {
    * texto para texto, e um tipo misto aqui convidaria a um `=== true` falhando contra
    * "true". `responsaveis` são as chaves do filtro separadas por vírgula; vazio é "todos".
    */
-  preferencias: { tema?: string; area?: string; responsaveis?: string };
+  preferencias: { tema?: string; area?: string; responsaveis?: string; densidade?: string };
 };
 
 export type AreaCadastro = { id: string; label: string; short: string; cor: string; planilhaUrl: string | null };
@@ -317,7 +319,7 @@ export const api = {
       { method: "POST", body: JSON.stringify({ area, linhas }) }
     ),
 
-  salvarPreferencias: (patch: { tema?: string; area?: string; responsaveis?: string }) =>
+  salvarPreferencias: (patch: { tema?: string; area?: string; responsaveis?: string; densidade?: string }) =>
     req<{ ok: boolean }>("/api/me/preferencias", { method: "PATCH", body: JSON.stringify(patch) }),
 
   /** Prévia da planilha do Drive. 428 = falta conectar a conta Google. */

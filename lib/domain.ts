@@ -818,3 +818,101 @@ export function separarSituacao(bruto: string): { atual: string; anteriores: str
   if (linhas.length <= 1) return { atual: linhas[0] ?? "", anteriores: [] };
   return { atual: linhas[0], anteriores: linhas.slice(1) };
 }
+
+/* =========================================================
+   Card do kanban comercial (v4): prazo, data da situação, iniciais, vizinhos no funil.
+   Tudo puro e testado em scripts/verificar-card.mjs.
+   ========================================================= */
+
+/** Hoje no fuso da operação (São Paulo), como YYYY-MM-DD. Servidor e navegador concordam. */
+export function hojeISO(agora: Date = new Date()): string {
+  const p = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" })
+    .formatToParts(agora);
+  const v = (t: string) => p.find((x) => x.type === t)?.value ?? "";
+  return `${v("year")}-${v("month")}-${v("day")}`;
+}
+
+/** Dias de `de` até `ate` (YYYY-MM-DD). Positivo = `ate` no futuro. */
+export function diasEntre(de: string, ate: string): number {
+  return Math.round((Date.parse(`${ate.slice(0, 10)}T00:00:00Z`) - Date.parse(`${de.slice(0, 10)}T00:00:00Z`)) / 86400000);
+}
+
+const MES_ABREV: Record<string, number> = {
+  jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, jun: 6, jul: 7, ago: 8, set: 9, out: 10, nov: 11, dez: 12,
+};
+const MES_ROTULO = ["", "JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
+
+/** "19/OUT" — a data no rótulo "SITUAÇÃO · 19/OUT". */
+export function diaMes(iso: string | null): string {
+  if (!iso) return "";
+  const [, m, d] = iso.slice(0, 10).split("-");
+  return `${Number(d)}/${MES_ROTULO[Number(m)] ?? m}`;
+}
+
+/**
+ * Tira a data do começo da situação — "19/Out: validação feita" → 2026-10-19 + "validação feita".
+ * Aceita dia/mês por nome (Out, Set…) ou número (19/10, 19.10, 19/10/2026), seguidos de ":", "-"
+ * ou "–". Sem ano, vale o ano que deixa a data no passado (ou hoje): uma situação não é escrita
+ * no futuro. Sem prefixo reconhecível, devolve o texto intacto e data nula.
+ */
+export function separarDataDaSituacao(bruto: string, hoje: string = hojeISO()): { data: string | null; texto: string } {
+  const texto = bruto.trim();
+  const m = /^(\d{1,2})\s*[/.]\s*(\d{1,2}|[A-Za-zÀ-ÿ]{3,9})(?:\s*[/.]\s*(\d{2}|\d{4}))?\.?\s*[:\-–—]\s*/.exec(texto);
+  if (!m) return { data: null, texto };
+  const dia = Number(m[1]);
+  const mes = /^\d+$/.test(m[2]) ? Number(m[2]) : MES_ABREV[normalizarTexto(m[2]).slice(0, 3)];
+  if (!mes || mes < 1 || mes > 12 || dia < 1 || dia > 31) return { data: null, texto };
+  const [ah] = hoje.split("-").map(Number);
+  let ano = m[3] ? (m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3])) : ah;
+  const iso = (a: number) => `${a}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+  if (!m[3] && iso(ano) > hoje) ano -= 1;
+  const resto = texto.slice(m[0].length).trim();
+  return { data: iso(ano), texto: resto ? resto.charAt(0).toUpperCase() + resto.slice(1) : resto };
+}
+
+export type TomPrazo = "erro" | "warning" | "sucesso" | "neutro";
+
+/**
+ * Etiqueta do prazo (data do próximo passo). Completo: "Venceu 23/10 · há 18 dias",
+ * "Prazo 24/11 · em 14 dias". Curto: "23/10 · −18d", "24/11 · +14d". O tom segue o status do
+ * FUP: vencido = erro, próximos 7 dias = warning, depois disso = sucesso. Fora do funil aberto
+ * (Ganho, On hold, Lost) a data, se houver, é neutra.
+ */
+export function etiquetaPrazo(
+  estagio: string,
+  prazo: string | null,
+  hoje: string = hojeISO(),
+  curto = false
+): { texto: string; tom: TomPrazo } | null {
+  if (!prazo) return estagioEmAberto(estagio) ? { texto: "Sem prazo", tom: "neutro" } : null;
+  const dm = ddmm(prazo);
+  if (!estagioEmAberto(estagio)) return { texto: curto ? dm : `Prazo ${dm}`, tom: "neutro" };
+  const n = diasEntre(hoje, prazo);
+  if (n < 0) {
+    const k = -n;
+    return { texto: curto ? `${dm} · −${k}d` : `Venceu ${dm} · há ${k} ${k === 1 ? "dia" : "dias"}`, tom: "erro" };
+  }
+  const tom: TomPrazo = n <= 7 ? "warning" : "sucesso";
+  if (n === 0) return { texto: curto ? `${dm} · hoje` : `Prazo ${dm} · hoje`, tom };
+  return { texto: curto ? `${dm} · +${n}d` : `Prazo ${dm} · em ${n} ${n === 1 ? "dia" : "dias"}`, tom };
+}
+
+/** "1 módulo", "3 módulos". */
+export function rotuloModulos(n: number): string {
+  return `${n} ${n === 1 ? "módulo" : "módulos"}`;
+}
+
+/** Iniciais para o avatar: primeira e última palavra ("Bruno Santo" → "BS"; "Bruno" → "BR"). */
+export function iniciaisDoNome(nome: string): string {
+  const partes = nome.trim().split(/[\s/]+/).filter(Boolean);
+  if (!partes.length) return "—";
+  if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
+  return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+}
+
+/** Etapas vizinhas no funil. Fora do funil (On hold, Lost), nenhuma: as setas não tiram o card de lá. */
+export function vizinhosNoFunil(estagio: string): { anterior: StageKey | null; proxima: StageKey | null } {
+  const i = (FUNIL as readonly string[]).indexOf(estagio);
+  if (i < 0) return { anterior: null, proxima: null };
+  return { anterior: i > 0 ? FUNIL[i - 1] : null, proxima: i < FUNIL.length - 1 ? FUNIL[i + 1] : null };
+}

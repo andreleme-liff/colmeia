@@ -19,7 +19,7 @@ import { getDb } from "@/lib/db";
 import { requireCtx } from "@/lib/perms";
 import { json, err } from "@/lib/http";
 import { registrar } from "@/lib/log";
-import { chavesDoResponsavel, normalizarConta, normalizarTexto, type Pessoa } from "@/lib/domain";
+import { chavesDoResponsavel, normalizarConta, normalizarTexto, separarDataDaSituacao, type Pessoa } from "@/lib/domain";
 import { chaveDeModulo, type LinhaImportada } from "@/lib/planilha";
 import { ehFalha, LIMITES } from "@/lib/ops/comum";
 import { atualizarOportunidade, criarOportunidade } from "@/lib/ops/oportunidades";
@@ -123,9 +123,12 @@ export async function POST(req: Request) {
     }
 
     const responsavelTexto = txt(l.responsavelTexto);
+    // "19/Out: validação feita" → a data vai para o campo próprio, o texto fica sem ela.
+    const sit = separarDataDaSituacao(txt(l.situacao));
     const campos: Record<string, unknown> = {
       estagio: txt(l.estagio) || undefined,
-      situacao: txt(l.situacao),
+      situacao: sit.texto,
+      ...(sit.data ? { situacaoEm: sit.data } : {}),
       proximoPasso: txt(l.proximoPasso),
       proximoPassoEm: l.proximoPassoEm || null,
       contato: txt(l.contato),
