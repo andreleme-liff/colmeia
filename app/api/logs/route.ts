@@ -16,9 +16,9 @@ export async function GET() {
 
   const sql = await getDb();
   const linhas = await sql<
-    { id: number; criado_em: Date; autor: string | null; area: string | null; entidade: string; texto: string; via: string | null }[]
+    { id: number; criado_em: Date; autor_id: number | null; autor: string | null; area: string | null; entidade: string; texto: string; via: string | null }[]
   >`
-    SELECT l.id, l.criado_em, u.nome AS autor, l.area, l.entidade, l.texto,
+    SELECT l.id, l.criado_em, l.actor_user_id AS autor_id, u.nome AS autor, l.area, l.entidade, l.texto,
            CASE WHEN l.origem = 'mcp' THEN COALESCE(k.client_nome, 'conexão externa') END AS via
     FROM audit_log l
     LEFT JOIN users u ON u.id = l.actor_user_id
@@ -33,6 +33,7 @@ export async function GET() {
     logs: linhas.map((l) => ({
       id: l.id,
       criadoEm: l.criado_em.toISOString(),
+      autorId: l.autor_id,
       autor: l.autor ?? "sistema",
       via: l.via,
       area: l.area,

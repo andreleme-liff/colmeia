@@ -35,10 +35,11 @@ import CampoBusca from "./CampoBusca";
 import Conexoes from "./Conexoes";
 import { EditarPessoa, EditarProduto } from "./EditarCadastro";
 import { api, type State } from "./api";
+import type { LinhaAuditoria } from "./views";
 import {
   NAV, STAGES, STATUS, TITLES, areaOf, brl, daISO, ddmm, diaISO, ehDoResponsavel, estagioEmAberto,
   escreverSelecaoDeResponsaveis, fimDaSemana, inicioDaSemana, lerSelecaoDeResponsaveis,
-  aplicarBusca, opcoesDeResponsavel, porTexto, prepararBusca, rotuloDaSemana, setAreas, stageLabel, statusLabel, todasAreas,
+  CHAVE_SEM_RESPONSAVEL, aplicarBusca, opcoesDeResponsavel, porTexto, prepararBusca, rotuloDaSemana, setAreas, stageLabel, statusLabel, todasAreas,
   type RegistroComResponsavel,
 } from "@/lib/domain";
 import { caminhoDe, type Rota } from "@/lib/rotas";
@@ -102,6 +103,13 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
   // Busca por termo do Comercial, Operações, Cronograma e Auditoria. Uma só para as quatro:
   // procurar "Ambev" no pipeline e ir à auditoria ver o histórico dela é o caminho natural.
   const [busca, setBuscaEstado] = useState(() => buscaGuardada);
+  // Auditoria: até 10.000 linhas, buscadas só quando a tela abre (e de novo quando alguém
+  // grava algo). Moram aqui, e não na tela, porque o filtro Quem do cabeçalho precisa delas.
+  const [auditoria, setAuditoria] = useState<{ logs: LinhaAuditoria[] | null; limite: number; falha: string | null }>({
+    logs: null,
+    limite: 0,
+    falha: null,
+  });
   const setBusca = useCallback((v: string) => {
     buscaGuardada = v;
     setBuscaEstado(v);
@@ -757,6 +765,36 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     return L.join("\n");
   }, [estado, waArea]);
 
+  const ultimoLog = estado?.logs[0]?.id;
+  useEffect(() => {
+    if (view !== "auditoria") return;
+    let vivo = true;
+    api.auditoria().then(
+      (r) => vivo && setAuditoria({ logs: r.logs, limite: r.limite, falha: null }),
+      (e: unknown) =>
+        vivo &&
+        setAuditoria((a) => ({ ...a, falha: e instanceof Error ? e.message : "Não foi possível carregar a auditoria." }))
+    );
+    return () => {
+      vivo = false;
+    };
+  }, [view, ultimoLog]);
+
+  /** Quem fez as alterações, no recorte de vertical: as opções do filtro Quem na Auditoria. */
+  const opcoesAutores = useMemo(() => {
+    const acc = new Map<string, { chave: string; label: string; qtd: number; cadastrada: boolean }>();
+    for (const l of auditoria.logs ?? []) {
+      if (areaEfetiva !== "all" && l.area !== areaEfetiva) continue;
+      const chave = l.autorId == null ? CHAVE_SEM_RESPONSAVEL : `u:${l.autorId}`;
+      const o = acc.get(chave);
+      if (o) o.qtd++;
+      else acc.set(chave, { chave, label: l.autorId == null ? "sistema" : l.autor, qtd: 1, cadastrada: l.autorId != null });
+    }
+    return [...acc.values()].sort(
+      (a, b) => Number(b.cadastrada) - Number(a.cadastrada) || a.label.localeCompare(b.label, "pt-BR")
+    );
+  }, [auditoria.logs, areaEfetiva]);
+
   if (erro && !estado) return <Aviso>{erro}</Aviso>;
   if (!estado || !dados || !cadSet) return <Aviso>carregando…</Aviso>;
 
@@ -937,7 +975,14 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         );
       }
       case "auditoria":
-        return <Auditoria area={areaEfetiva} busca={busca} gatilho={estado.logs[0]?.id} />;
+        return <Auditoria
+            todas={auditoria.logs}
+            limite={auditoria.limite}
+            falha={auditoria.falha}
+            area={areaEfetiva}
+            busca={busca}
+            autores={responsaveis}
+          />;
       case "conexoes":
         return <Conexoes mcpHabilitado={estado.mcpHabilitado} />;
       default:
@@ -1156,19 +1201,19 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             {/* O seletor de responsável fica ao lado do de área porque os dois recortam a
                 mesma lista. "Só eu" só aparece quando a pessoa tem algo em escopo — um
                 atalho que esvazia a tela sem dizer por quê não ajuda ninguém. */}
-            {["overview", "comercial", "operacoes"].includes(view) && (
-              <SeletorResponsaveis
-                className="liff-filtro-quem"
-                opcoes={dados.opcoesResponsavel}
-                selecao={responsaveis}
-                onChange={trocarResponsaveis}
-                chaveDoUsuario={
-                  dados.opcoesResponsavel.some((o) => o.chave === `u:${estado.me.id}`)
-                    ? `u:${estado.me.id}`
-                    : undefined
-                }
-              />
-            )}
+            {["overview", "comercial", "operacoes", "cronograma", "auditoria"].includes(view) && (() => {
+              // Na Auditoria, Quem é o autor da alteração; nas outras telas, o responsável.
+              const opcoes = view === "auditoria" ? opcoesAutores : dados.opcoesResponsavel;
+              return (
+                <SeletorResponsaveis
+                  className="liff-filtro-quem"
+                  opcoes={opcoes}
+                  selecao={responsaveis}
+                  onChange={trocarResponsaveis}
+                  chaveDoUsuario={opcoes.some((o) => o.chave === `u:${estado.me.id}`) ? `u:${estado.me.id}` : undefined}
+                />
+              );
+            })()}
           </div>
 
           {/* As ações ficam num grupo próprio para quebrarem juntas quando o cabeçalho

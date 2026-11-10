@@ -204,7 +204,7 @@ async function req<T>(url: string, opts: RequestInit = {}): Promise<T> {
 export const api = {
   estado: () => req<State>("/api/state"),
   /** Auditoria completa (até 10.000 linhas), fora do estado para não pesar as outras telas. */
-  auditoria: () => req<{ limite: number; logs: LogEntry[] }>("/api/logs"),
+  auditoria: () => req<{ limite: number; logs: (LogEntry & { autorId: number | null })[] }>("/api/logs"),
 
   criarAtividade: (dados: NovaAtividade) =>
     req<{ ok: boolean; ref: string }>("/api/activities", { method: "POST", body: JSON.stringify(dados) }),

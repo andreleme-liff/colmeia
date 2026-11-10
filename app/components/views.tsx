@@ -4,17 +4,17 @@
 // devolvem eventos. Quem decide o que pode ser alterado é o servidor — `podeEditar` que
 // chega em cada registro é o eco daquela decisão, usado só para desenhar o estado.
 
-import { useEffect, useState, type CSSProperties, type MouseEvent, type ReactNode, useRef } from "react";
+import { useState, type CSSProperties, type MouseEvent, type ReactNode, useRef } from "react";
 import { Button, Field, Input, Select, Switch } from "./ds";
 import { C, GHOST_FIX, MONO, SANS, dot, eyebrow, mesh, statusColor } from "./tokens";
-import { api, type Activity, type AreaCadastro, type Deal, type LogEntry, type NovaOportunidade, type Origem, type Pessoa } from "./api";
+import { type Activity, type AreaCadastro, type Deal, type LogEntry, type NovaOportunidade, type Origem, type Pessoa } from "./api";
 import SeletorArea, { type OpcaoArea } from "./SeletorArea";
 import Historico from "./Historico";
 import ViaConexao from "./ViaConexao";
 import { CardOportunidade } from "./CardOportunidade";
 import { CardAtividade } from "./CardAtividade";
 import {
-  ADMIN_CARDS, BLOCKER_TIPOS, ERP_SUGESTOES, ESTAGIO_INICIAL, MOTIVOS_PERDA, PAPEIS, STAGES, STATUS, aplicarBusca, areaOf, prepararBusca, ddmm, porTexto, stamp, statusLabel, todasAreas,
+  ADMIN_CARDS, BLOCKER_TIPOS, ERP_SUGESTOES, ESTAGIO_INICIAL, MOTIVOS_PERDA, PAPEIS, STAGES, STATUS, CHAVE_SEM_RESPONSAVEL, aplicarBusca, areaOf, prepararBusca, ddmm, porTexto, stamp, statusLabel, todasAreas,
 } from "@/lib/domain";
 
 /* =========================================================
@@ -1408,32 +1408,36 @@ function PermissoesPorPessoa({
    ========================================================= */
 const AUDIT_COLS = "0.8fr 1fr 1fr 2.6fr";
 
-export function Auditoria({ area, busca, gatilho }: { area: string; busca: string; gatilho: number | undefined }) {
-  // Busca própria (até 10.000 linhas). `gatilho` é o id da linha de log mais recente do
-  // estado: mudou, alguém gravou algo, e a lista recarrega.
-  const [todas, setTodas] = useState<LogEntry[] | null>(null);
-  const [limite, setLimite] = useState(0);
-  const [falha, setFalha] = useState<string | null>(null);
-  useEffect(() => {
-    let vivo = true;
-    api.auditoria().then(
-      (r) => {
-        if (!vivo) return;
-        setTodas(r.logs);
-        setLimite(r.limite);
-        setFalha(null);
-      },
-      (e: unknown) => vivo && setFalha(e instanceof Error ? e.message : "Não foi possível carregar a auditoria.")
-    );
-    return () => {
-      vivo = false;
-    };
-  }, [gatilho]);
+/** Linhas da auditoria como a tela recebe: `autorId` nulo é ação do sistema. */
+export type LinhaAuditoria = LogEntry & { autorId: number | null };
 
+/**
+ * Auditoria. As linhas (até 10.000) chegam prontas de quem monta a tela, que também precisa
+ * delas para oferecer o filtro "Quem" — aqui, Quem é o AUTOR da alteração, a coluna QUEM.
+ */
+export function Auditoria({
+  todas,
+  limite,
+  falha,
+  area,
+  busca,
+  autores,
+}: {
+  todas: LinhaAuditoria[] | null;
+  limite: number;
+  falha: string | null;
+  area: string;
+  busca: string;
+  /** Chaves do filtro Quem (`u:<id>` ou "sem" para o sistema); vazio = todos. */
+  autores: readonly string[];
+}) {
   if (falha && !todas) return <Aviso>{falha}</Aviso>;
   if (!todas) return <div style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>carregando auditoria…</div>;
 
-  const naArea = area === "all" ? todas : todas.filter((l) => l.area === area);
+  const porAutor = autores.length
+    ? todas.filter((l) => autores.includes(l.autorId == null ? CHAVE_SEM_RESPONSAVEL : `u:${l.autorId}`))
+    : todas;
+  const naArea = area === "all" ? porAutor : porAutor.filter((l) => l.area === area);
   const logs = aplicarBusca(naArea, prepararBusca(busca), (l) => [
     l.texto, l.autor, l.entidade, l.via, l.area ? areaOf(l.area).label : "sistema",
   ]);
