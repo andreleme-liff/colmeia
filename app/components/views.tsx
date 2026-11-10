@@ -1755,6 +1755,7 @@ export function Drawer({
   produtos,
   oportunidades,
   onOportunidade,
+  onExcluir,
 }: {
   act: Activity;
   pessoas: Pessoa[];
@@ -1775,6 +1776,8 @@ export function Drawer({
   /** As oportunidades que a pessoa enxerga, para ligar a tarefa. */
   oportunidades: { id: number; ref: string; conta: string }[];
   onOportunidade: (id: number | null) => void;
+  /** Só com permissão de edição na área; o servidor confere de novo. */
+  onExcluir?: () => void;
 }) {
   const a = areaOf(act.area);
   const editavel = act.podeEditar;
@@ -1990,6 +1993,26 @@ export function Drawer({
               ? "Você tem permissão de edição nesta área. Toda alteração é registrada no log."
               : `Somente leitura — seu perfil não tem permissão de edição em ${a.label}.`}
           </div>
+          {/* Excluir fica sozinho, embaixo e em vermelho: é a única ação irreversível aqui. */}
+          {editavel && onExcluir && (
+            <div>
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={onExcluir}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onExcluir();
+                  }
+                }}
+                title="Excluir esta atividade"
+                style={{ ...eyebrow(10, C.error, "0.1em"), cursor: "pointer" }}
+              >
+                excluir atividade
+              </span>
+            </div>
+          )}
         </div>
 
         <div style={{ padding: "24px 26px" }}>

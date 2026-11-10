@@ -1217,6 +1217,15 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           onProximoEm={(d) => void acao(() => api.alterarAtividade(selecionadaObj.id, { proximoPassoEm: d }))}
           onPrazo={(d) => void acao(() => api.alterarAtividade(selecionadaObj.id, { prazo: d }))}
           produtos={estado.produtos}
+          onExcluir={() => {
+            if (
+              !window.confirm(
+                `Excluir a atividade "${selecionadaObj.titulo}"?\n\nO card e seus campos somem. O histórico de alterações continua na auditoria.`
+              )
+            )
+              return;
+            void acao(() => api.excluirAtividade(selecionadaObj.id)).then(() => navegar({ view: "operacoes" }));
+          }}
         />
       )}
 
