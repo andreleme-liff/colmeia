@@ -3,7 +3,7 @@
 // Card da oportunidade no kanban comercial (v4) — completo e compacto.
 //
 // De cima para baixo: identificação (área, cliente + valor, módulos, ACE e prazo) → andamento
-// (situação com a data dela, próximo passo, bloqueio) → rodapé (responsável e as setas).
+// (situação com a data dela, próximo passo, bloqueio) → rodapé (responsável e as setas, pequenas).
 // Estilo em `globals.css` (`.cop-*`): o tema escuro, o foco de teclado e o hover moram lá.
 //
 // Cor de área identifica, nunca indica estado: o nome da área vem sempre junto do quadrado, e
@@ -12,7 +12,7 @@
 import type { CSSProperties, DragEvent } from "react";
 import type { Deal } from "./api";
 import {
-  areaOf, blockerTipoLabel, brl, diaMes, etiquetaPrazo, hojeISO, iniciaisDoNome, motivoPerdaLabel,
+  areaOf, blockerTipoLabel, brl, diaMes, etiquetaPrazo, hojeISO, motivoPerdaLabel,
   rotuloModulos, stageLabel, vizinhosNoFunil, type TomPrazo,
 } from "@/lib/domain";
 
@@ -36,7 +36,7 @@ function Etiqueta({ tom, children, title }: { tom: TomPrazo | "info"; children: 
 
 function Chevron({ dir }: { dir: -1 | 1 }) {
   return (
-    <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
       <path d={dir < 0 ? "M15 18l-6-6 6-6" : "M9 18l6-6-6-6"} />
     </svg>
   );
@@ -88,7 +88,6 @@ export function CardOportunidade({
 
   const pessoa = d.responsavelId ? pessoas.find((p) => p.id === d.responsavelId) : undefined;
   const nomeDono = pessoa?.nome ?? (d.responsavelTexto || "");
-  const iniciais = pessoa?.iniciais || (nomeDono ? iniciaisDoNome(nomeDono) : "—");
 
   const { anterior, proxima } = vizinhosNoFunil(d.estagio);
   const seta = (dir: -1 | 1) => {
@@ -235,9 +234,6 @@ export function CardOportunidade({
       {/* ---------- 3 · rodapé ---------- */}
       <div className="cop-rodape">
         <div className="cop-dono">
-          <span aria-hidden className="cop-avatar">
-            {iniciais}
-          </span>
           <span className="cop-dono__nome">{nomeDono || "Sem responsável"}</span>
         </div>
         <div className="cop-setas">
