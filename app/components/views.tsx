@@ -768,7 +768,9 @@ function TextoLongoEditavel({
   );
 }
 
-const COLS_AREA = "1.5fr 0.9fr 1.2fr 0.8fr 44px";
+// `minmax(0, …)`: sem isso a coluna cresce até caber o conteúdo (um link de planilha empurrava a
+// tabela inteira); assim a largura é a do cabeçalho e o texto longo é cortado com reticências.
+const COLS_AREA = "minmax(0, 1.5fr) minmax(0, 0.9fr) minmax(0, 1.2fr) minmax(0, 0.8fr) 44px";
 
 /** Aba "áreas": a cor de cada vertical é configuração, e muda como todo mundo vê o quadro —
  *  por isso só admin edita. O `input type=color` devolve HEX, que é o que o servidor aceita. */
@@ -853,13 +855,16 @@ function TabelaAreas({
           </div>
           {/* Endereço da planilha do Drive de onde esta vertical sincroniza. Guardamos só o
               id canônico; colar a URL inteira, com /edit e #gid, funciona. */}
-          <div style={{ padding: "9px 16px" }}>
+          <div style={{ padding: "9px 16px", minWidth: 0 }}>
             {podeEditar ? (
               <TextoEditavel
                 valor={a.planilhaUrl ?? "—"}
                 onSalvar={(v) => onNome(a.id, { planilhaUrl: v === "—" ? null : v })}
-                titulo="Clique para colar o endereço da planilha do Google"
-                estilo={{ fontFamily: MONO, fontSize: 11, color: a.planilhaUrl ? C.info : C.ghost, display: "block" }}
+                titulo={a.planilhaUrl ? `${a.planilhaUrl}\n\nClique para trocar o endereço` : "Clique para colar o endereço da planilha do Google"}
+                estilo={{
+                  fontFamily: MONO, fontSize: 11, color: a.planilhaUrl ? C.info : C.ghost, display: "block",
+                  width: "100%", boxSizing: "border-box",
+                }}
               />
             ) : (
               <span style={{ fontFamily: MONO, fontSize: 11, color: a.planilhaUrl ? C.info : C.ghost }}>
