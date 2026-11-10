@@ -497,6 +497,26 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         ph: "Nome completo",
       };
     }
+    if (cadTab === "origens") {
+      return {
+        head: ["ORIGEM", "SITUAÇÃO", "OPORTUNIDADES"],
+        rows: estado.origens.map((o) => ({
+          key: o.id,
+          a: o.label,
+          b: o.ativo ? "ativa" : "arquivada",
+          c: estado.deals.filter((d) => d.origemId === o.id).length + " no pipeline",
+          // Arquivar, não excluir: as oportunidades que já apontam para ela continuam
+          // mostrando de onde vieram. Só a administração mexe no cadastro.
+          abrir: estado.isAdmin
+            ? () => {
+                if (!window.confirm(`${o.ativo ? "Arquivar" : "Reativar"} a origem ${o.label}?`)) return;
+                void acao(() => api.alterarOrigem(o.id, { ativo: !o.ativo }));
+              }
+            : undefined,
+        })),
+        ph: "Nome da origem",
+      };
+    }
     if (cadTab === "areas") {
       return {
         head: ["ÁREA", "VERTICAL", "ATIVIDADES"],
@@ -515,11 +535,12 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         key: p.id,
         a: p.label + (p.ativo ? "" : " (arquivado)"),
         b: areaOf(p.area).label,
-        c: estado.deals.filter((d) => d.produtoId === p.id).length + " no pipeline",
+        // Na oportunidade o produto virou "módulo de interesse" — uma pode ter vários.
+        c: estado.deals.filter((d) => d.modulos.includes(p.id)).length + " no pipeline",
       })),
       ph: "Nome do produto",
     };
-  }, [estado, cadTab]);
+  }, [estado, cadTab, acao]);
 
   // ---------- cronograma ----------
   /**
@@ -774,6 +795,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           <Comercial
             colunas={dados.colunasDeal}
             produtos={estado.produtos}
+            origens={estado.origens}
             onMover={(id, dir) => void acao(() => api.moverOportunidade(id, dir))}
             // Arrastar manda o destino direto: a rota valida o estágio contra STAGE_KEYS e
             // registra o par anterior/novo, igual ao movimento pelas setas.
@@ -825,6 +847,10 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             onCriarProduto={(d) => {
               setSalvando(true);
               void acao(() => api.criarProduto(d)).finally(() => setSalvando(false));
+            }}
+            onCriarOrigem={(d) => {
+              setSalvando(true);
+              void acao(() => api.criarOrigem(d)).finally(() => setSalvando(false));
             }}
             onCorArea={(id, cor) => void acao(() => api.alterarArea(id, { cor }))}
             onNomeArea={(id, patch) => void acao(() => api.alterarArea(id, patch))}
@@ -1156,6 +1182,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
 
       {criando === "oportunidade" && (
         <FormOportunidade
+          origens={estado.origens}
           areasEditaveis={areasEditaveis}
           pessoas={pessoasAtivas}
           produtos={estado.produtos}
@@ -1168,6 +1195,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
 
       {dealEmEdicao && (
         <FormOportunidade
+          origens={estado.origens}
           inicial={dealEmEdicao}
           tarefas={estado.activities.filter((a) => a.oportunidadeId === dealEmEdicao.id)}
           onAbrirTarefa={(ref) => navegar({ view: "operacoes", ref })}
@@ -1226,7 +1254,10 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
                   const r = await api.importarOportunidades(areaDestino, linhasDeal);
                   feito.push(
                     `${r.criadas} oportunidade(s) criada(s), ${r.atualizadas} atualizada(s)` +
-                      (r.ignoradas.length ? `, ${r.ignoradas.length} ignorada(s)` : "")
+                      (r.ignoradas.length
+                        ? `, ${r.ignoradas.length} ignorada(s) (${r.ignoradas.slice(0, 3).map((x) => x.motivo).join("; ")}${r.ignoradas.length > 3 ? "…" : ""})`
+                        : "") +
+                      (r.avisos?.length ? `, ${r.avisos.length} aviso(s): ${r.avisos.slice(0, 3).map((x) => x.aviso).join("; ")}${r.avisos.length > 3 ? "…" : ""}` : "")
                   );
                 }
                 if (linhasAtiv.length) {

@@ -3,7 +3,10 @@
 // Migração idempotente no primeiro acesso + seed do conjunto de demonstração.
 
 import postgres from "postgres";
-import { PAPEIS, PRIORIDADES, STAGE_KEYS, STATUS_KEYS, refCanonica } from "./domain";
+import {
+  BLOCKER_TIPO_KEYS, MOTIVO_PERDA_KEYS, ORIGENS_INICIAIS, PAPEIS, PRIORIDADES, STAGE_KEYS, STATUS_KEYS,
+  refCanonica, slugificar,
+} from "./domain";
 
 export type Db = ReturnType<typeof postgres>;
 
@@ -386,6 +389,56 @@ async function migrate(): Promise<void> {
     await sql`ALTER TABLE activities ADD COLUMN IF NOT EXISTS oportunidade_id INTEGER REFERENCES deals(id) ON DELETE SET NULL`;
     await sql`CREATE INDEX IF NOT EXISTS idx_activities_oportunidade ON activities(oportunidade_id)`;
 
+    // ---- Card comercial v2 (nov/2026): os campos da planilha do LIFF Tax ----
+    //
+    // Origem é CADASTRO, não lista no código: parceiro e canal novos aparecem o tempo todo, e
+    // quem administra cadastra sem esperar deploy. A semente só entra com a tabela vazia —
+    // uma origem apagada pela administração não volta sozinha.
+    await sql`
+      CREATE TABLE IF NOT EXISTS origens (
+        id    TEXT PRIMARY KEY,
+        label TEXT NOT NULL,
+        ordem INTEGER NOT NULL DEFAULT 0,
+        ativo BOOLEAN NOT NULL DEFAULT true
+      )
+    `;
+    const [{ n: qtdOrigens }] = await sql<{ n: number }[]>`SELECT count(*)::int AS n FROM origens`;
+    if (!qtdOrigens) {
+      for (const [i, label] of ORIGENS_INICIAIS.entries()) {
+        await sql`INSERT INTO origens (id, label, ordem) VALUES (${slugificar(label)}, ${label}, ${i}) ON CONFLICT DO NOTHING`;
+      }
+    }
+    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS origem_id TEXT REFERENCES origens(id) ON DELETE SET NULL`;
+    // `contato` continua existindo e passa a ser "Contato / sponsor" — quem decide no cliente.
+    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS ponte TEXT NOT NULL DEFAULT ''`;
+    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS contato_operacional TEXT NOT NULL DEFAULT ''`;
+    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS dor TEXT NOT NULL DEFAULT ''`;
+    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS erp TEXT NOT NULL DEFAULT ''`;
+    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS ultima_interacao DATE`;
+    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS blocker TEXT NOT NULL DEFAULT ''`;
+    await sql.unsafe(
+      `ALTER TABLE deals ADD COLUMN IF NOT EXISTS blocker_tipo TEXT CHECK (blocker_tipo IN (${inList(BLOCKER_TIPO_KEYS)}))`
+    );
+    // Quem, do lado da LIFF, resolve o blocker. Na planilha, "Dono interno LIFF" só aparece
+    // junto de um blocker — não é um segundo dono da oportunidade.
+    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS blocker_dono_id INTEGER REFERENCES users(id) ON DELETE SET NULL`;
+    await sql.unsafe(
+      `ALTER TABLE deals ADD COLUMN IF NOT EXISTS motivo_perda TEXT CHECK (motivo_perda IN (${inList(MOTIVO_PERDA_KEYS)}))`
+    );
+    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS motivo_perda_detalhe TEXT NOT NULL DEFAULT ''`;
+    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS notas TEXT NOT NULL DEFAULT ''`;
+
+    // Módulos de interesse: vários por oportunidade, cada um um produto da área. Tabela de
+    // ligação com chave estrangeira dos dois lados — produto excluído sai das oportunidades
+    // em vez de deixar um id órfão numa lista.
+    await sql`
+      CREATE TABLE IF NOT EXISTS oportunidade_modulos (
+        deal_id    INTEGER NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
+        produto_id TEXT NOT NULL REFERENCES produtos(id) ON DELETE CASCADE,
+        PRIMARY KEY (deal_id, produto_id)
+      )
+    `;
+
     // ---- Acesso por sistemas externos (MCP + OAuth 2.1) ----
     //
     // De onde veio cada escrita. Nulo é a interface, como sempre foi. Sem chave estrangeira
@@ -494,7 +547,7 @@ async function migrate(): Promise<void> {
             -- não cabe a esta migração. TABELA NOVA NESTE APP ENTRA NESTA LISTA.
             EXECUTE format(
               'REVOKE ALL ON users, user_area_perms, activities, deals, sessions, audit_log, areas, produtos, '
-              'oauth_concessoes, oauth_codigos, oauth_tokens, mcp_chamadas FROM %I',
+              'oauth_concessoes, oauth_codigos, oauth_tokens, mcp_chamadas, origens, oportunidade_modulos FROM %I',
               papel
             );
             EXECUTE format('REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM %I', papel);

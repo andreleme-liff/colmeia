@@ -23,8 +23,12 @@ const MAPA: Record<string, string> = {
   titulo: "titulo", area: "area", status: "status", prioridade: "prioridade", prazo: "prazo",
   responsavel_id: "responsavelId", situacao: "situacao", proximo_passo: "proximoPasso",
   proximo_passo_em: "proximoPassoEm", produto_id: "produtoId", conta: "conta", estagio: "estagio",
-  valor_reais: "valorReais", escopo: "escopo", contato: "contato", responsavel_texto: "responsavelTexto",
+  valor_reais: "valorReais", contato: "contato", responsavel_texto: "responsavelTexto",
   ace_aws: "aceAws", oportunidade: "oportunidade",
+  origem: "origemId", ponte: "ponte", contato_operacional: "contatoOperacional", dor: "dor", modulos: "modulos",
+  erp: "erp", ultima_interacao: "ultimaInteracao", blocker: "blocker", blocker_tipo: "blockerTipo",
+  blocker_quem_resolve: "blockerDonoId", motivo_perda: "motivoPerda", motivo_perda_detalhe: "motivoPerdaDetalhe",
+  notas: "notas",
 };
 
 function paraNucleo(args: Record<string, unknown>): Record<string, unknown> {

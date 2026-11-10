@@ -9,17 +9,48 @@
 // campo errado sem avisar; com dicionário, cabeçalho não reconhecido simplesmente não entra,
 // e a prévia mostra a coluna vazia.
 
-import { normalizarConta, normalizarTexto, slugificar } from "./domain";
+import {
+  blockerTipoDaPlanilha, dataDaPlanilha, estagioDaPlanilha, motivoPerdaSugerido, normalizarConta, normalizarTexto,
+  separarSituacao, valorDaPlanilha,
+} from "./domain.ts";
 
+/**
+ * Uma oportunidade lida da planilha, ANTES de o servidor resolver nomes em cadastros: dono,
+ * quem resolve o blocker, origem e módulos vêm como TEXTO e o servidor casa com pessoas,
+ * origens e produtos — a regra de quem é quem mora num lugar só.
+ */
 export type LinhaImportada = {
   conta: string;
-  escopo: string;
+  /** Aba de onde veio — fica no histórico do card. */
+  aba: string;
   estagio: string;
+  /** Só a anotação mais recente; as anteriores vão em `situacaoAnterior`. */
   situacao: string;
+  situacaoAnterior: string[];
   proximoPasso: string;
+  proximoPassoEm: string | null;
+  /** Contato / sponsor. */
   contato: string;
+  contatoOperacional: string;
+  /** Dono em texto ("Bruno Santo"). */
   responsavelTexto: string;
-  produtoId: string | null;
+  ponte: string;
+  /** Rótulo da origem ("Base Fius"). */
+  origem: string;
+  dor: string;
+  /** Nomes dos módulos ("Apuração assistida"). */
+  modulos: string[];
+  erp: string;
+  valorReais: number | null;
+  aceAws: boolean;
+  ultimaInteracao: string | null;
+  blocker: string;
+  blockerTipo: string | null;
+  /** Quem resolve o blocker, em texto. */
+  blockerDono: string;
+  motivoPerda: string | null;
+  motivoPerdaDetalhe: string;
+  notas: string;
 };
 
 export type LinhaAtividadeImportada = {
@@ -35,20 +66,56 @@ export type LinhaAtividadeImportada = {
  */
 const PLACEHOLDER = /^descobrir contato no escrit/i;
 
-/** Aceita variações de acento e caixa nos cabeçalhos das planilhas de oportunidade. */
-const COLUNAS: Record<string, keyof LinhaImportada | "setor"> = {
+/**
+ * Cabeçalho da planilha → campo. Aceita variações de acento e caixa. Cobre a planilha do
+ * LIFF Tax (abas Prospecção e Pipeline) e as anteriores. Cabeçalho fora daqui não entra, e a
+ * prévia mostra o campo vazio — mapear errado gravaria no campo errado sem avisar.
+ *
+ * As duas abas chamam de "Contato" coisas diferentes, e a decisão foi um campo só,
+ * "Contato / sponsor": "Contato" e "Sponsor / decisor" caem no mesmo lugar, juntos quando a
+ * linha tem os dois. ID e Status FUP ficam de fora: o sistema gera a referência e calcula o
+ * FUP.
+ */
+type Destino = keyof LinhaImportada | "valor" | "ace";
+const COLUNAS: Record<string, Destino> = {
   empresa: "conta",
   conta: "conta",
-  "regtrack setor": "setor",
-  setor: "setor",
-  produto: "setor",
+  estagio: "estagio",
+  dono: "responsavelTexto",
+  responsavel: "responsavelTexto",
+  origem: "origem",
+  "ponte quem abre a porta": "ponte",
+  ponte: "ponte",
+  contato: "contato",
+  "contato cargo": "contato",
+  "sponsor decisor": "contato",
+  sponsor: "contato",
+  "contato operacional": "contatoOperacional",
+  "dor principal": "dor",
+  dor: "dor",
+  "modulos de interesse": "modulos",
+  modulos: "modulos",
+  // Planilhas antigas: o setor/produto virou módulo de interesse.
+  "regtrack setor": "modulos",
+  setor: "modulos",
+  produto: "modulos",
+  erp: "erp",
+  "valor proposta r": "valor",
+  "valor proposta": "valor",
+  valor: "valor",
+  ace: "ace",
+  "ultima interacao": "ultimaInteracao",
   "situacao atual": "situacao",
   situacao: "situacao",
   "proximos passos": "proximoPasso",
   "proximo passo": "proximoPasso",
-  "contato cargo": "contato",
-  contato: "contato",
-  responsavel: "responsavelTexto",
+  "data prox passo": "proximoPassoEm",
+  "data proximo passo": "proximoPassoEm",
+  blocker: "blocker",
+  "tipo de blocker": "blockerTipo",
+  "dono interno liff": "blockerDono",
+  "motivo da perda": "motivoPerda",
+  notas: "notas",
 };
 
 /** Cabeçalhos da aba de atividades. `to do` cobre "TO-DO", que a planilha escreve com hífen. */
@@ -112,7 +179,13 @@ function pausaSugerida(situacao: string, proximo: string): boolean {
 }
 
 
-export type LinhaPrevia = LinhaImportada & { setorOriginal: string; existente: boolean };
+export type LinhaPrevia = LinhaImportada & { existente: boolean };
+
+/** Chave para casar o nome de um módulo com o produto: sem acento, caixa, espaço nem pontuação
+ *  — "Lifftax Starter" da planilha é o "LIFF Tax Starter" do cadastro. */
+export function chaveDeModulo(nome: string): string {
+  return normalizarTexto(nome).replace(/[^a-z0-9]/g, "");
+}
 export type LinhaAtividadePrevia = LinhaAtividadeImportada & { existente: boolean };
 
 export type Aba =
@@ -148,30 +221,51 @@ export function lerAba(
   if (cabDeal) {
     const linhas: LinhaPrevia[] = [];
     for (const linha of grade.slice(cabDeal.i + 1)) {
+      // Junta quando duas colunas caem no mesmo campo (Contato + Sponsor / decisor).
       const campos: Record<string, string> = {};
       cabDeal.mapa.forEach((destino, i) => {
         if (!destino) return;
         const bruto = String(linha[i] ?? "").trim();
-        campos[destino] = PLACEHOLDER.test(bruto) ? "" : bruto;
+        const valor = PLACEHOLDER.test(bruto) ? "" : bruto;
+        if (!valor) return;
+        campos[destino] = campos[destino] ? `${campos[destino]} · ${valor}` : valor;
       });
       const conta = (campos.conta ?? "").trim();
       if (!conta || RODAPE.test(conta)) continue;
 
-      const situacao = campos.situacao ?? "";
+      const { atual, anteriores } = separarSituacao(campos.situacao ?? "");
       const proximo = campos.proximoPasso ?? "";
-      const setor = campos.setor ?? "";
+      // Estágio: a coluna da planilha ("3 · Proposta enviada"), pelo número. Sem coluna, a
+      // inferência pelo texto — e "não é o momento" é On hold.
+      const estagio =
+        estagioDaPlanilha(campos.estagio ?? "") ??
+        (pausaSugerida(atual, proximo) ? "on_hold" : estagioSugerido(atual));
+      const motivoTexto = campos.motivoPerda ?? "";
       linhas.push({
         conta,
-        escopo: "",
-        // "Não é o momento" não é casa do funil: é o estágio On hold, que substituiu o antigo
-        // interruptor "Em pausa".
-        estagio: pausaSugerida(situacao, proximo) ? "on_hold" : estagioSugerido(situacao),
-        situacao,
+        aba: nome,
+        estagio,
+        situacao: atual,
+        situacaoAnterior: anteriores,
         proximoPasso: proximo,
+        proximoPassoEm: dataDaPlanilha(campos.proximoPassoEm),
         contato: campos.contato ?? "",
+        contatoOperacional: campos.contatoOperacional ?? "",
         responsavelTexto: campos.responsavelTexto ?? "",
-        produtoId: setor ? slugificar(setor) : null,
-        setorOriginal: setor,
+        ponte: campos.ponte ?? "",
+        origem: campos.origem ?? "",
+        dor: campos.dor ?? "",
+        modulos: (campos.modulos ?? "").split(/[;,\n]|\s\+\s|\s·\s/).map((m) => m.trim()).filter(Boolean),
+        erp: campos.erp ?? "",
+        valorReais: valorDaPlanilha(campos.valor),
+        aceAws: /^(y|yes|s|sim|x|true|1|ok)$/i.test((campos.ace ?? "").trim()),
+        ultimaInteracao: dataDaPlanilha(campos.ultimaInteracao),
+        blocker: campos.blocker ?? "",
+        blockerTipo: blockerTipoDaPlanilha(campos.blockerTipo ?? ""),
+        blockerDono: campos.blockerDono ?? "",
+        motivoPerda: motivoTexto ? motivoPerdaSugerido(motivoTexto) : null,
+        motivoPerdaDetalhe: motivoTexto,
+        notas: campos.notas ?? "",
         existente: jaExistem.contas.has(normalizarConta(conta)),
       });
     }

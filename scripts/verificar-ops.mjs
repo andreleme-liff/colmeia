@@ -52,7 +52,8 @@ const perm2 = { ...perm, podeVer: (a) => !!NIVEL2[a], podeEditar: (a) => NIVEL2[
 
 const fatos = {
   pessoas: new Map([[1, "Bruno Santo"], [2, "Bianka Moreira"]]),
-  produtos: [{ id: "regtrack", area: "tax" }, { id: "observa", area: "tech" }],
+  produtos: [{ id: "regtrack", area: "tax" }, { id: "genius", area: "tax" }, { id: "observa", area: "tech" }],
+  origens: [{ id: "aws", label: "AWS", ativo: true }, { id: "evento", label: "Evento", ativo: false }],
   oportunidades: [
     { id: 20, ref: "C-0120", conta: "JBS", area: "tax" },
     { id: 21, ref: "C-0121", conta: "Natura", area: "tech" },
@@ -67,10 +68,13 @@ const ATIV = {
   oportunidade_id: null,
 };
 const OPOR = {
-  id: 20, ref: "C-0120", conta: "JBS", escopo: "", area: "tax", estagio: "qualificado",
+  id: 20, ref: "C-0120", conta: "JBS", area: "tax", estagio: "qualificado",
   valor_centavos: "6000000", proximo_passo: "", responsavel_user_id: null, responsavel: null,
-  situacao: "", contato: "", responsavel_texto: "Agente 2", produto_id: "regtrack",
+  situacao: "", contato: "", responsavel_texto: "Agente 2",
   proximo_passo_em: null, ace_aws: false,
+  origem_id: null, ponte: "", contato_operacional: "", dor: "", erp: "", ultima_interacao: null,
+  blocker: "", blocker_tipo: null, blocker_dono_id: null, motivo_perda: null, motivo_perda_detalhe: "", notas: "",
+  modulos: ["regtrack"],
 };
 
 console.log("\n1. criação: permissão vem antes de tudo o que depende da área");
@@ -91,9 +95,22 @@ checa("defaults de status e prioridade",
   "backlog/media");
 
 console.log("\n2. criação: referências a outras tabelas");
-checa("produto de outra área recusa",
-  erro(planejarCriacaoOportunidade({ conta: "X", area: "tax", produtoId: "observa" }, perm, fatos)),
-  "400 Produto inválido para esta área.");
+checa("módulo de outra área recusa",
+  erro(planejarCriacaoOportunidade({ conta: "X", area: "tax", modulos: ["observa"] }, perm, fatos)),
+  "400 Módulo inválido para esta área: observa.");
+checa("módulos sem duplicata e em ordem",
+  planejarCriacaoOportunidade({ conta: "X", area: "tax", modulos: ["regtrack", "genius", "regtrack"] }, perm, fatos).linha?.modulos,
+  ["genius", "regtrack"]);
+checa("origem desconhecida recusa",
+  erro(planejarCriacaoOportunidade({ conta: "X", area: "tax", origemId: "nada" }, perm, fatos)), "400 Origem inválida.");
+checa("origem arquivada não entra numa oportunidade nova",
+  erro(planejarCriacaoOportunidade({ conta: "X", area: "tax", origemId: "evento" }, perm, fatos)), "400 Origem inválida.");
+checa("tipo de blocker fora do domínio recusa",
+  erro(planejarCriacaoOportunidade({ conta: "X", area: "tax", blockerTipo: "humor" }, perm, fatos)), "400 Tipo de blocker inválido.");
+checa("motivo de perda fora do domínio recusa",
+  erro(planejarCriacaoOportunidade({ conta: "X", area: "tax", motivoPerda: "azar" }, perm, fatos)), "400 Motivo da perda inválido.");
+checa("quem resolve o blocker tem de existir",
+  erro(planejarCriacaoOportunidade({ conta: "X", area: "tax", blockerDonoId: 99 }, perm, fatos)), "400 Quem resolve o blocker é inválido.");
 checa("responsável inexistente recusa",
   erro(planejarCriacaoAtividade({ titulo: "X", area: "tax", responsavelId: 99 }, perm, fatos)), "400 Responsável inválido.");
 // Antes: um responsavelId "1" (string) ia direto para o SQL e o banco decidia. Agora é recusa
@@ -152,8 +169,12 @@ checa("nada mudou → plano vazio",
   planejarAtualizacaoAtividade(ATIV, { titulo: "Mapear obrigações", prioridade: "media" }, perm, fatos).mudancas.length, 0);
 checa("prazo igual em outra forma não conta como mudança",
   planejarAtualizacaoAtividade(ATIV, { prazo: "2026-11-20" }, perm, fatos).mudancas.length, 0);
-checa("produto '' com o card já sem produto não é mudança (a rota antiga gravava '— → —')",
-  planejarAtualizacaoOportunidade({ ...OPOR, produto_id: null }, { produtoId: "" }, perm, fatos).mudancas.length, 0);
+checa("mesmos módulos em outra ordem não é mudança",
+  planejarAtualizacaoOportunidade({ ...OPOR, modulos: ["genius", "regtrack"] }, { modulos: ["regtrack", "genius"] }, perm, fatos).mudancas.length, 0);
+const comModulo = planejarAtualizacaoOportunidade(OPOR, { modulos: ["regtrack", "genius"] }, perm, fatos);
+checa("módulos novos vão no plano, fora das colunas", [comModulo.modulos, Object.keys(comModulo.sets)], [["genius", "regtrack"], []]);
+checa("origem arquivada que já é a do card não bloqueia a edição",
+  planejarAtualizacaoOportunidade({ ...OPOR, origem_id: "evento" }, { origemId: "evento", conta: "JBS 2" }, perm, fatos).ok, true);
 checa("responsável para nulo", planejarAtualizacaoAtividade(ATIV, { responsavelId: null }, perm, fatos).sets,
   { responsavel_user_id: null });
 
@@ -162,17 +183,22 @@ console.log("\n5. as chaves de SQL são só as colunas conhecidas");
 // de coluna. A entrada aqui traz chaves que não são campo nenhum.
 const intruso = planejarAtualizacaoOportunidade(OPOR, { valor_centavos: 1, "area = 'x'; --": 1, ace_aws: true, aceAws: true }, perm, fatos);
 checa("chave desconhecida na entrada é ignorada", Object.keys(intruso.sets), ["ace_aws"]);
-const COLUNAS = new Set(["area", "conta", "escopo", "estagio", "valor_centavos", "proximo_passo", "situacao", "contato",
-  "responsavel_texto", "proximo_passo_em", "produto_id", "pausado", "ace_aws", "responsavel_user_id", "titulo",
-  "status", "prioridade", "prazo"]);
+const COLUNAS = new Set(["area", "conta", "estagio", "valor_centavos", "proximo_passo", "situacao", "contato",
+  "responsavel_texto", "proximo_passo_em", "ace_aws", "responsavel_user_id",
+  "origem_id", "ponte", "contato_operacional", "dor", "erp", "ultima_interacao", "blocker", "blocker_tipo",
+  "blocker_dono_id", "motivo_perda", "motivo_perda_detalhe", "notas"]);
 const tudo = planejarAtualizacaoOportunidade(OPOR, {
   area: "tech", conta: "B", escopo: "c", estagio: "prospeccao", valorReais: 1, proximoPasso: "p", situacao: "s",
   contato: "k", responsavelTexto: "r", proximoPassoEm: "2026-12-01", produtoId: "observa", pausado: true,
-  aceAws: true, responsavelId: 2,
+  aceAws: true, responsavelId: 2, origemId: "aws", ponte: "pt", contatoOperacional: "co", dor: "d", erp: "SAP",
+  ultimaInteracao: "2026-11-01", blocker: "b", blockerTipo: "preco", blockerDonoId: 1, motivoPerda: "outro",
+  motivoPerdaDetalhe: "md", notas: "n", modulos: ["observa"],
 }, perm2, fatos);
 checa("pausado (legado) não vira coluna nenhuma", "pausado" in tudo.sets, false);
 checa("todas as colunas possíveis estão na lista conhecida", Object.keys(tudo.sets).every((k) => COLUNAS.has(k)), true);
-checa("e são todas as 13 da oportunidade", Object.keys(tudo.sets).length, 13);
+checa("escopo e produto_id (removidos) não voltam", "escopo" in tudo.sets || "produto_id" in tudo.sets, false);
+checa("e são todas as 23 da oportunidade", Object.keys(tudo.sets).length, 23);
+checa("módulos da área nova", tudo.modulos, ["observa"]);
 
 console.log("\n6. as mensagens de erro são as mesmas de antes da refatoração");
 // Extrai todo `err("...")` das rotas como estavam no commit anterior à extração do núcleo e

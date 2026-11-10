@@ -1,36 +1,47 @@
 // Importação em lote de oportunidades vindas de planilha.
 //
-// A planilha é lida no NAVEGADOR e chega aqui como JSON — o que evita toda a plumbing de
-// upload sem abrir mão de nada, porque o servidor não confia no que recebe de qualquer
-// forma: cada linha é revalidada, a permissão é checada por área, e o produto tem de
-// pertencer àquela área.
+// A planilha é lida no NAVEGADOR e chega aqui como JSON (`LinhaImportada`). O servidor não
+// confia no que recebe: cada linha passa pelo MESMO núcleo da interface e do MCP
+// (`criarOportunidade` / `atualizarOportunidade`), com a mesma validação, a mesma permissão
+// por área e a auditoria na mesma transação.
 //
-// Deduplicação por nome da conta normalizado: reimportar a mesma planilha atualiza os cards
-// em vez de duplicá-los, que é o comportamento esperado de uma planilha que é reexportada
-// toda semana.
+// O que a planilha traz como TEXTO e o sistema guarda como cadastro é resolvido aqui:
+//   - Dono: vira a pessoa cadastrada quando o nome casa com exatamente uma; o texto fica
+//     sempre (é o que o card mostra quando não há pessoa).
+//   - Quem resolve o blocker: idem; se não casar, o nome vai junto do texto do blocker.
+//   - Origem: casa pelo rótulo do cadastro; desconhecida vai para as observações.
+//   - Módulos: casam com os produtos DA ÁREA pelo nome; o que não casar volta como aviso.
+//
+// Cada linha é uma transação: uma linha recusada não desfaz as outras, e aparece em
+// `ignoradas` com o motivo. Deduplicação pelo nome da conta normalizado, dentro da área.
 
 import { getDb } from "@/lib/db";
 import { requireCtx } from "@/lib/perms";
 import { json, err } from "@/lib/http";
 import { registrar } from "@/lib/log";
-import { ESTAGIO_INICIAL, STAGE_KEYS, formatarRef, normalizarConta } from "@/lib/domain";
+import { chavesDoResponsavel, normalizarConta, normalizarTexto, type Pessoa } from "@/lib/domain";
+import { chaveDeModulo, type LinhaImportada } from "@/lib/planilha";
+import { ehFalha, LIMITES } from "@/lib/ops/comum";
+import { atualizarOportunidade, criarOportunidade } from "@/lib/ops/oportunidades";
 
-type Linha = {
-  conta?: string;
-  escopo?: string;
-  estagio?: string;
-  situacao?: string;
-  proximoPasso?: string;
-  contato?: string;
-  responsavelTexto?: string;
-  produtoId?: string | null;
-  /** Legado: "Em pausa" virou o estágio On hold. Se vier, a linha entra em On hold. */
-  pausado?: boolean;
-};
-
-type Body = { area?: string; linhas?: Linha[] };
+type Body = { area?: string; linhas?: Partial<LinhaImportada>[] };
 
 const LIMITE = 500;
+
+const txt = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+const lista = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
+
+/** A pessoa que o texto nomeia, quando é exatamente uma. */
+function pessoaDoTexto(texto: string, pessoas: Pessoa[]): number | null {
+  if (!texto) return null;
+  const chaves = chavesDoResponsavel({ responsavelId: null, responsavelTexto: texto }, pessoas);
+  if (chaves.length !== 1 || !chaves[0].startsWith("u:")) return null;
+  return Number(chaves[0].slice(2));
+}
+
+function juntar(base: string, extra: string, max: number): string {
+  return (base ? `${base} · ${extra}` : extra).slice(0, max);
+}
 
 export async function POST(req: Request) {
   const ctx = await requireCtx();
@@ -53,95 +64,135 @@ export async function POST(req: Request) {
 
   const sql = await getDb();
 
-  // Produtos válidos para esta área, resolvidos uma vez.
-  const produtos = await sql<{ id: string }[]>`SELECT id FROM produtos WHERE area = ${area}`;
-  const produtosValidos = new Set(produtos.map((p) => p.id));
+  // Cadastros resolvidos uma vez para o arquivo inteiro.
+  const [pessoas, produtos, origens, existentes] = await Promise.all([
+    sql<Pessoa[]>`SELECT id, nome FROM users`,
+    sql<{ id: string; label: string }[]>`SELECT id, label FROM produtos WHERE area = ${area}`,
+    sql<{ id: string; label: string; ativo: boolean }[]>`SELECT id, label, ativo FROM origens`,
+    sql<{ id: number; conta: string }[]>`SELECT id, conta FROM deals WHERE area = ${area}`,
+  ]);
+  const pessoasLista = [...pessoas];
+  const produtoPorChave = new Map(produtos.map((p) => [chaveDeModulo(p.label), p.id]));
+  for (const p of produtos) produtoPorChave.set(chaveDeModulo(p.id), p.id);
+  const origemPorChave = new Map<string, string>();
+  for (const o of origens) {
+    if (!o.ativo) continue;
+    origemPorChave.set(normalizarTexto(o.label), o.id);
+    origemPorChave.set(normalizarTexto(o.id), o.id);
+  }
+  const porConta = new Map(existentes.map((d) => [normalizarConta(d.conta), d.id]));
 
-  // Índice das contas que já existem NESTA área, para decidir criar ou atualizar.
-  const existentes = await sql<{ id: number; ref: string; conta: string }[]>`
-    SELECT id, ref, conta FROM deals WHERE area = ${area}
-  `;
-  const porConta = new Map(existentes.map((d) => [normalizarConta(d.conta), d]));
-
+  const autor = { userId: ctx.user.userId, origem: null, concessaoId: null };
   let criadas = 0;
   let atualizadas = 0;
   const ignoradas: { linha: number; motivo: string }[] = [];
+  const avisos: { linha: number; aviso: string }[] = [];
 
   for (const [i, l] of linhas.entries()) {
-    const conta = String(l.conta ?? "").trim();
+    const n = i + 1;
+    const conta = txt(l.conta);
     if (!conta) {
-      ignoradas.push({ linha: i + 1, motivo: "sem nome de conta" });
+      ignoradas.push({ linha: n, motivo: "sem nome de conta" });
       continue;
     }
 
-    const estagio = l.pausado ? "on_hold" : String(l.estagio ?? ESTAGIO_INICIAL);
-    if (!STAGE_KEYS.includes(estagio)) {
-      ignoradas.push({ linha: i + 1, motivo: `estágio inválido (${estagio})` });
-      continue;
-    }
-
-    let produtoId: string | null = null;
-    if (l.produtoId) {
-      if (!produtosValidos.has(l.produtoId)) {
-        ignoradas.push({ linha: i + 1, motivo: `produto não pertence a ${ctx.labelArea(area)}` });
-        continue;
+    // Módulos: só os que existem nesta área; o resto vira aviso, não recusa.
+    const modulos: string[] = [];
+    for (const nome of lista(l.modulos)) {
+      const id = produtoPorChave.get(chaveDeModulo(nome));
+      if (id) {
+        if (!modulos.includes(id)) modulos.push(id);
+      } else {
+        avisos.push({ linha: n, aviso: `${conta}: módulo "${nome}" não cadastrado em ${ctx.labelArea(area)}` });
       }
-      produtoId = l.produtoId;
     }
 
-    const campos = {
-      escopo: String(l.escopo ?? "").trim().slice(0, 300),
-      situacao: String(l.situacao ?? "").trim().slice(0, 4000),
-      proximo: String(l.proximoPasso ?? "").trim().slice(0, 2000),
-      contato: String(l.contato ?? "").trim().slice(0, 300),
-      responsavel: String(l.responsavelTexto ?? "").trim().slice(0, 200),
+    let notas = txt(l.notas);
+    const origemTexto = txt(l.origem);
+    let origemId: string | null = null;
+    if (origemTexto) {
+      origemId = origemPorChave.get(normalizarTexto(origemTexto)) ?? null;
+      if (!origemId) notas = juntar(notas, `Origem na planilha: ${origemTexto}`, LIMITES.notas);
+    }
+
+    let blocker = txt(l.blocker);
+    const blockerDonoTexto = txt(l.blockerDono);
+    const blockerDonoId = pessoaDoTexto(blockerDonoTexto, pessoasLista);
+    if (blockerDonoTexto && blockerDonoId === null) {
+      blocker = juntar(blocker, `resolve: ${blockerDonoTexto}`, LIMITES.blocker);
+    }
+
+    const responsavelTexto = txt(l.responsavelTexto);
+    const campos: Record<string, unknown> = {
+      estagio: txt(l.estagio) || undefined,
+      situacao: txt(l.situacao),
+      proximoPasso: txt(l.proximoPasso),
+      proximoPassoEm: l.proximoPassoEm || null,
+      contato: txt(l.contato),
+      contatoOperacional: txt(l.contatoOperacional),
+      responsavelTexto,
+      responsavelId: pessoaDoTexto(responsavelTexto, pessoasLista),
+      ponte: txt(l.ponte),
+      origemId,
+      dor: txt(l.dor),
+      modulos,
+      erp: txt(l.erp),
+      aceAws: l.aceAws === true,
+      ultimaInteracao: l.ultimaInteracao || null,
+      blocker,
+      blockerTipo: l.blockerTipo || null,
+      blockerDonoId,
+      motivoPerda: l.motivoPerda || null,
+      motivoPerdaDetalhe: txt(l.motivoPerdaDetalhe),
+      notas,
     };
+    // Valor vazio na planilha não apaga um valor já preenchido no sistema.
+    if (typeof l.valorReais === "number" && Number.isFinite(l.valorReais)) campos.valorReais = l.valorReais;
 
-    const jaExiste = porConta.get(normalizarConta(conta));
+    const aba = txt(l.aba) || "planilha";
+    const anteriores = lista(l.situacaoAnterior).map((s) => s.trim()).filter(Boolean);
+    const existente = porConta.get(normalizarConta(conta));
 
-    if (jaExiste) {
-      await sql`
-        UPDATE deals SET
-          escopo = ${campos.escopo}, estagio = ${estagio}, situacao = ${campos.situacao},
-          proximo_passo = ${campos.proximo}, contato = ${campos.contato},
-          responsavel_texto = ${campos.responsavel}, produto_id = ${produtoId},
-          atualizado_em = now()
-        WHERE id = ${jaExiste.id}
-      `;
-      await registrar(sql, {
-        actorUserId: ctx.user.userId,
+    const r = await sql.begin(async (tx) => {
+      const feito = existente
+        ? await atualizarOportunidade(tx, ctx, existente, campos, autor)
+        : await criarOportunidade(tx, ctx, { ...campos, conta, area }, autor);
+      if (ehFalha(feito)) return feito;
+
+      await registrar(tx, {
+        actorUserId: autor.userId,
         area,
-        entidade: jaExiste.ref,
+        entidade: feito.ref,
         campo: "importacao",
         de: null,
-        para: conta,
-        texto: `Atualizou ${conta} a partir de planilha importada`,
+        para: aba,
+        texto: `${existente ? "Atualizou" : "Criou"} ${conta} a partir da planilha (aba ${aba})`,
       });
-      atualizadas++;
+      // As anotações antigas da coluna Situação não viram campo: entram UMA vez no histórico,
+      // na criação — reimportar a mesma planilha não pode repeti-las a cada semana.
+      if (!existente && anteriores.length) {
+        await registrar(tx, {
+          actorUserId: autor.userId,
+          area,
+          entidade: feito.ref,
+          campo: "situacao_anterior",
+          de: null,
+          para: null,
+          texto: `Anotações anteriores da planilha:\n${anteriores.join("\n")}`.slice(0, 8000),
+        });
+      }
+      return { ok: true as const, ref: feito.ref, id: "id" in feito ? feito.id : existente! };
+    });
+
+    if (ehFalha(r)) {
+      ignoradas.push({ linha: n, motivo: `${conta}: ${r.erro}` });
       continue;
     }
-
-    const [{ n }] = await sql<{ n: string }[]>`SELECT nextval('deals_ref_seq') AS n`;
-    const ref = formatarRef("oportunidade", n);
-    await sql`
-      INSERT INTO deals (ref, conta, escopo, area, estagio, valor_centavos, proximo_passo,
-                         situacao, contato, responsavel_texto, produto_id)
-      VALUES (${ref}, ${conta}, ${campos.escopo}, ${area}, ${estagio}, 0, ${campos.proximo},
-              ${campos.situacao}, ${campos.contato}, ${campos.responsavel}, ${produtoId})
-    `;
-    await registrar(sql, {
-      actorUserId: ctx.user.userId,
-      area,
-      entidade: ref,
-      campo: "criacao",
-      de: null,
-      para: conta,
-      texto: `Criou ${conta} a partir de planilha importada`,
-    });
-    // A conta entra no índice para o resto do mesmo arquivo: planilha com a mesma empresa
-    // repetida atualiza a primeira em vez de criar duas.
-    porConta.set(normalizarConta(conta), { id: 0, ref, conta });
-    criadas++;
+    // A conta entra no índice para o resto do arquivo: a mesma empresa repetida atualiza a
+    // primeira em vez de criar duas.
+    porConta.set(normalizarConta(conta), r.id);
+    if (existente) atualizadas++;
+    else criadas++;
   }
 
   // Um registro-resumo além dos individuais, para a auditoria mostrar a importação como um
@@ -158,5 +209,5 @@ export async function POST(req: Request) {
     }`,
   });
 
-  return json({ ok: true, criadas, atualizadas, ignoradas });
+  return json({ ok: true, criadas, atualizadas, ignoradas, avisos });
 }

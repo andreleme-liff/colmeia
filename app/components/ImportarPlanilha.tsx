@@ -13,12 +13,12 @@ import { useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import { Button, Field, Select } from "./ds";
 import { C, GHOST_FIX, MONO, eyebrow } from "./tokens";
-import { STAGES, areaOf, normalizarConta, normalizarTexto, porTexto, slugificar, statusLabel } from "@/lib/domain";
-import { lerAba, rendeLinhas, type Aba, type LinhaAtividadeImportada } from "@/lib/planilha";
+import { STAGES, areaOf, brl, normalizarConta, normalizarTexto, porTexto, statusLabel } from "@/lib/domain";
+import { chaveDeModulo, lerAba, rendeLinhas, type Aba, type LinhaAtividadeImportada } from "@/lib/planilha";
 import type { Activity, Deal, LinhaImport, ProdutoCadastro } from "./api";
 import { useFecharNoFundo } from "./views";
 
-const COLS_DEAL = "1.5fr 1fr 1.1fr 2fr 0.7fr";
+const COLS_DEAL = "1.4fr 1.3fr 1.1fr 0.9fr 0.8fr 0.6fr";
 const COLS_ATIV = "2.4fr 0.9fr 1.6fr 0.7fr";
 const celaTexto = {
   padding: "10px 12px",
@@ -76,22 +76,26 @@ export default function ImportarPlanilha({
     [abas, escolhidas]
   );
 
-  /** Setores das abas escolhidas que ainda não existem como produto nesta área. */
-  const setoresFaltando = useMemo(() => {
-    const existentes = new Set(produtosDaArea.map((p) => p.id));
+  /**
+   * Módulos citados nas abas escolhidas que ainda não existem como produto nesta área. O
+   * casamento é pela chave sem espaço nem pontuação: "Lifftax Starter" da planilha é o
+   * "LIFF Tax Starter" do cadastro. Sem cadastrar, o módulo é ignorado na importação.
+   */
+  const modulosFaltando = useMemo(() => {
+    const existentes = new Set(produtosDaArea.map((p) => chaveDeModulo(p.label)));
     const faltam = new Map<string, string>();
     for (const aba of abasAtivas) {
       if (aba.tipo !== "oportunidades") continue;
       for (const l of aba.linhas) {
-        if (!l.setorOriginal) continue;
-        const id = slugificar(l.setorOriginal);
-        if (id && !existentes.has(id)) faltam.set(id, l.setorOriginal);
+        for (const m of l.modulos) {
+          const k = chaveDeModulo(m);
+          if (k && !existentes.has(k)) faltam.set(k, m);
+        }
       }
     }
-    return [...faltam.entries()]
-      .map(([id, label]) => ({ id, label }))
-      .sort((a, b) => porTexto(a.label, b.label));
+    return [...faltam.entries()].map(([id, label]) => ({ id, label })).sort((a, b) => porTexto(a.label, b.label));
   }, [abasAtivas, produtosDaArea]);
+  const nomeDoModulo = (m: string) => produtosDaArea.find((p) => chaveDeModulo(p.label) === chaveDeModulo(m))?.label;
 
   /**
    * Lê TODAS as abas do arquivo e classifica cada uma pelo cabeçalho: quem tem coluna de
@@ -370,7 +374,7 @@ export default function ImportarPlanilha({
                 })}
               </div>
 
-              {setoresFaltando.length > 0 && (
+              {modulosFaltando.length > 0 && (
                 <div
                   style={{
                     border: `1px solid ${C.warning}`,
@@ -381,12 +385,12 @@ export default function ImportarPlanilha({
                   }}
                 >
                   <div style={{ fontSize: 13, lineHeight: 1.6, color: C.body }}>
-                    A planilha traz {setoresFaltando.length === 1 ? "um setor que ainda não é" : "setores que ainda não são"}{" "}
-                    produto em {areaOf(area).label}. Sem cadastrar, {setoresFaltando.length === 1 ? "ele será ignorado" : "eles serão ignorados"} e os
-                    cards entram sem produto.
+                    A planilha traz {modulosFaltando.length === 1 ? "um módulo que ainda não é" : "módulos que ainda não são"}{" "}
+                    produto em {areaOf(area).label}. Sem cadastrar, {modulosFaltando.length === 1 ? "ele será ignorado" : "eles serão ignorados"} nos
+                    cards.
                   </div>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    {setoresFaltando.map((s) => (
+                    {modulosFaltando.map((s) => (
                       <Button
                         key={s.id}
                         variant="outline"
@@ -420,7 +424,7 @@ export default function ImportarPlanilha({
                       >
                         {(aba.tipo === "atividades"
                           ? ["ATIVIDADE", "STATUS", "SITUAÇÃO", ""]
-                          : ["CONTA", "PRODUTO", "ESTÁGIO", "SITUAÇÃO", ""]
+                          : ["CONTA", "MÓDULOS", "ESTÁGIO", "DONO", "VALOR", ""]
                         ).map((h, i) => (
                           <div key={i} style={{ padding: "10px 12px", ...eyebrow(10, C.faint) }}>
                             {h}
@@ -455,7 +459,6 @@ export default function ImportarPlanilha({
                             </div>
                           ))
                         : aba.linhas.map((l, i) => {
-                            const prod = produtosDaArea.find((p) => p.id === l.produtoId);
                             return (
                               <div
                                 key={i}
@@ -468,8 +471,15 @@ export default function ImportarPlanilha({
                                 }}
                               >
                                 <div style={{ padding: "10px 12px", fontSize: 13, color: C.ink }}>{l.conta}</div>
-                                <div style={{ padding: "10px 12px", fontSize: 12, color: prod ? C.body : C.ghost }}>
-                                  {prod ? prod.label : l.setorOriginal ? `${l.setorOriginal} (sem cadastro)` : "—"}
+                                <div style={{ padding: "10px 12px", fontSize: 12, color: C.body, lineHeight: 1.4 }}>
+                                  {l.modulos.length
+                                    ? l.modulos.map((m, k) => (
+                                        <span key={k} style={{ color: nomeDoModulo(m) ? C.body : C.ghost }}>
+                                          {k > 0 && " · "}
+                                          {nomeDoModulo(m) ?? `${m} (sem cadastro)`}
+                                        </span>
+                                      ))
+                                    : <span style={{ color: C.ghost }}>—</span>}
                                 </div>
                                 <div style={{ padding: "6px 8px" }}>
                                   <select
@@ -492,7 +502,12 @@ export default function ImportarPlanilha({
                                     ))}
                                   </select>
                                 </div>
-                                <div style={celaTexto}>{l.situacao || "—"}</div>
+                                <div style={{ padding: "10px 12px", fontSize: 12, color: l.responsavelTexto ? C.body : C.ghost }}>
+                                  {l.responsavelTexto || "—"}
+                                </div>
+                                <div style={{ padding: "10px 12px", fontFamily: MONO, fontSize: 12, color: l.valorReais ? C.body : C.ghost }}>
+                                  {l.valorReais ? brl(Math.round(l.valorReais * 100)) : "—"}
+                                </div>
                                 <div style={{ padding: "10px 12px", display: "flex", gap: 6, flexWrap: "wrap" }}>
                                   <span style={eyebrow(9, l.existente ? C.info : C.success, "0.1em")}>
                                     {l.existente ? "atualiza" : "nova"}
@@ -523,18 +538,14 @@ export default function ImportarPlanilha({
                 // rotas e deduplicação diferentes, mas agrupá-las por tipo deixa a
                 // auditoria com um resumo por tipo em vez de um por aba.
                 onImportar(area, {
+                  // A linha vai inteira, com nomes em texto: o servidor casa dono, origem e
+                  // módulos com os cadastros — a regra de quem é quem mora num lugar só.
                   deals: abasAtivas
                     .flatMap((a) => (a.tipo === "oportunidades" ? a.linhas : []))
-                    .map((l) => ({
-                      conta: l.conta,
-                      escopo: l.escopo,
-                      estagio: l.estagio,
-                      situacao: l.situacao,
-                      proximoPasso: l.proximoPasso,
-                      contato: l.contato,
-                      responsavelTexto: l.responsavelTexto,
-                      produtoId: l.produtoId,
-                    })),
+                    .map(({ existente: _existente, ...l }) => {
+                      void _existente;
+                      return l;
+                    }),
                   atividades: abasAtivas
                     .flatMap((a) => (a.tipo === "atividades" ? a.linhas : []))
                     .map((l) => ({

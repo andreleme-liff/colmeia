@@ -1,6 +1,8 @@
 // Cliente da API. Todo erro chega como { error } e vira Error com a mensagem em pt-BR;
 // 401 devolve a pessoa para o login.
 
+import type { LinhaImportada } from "@/lib/planilha";
+
 export type Activity = {
   id: number;
   ref: string;
@@ -31,7 +33,6 @@ export type Deal = {
   id: number;
   ref: string;
   conta: string;
-  escopo: string;
   area: string;
   estagio: string;
   valorCentavos: number;
@@ -41,8 +42,8 @@ export type Deal = {
   proximoPasso: string;
   /** Onde a conversa está agora. O histórico do que já foi vive no audit_log. */
   situacao: string;
+  /** Contato / sponsor: quem decide no cliente. */
   contato: string;
-  produtoId: string | null;
   /** Quando o próximo passo acontece. Nulo = sem data; o cronograma assume o fim da semana. */
   proximoPassoEm: string | null;
   /** Oportunidade já registrada no ACE do AWS Partner Central. */
@@ -50,20 +51,32 @@ export type Deal = {
   /** ISO da última mexida no card — ou da criação, se nunca foi editado. */
   atualizadoEm: string;
   podeEditar: boolean;
+  origemId: string | null;
+  /** Quem abre a porta no cliente (parceiro, indicação). */
+  ponte: string;
+  contatoOperacional: string;
+  dor: string;
+  erp: string;
+  /** Último contato com o cliente — não a última edição do card. */
+  ultimaInteracao: string | null;
+  blocker: string;
+  blockerTipo: string | null;
+  /** Quem, do lado da LIFF, resolve o blocker. */
+  blockerDonoId: number | null;
+  blockerDono: string | null;
+  motivoPerda: string | null;
+  motivoPerdaDetalhe: string;
+  notas: string;
+  /** Ids dos produtos da área marcados como módulos de interesse. */
+  modulos: string[];
 };
+
+export type Origem = { id: string; label: string; ativo: boolean };
 
 export type ProdutoCadastro = { id: string; label: string; area: string; ativo: boolean };
 
-export type LinhaImport = {
-  conta: string;
-  escopo: string;
-  estagio: string;
-  situacao: string;
-  proximoPasso: string;
-  contato: string;
-  responsavelTexto: string;
-  produtoId: string | null;
-};
+/** Uma oportunidade da planilha como vai para o servidor — ver `LinhaImportada`. */
+export type LinhaImport = LinhaImportada;
 
 export type LinhaImportAtividade = {
   titulo: string;
@@ -116,6 +129,7 @@ export type State = {
   areasVisiveis: string[];
   areas: AreaCadastro[];
   produtos: ProdutoCadastro[];
+  origens: Origem[];
   isAdmin: boolean;
   /** Domínio aceito no login — vem do servidor, alimenta o cadastro de pessoa. */
   dominioLogin: string;
@@ -144,7 +158,6 @@ export type NovaAtividade = {
 
 export type NovaOportunidade = {
   conta: string;
-  escopo: string;
   area: string;
   estagio: string;
   valorReais: number;
@@ -153,9 +166,21 @@ export type NovaOportunidade = {
   situacao: string;
   contato: string;
   responsavelTexto: string;
-  produtoId: string | null;
   proximoPassoEm: string | null;
   aceAws: boolean;
+  origemId: string | null;
+  ponte: string;
+  contatoOperacional: string;
+  dor: string;
+  erp: string;
+  ultimaInteracao: string | null;
+  blocker: string;
+  blockerTipo: string | null;
+  blockerDonoId: number | null;
+  motivoPerda: string | null;
+  motivoPerdaDetalhe: string;
+  notas: string;
+  modulos: string[];
 };
 
 async function req<T>(url: string, opts: RequestInit = {}): Promise<T> {
@@ -227,6 +252,12 @@ export const api = {
   criarPessoa: (dados: { nome: string; email: string; papel: string }) =>
     req<{ ok: boolean; id: number }>("/api/users", { method: "POST", body: JSON.stringify(dados) }),
 
+  criarOrigem: (dados: { label: string }) =>
+    req<{ ok: boolean; id: string }>("/api/origens", { method: "POST", body: JSON.stringify(dados) }),
+
+  alterarOrigem: (id: string, patch: { label?: string; ativo?: boolean }) =>
+    req<{ ok: boolean }>(`/api/origens/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(patch) }),
+
   criarProduto: (dados: { label: string; area: string }) =>
     req<{ ok: boolean; id: string }>("/api/produtos", { method: "POST", body: JSON.stringify(dados) }),
 
@@ -236,7 +267,13 @@ export const api = {
   excluirProduto: (id: string) => req<{ ok: boolean }>(`/api/produtos/${id}`, { method: "DELETE" }),
 
   importarOportunidades: (area: string, linhas: LinhaImport[]) =>
-    req<{ ok: boolean; criadas: number; atualizadas: number; ignoradas: { linha: number; motivo: string }[] }>(
+    req<{
+      ok: boolean;
+      criadas: number;
+      atualizadas: number;
+      ignoradas: { linha: number; motivo: string }[];
+      avisos: { linha: number; aviso: string }[];
+    }>(
       "/api/import/deals",
       { method: "POST", body: JSON.stringify({ area, linhas }) }
     ),

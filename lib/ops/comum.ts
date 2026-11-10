@@ -51,7 +51,9 @@ export type Fatos = {
    *  "existe", não "está ativa", e o núcleo não muda isso por conta própria. */
   pessoas: Map<number, string>;
   /** Todo produto: para conferir que pertence à área (final) do registro. */
-  produtos: { id: string; area: string }[];
+  produtos: { id: string; area: string; label?: string }[];
+  /** Cadastro de origens da oportunidade (Base Fius, AWS, Evento…). */
+  origens?: { id: string; label: string; ativo: boolean }[];
   /** Toda oportunidade: para ligar uma tarefa a ela, por id (tela) ou referência (MCP). */
   oportunidades: { id: number; ref: string; conta: string; area: string }[];
 };
@@ -132,4 +134,12 @@ export const LIMITES = {
   situacao: 4000,
   contato: 300,
   responsavelTexto: 200,
+  ponte: 300,
+  contatoOperacional: 300,
+  dor: 300,
+  erp: 100,
+  blocker: 300,
+  motivoPerdaDetalhe: 300,
+  notas: 2000,
+  modulos: 20,
 } as const;

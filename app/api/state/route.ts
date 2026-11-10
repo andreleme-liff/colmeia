@@ -89,22 +89,30 @@ export async function GET() {
     `,
     sql<
       {
-        id: number; ref: string; conta: string; escopo: string; area: string; estagio: string;
+        id: number; ref: string; conta: string; area: string; estagio: string;
         valor_centavos: string; responsavel: string | null; responsavel_user_id: number | null;
         proximo_passo: string; situacao: string; contato: string; responsavel_texto: string;
-        produto_id: string | null; mexido_em: Date; proximo_passo_em: Date | null;
-        ace_aws: boolean;
+        mexido_em: Date; proximo_passo_em: Date | null; ace_aws: boolean;
+        origem_id: string | null; ponte: string; contato_operacional: string; dor: string; erp: string;
+        ultima_interacao: Date | null; blocker: string; blocker_tipo: string | null;
+        blocker_dono_id: number | null; blocker_dono: string | null; motivo_perda: string | null;
+        motivo_perda_detalhe: string; notas: string; modulos: string[];
       }[]
     >`
-      SELECT d.id, d.ref, d.conta, d.escopo, d.area, d.estagio, d.valor_centavos,
+      SELECT d.id, d.ref, d.conta, d.area, d.estagio, d.valor_centavos,
              u.nome AS responsavel, d.responsavel_user_id, d.proximo_passo,
-             d.situacao, d.contato, d.responsavel_texto, d.produto_id, d.proximo_passo_em,
-             d.ace_aws,
+             d.situacao, d.contato, d.responsavel_texto, d.proximo_passo_em, d.ace_aws,
+             d.origem_id, d.ponte, d.contato_operacional, d.dor, d.erp, d.ultima_interacao,
+             d.blocker, d.blocker_tipo, d.blocker_dono_id, bd.nome AS blocker_dono,
+             d.motivo_perda, d.motivo_perda_detalhe, d.notas,
+             COALESCE((SELECT array_agg(m.produto_id ORDER BY m.produto_id) FROM oportunidade_modulos m
+                       WHERE m.deal_id = d.id), '{}') AS modulos,
              -- Card nunca editado tem atualizado_em nulo; nesse caso a idade conta da criação,
              -- que é o que faz sentido para "está parado há quanto tempo".
              COALESCE(d.atualizado_em, d.criado_em) AS mexido_em
       FROM deals d
       LEFT JOIN users u ON u.id = d.responsavel_user_id
+      LEFT JOIN users bd ON bd.id = d.blocker_dono_id
       WHERE d.area = ANY(${areas})
       ORDER BY d.ref ASC
     `,
@@ -137,6 +145,10 @@ export async function GET() {
   `;
 
   // Produtos de todas as áreas visíveis. O formulário só oferece os da área escolhida.
+  const origens = await sql<{ id: string; label: string; ativo: boolean }[]>`
+    SELECT id, label, ativo FROM origens ORDER BY ordem, label
+  `;
+
   const produtos = await sql<{ id: string; label: string; area: string; ativo: boolean }[]>`
     SELECT id, label, area, ativo FROM produtos WHERE area = ANY(${areas}) ORDER BY ordem ASC, id ASC
   `;
@@ -188,6 +200,8 @@ export async function GET() {
     sheetsConectado: ctx.user.temSheets,
     // A tela de Conexões só ensina a conectar quando o MCP está ligado neste ambiente.
     mcpHabilitado: lerConfig(process.env).habilitado,
+    // Cadastro de origens: todas (as inativas também, para o card mostrar a que já estava).
+    origens: [...origens],
     activities: atividades.map((a) => ({
       id: a.id,
       ref: a.ref,
@@ -213,7 +227,6 @@ export async function GET() {
       id: d.id,
       ref: d.ref,
       conta: d.conta,
-      escopo: d.escopo,
       area: d.area,
       estagio: d.estagio,
       valorCentavos: Number(d.valor_centavos),
@@ -223,9 +236,22 @@ export async function GET() {
       proximoPasso: d.proximo_passo,
       situacao: d.situacao,
       contato: d.contato,
-      produtoId: d.produto_id,
       proximoPassoEm: d.proximo_passo_em ? d.proximo_passo_em.toISOString().slice(0, 10) : null,
       aceAws: d.ace_aws,
+      origemId: d.origem_id,
+      ponte: d.ponte,
+      contatoOperacional: d.contato_operacional,
+      dor: d.dor,
+      erp: d.erp,
+      ultimaInteracao: d.ultima_interacao ? d.ultima_interacao.toISOString().slice(0, 10) : null,
+      blocker: d.blocker,
+      blockerTipo: d.blocker_tipo,
+      blockerDonoId: d.blocker_dono_id,
+      blockerDono: d.blocker_dono,
+      motivoPerda: d.motivo_perda,
+      motivoPerdaDetalhe: d.motivo_perda_detalhe,
+      notas: d.notas,
+      modulos: d.modulos,
       atualizadoEm: d.mexido_em.toISOString(),
       podeEditar: ctx.podeEditar(d.area),
     })),

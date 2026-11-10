@@ -7,12 +7,12 @@
 import { useState, type CSSProperties, type MouseEvent, type ReactNode, useRef } from "react";
 import { Button, Field, Input, Select, Switch } from "./ds";
 import { C, GHOST_FIX, MONO, SANS, dot, eyebrow, mesh, prioColor, statusColor } from "./tokens";
-import type { Activity, AreaCadastro, Deal, LogEntry, Pessoa } from "./api";
+import type { Activity, AreaCadastro, Deal, LogEntry, NovaOportunidade, Origem, Pessoa } from "./api";
 import SeletorArea, { type OpcaoArea } from "./SeletorArea";
 import Historico from "./Historico";
 import ViaConexao from "./ViaConexao";
 import {
-  ADMIN_CARDS, ESTAGIO_INICIAL, FUNIL, PAPEIS, STAGES, STATUS, areaOf, brl, ddmm, porTexto, stamp, statusLabel, todasAreas,
+  ADMIN_CARDS, BLOCKER_TIPOS, ERP_SUGESTOES, ESTAGIO_INICIAL, FUNIL, MOTIVOS_PERDA, PAPEIS, STAGES, STATUS, STATUS_FUP_LABEL, areaOf, blockerTipoLabel, motivoPerdaLabel, statusFup, brl, ddmm, porTexto, stamp, statusLabel, todasAreas,
 } from "@/lib/domain";
 
 /* =========================================================
@@ -234,15 +234,44 @@ export function Overview({
    ========================================================= */
 export type ColunaDeal = { key: string; label: string; total: string; cards: Deal[] };
 
+/** Primeiro nome do dono: a pessoa cadastrada, ou o texto livre quando não há cadastro. */
+function primeiroNome(d: Deal): string {
+  const nome = d.responsavelId ? d.responsavel : d.responsavelTexto || d.responsavel;
+  return (nome || "—").split(/[\s/]+/)[0] || "—";
+}
+
+/** Próximo passo cortado para o card fechado; o texto inteiro fica no card aberto. */
+function resumoPasso(t: string): string {
+  return t.length > 60 ? `${t.slice(0, 58).trimEnd()}…` : t;
+}
+
+/**
+ * A data do próximo passo com a cor do status do FUP — o que a coluna "Status FUP" da planilha
+ * calculava, aqui calculado na hora: atrasado em vermelho, próximos 7 dias em âmbar.
+ */
+function DataFup({ estagio, data }: { estagio: string; data: string | null }) {
+  const st = statusFup(estagio, data);
+  if (st === null) return data ? <span style={{ color: C.ghost }}> · {ddmm(data)}</span> : null;
+  const cor = st === "atrasado" ? C.error : st === "proximos7" ? C.warning : st === "sem_data" ? C.ghost : C.faint;
+  return (
+    <span style={{ color: cor }} title={STATUS_FUP_LABEL[st]}>
+      {" · "}
+      {data ? ddmm(data) : "sem data"}
+    </span>
+  );
+}
+
 export function Comercial({
   colunas,
   produtos,
+  origens = [],
   onMover,
   onSoltar,
   onAbrir,
 }: {
   colunas: ColunaDeal[];
   produtos: { id: string; label: string }[];
+  origens?: Origem[];
   onMover: (id: number, dir: 1 | -1) => void;
   /** Arrastar manda o estágio de destino; as setas mandam a direção. Ver o comentário abaixo. */
   onSoltar: (id: number, estagio: string) => void;
@@ -318,36 +347,52 @@ export function Comercial({
                   </span>
                 </div>
 
-                {/* Produto é o que se vende; a cor continua sendo a da área, para não haver
-                    duas dimensões cromáticas competindo no mesmo card. */}
-                {d.produtoId && (
-                  <div style={{ ...eyebrow(9, C.dust, "0.12em"), marginTop: 6 }}>
-                    {produtos.find((p) => p.id === d.produtoId)?.label ?? d.produtoId}
+                {/* O card fechado responde, de relance, o que a coluna pede. Em Prospecção ainda
+                    não há valor: mostra de onde veio e quem abre a porta. Em Lost, só o porquê.
+                    No resto do funil: o que se vende, quanto, de quem e o que trava. A situação
+                    (texto longo) fica no card aberto. */}
+                {d.estagio === "lost" ? (
+                  <div style={{ fontSize: 12, color: C.faint, marginTop: 6, lineHeight: 1.45 }}>
+                    {motivoPerdaLabel(d.motivoPerda) || "Motivo não informado"}
+                    {d.motivoPerdaDetalhe && <span style={{ color: C.ghost }}> · {d.motivoPerdaDetalhe}</span>}
                   </div>
+                ) : d.estagio === "prospeccao" ? (
+                  (d.origemId || d.ponte) && (
+                    <div style={{ fontSize: 12, color: C.faint, marginTop: 6, lineHeight: 1.45 }}>
+                      {[origens.find((o) => o.id === d.origemId)?.label, d.ponte && `via ${d.ponte}`].filter(Boolean).join(" · ")}
+                    </div>
+                  )
+                ) : (
+                  <>
+                    {/* Módulo é o que se vende; a cor continua sendo a da área, para não haver
+                        duas dimensões cromáticas competindo no mesmo card. */}
+                    {d.modulos.length > 0 && (
+                      <div style={{ ...eyebrow(9, C.dust, "0.08em"), marginTop: 6, lineHeight: 1.5 }}>
+                        {d.modulos.map((id) => produtos.find((p) => p.id === id)?.label ?? id).join(" · ")}
+                      </div>
+                    )}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
+                      <span style={{ fontFamily: MONO, fontSize: 13, color: cor }}>{d.valorCentavos ? brl(d.valorCentavos) : "—"}</span>
+                      <span style={eyebrow(10, C.faint, "0.1em")}>{primeiroNome(d)}</span>
+                    </div>
+                    {/* O que trava aparece no card fechado: é a pergunta da reunião semanal. */}
+                    {(d.blocker || d.blockerTipo) && (
+                      <div style={{ fontSize: 11, color: C.warning, marginTop: 8, lineHeight: 1.4 }} title={d.blockerDono ? `Resolve: ${d.blockerDono}` : undefined}>
+                        ▲ {[blockerTipoLabel(d.blockerTipo), d.blocker].filter(Boolean).join(" · ")}
+                      </div>
+                    )}
+                  </>
                 )}
-
-                {(d.situacao || d.escopo) && (
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: C.faint,
-                      marginTop: 6,
-                      lineHeight: 1.5,
-                      display: "-webkit-box",
-                      WebkitLineClamp: 3,
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden",
-                    }}
-                  >
-                    {d.situacao || d.escopo}
-                  </div>
-                )}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
-                  <span style={{ fontFamily: MONO, fontSize: 13, color: cor }}>{brl(d.valorCentavos)}</span>
-                  <span style={eyebrow(10, C.faint, "0.1em")}>{d.responsavel.split(" ")[0]}</span>
-                </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginTop: 10 }}>
-                  <span style={{ fontFamily: MONO, fontSize: 10, color: C.faint }}>{d.proximoPasso}</span>
+                  {d.estagio === "lost" ? (
+                    <span />
+                  ) : (
+                    <span style={{ fontFamily: MONO, fontSize: 10, color: C.faint, lineHeight: 1.45, minWidth: 0 }}>
+                      {resumoPasso(d.proximoPasso)}
+                      <DataFup estagio={d.estagio} data={d.proximoPassoEm} />
+                      {d.estagio === "prospeccao" && primeiroNome(d) !== "—" && <span style={{ color: C.ghost }}> · {primeiroNome(d)}</span>}
+                    </span>
+                  )}
                   {/* As setas ficam mesmo com o arraste: arrastar não existe em navegador de
                       celular, e sem elas o card ficaria imóvel no telefone. */}
                   {/* On hold e Lost não são casas do funil: a seta não tira o card de lá.
@@ -773,12 +818,15 @@ export const CAD_TABS = [
   { key: "pessoas", label: "pessoas" },
   { key: "produtos", label: "produtos" },
   { key: "areas", label: "áreas" },
+  // De onde vêm as oportunidades (Base Fius, AWS, Evento…) — o select do card comercial.
+  { key: "origens", label: "origens" },
 ] as const;
 
 const TITULO_NOVO: Record<string, string> = {
   pessoas: "NOVA PESSOA",
   produtos: "NOVO PRODUTO",
   areas: "NOVA VERTICAL",
+  origens: "NOVA ORIGEM",
 };
 
 export type LinhaCad = { key: string; a: string; b: string; c: string; abrir?: () => void };
@@ -1182,6 +1230,29 @@ function NovaPessoa({
 }
 
 /** Produto é o que se vende dentro de uma vertical. Sempre nasce preso a uma área. */
+function NovaOrigem({ salvando, onCriar }: { salvando: boolean; onCriar: (d: { label: string }) => void }) {
+  const [label, setLabel] = useState("");
+  return (
+    <>
+      <Field label="Nome da origem" required hint="Clique numa origem da lista para arquivá-la ou reativá-la.">
+        <Input placeholder="Parceiro XPTO" value={label} onChange={setLabel} />
+      </Field>
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={salvando || !label.trim()}
+        style={{ justifyContent: "center" }}
+        onClick={() => {
+          onCriar({ label: label.trim() });
+          setLabel("");
+        }}
+      >
+        {salvando ? "cadastrando…" : "cadastrar origem"}
+      </Button>
+    </>
+  );
+}
+
 function NovoProduto({
   salvando,
   areas,
@@ -1242,6 +1313,7 @@ export function Cadastros({
   dominio,
   onCriarPessoa,
   onCriarProduto,
+  onCriarOrigem,
 }: {
   tab: string;
   onTab: (k: string) => void;
@@ -1259,6 +1331,7 @@ export function Cadastros({
   dominio: string;
   onCriarPessoa: (d: { nome: string; email: string; papel: string }) => void;
   onCriarProduto: (d: { label: string; area: string }) => void;
+  onCriarOrigem: (d: { label: string }) => void;
 }) {
   return (
     <>
@@ -1336,6 +1409,8 @@ export function Cadastros({
               <NovaArea salvando={salvandoArea} onCriar={onCriarArea} />
             ) : tab === "pessoas" ? (
               <NovaPessoa salvando={salvandoArea} dominio={dominio} onCriar={onCriarPessoa} />
+            ) : tab === "origens" ? (
+              <NovaOrigem salvando={salvandoArea} onCriar={onCriarOrigem} />
             ) : (
               <NovoProduto salvando={salvandoArea} areas={areasEditaveis} onCriar={onCriarProduto} />
             )}
@@ -2410,31 +2485,20 @@ export function FormOportunidade({
   onFechar,
   tarefas = [],
   onAbrirTarefa,
+  origens = [],
 }: {
   areasEditaveis: { id: string; label: string }[];
   pessoas: OpcaoPessoa[];
+  /** Produtos da área — na oportunidade, são os módulos de interesse. */
   produtos: { id: string; label: string; area: string; ativo: boolean }[];
+  origens?: Origem[];
   salvando: boolean;
   erro: string | null;
   /** Ausente = criação. */
   inicial?: Deal;
   /** Só na edição. Ausente = sem permissão para excluir. */
   onExcluir?: () => void;
-  onSalvar: (d: {
-    conta: string;
-    escopo: string;
-    area: string;
-    estagio: string;
-    valorReais: number;
-    proximoPasso: string;
-    responsavelId: number | null;
-    situacao: string;
-    contato: string;
-    responsavelTexto: string;
-    produtoId: string | null;
-    proximoPassoEm: string | null;
-    aceAws: boolean;
-  }) => void;
+  onSalvar: (d: NovaOportunidade) => void;
   onFechar: () => void;
   /** Tarefas ligadas a esta oportunidade, já filtradas pelo que a pessoa enxerga. */
   tarefas?: { ref: string; titulo: string; status: string }[];
@@ -2442,31 +2506,49 @@ export function FormOportunidade({
 }) {
   const editando = !!inicial;
   const [conta, setConta] = useState(inicial?.conta ?? "");
-  const [escopo, setEscopo] = useState(inicial?.escopo ?? "");
   // Na edição vem a área do registro; na criação, em branco — ver NovaAtividade.
   const [area, setArea] = useState(inicial?.area ?? "");
   const [estagio, setEstagio] = useState<string>(inicial?.estagio ?? ESTAGIO_INICIAL);
   const [valor, setValor] = useState(inicial ? String(inicial.valorCentavos / 100) : "");
   const [proximo, setProximo] = useState(inicial?.proximoPasso ?? "");
   const [responsavel, setResponsavel] = useState<string>(
-    inicial ? String(pessoas.find((p) => p.nome === inicial.responsavel)?.id ?? "") : ""
+    inicial ? String(inicial.responsavelId ?? pessoas.find((p) => p.nome === inicial.responsavel)?.id ?? "") : ""
   );
   const [situacao, setSituacao] = useState(inicial?.situacao ?? "");
   const [contato, setContato] = useState(inicial?.contato ?? "");
   const [respTexto, setRespTexto] = useState(inicial?.responsavelTexto ?? "");
-  const [produtoId, setProdutoId] = useState(inicial?.produtoId ?? "");
   const [proximoEm, setProximoEm] = useState(inicial?.proximoPassoEm ?? "");
   const [aceAws, setAceAws] = useState(inicial?.aceAws ?? false);
+  const [origemId, setOrigemId] = useState(inicial?.origemId ?? "");
+  const [ponte, setPonte] = useState(inicial?.ponte ?? "");
+  const [contatoOp, setContatoOp] = useState(inicial?.contatoOperacional ?? "");
+  const [dor, setDor] = useState(inicial?.dor ?? "");
+  const [erp, setErp] = useState(inicial?.erp ?? "");
+  const [ultimaInteracao, setUltimaInteracao] = useState(inicial?.ultimaInteracao ?? "");
+  const [modulos, setModulos] = useState<string[]>(inicial?.modulos ?? []);
+  const [blocker, setBlocker] = useState(inicial?.blocker ?? "");
+  const [blockerTipo, setBlockerTipo] = useState(inicial?.blockerTipo ?? "");
+  const [blockerDono, setBlockerDono] = useState(inicial?.blockerDonoId ? String(inicial.blockerDonoId) : "");
+  const [motivoPerda, setMotivoPerda] = useState(inicial?.motivoPerda ?? "");
+  const [motivoDetalhe, setMotivoDetalhe] = useState(inicial?.motivoPerdaDetalhe ?? "");
+  const [notas, setNotas] = useState(inicial?.notas ?? "");
   // Fechado por padrão: o formulário existe para editar, o histórico é consulta.
   const [verHistorico, setVerHistorico] = useState(false);
 
-  // Produto pertence a uma área; trocar a área invalida a escolha anterior.
-  const produtosDaArea = produtos.filter((p) => p.area === area && (p.ativo || p.id === inicial?.produtoId));
+  // Módulos são produtos da área; trocar a área invalida a escolha anterior.
+  const modulosDaArea = produtos.filter((p) => p.area === area && (p.ativo || inicial?.modulos.includes(p.id)));
+  const origensVisiveis = origens.filter((o) => o.ativo || o.id === inicial?.origemId);
+  // Prospecção ainda não teve reunião: valor, ACE e blocker não existem — a aba Prospecção da
+  // planilha nem tem essas colunas. Ficam à vista se já estiverem preenchidos.
+  const emProspeccao = estagio === "prospeccao";
+  const mostraNegocio = !emProspeccao || !!valor.replace(/[0.,]/g, "") || aceAws;
+  const mostraBlocker = !emProspeccao || !!blocker || !!blockerTipo || !!blockerDono;
+  const alternarModulo = (id: string) =>
+    setModulos((m) => (m.includes(id) ? m.filter((x) => x !== id) : [...m, id]));
 
   const enviar = () =>
     onSalvar({
       conta,
-      escopo,
       area,
       estagio,
       valorReais: Number(valor.replace(/\./g, "").replace(",", ".")) || 0,
@@ -2475,10 +2557,28 @@ export function FormOportunidade({
       situacao,
       contato,
       responsavelTexto: respTexto,
-      produtoId: produtoId || null,
       proximoPassoEm: proximoEm || null,
       aceAws,
+      origemId: origemId || null,
+      ponte,
+      contatoOperacional: contatoOp,
+      dor,
+      erp,
+      ultimaInteracao: ultimaInteracao || null,
+      modulos: modulos.filter((id) => modulosDaArea.some((p) => p.id === id)),
+      blocker,
+      blockerTipo: blockerTipo || null,
+      blockerDonoId: blockerDono ? Number(blockerDono) : null,
+      motivoPerda: estagio === "lost" ? motivoPerda || null : (inicial?.motivoPerda ?? null),
+      motivoPerdaDetalhe: estagio === "lost" ? motivoDetalhe : (inicial?.motivoPerdaDetalhe ?? ""),
+      notas,
     });
+
+  const opcoesPessoa = [{ value: "", label: "—" }, ...pessoas.map((p) => ({ value: String(p.id), label: p.nome }))];
+  const bloco = (titulo: string) => (
+    <div style={{ ...eyebrow(10, C.dust, "0.14em"), borderTop: `1px solid ${C.line}`, paddingTop: 16, marginTop: 2 }}>{titulo}</div>
+  );
+  const duas = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 } as const;
 
   return (
     <Modal
@@ -2489,100 +2589,198 @@ export function FormOportunidade({
       <Field label="Conta" required>
         <Input placeholder="Razão social" value={conta} onChange={setConta} />
       </Field>
-      <Field label="Escopo" hint="O que está sendo vendido — aparece abaixo do nome no card.">
-        <Input placeholder="law-v · 80 usuários" value={escopo} onChange={setEscopo} />
-      </Field>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+      <div style={duas}>
         <Field label="Área" required hint={editando ? undefined : "Escolha antes de salvar."}>
           <Select
             options={opcoesArea(areasEditaveis, inicial?.area)}
             value={area}
             onChange={(v) => {
               setArea(v);
-              // Mesma razão do formulário de atividade: o produto pertence à vertical
-              // anterior e o servidor recusaria o salvamento sem explicar a causa.
-              setProdutoId("");
+              // Os módulos pertencem à vertical anterior; o servidor recusaria sem explicar.
+              setModulos([]);
             }}
           />
         </Field>
         <Field label="Estágio">
-          <Select
-            options={STAGES.map((s) => ({ value: s.key, label: s.label }))}
-            value={estagio}
-            onChange={setEstagio}
-          />
+          <Select options={STAGES.map((s) => ({ value: s.key, label: s.label }))} value={estagio} onChange={setEstagio} />
         </Field>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-        <Field label="Valor (R$)">
-          <Input placeholder="420000" value={valor} onChange={setValor} />
+      <div style={duas}>
+        <Field label="Dono">
+          <Select options={opcoesPessoa} value={responsavel} onChange={setResponsavel} />
         </Field>
-        <Field label="Responsável">
-          <Select
-            options={[{ value: "", label: "—" }, ...pessoas.map((p) => ({ value: String(p.id), label: p.nome }))]}
-            value={responsavel}
-            onChange={setResponsavel}
-          />
+        <Field label="Dono (texto)" hint="Quem ainda não tem conta, ou duplas.">
+          <Input placeholder="Felipe Silveira / Bianka" value={respTexto} onChange={setRespTexto} />
         </Field>
       </div>
 
-      <Field label="Produto" hint="O que está sendo vendido nesta vertical.">
-        <Select
-          options={[{ value: "", label: "—" }, ...produtosDaArea.map((p) => ({ value: p.id, label: p.label }))]}
-          value={produtoId}
-          onChange={setProdutoId}
-        />
+      {bloco("1 · ORIGEM")}
+      <div style={duas}>
+        <Field label="Origem">
+          <Select
+            options={[{ value: "", label: "—" }, ...origensVisiveis.map((o) => ({ value: o.id, label: o.label + (o.ativo ? "" : " (inativa)") }))]}
+            value={origemId}
+            onChange={setOrigemId}
+          />
+        </Field>
+        <Field label="Ponte" hint="Quem abre a porta no cliente.">
+          <Input placeholder="Leo + Fabiana (FIUS)" value={ponte} onChange={setPonte} />
+        </Field>
+      </div>
+
+      {bloco("2 · PESSOAS NO CLIENTE")}
+      <div style={duas}>
+        <Field label="Contato / sponsor" hint="Quem decide.">
+          <Input placeholder="Fernando — Diretor de Tax" value={contato} onChange={setContato} />
+        </Field>
+        <Field label="Contato operacional" hint="Quem toca o dia a dia.">
+          <Input placeholder="Cida — Gerente de Tax" value={contatoOp} onChange={setContatoOp} />
+        </Field>
+      </div>
+
+      {bloco("3 · OPORTUNIDADE")}
+      <Field label="Dor principal">
+        <Input placeholder="Conferir a apuração" value={dor} onChange={setDor} />
       </Field>
+      <Field label="Módulos de interesse" hint={area ? undefined : "Escolha a área para ver os módulos."}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {modulosDaArea.length ? (
+            modulosDaArea.map((p) => {
+              const marcado = modulos.includes(p.id);
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  aria-pressed={marcado}
+                  onClick={() => alternarModulo(p.id)}
+                  style={{
+                    ...eyebrow(11, marcado ? C.ink : C.faint, "0.06em"),
+                    textTransform: "none",
+                    padding: "6px 10px",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                    border: `1px solid ${marcado ? C.accent : C.line}`,
+                    background: marcado ? "color-mix(in srgb, var(--liff-accent) 12%, transparent)" : "transparent",
+                  }}
+                >
+                  {p.label}
+                </button>
+              );
+            })
+          ) : (
+            <span style={{ fontSize: 12, color: C.faint }}>
+              {area ? "Nenhum módulo cadastrado nesta área (Cadastros → produtos)." : "—"}
+            </span>
+          )}
+        </div>
+      </Field>
+      <div style={duas}>
+        <Field label="ERP" hint="Escolha um ou escreva outro.">
+          <input list="liff-erps" value={erp} onChange={(e) => setErp(e.target.value)} placeholder="SAP ECC" style={campoNativo} />
+          <datalist id="liff-erps">
+            {ERP_SUGESTOES.map((e) => (
+              <option key={e} value={e} />
+            ))}
+          </datalist>
+        </Field>
+        {mostraNegocio && (
+          <Field label="Valor da proposta (R$)">
+            <Input placeholder="294000" value={valor} onChange={setValor} />
+          </Field>
+        )}
+      </div>
+      {mostraNegocio && (
+        // `flex: none` no interruptor: sem isso o flex o encolhe e o rótulo quebra em uma
+        // palavra por linha — "ACE / na / AWS". A explicação é que fica com a folga.
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <span style={{ flex: "none" }}>
+            <Switch checked={aceAws} onChange={setAceAws} label="ACE na AWS" />
+          </span>
+          <span style={{ fontSize: 12, color: C.faint, lineHeight: 1.5 }}>
+            Registrada no ACE do AWS Partner Central. O registro é feito à mão no portal da AWS; aqui fica a marca.
+          </span>
+        </div>
+      )}
 
-      <Field
-        label="Situação atual"
-        hint="Onde a conversa está hoje. Cada alteração guarda o texto anterior no histórico."
-      >
+      {bloco("4 · ANDAMENTO")}
+      <Field label="Situação atual" hint="Só o estado de hoje. O que já foi fica no histórico do card.">
         <textarea
-          rows={4}
+          rows={3}
           value={situacao}
           onChange={(e) => setSituacao(e.target.value)}
-          placeholder="Contato feito com Vanessa (Jurídico). Dois FUPs sem resposta."
+          placeholder="Proposta aceita; contrato em revisão no jurídico do cliente."
           style={{ ...campoNativo, resize: "vertical", lineHeight: 1.5 }}
         />
       </Field>
-
       <Field label="Próximo passo">
         <textarea
           rows={2}
           value={proximo}
           onChange={(e) => setProximo(e.target.value)}
-          placeholder="Novo FUP e, se necessário, escalar para um interlocutor acima."
+          placeholder="Recepção dos arquivos para o kickoff."
           style={{ ...campoNativo, resize: "vertical", lineHeight: 1.5 }}
         />
       </Field>
+      <div style={duas}>
+        <Field label="Data do próximo passo" hint="Define o status do FUP e o cronograma.">
+          <CampoData valor={proximoEm} onChange={setProximoEm} />
+        </Field>
+        <Field label="Última interação" hint="Último contato com o cliente.">
+          <CampoData valor={ultimaInteracao} onChange={setUltimaInteracao} />
+        </Field>
+      </div>
 
-      <Field label="Quando" hint="Alimenta o cronograma. Em branco, entra no fim desta semana.">
-        <CampoData valor={proximoEm} onChange={setProximoEm} />
+      {mostraBlocker && (
+        <>
+          {bloco("5 · BLOCKER")}
+          <Field label="O que está travando" hint="Em branco quando nada trava.">
+            <Input placeholder="Questionário de LGPD e segurança de TI" value={blocker} onChange={setBlocker} />
+          </Field>
+          <div style={duas}>
+            <Field label="Tipo">
+              <Select
+                options={[{ value: "", label: "—" }, ...BLOCKER_TIPOS.map((b) => ({ value: b.key, label: b.label }))]}
+                value={blockerTipo}
+                onChange={setBlockerTipo}
+              />
+            </Field>
+            <Field label="Quem resolve na LIFF">
+              <Select options={opcoesPessoa} value={blockerDono} onChange={setBlockerDono} />
+            </Field>
+          </div>
+        </>
+      )}
+
+      {estagio === "lost" && (
+        <>
+          {bloco("6 · PERDA")}
+          <div style={duas}>
+            <Field label="Motivo">
+              <Select
+                options={[{ value: "", label: "—" }, ...MOTIVOS_PERDA.map((m) => ({ value: m.key, label: m.label }))]}
+                value={motivoPerda}
+                onChange={setMotivoPerda}
+              />
+            </Field>
+            <Field label="Detalhe">
+              <Input placeholder="Trabalho em curso com outra consultoria" value={motivoDetalhe} onChange={setMotivoDetalhe} />
+            </Field>
+          </div>
+        </>
+      )}
+
+      {bloco("NOTAS")}
+      <Field label="Observações" hint="Fatos que valem para a oportunidade inteira — não o andamento.">
+        <textarea
+          rows={2}
+          value={notas}
+          onChange={(e) => setNotas(e.target.value)}
+          placeholder="AWS: Wilson Mansano é o account manager."
+          style={{ ...campoNativo, resize: "vertical", lineHeight: 1.5 }}
+        />
       </Field>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-        <Field label="Contato / cargo">
-          <Input placeholder="Marçal — CFO" value={contato} onChange={setContato} />
-        </Field>
-        <Field label="Responsável (texto)" hint="Para quem ainda não tem conta, ou duplas.">
-          <Input placeholder="Felipe Silveira / Bianka" value={respTexto} onChange={setRespTexto} />
-        </Field>
-      </div>
-
-      {/* `flex: none` no interruptor: sem isso o flex o encolhe e o rótulo quebra em uma
-          palavra por linha — "ACE / na / AWS". A explicação é que fica com a folga. */}
-      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-        <span style={{ flex: "none" }}>
-          <Switch checked={aceAws} onChange={setAceAws} label="ACE na AWS" />
-        </span>
-        <span style={{ fontSize: 12, color: C.faint, lineHeight: 1.5 }}>
-          Oportunidade já registrada no ACE do AWS Partner Central. O registro é feito à mão no
-          portal da AWS; aqui fica só a marca de quem já foi.
-        </span>
-      </div>
 
       {/* O lado operacional desta venda: as tarefas ligadas a ela. Só as que a pessoa
           enxerga — tarefa de área sem acesso não aparece, como em todo o sistema. */}

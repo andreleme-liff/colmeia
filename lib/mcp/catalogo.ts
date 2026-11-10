@@ -5,7 +5,10 @@
 //
 // Nenhuma ferramenta exclui nada, e nenhuma toca em cadastro, permissão ou preferência.
 
-import { ESTAGIO_INICIAL, PRIORIDADES, STAGES, STAGE_KEYS, STATUS, STATUS_KEYS, stageLabel, statusLabel } from "../domain.ts";
+import {
+  BLOCKER_TIPOS, BLOCKER_TIPO_KEYS, ESTAGIO_INICIAL, MOTIVOS_PERDA, MOTIVO_PERDA_KEYS, PRIORIDADES, STAGES, STAGE_KEYS, STATUS,
+  STATUS_KEYS, stageLabel, statusLabel,
+} from "../domain.ts";
 import { LIMITES } from "../ops/comum.ts";
 import { temEscopo } from "../oauth/protocolo.ts";
 import type { Esquema, Prop } from "./protocolo.ts";
@@ -77,15 +80,31 @@ const CAMPOS_OPORTUNIDADE: Record<string, Prop> = {
     enum: STAGE_KEYS,
     description: `${STAGES.map((s) => `${s.key} = ${s.label}`).join("; ")}. As sete primeiras são o funil, em ordem; on_hold é "não é o momento" e lost é perdida.`,
   },
-  valor_reais: { type: "number", minimum: 0, description: "Valor em reais (não em centavos)." },
-  escopo: { type: "string", maxLength: LIMITES.escopo },
-  situacao: { type: "string", maxLength: LIMITES.situacao },
+  valor_reais: { type: "number", minimum: 0, description: "Valor da proposta em reais (não em centavos)." },
+  responsavel_id: { ...RESP, description: "Dono da oportunidade: id da pessoa (ver `listar_cadastros`); null remove." },
+  responsavel_texto: { type: "string", maxLength: LIMITES.responsavelTexto, description: "Dono em texto livre, quando não é alguém cadastrado." },
+  origem: { type: ["string", "null"], maxLength: 60, description: "Id da origem (ver `listar_cadastros`): Base Fius, AWS, Evento… null limpa." },
+  ponte: { type: "string", maxLength: LIMITES.ponte, description: "Quem abre a porta no cliente (parceiro, indicação)." },
+  contato: { type: "string", maxLength: LIMITES.contato, description: "Contato / sponsor: quem decide no cliente." },
+  contato_operacional: { type: "string", maxLength: LIMITES.contatoOperacional, description: "Quem toca o dia a dia no cliente." },
+  dor: { type: "string", maxLength: LIMITES.dor, description: "Dor principal do cliente." },
+  modulos: {
+    type: "array",
+    items: { type: "string", maxLength: 80 },
+    maxItems: LIMITES.modulos,
+    description: "Módulos de interesse: ids dos produtos da área (ver `listar_cadastros`). Substitui a lista inteira; [] limpa.",
+  },
+  erp: { type: "string", maxLength: LIMITES.erp, description: "ERP do cliente, ex.: SAP ECC, SAP S/4HANA, TOTVS Protheus." },
+  situacao: { type: "string", maxLength: LIMITES.situacao, description: "Só a situação de hoje; o histórico guarda as anteriores." },
   proximo_passo: { type: "string", maxLength: LIMITES.proximoPassoOportunidade },
   proximo_passo_em: DATA,
-  contato: { type: "string", maxLength: LIMITES.contato, description: "Pessoa de contato no cliente." },
-  responsavel_id: RESP,
-  responsavel_texto: { type: "string", maxLength: LIMITES.responsavelTexto, description: "Responsável em texto livre, quando não é alguém cadastrado." },
-  produto_id: PRODUTO,
+  ultima_interacao: { ...DATA, description: "Último contato com o cliente, AAAA-MM-DD; null limpa." },
+  blocker: { type: "string", maxLength: LIMITES.blocker, description: "O que está travando; vazio quando nada trava." },
+  blocker_tipo: { type: ["string", "null"], enum: [...BLOCKER_TIPO_KEYS, null], description: BLOCKER_TIPOS.map((b) => `${b.key} = ${b.label}`).join("; ") },
+  blocker_quem_resolve: { ...RESP, description: "Quem, na LIFF, resolve o blocker: id da pessoa; null remove." },
+  motivo_perda: { type: ["string", "null"], enum: [...MOTIVO_PERDA_KEYS, null], description: MOTIVOS_PERDA.map((m) => `${m.key} = ${m.label}`).join("; ") },
+  motivo_perda_detalhe: { type: "string", maxLength: LIMITES.motivoPerdaDetalhe },
+  notas: { type: "string", maxLength: LIMITES.notas, description: "Fatos que valem para a oportunidade inteira — não o andamento." },
   ace_aws: { type: "boolean", description: "Já registrada no ACE do AWS Partner Central." },
 };
 
@@ -108,7 +127,7 @@ export const CATALOGO = [
   {
     name: "listar_cadastros",
     title: "Áreas, produtos e pessoas",
-    description: "Áreas visíveis (com nível), produtos dessas áreas e pessoas cadastradas (id e nome, para atribuir responsável).",
+    description: "Áreas visíveis (com nível), produtos dessas áreas (os módulos de interesse das oportunidades), origens e pessoas cadastradas (id e nome, para atribuir dono e quem resolve blocker).",
     escrita: false,
     inputSchema: objeto({}),
     annotations: LEITURA,

@@ -674,3 +674,147 @@ export function tipoDaRef(ref: string | null | undefined): "oportunidade" | "ati
   const r = refCanonica(ref);
   return r === null ? null : r.startsWith("C-") ? "oportunidade" : "atividade";
 }
+
+/* =========================================================
+   Card comercial v2 (nov/2026) — campos vindos da planilha do LIFF Tax
+   ========================================================= */
+
+/** Tipo do que está travando a oportunidade. Lista fechada: é o que permite somar por tipo. */
+export const BLOCKER_TIPOS = [
+  { key: "operacao", label: "Operação" },
+  { key: "seguranca", label: "Segurança" },
+  { key: "produto", label: "Produto" },
+  { key: "preco", label: "Preço" },
+] as const;
+export const BLOCKER_TIPO_KEYS = BLOCKER_TIPOS.map((b) => b.key) as readonly string[];
+
+/**
+ * Por que se perde. A planilha tinha só texto livre; os seis motivos já escritos cabem nestes
+ * cinco, e lista fechada é o que deixa medir onde o funil vaza. O texto original vai no
+ * detalhe.
+ */
+export const MOTIVOS_PERDA = [
+  { key: "sem_budget", label: "Sem budget" },
+  { key: "concorrente", label: "Já contratou outra solução" },
+  { key: "sem_interesse", label: "Sem interesse" },
+  { key: "nao_e_momento", label: "Não é o momento" },
+  { key: "outro", label: "Outro" },
+] as const;
+export const MOTIVO_PERDA_KEYS = MOTIVOS_PERDA.map((m) => m.key) as readonly string[];
+
+/** Sugestões para o ERP. Campo de texto: a lista ajuda a padronizar, não impede um caso novo. */
+export const ERP_SUGESTOES = ["SAP ECC", "SAP S/4HANA", "TOTVS Protheus", "Oracle", "Senior", "Sankhya", "Outro"] as const;
+
+/** Origens iniciais (aba Listas da planilha). Viram cadastro editável; isto é só o ponto de partida. */
+export const ORIGENS_INICIAIS = [
+  "Base Fius", "Maluf", "Ponte/parceiro", "AWS", "Evento", "Outbound", "Indicação", "A definir",
+] as const;
+
+export function blockerTipoLabel(k: string | null | undefined): string {
+  return BLOCKER_TIPOS.find((b) => b.key === k)?.label ?? "";
+}
+export function motivoPerdaLabel(k: string | null | undefined): string {
+  return MOTIVOS_PERDA.find((m) => m.key === k)?.label ?? "";
+}
+
+/**
+ * Status do follow-up — CALCULADO, não guardado. A planilha tinha a fórmula numa coluna e
+ * errava os rótulos de Ganho e Lost ("7 · Ganho", "8 · Lost" contra "8 · Ganho", "9 · Lost"
+ * da lista), calculando FUP para oportunidade fechada. Aqui: fora do aberto, não há FUP.
+ */
+export type StatusFup = "atrasado" | "proximos7" | "ok" | "sem_data" | null;
+export function statusFup(estagio: string, proximoPassoEm: string | null, hoje = new Date()): StatusFup {
+  if (!estagioEmAberto(estagio)) return null;
+  if (!proximoPassoEm) return "sem_data";
+  const d = Date.parse(`${proximoPassoEm}T00:00:00Z`);
+  const h = Date.UTC(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+  if (d < h) return "atrasado";
+  if (d <= h + 7 * 86400000) return "proximos7";
+  return "ok";
+}
+export const STATUS_FUP_LABEL: Record<Exclude<StatusFup, null>, string> = {
+  atrasado: "Atrasado",
+  proximos7: "Próx. 7 dias",
+  ok: "Em dia",
+  sem_data: "Sem data",
+};
+
+/**
+ * Estágio da planilha ("0 · Prospecção" … "9 · Lost") → estágio do sistema. Pelo NÚMERO, que
+ * é o que não muda quando alguém reescreve o rótulo. As duas POCs e o Assessment técnico são
+ * fases de validação; a planilha não tem On hold.
+ */
+const ESTAGIO_DA_PLANILHA: Record<string, StageKey> = {
+  "0": "prospeccao", "1": "primeira_reuniao", "2": "qualificado", "3": "proposta",
+  "4": "validacao", "5": "validacao", "6": "validacao", "7": "contrato", "8": "ganho", "9": "lost",
+};
+export function estagioDaPlanilha(bruto: string): StageKey | null {
+  const m = /^\s*(\d)\s*[·.\-–]/.exec(bruto);
+  return m ? (ESTAGIO_DA_PLANILHA[m[1]] ?? null) : null;
+}
+
+/**
+ * Data de uma célula, venha de onde vier: o arquivo lido no navegador entrega o número de
+ * série do Excel (46315), o Drive entrega o texto formatado ("20/10/2026"). AAAA-MM-DD ou nulo.
+ */
+export function dataDaPlanilha(bruto: unknown): string | null {
+  if (bruto === null || bruto === undefined) return null;
+  const s = String(bruto).trim();
+  if (!s) return null;
+  if (/^\d{5}(\.\d+)?$/.test(s)) {
+    const n = Math.floor(Number(s));
+    if (n < 30000 || n > 80000) return null;
+    return new Date(Date.UTC(1899, 11, 30) + n * 86400000).toISOString().slice(0, 10);
+  }
+  let m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  m = /^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/.exec(s);
+  if (m) {
+    const ano = m[3].length === 2 ? `20${m[3]}` : m[3];
+    const mes = Number(m[2]), dia = Number(m[1]);
+    if (mes < 1 || mes > 12 || dia < 1 || dia > 31) return null;
+    return `${ano}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+  }
+  return null;
+}
+
+/** Valor em reais de uma célula: número cru, "294.000", "294,000.00", "R$ 1.500,50". */
+export function valorDaPlanilha(bruto: unknown): number | null {
+  if (typeof bruto === "number") return Number.isFinite(bruto) && bruto >= 0 ? bruto : null;
+  let s = String(bruto ?? "").replace(/R\$|\s/g, "").trim();
+  if (!s || s === "-") return null;
+  if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) s = s.replace(/\./g, "").replace(",", ".");
+  else if (/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(s)) s = s.replace(/,/g, "");
+  else if (/^\d+,\d+$/.test(s)) s = s.replace(",", ".");
+  const n = Number(s);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+/** Motivo da perda inferido do texto livre da planilha — sugestão, o texto vai no detalhe. */
+export function motivoPerdaSugerido(texto: string): string | null {
+  const t = normalizarTexto(texto);
+  if (!t) return null;
+  if (/budget|orcamento|verba/.test(t)) return "sem_budget";
+  if (/contratou|ja tem|ja possui|sovos|pwc|outra (ferramenta|solucao|plataforma)|parceiro tributario/.test(t)) return "concorrente";
+  // "Sem interesse no momento" é falta de interesse, não de timing: interesse vem antes.
+  if (/interess|nao deseja|nao quer/.test(t)) return "sem_interesse";
+  if (/nao e o momento|momento|depois|mais tarde/.test(t)) return "nao_e_momento";
+  return "outro";
+}
+
+/** Tipo de blocker pelo rótulo da planilha ("Preço", "Segurança"…). */
+export function blockerTipoDaPlanilha(bruto: string): string | null {
+  const t = normalizarTexto(bruto);
+  return BLOCKER_TIPOS.find((b) => normalizarTexto(b.label) === t)?.key ?? null;
+}
+
+/**
+ * "Situação atual" da planilha empilha anotações datadas, a mais recente em cima ("20/Out: …
+ * \n14/Out: …"). O card guarda só a atual — o histórico do card cuida do resto. As anteriores
+ * voltam separadas, para a importação registrá-las no histórico em vez de jogá-las fora.
+ */
+export function separarSituacao(bruto: string): { atual: string; anteriores: string[] } {
+  const linhas = bruto.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (linhas.length <= 1) return { atual: linhas[0] ?? "", anteriores: [] };
+  return { atual: linhas[0], anteriores: linhas.slice(1) };
+}

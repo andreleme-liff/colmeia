@@ -101,7 +101,12 @@ export type Esquema = {
 };
 
 export type Prop = {
-  type: "string" | "integer" | "number" | "boolean" | Array<"string" | "integer" | "number" | "boolean" | "null">;
+  type:
+    | "string" | "integer" | "number" | "boolean" | "array"
+    | Array<"string" | "integer" | "number" | "boolean" | "null" | "array">;
+  /** Só para `array`: os itens são texto. É o único tipo de lista que as ferramentas usam. */
+  items?: { type: "string"; maxLength?: number };
+  maxItems?: number;
   description?: string;
   enum?: readonly (string | null)[];
   maxLength?: number;
@@ -113,6 +118,7 @@ export type Prop = {
 
 function tipoDe(v: unknown): string {
   if (v === null) return "null";
+  if (Array.isArray(v)) return "array";
   if (typeof v === "number") return Number.isInteger(v) ? "integer" : "number";
   return typeof v;
 }
@@ -153,6 +159,13 @@ export function validarArgumentos(esquema: Esquema, args: unknown): string[] {
     if (typeof v === "number") {
       if (prop.minimum !== undefined && v < prop.minimum) erros.push(`${nome}: mínimo ${prop.minimum}`);
       if (prop.maximum !== undefined && v > prop.maximum) erros.push(`${nome}: máximo ${prop.maximum}`);
+    }
+    if (Array.isArray(v)) {
+      if (prop.maxItems !== undefined && v.length > prop.maxItems) erros.push(`${nome}: no máximo ${prop.maxItems} itens`);
+      if (v.some((x) => typeof x !== "string")) erros.push(`${nome}: cada item deve ser texto`);
+      else if (prop.items?.maxLength !== undefined && v.some((x) => x.length > prop.items!.maxLength!)) {
+        erros.push(`${nome}: item longo demais`);
+      }
     }
   }
   return erros;

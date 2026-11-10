@@ -11,15 +11,17 @@ import { ehFalha, type Autor, type Falha, type Fatos, type Permissoes } from "./
 import { planejarAtualizacaoAtividade, planejarCriacaoAtividade, type AtividadeAtual } from "./regras-atividade";
 
 export async function carregarFatos(tx: Queryable): Promise<Fatos> {
-  const [pessoas, produtos, oportunidades] = await Promise.all([
+  const [pessoas, produtos, oportunidades, origens] = await Promise.all([
     tx<{ id: number; nome: string }[]>`SELECT id, nome FROM users`,
-    tx<{ id: string; area: string }[]>`SELECT id, area FROM produtos`,
+    tx<{ id: string; area: string; label: string }[]>`SELECT id, area, label FROM produtos`,
     tx<{ id: number; ref: string; conta: string; area: string }[]>`SELECT id, ref, conta, area FROM deals`,
+    tx<{ id: string; label: string; ativo: boolean }[]>`SELECT id, label, ativo FROM origens`,
   ]);
   return {
     pessoas: new Map(pessoas.map((p) => [p.id, p.nome])),
     produtos: [...produtos],
     oportunidades: [...oportunidades],
+    origens: [...origens],
   };
 }
 

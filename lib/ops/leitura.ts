@@ -8,7 +8,10 @@
 import type { Queryable } from "../db";
 import type { Ctx } from "../perms";
 import { caminhoDe } from "../rotas";
-import { ehDoResponsavel, refCanonica, stageLabel, statusLabel, tipoDaRef, type Pessoa } from "../domain";
+import {
+  blockerTipoLabel, ehDoResponsavel, motivoPerdaLabel, refCanonica, stageLabel, statusFup, statusLabel, tipoDaRef,
+  type Pessoa,
+} from "../domain";
 
 const iso = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
 
@@ -64,17 +67,37 @@ function atividadeDto(a: LinhaAtividade, ctx: Ctx, base: string) {
 }
 
 type LinhaOportunidade = {
-  ref: string; conta: string; escopo: string; area: string; estagio: string; valor_centavos: string;
+  ref: string; conta: string; area: string; estagio: string; valor_centavos: string;
   responsavel_user_id: number | null; responsavel: string | null; responsavel_texto: string;
   proximo_passo: string; proximo_passo_em: Date | null; situacao: string; contato: string;
-  produto_id: string | null; ace_aws: boolean; atualizado_em: Date | null; criado_em: Date;
+  ace_aws: boolean; atualizado_em: Date | null; criado_em: Date;
+  origem: string | null; ponte: string; contato_operacional: string; dor: string; erp: string;
+  ultima_interacao: Date | null; blocker: string; blocker_tipo: string | null; blocker_dono: string | null;
+  motivo_perda: string | null; motivo_perda_detalhe: string; notas: string;
+  modulos: string[]; modulos_ids: string[];
 };
+
+/** Colunas da oportunidade nas leituras do MCP — as mesmas nas duas consultas. */
+const COLUNAS_OPORTUNIDADE = `
+  d.ref, d.conta, d.area, d.estagio, d.valor_centavos, d.responsavel_user_id, u.nome AS responsavel,
+  d.responsavel_texto, d.proximo_passo, d.proximo_passo_em, d.situacao, d.contato, d.ace_aws,
+  d.atualizado_em, d.criado_em, o.label AS origem, d.ponte, d.contato_operacional, d.dor, d.erp,
+  d.ultima_interacao, d.blocker, d.blocker_tipo, bd.nome AS blocker_dono, d.motivo_perda,
+  d.motivo_perda_detalhe, d.notas,
+  COALESCE((SELECT array_agg(p.label ORDER BY p.label) FROM oportunidade_modulos m JOIN produtos p ON p.id = m.produto_id
+            WHERE m.deal_id = d.id), '{}') AS modulos,
+  COALESCE((SELECT array_agg(m.produto_id ORDER BY m.produto_id) FROM oportunidade_modulos m
+            WHERE m.deal_id = d.id), '{}') AS modulos_ids`;
+const DE_OPORTUNIDADE = `
+  FROM deals d
+  LEFT JOIN users u ON u.id = d.responsavel_user_id
+  LEFT JOIN users bd ON bd.id = d.blocker_dono_id
+  LEFT JOIN origens o ON o.id = d.origem_id`;
 
 function oportunidadeDto(d: LinhaOportunidade, ctx: Ctx, base: string) {
   return {
     ref: d.ref,
     conta: d.conta,
-    escopo: d.escopo,
     area: d.area,
     area_nome: ctx.labelArea(d.area),
     estagio: d.estagio,
@@ -86,8 +109,23 @@ function oportunidadeDto(d: LinhaOportunidade, ctx: Ctx, base: string) {
     proximo_passo: d.proximo_passo,
     proximo_passo_em: iso(d.proximo_passo_em),
     situacao: d.situacao,
+    // Contato / sponsor: quem decide no cliente.
     contato: d.contato,
-    produto_id: d.produto_id,
+    contato_operacional: d.contato_operacional,
+    origem: d.origem,
+    ponte: d.ponte,
+    dor: d.dor,
+    modulos: d.modulos,
+    modulos_ids: d.modulos_ids,
+    erp: d.erp,
+    ultima_interacao: iso(d.ultima_interacao),
+    status_fup: statusFup(d.estagio, iso(d.proximo_passo_em)),
+    blocker: d.blocker || null,
+    blocker_tipo: d.blocker_tipo ? blockerTipoLabel(d.blocker_tipo) : null,
+    blocker_quem_resolve: d.blocker_dono,
+    motivo_perda: d.motivo_perda ? motivoPerdaLabel(d.motivo_perda) : null,
+    motivo_perda_detalhe: d.motivo_perda_detalhe || null,
+    notas: d.notas,
     ace_aws: d.ace_aws,
     atualizado_em: (d.atualizado_em ?? d.criado_em).toISOString(),
     pode_editar: ctx.podeEditar(d.area),
@@ -144,13 +182,10 @@ export async function listarOportunidades(sql: Queryable, ctx: Ctx, f: FiltroOpo
   const areas = areasDoFiltro(ctx, f.area);
   if (!areas.length) return { itens: [], total: 0 };
   const linhas = await sql<LinhaOportunidade[]>`
-    SELECT d.ref, d.conta, d.escopo, d.area, d.estagio, d.valor_centavos, d.responsavel_user_id, u.nome AS responsavel,
-           d.responsavel_texto, d.proximo_passo, d.proximo_passo_em, d.situacao, d.contato, d.produto_id,
-           d.ace_aws, d.atualizado_em, d.criado_em
-    FROM deals d LEFT JOIN users u ON u.id = d.responsavel_user_id
+    SELECT ${sql.unsafe(COLUNAS_OPORTUNIDADE)} ${sql.unsafe(DE_OPORTUNIDADE)}
     WHERE d.area = ANY(${areas})
       ${f.estagio ? sql`AND d.estagio = ${f.estagio}` : sql``}
-      ${f.busca ? sql`AND (d.conta ILIKE ${padraoBusca(f.busca)} ESCAPE '\\' OR d.escopo ILIKE ${padraoBusca(f.busca)} ESCAPE '\\'
+      ${f.busca ? sql`AND (d.conta ILIKE ${padraoBusca(f.busca)} ESCAPE '\\' OR d.dor ILIKE ${padraoBusca(f.busca)} ESCAPE '\\'
                           OR d.situacao ILIKE ${padraoBusca(f.busca)} ESCAPE '\\' OR d.contato ILIKE ${padraoBusca(f.busca)} ESCAPE '\\')` : sql``}
     ORDER BY d.ref ASC
   `;
@@ -192,10 +227,8 @@ export async function verRegistro(sql: Queryable, ctx: Ctx, refBruta: string, ba
     }
   } else {
     const [d] = await sql<(LinhaOportunidade & { ref_antiga: string | null })[]>`
-      SELECT d.ref, d.conta, d.escopo, d.area, d.estagio, d.valor_centavos, d.responsavel_user_id, u.nome AS responsavel,
-             d.responsavel_texto, d.proximo_passo, d.proximo_passo_em, d.situacao, d.contato, d.produto_id,
-             d.ace_aws, d.atualizado_em, d.criado_em, d.ref_antiga
-      FROM deals d LEFT JOIN users u ON u.id = d.responsavel_user_id WHERE d.ref = ${ref}
+      SELECT ${sql.unsafe(COLUNAS_OPORTUNIDADE)}, d.ref_antiga ${sql.unsafe(DE_OPORTUNIDADE)}
+      WHERE d.ref = ${ref}
     `;
     if (d && ctx.podeVer(d.area)) {
       refAntiga = d.ref_antiga;
@@ -251,7 +284,7 @@ export async function verRegistro(sql: Queryable, ctx: Ctx, refBruta: string, ba
 
 export async function listarCadastros(sql: Queryable, ctx: Ctx) {
   const visiveis = ctx.areasVisiveis;
-  const [produtos, pessoas] = await Promise.all([
+  const [produtos, pessoas, origens] = await Promise.all([
     sql<{ id: string; label: string; area: string; ativo: boolean }[]>`
       SELECT id, label, area, ativo FROM produtos WHERE area = ANY(${visiveis}) ORDER BY area, ordem, label
     `,
@@ -259,10 +292,12 @@ export async function listarCadastros(sql: Queryable, ctx: Ctx) {
     sql<{ id: number; nome: string; papel: string; ativo: boolean }[]>`
       SELECT id, nome, papel, ativo FROM users ORDER BY nome
     `,
+    sql<{ id: string; label: string; ativo: boolean }[]>`SELECT id, label, ativo FROM origens ORDER BY ordem, label`,
   ]);
   return {
     areas: visiveis.map((a) => ({ id: a, nome: ctx.labelArea(a), nivel: ctx.podeEditar(a) ? "editar" : "ver" })),
     produtos: [...produtos],
+    origens: [...origens],
     pessoas: [...pessoas],
   };
 }

@@ -85,6 +85,15 @@ checa("data em formato brasileiro recusada (antes virava nula em silêncio)",
 checa("null limpa a data", valida("atualizar_atividade", { ref: "A-1", prazo: null }), []);
 checa("responsável em string recusado", valida("criar_atividade", { titulo: "X", area: "tax", responsavel_id: "1" }).length, 1);
 checa("responsável null remove", valida("atualizar_oportunidade", { ref: "D-1", responsavel_id: null }), []);
+checa("módulos como lista de ids", valida("criar_oportunidade", { conta: "JBS", area: "tax", modulos: ["genius", "precificacao"] }), []);
+checa("módulos em string recusado", valida("criar_oportunidade", { conta: "JBS", area: "tax", modulos: "genius" }).length, 1);
+checa("módulo que não é string recusado", valida("criar_oportunidade", { conta: "JBS", area: "tax", modulos: [1] }).length, 1);
+checa("módulos acima do teto recusado",
+  valida("criar_oportunidade", { conta: "JBS", area: "tax", modulos: Array.from({ length: 21 }, (_, i) => `m${i}`) }).length, 1);
+checa("tipo de blocker fora da lista", valida("atualizar_oportunidade", { ref: "C-1", blocker_tipo: "humor" }).length, 1);
+checa("tipo de blocker null limpa", valida("atualizar_oportunidade", { ref: "C-1", blocker_tipo: null }), []);
+checa("motivo de perda do domínio", valida("atualizar_oportunidade", { ref: "C-1", motivo_perda: "sem_budget" }), []);
+checa("escopo saiu do esquema", valida("criar_oportunidade", { conta: "JBS", area: "tax", escopo: "x" }), ["campo desconhecido: escopo"]);
 checa("valor negativo recusado", valida("criar_oportunidade", { conta: "JBS", area: "tax", valor_reais: -1 }), ["valor_reais: mínimo 0"]);
 checa("valor com centavos aceito", valida("criar_oportunidade", { conta: "JBS", area: "tax", valor_reais: 1500.5 }), []);
 checa("situação acima do limite recusada (em vez de cortada em silêncio)",
