@@ -5,7 +5,7 @@
 import type { Queryable } from "../db";
 import type { Ctx } from "../perms";
 import type { Acesso } from "../oauth/servidor";
-import { PRIORIDADES, STAGES, STATUS } from "../domain";
+import { PRIORIDADES, STAGES, STATUS, refCanonica, tipoDaRef } from "../domain";
 import { ehFalha, type Autor } from "../ops/comum";
 import { atualizarAtividade, criarAtividade } from "../ops/atividades";
 import { atualizarOportunidade, criarOportunidade } from "../ops/oportunidades";
@@ -42,7 +42,8 @@ function semRef(a: Record<string, unknown>): Record<string, unknown> {
 }
 
 async function idPorRef(c: Contexto, tipo: "atividade" | "oportunidade", ref: string): Promise<number | null> {
-  const r = ref.trim().toUpperCase();
+  const r = refCanonica(ref);
+  if (!r || tipoDaRef(r) !== tipo) return null;
   const linhas =
     tipo === "atividade"
       ? await c.sql<{ id: number; area: string }[]>`SELECT id, area FROM activities WHERE ref = ${r}`
@@ -104,7 +105,7 @@ const EXECUTORES: Record<NomeFerramenta, Executor> = {
 
   ver_registro: async (c, a) => {
     const r = await verRegistro(c.sql, c.ctx, a.ref as string, c.base);
-    return r ? { ok: true, ref: (a.ref as string).toUpperCase(), dados: r } : { ok: false, erro: "Registro não encontrado." };
+    return r ? { ok: true, ref: refCanonica(a.ref as string) ?? undefined, dados: r } : { ok: false, erro: "Registro não encontrado." };
   },
 
   criar_atividade: async (c, a) => {

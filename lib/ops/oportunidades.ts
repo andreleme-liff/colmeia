@@ -6,6 +6,7 @@
 
 import type { Queryable } from "../db";
 import { registrar } from "../log";
+import { formatarRef } from "../domain";
 import { carregarFatos } from "./atividades";
 import { ehFalha, type Autor, type Falha, type Permissoes } from "./comum";
 import {
@@ -23,7 +24,8 @@ export async function criarOportunidade(
   if (ehFalha(plano)) return plano;
   const l = plano.linha;
 
-  const [{ ref }] = await tx<{ ref: string }[]>`SELECT 'D-' || nextval('deals_ref_seq') AS ref`;
+  const [{ n }] = await tx<{ n: string }[]>`SELECT nextval('deals_ref_seq') AS n`;
+  const ref = formatarRef("oportunidade", n);
 
   const [nova] = await tx<{ id: number }[]>`
     INSERT INTO deals (ref, conta, escopo, area, estagio, valor_centavos, responsavel_user_id,

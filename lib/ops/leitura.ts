@@ -8,7 +8,7 @@
 import type { Queryable } from "../db";
 import type { Ctx } from "../perms";
 import { caminhoDe } from "../rotas";
-import { ehDoResponsavel, stageLabel, statusLabel, type Pessoa } from "../domain";
+import { ehDoResponsavel, refCanonica, stageLabel, statusLabel, tipoDaRef, type Pessoa } from "../domain";
 
 const iso = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
 
@@ -144,28 +144,32 @@ export async function listarOportunidades(sql: Queryable, ctx: Ctx, f: FiltroOpo
  * área recebe "não encontrado" — sem confirmar que o registro existe.
  */
 export async function verRegistro(sql: Queryable, ctx: Ctx, refBruta: string, base: string) {
-  const ref = refBruta.trim().toUpperCase();
+  const ref = refCanonica(refBruta);
+  if (!ref) return null;
   let registro: Record<string, unknown> | null = null;
   let area: string | null = null;
+  let refAntiga: string | null = null;
 
-  if (ref.startsWith("A-")) {
-    const [a] = await sql<LinhaAtividade[]>`
+  if (tipoDaRef(ref) === "atividade") {
+    const [a] = await sql<(LinhaAtividade & { ref_antiga: string | null })[]>`
       SELECT a.ref, a.titulo, a.area, a.status, a.prioridade, a.prazo, a.responsavel_user_id, u.nome AS responsavel,
-             a.situacao, a.proximo_passo, a.proximo_passo_em, a.produto_id, a.atualizado_em, a.criado_em
+             a.situacao, a.proximo_passo, a.proximo_passo_em, a.produto_id, a.atualizado_em, a.criado_em, a.ref_antiga
       FROM activities a LEFT JOIN users u ON u.id = a.responsavel_user_id WHERE a.ref = ${ref}
     `;
     if (a && ctx.podeVer(a.area)) {
+      refAntiga = a.ref_antiga;
       registro = { tipo: "atividade", ...atividadeDto(a, ctx, base) };
       area = a.area;
     }
-  } else if (ref.startsWith("D-")) {
-    const [d] = await sql<LinhaOportunidade[]>`
+  } else {
+    const [d] = await sql<(LinhaOportunidade & { ref_antiga: string | null })[]>`
       SELECT d.ref, d.conta, d.escopo, d.area, d.estagio, d.valor_centavos, d.responsavel_user_id, u.nome AS responsavel,
              d.responsavel_texto, d.proximo_passo, d.proximo_passo_em, d.situacao, d.contato, d.produto_id,
-             d.pausado, d.ace_aws, d.atualizado_em, d.criado_em
+             d.pausado, d.ace_aws, d.atualizado_em, d.criado_em, d.ref_antiga
       FROM deals d LEFT JOIN users u ON u.id = d.responsavel_user_id WHERE d.ref = ${ref}
     `;
     if (d && ctx.podeVer(d.area)) {
+      refAntiga = d.ref_antiga;
       registro = { tipo: "oportunidade", ...oportunidadeDto(d, ctx, base) };
       area = d.area;
     }
@@ -181,7 +185,9 @@ export async function verRegistro(sql: Queryable, ctx: Ctx, refBruta: string, ba
     FROM audit_log l
     LEFT JOIN users u ON u.id = l.actor_user_id
     LEFT JOIN oauth_concessoes k ON k.id = l.concessao_id
-    WHERE l.entidade = ${ref}
+    -- O audit_log guarda a referência que valia quando cada linha foi escrita: antes de
+    -- nov/2026, D-104 / A-1012.
+    WHERE l.entidade = ${ref} OR (${refAntiga}::text IS NOT NULL AND l.entidade = ${refAntiga})
     ORDER BY l.criado_em DESC, l.id DESC
     LIMIT 100
   `;

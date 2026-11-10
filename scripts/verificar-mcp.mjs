@@ -92,6 +92,11 @@ checa("situação acima do limite recusada (em vez de cortada em silêncio)",
 checa("ref de atividade na ferramenta de oportunidade recusada",
   valida("atualizar_oportunidade", { ref: "A-1012", estagio: "proposta" }), ["ref: formato inválido"]);
 checa("ref minúscula aceita", valida("ver_registro", { ref: "d-108" }), []);
+checa("ref nova de oportunidade aceita", valida("atualizar_oportunidade", { ref: "C-0108", estagio: "proposta" }), []);
+checa("ref nova de tarefa aceita", valida("atualizar_atividade", { ref: "T-1012", status: "revisao" }), []);
+checa("tarefa na ferramenta de oportunidade recusada", valida("atualizar_oportunidade", { ref: "T-1012" }), ["ref: formato inválido"]);
+checa("oportunidade na ferramenta de tarefa recusada", valida("atualizar_atividade", { ref: "C-0108" }), ["ref: formato inválido"]);
+checa("ver_registro aceita as quatro letras", ["C-1", "T-1", "D-1", "A-1"].every((r) => !valida("ver_registro", { ref: r }).length), true);
 checa("chave de idempotência curta demais",
   valida("criar_oportunidade", { conta: "X", area: "tax", chave_idempotencia: "1" }), ["chave_idempotencia: no mínimo 8 caracteres"]);
 checa("chave de idempotência no formato UUID passa",

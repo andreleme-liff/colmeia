@@ -3,7 +3,7 @@
 // Migração idempotente no primeiro acesso + seed do conjunto de demonstração.
 
 import postgres from "postgres";
-import { PAPEIS, PRIORIDADES, STAGE_KEYS, STATUS_KEYS } from "./domain";
+import { PAPEIS, PRIORIDADES, STAGE_KEYS, STATUS_KEYS, refCanonica } from "./domain";
 
 export type Db = ReturnType<typeof postgres>;
 
@@ -367,7 +367,8 @@ async function migrate(): Promise<void> {
       console.log(`[db] CHECK ${nome} recriado com ${valores.length} valores`);
     }
 
-    // Refs legíveis para registros novos. Começam acima das semeadas (A-101…A-602,
+    // Refs legíveis para registros novos (hoje C-0000 e T-0000, ver converterReferencias).
+    // Começam acima das semeadas (A-101…A-602,
     // D-01…D-08) para nunca colidir com elas.
     await sql`CREATE SEQUENCE IF NOT EXISTS activities_ref_seq START 1000`;
     await sql`CREATE SEQUENCE IF NOT EXISTS deals_ref_seq START 100`;
@@ -495,7 +496,76 @@ async function migrate(): Promise<void> {
     `);
 
     await seed(sql);
+
+    // Depois do seed: base nova também nasce no formato C-/T-, pelo mesmo caminho.
+    await converterReferencias(sql);
   });
+}
+
+/**
+ * D-104 → C-0104 e A-1012 → T-1012 (nov/2026). O número fica, a letra muda: C de comercial,
+ * T de tarefa. A referência anterior vai para `ref_antiga`, que é o que permite achar o
+ * histórico — o audit_log é append-only e continua com a referência que valia quando cada
+ * linha foi escrita, então quem lê histórico procura pelas duas.
+ *
+ * Idempotente: só toca linhas no formato antigo. Se duas referências fossem dar no mesmo
+ * código (D-01 e D-1 coexistindo, por exemplo), não converte NADA daquela tabela e avisa no
+ * log: falhar a migração por violação de unicidade derrubaria o app inteiro, e as referências
+ * antigas continuam aceitas em todo lugar.
+ */
+async function converterReferencias(sql: Queryable): Promise<void> {
+  await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS ref_antiga TEXT`;
+  await sql`ALTER TABLE activities ADD COLUMN IF NOT EXISTS ref_antiga TEXT`;
+
+  // A sequência tem de estar sempre ACIMA do maior número já usado. As referências nascem
+  // dela, e um registro com número maior (inserido à mão, por exemplo) faria a próxima
+  // criação colidir e falhar. Vale para qualquer letra, antiga ou nova.
+  for (const [tabela, sequencia] of [["deals", "deals_ref_seq"], ["activities", "activities_ref_seq"]] as const) {
+    await sql.unsafe(`
+      SELECT setval('${sequencia}', GREATEST(
+        (SELECT last_value FROM ${sequencia}),
+        COALESCE((SELECT max(substring(ref FROM '[0-9]+$')::bigint) FROM ${tabela} WHERE ref ~ '^[A-Z]-[0-9]+$'), 0)
+      ))
+    `);
+  }
+
+  for (const [tabela, antigo, nome] of [
+    ["deals", "^D-[0-9]+$", "oportunidade"],
+    ["activities", "^A-[0-9]+$", "atividade"],
+  ] as const) {
+    const velhas = await sql.unsafe<{ id: number; ref: string }[]>(
+      `SELECT id, ref FROM ${tabela} WHERE ref ~ $1`,
+      [antigo]
+    );
+    if (!velhas.length) continue;
+
+    const todas = await sql.unsafe<{ ref: string }[]>(`SELECT ref FROM ${tabela}`);
+    const ocupadas = new Set(todas.map((r) => r.ref).filter((r) => !new RegExp(antigo).test(r)));
+    const novas = velhas.map((v) => ({ ...v, nova: refCanonica(v.ref) as string }));
+    let colisao: (typeof novas)[number] | undefined;
+    const vistas = new Set<string>();
+    for (const v of novas) {
+      if (ocupadas.has(v.nova) || vistas.has(v.nova)) {
+        colisao = v;
+        break;
+      }
+      vistas.add(v.nova);
+    }
+    if (colisao) {
+      console.error(`[db] conversão de referências de ${nome} ADIADA: ${colisao.ref} colidiria em ${colisao.nova}`);
+      continue;
+    }
+
+    for (const v of novas) {
+      await sql.unsafe(`UPDATE ${tabela} SET ref_antiga = ref, ref = $1 WHERE id = $2`, [v.nova, v.id]);
+    }
+    await sql`
+      INSERT INTO audit_log (actor_user_id, area, entidade, campo, valor_anterior, valor_novo, texto)
+      VALUES (NULL, NULL, 'SISTEMA', 'referencias', ${antigo.slice(1, 3)}, ${nome === "oportunidade" ? "C-" : "T-"},
+              ${`Converteu ${novas.length} referência(s) de ${nome} para o formato ${nome === "oportunidade" ? "C-0000" : "T-0000"}; a antiga continua valendo`})
+    `;
+    console.log(`[db] ${novas.length} referência(s) de ${nome} convertidas`);
+  }
 }
 
 /**

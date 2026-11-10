@@ -13,6 +13,7 @@
 //     das rotas como estavam antes da refatoração (git) e exige que todas continuem existindo.
 
 import { execSync } from "node:child_process";
+import { formatarRef, refCanonica, tipoDaRef } from "../lib/domain.ts";
 import { readFileSync } from "node:fs";
 import {
   planejarAtualizacaoAtividade, planejarCriacaoAtividade,
@@ -180,6 +181,26 @@ for (const rota of ROTAS) {
 }
 checa("achou as mensagens antigas (sanidade do extrator)", antigas.size >= 14, true);
 for (const msg of [...antigas].sort()) checa(`continua existindo: ${JSON.stringify(msg)}`, NOVO.includes(msg), true);
+
+console.log("\n7. referências C-0000 (comercial) e T-0000 (tarefa)");
+checa("nova oportunidade", formatarRef("oportunidade", "108"), "C-0108");
+checa("nova tarefa", formatarRef("atividade", 1000), "T-1000");
+checa("passa de 9999 sem cortar", formatarRef("oportunidade", 12345), "C-12345");
+// A conversão manteve o número: a referência antiga se resolve sem consultar o banco.
+checa("D-104 antiga vira C-0104", refCanonica("D-104"), "C-0104");
+checa("D-01 do seed vira C-0001", refCanonica("D-01"), "C-0001");
+checa("A-1012 antiga vira T-1012", refCanonica("A-1012"), "T-1012");
+checa("sem zeros e minúscula", refCanonica(" c-7 "), "C-0007");
+checa("já canônica fica igual", refCanonica("T-0101"), "T-0101");
+checa("letra desconhecida não é referência", refCanonica("X-12"), null);
+checa("lixo depois do número não é referência", refCanonica("C-12a"), null);
+checa("tipo pela letra nova", [tipoDaRef("C-0001"), tipoDaRef("T-0001")], ["oportunidade", "atividade"]);
+checa("tipo pela letra antiga", [tipoDaRef("D-1"), tipoDaRef("A-1")], ["oportunidade", "atividade"]);
+// A rota antiga devolvia o par anterior → o serial de agora, e o migrador usa a mesma função:
+// as duas pontas concordam por construção.
+const ANTIGAS = ["D-01", "D-08", "D-100", "D-108", "A-101", "A-602", "A-1000"];
+checa("conversão sem colisão no conjunto do seed + sequências",
+  new Set(ANTIGAS.map(refCanonica)).size, ANTIGAS.length);
 
 console.log(`\n${ok} passaram, ${falhou} falharam`);
 process.exit(falhou ? 1 : 0);

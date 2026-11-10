@@ -632,3 +632,35 @@ export function lerSelecaoDeResponsaveis(bruto: string | null | undefined): stri
 export function escreverSelecaoDeResponsaveis(selecao: readonly string[]): string {
   return lerSelecaoDeResponsaveis(selecao.join(",")).join(",");
 }
+
+/* =========================================================
+   Referências legíveis
+   ========================================================= */
+/**
+ * C-0104 é uma oportunidade COMERCIAL; T-1012 é uma TAREFA (atividade). A letra diz o tipo
+ * — sem ela, "104" poderia ser qualquer um dos dois — e o número é o serial do banco, com
+ * quatro dígitos no mínimo (passa de 9999 sem cortar).
+ *
+ * Até nov/2026 eram D-104 e A-1012. A conversão manteve o NÚMERO e trocou a letra, então a
+ * referência antiga se resolve sem consultar nada: D-104 → C-0104, A-1012 → T-1012. É o que
+ * mantém funcionando um link antigo colado no WhatsApp ou um "D-104" dito ao Claude.
+ */
+export const PREFIXO_REF = { oportunidade: "C", atividade: "T" } as const;
+const PREFIXO_ANTIGO: Record<string, "C" | "T"> = { D: "C", A: "T" };
+
+export function formatarRef(tipo: keyof typeof PREFIXO_REF, numero: number | string): string {
+  return `${PREFIXO_REF[tipo]}-${String(Number(numero)).padStart(4, "0")}`;
+}
+
+/** A forma canônica de uma referência digitada, colada ou antiga — ou `null` se não é uma. */
+export function refCanonica(bruta: string | null | undefined): string | null {
+  const m = /^([CTDA])-0*(\d{1,9})$/.exec((bruta ?? "").trim().toUpperCase());
+  if (!m) return null;
+  const letra = PREFIXO_ANTIGO[m[1]] ?? (m[1] as "C" | "T");
+  return `${letra}-${m[2].padStart(4, "0")}`;
+}
+
+export function tipoDaRef(ref: string | null | undefined): "oportunidade" | "atividade" | null {
+  const r = refCanonica(ref);
+  return r === null ? null : r.startsWith("C-") ? "oportunidade" : "atividade";
+}

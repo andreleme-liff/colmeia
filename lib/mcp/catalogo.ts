@@ -26,8 +26,10 @@ export type Definicao = {
 // Pedaços de esquema
 
 const DATA: Prop = { type: ["string", "null"], pattern: "^\\d{4}-\\d{2}-\\d{2}$", description: "Data AAAA-MM-DD; null limpa." };
-const REF_A: Prop = { type: "string", pattern: "^[Aa]-\\d+$", description: "Referência da atividade, ex.: A-1012." };
-const REF_D: Prop = { type: "string", pattern: "^[Dd]-\\d+$", description: "Referência da oportunidade, ex.: D-108." };
+// T- é tarefa (atividade), C- é comercial (oportunidade). As formas antigas, A- e D-,
+// continuam aceitas: o número é o mesmo, só a letra mudou.
+const REF_A: Prop = { type: "string", pattern: "^[TtAa]-\\d+$", description: "Referência da tarefa, ex.: T-1012." };
+const REF_D: Prop = { type: "string", pattern: "^[CcDd]-\\d+$", description: "Referência da oportunidade, ex.: C-0108." };
 const AREA: Prop = { type: "string", maxLength: 60, description: "Id da área (ver `listar_cadastros`)." };
 const RESP: Prop = { type: ["integer", "null"], minimum: 1, description: "Id da pessoa responsável (ver `listar_cadastros`); null remove." };
 const PRODUTO: Prop = { type: ["string", "null"], maxLength: 80, description: "Id do produto; precisa ser da mesma área. null remove." };
@@ -136,9 +138,9 @@ export const CATALOGO = [
     name: "ver_registro",
     title: "Ver registro e histórico",
     description:
-      "Uma atividade (A-…) ou oportunidade (D-…) com o histórico completo de alterações: quem, quando, de/para, e se veio da interface ou de uma conexão.",
+      "Uma tarefa (T-…) ou oportunidade (C-…) com o histórico completo de alterações: quem, quando, de/para, e se veio da interface ou de uma conexão.",
     escrita: false,
-    inputSchema: objeto({ ref: { type: "string", pattern: "^[AaDd]-\\d+$", description: "Ex.: A-1012 ou D-108." } }, ["ref"]),
+    inputSchema: objeto({ ref: { type: "string", pattern: "^[CcTtDdAa]-\\d+$", description: "Ex.: T-1012 ou C-0108." } }, ["ref"]),
     annotations: LEITURA,
   },
   {
@@ -190,7 +192,7 @@ export function descreverFerramentas(escopos: string) {
 }
 
 export const INSTRUCOES = [
-  "LIFF tasks: quadro operacional (atividades, refs A-…) e pipeline comercial (oportunidades, refs D-…) da LIFF.",
+  "LIFF tasks: quadro operacional (tarefas, refs T-0000) e pipeline comercial (oportunidades, refs C-0000) da LIFF.",
   "Chame `contexto` primeiro: ele diz em nome de quem você age, as áreas que vê e edita, e o vocabulário de status e estágios.",
   "Valores em reais; datas AAAA-MM-DD. Responsável: use o id de `listar_cadastros`.",
   "Grave só quando a pessoa pedir. Toda gravação fica no histórico do registro, com o nome desta conexão, e nada pode ser excluído por aqui.",

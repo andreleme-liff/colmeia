@@ -9,6 +9,7 @@
 
 import { getDb } from "@/lib/db";
 import { requireCtx } from "@/lib/perms";
+import { refCanonica } from "@/lib/domain";
 import { json, err } from "@/lib/http";
 
 export type EntradaHistorico = {
@@ -26,16 +27,18 @@ export async function GET(_req: Request, ctxRoute: RouteContext<"/api/logs/[enti
   if (ctx instanceof Response) return ctx;
 
   const { entidade } = await ctxRoute.params;
-  const ref = decodeURIComponent(entidade);
+  // Aceita a referência antiga (D-104) e a sem zeros: o histórico é o mesmo registro.
+  const ref = refCanonica(decodeURIComponent(entidade));
+  if (!ref) return err("Registro não encontrado.", 404);
 
   const sql = await getDb();
 
   // A referência precisa ser de um registro que existe E que a pessoa enxerga. Sem esta
   // checagem, qualquer um leria o histórico de qualquer área só sabendo a referência.
-  const [dono] = await sql<{ area: string }[]>`
-    SELECT area FROM activities WHERE ref = ${ref}
+  const [dono] = await sql<{ area: string; ref_antiga: string | null }[]>`
+    SELECT area, ref_antiga FROM activities WHERE ref = ${ref}
     UNION ALL
-    SELECT area FROM deals WHERE ref = ${ref}
+    SELECT area, ref_antiga FROM deals WHERE ref = ${ref}
     LIMIT 1
   `;
   if (!dono || !ctx.podeVer(dono.area)) return err("Registro não encontrado.", 404);
@@ -53,7 +56,9 @@ export async function GET(_req: Request, ctxRoute: RouteContext<"/api/logs/[enti
     FROM audit_log l
     LEFT JOIN users u ON u.id = l.actor_user_id
     LEFT JOIN oauth_concessoes k ON k.id = l.concessao_id
-    WHERE l.entidade = ${ref}
+    -- O audit_log guarda a referência que valia quando cada linha foi escrita: o que é de
+    -- antes de nov/2026 está como D-104 / A-1012.
+    WHERE l.entidade = ${ref} OR (${dono.ref_antiga}::text IS NOT NULL AND l.entidade = ${dono.ref_antiga})
     ORDER BY l.criado_em DESC, l.id DESC
   `;
 

@@ -13,7 +13,7 @@ import { getDb } from "@/lib/db";
 import { requireCtx } from "@/lib/perms";
 import { json, err } from "@/lib/http";
 import { registrar } from "@/lib/log";
-import { STAGE_KEYS, normalizarConta } from "@/lib/domain";
+import { STAGE_KEYS, formatarRef, normalizarConta } from "@/lib/domain";
 
 type Linha = {
   conta?: string;
@@ -121,7 +121,8 @@ export async function POST(req: Request) {
       continue;
     }
 
-    const [{ ref }] = await sql<{ ref: string }[]>`SELECT 'D-' || nextval('deals_ref_seq') AS ref`;
+    const [{ n }] = await sql<{ n: string }[]>`SELECT nextval('deals_ref_seq') AS n`;
+    const ref = formatarRef("oportunidade", n);
     await sql`
       INSERT INTO deals (ref, conta, escopo, area, estagio, valor_centavos, proximo_passo,
                          situacao, contato, responsavel_texto, produto_id, pausado)

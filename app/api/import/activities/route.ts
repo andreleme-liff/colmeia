@@ -10,7 +10,7 @@ import { getDb } from "@/lib/db";
 import { requireCtx } from "@/lib/perms";
 import { json, err } from "@/lib/http";
 import { registrar } from "@/lib/log";
-import { STATUS_KEYS, normalizarTexto } from "@/lib/domain";
+import { STATUS_KEYS, formatarRef, normalizarTexto } from "@/lib/domain";
 
 type Linha = {
   titulo?: string;
@@ -91,7 +91,8 @@ export async function POST(req: Request) {
       continue;
     }
 
-    const [{ ref }] = await sql<{ ref: string }[]>`SELECT 'A-' || nextval('activities_ref_seq') AS ref`;
+    const [{ n }] = await sql<{ n: string }[]>`SELECT nextval('activities_ref_seq') AS n`;
+    const ref = formatarRef("atividade", n);
     await sql`
       INSERT INTO activities (ref, titulo, area, status, prioridade, situacao, proximo_passo)
       VALUES (${ref}, ${titulo}, ${area}, ${status}, 'media', ${situacao}, ${proximo})

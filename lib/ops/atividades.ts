@@ -6,6 +6,7 @@
 
 import type { Queryable } from "../db";
 import { registrar } from "../log";
+import { formatarRef } from "../domain";
 import { ehFalha, type Autor, type Falha, type Fatos, type Permissoes } from "./comum";
 import { planejarAtualizacaoAtividade, planejarCriacaoAtividade, type AtividadeAtual } from "./regras-atividade";
 
@@ -29,7 +30,8 @@ export async function criarAtividade(
 
   // Ref legível vinda de sequence, para não colidir com as semeadas nem correr risco de
   // duas criações simultâneas gerarem o mesmo código.
-  const [{ ref }] = await tx<{ ref: string }[]>`SELECT 'A-' || nextval('activities_ref_seq') AS ref`;
+  const [{ n }] = await tx<{ n: string }[]>`SELECT nextval('activities_ref_seq') AS n`;
+  const ref = formatarRef("atividade", n);
 
   // A coluna `tipo` fica de fora: continua no banco, com default, mas deixou de ser
   // vocabulário do sistema.

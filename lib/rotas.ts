@@ -4,10 +4,10 @@
 // recusar caminho inexistente antes de renderizar, e o cliente para montar os links e ler o
 // que veio na barra de endereço.
 //
-// O identificador na URL é a REFERÊNCIA (D-01, A-101), não o id numérico. É o que já aparece
+// O identificador na URL é a REFERÊNCIA (C-0104, T-1012), não o id numérico. É o que já aparece
 // no drawer e na auditoria, é estável, e um link colado no WhatsApp fica legível.
 
-import { NAV } from "./domain";
+import { NAV, refCanonica, tipoDaRef } from "./domain";
 
 /** Seções que viram caminho. `overview` é a raiz e não aparece na URL. */
 export const VIEWS = NAV.map((n) => n.key) as readonly string[];
@@ -16,9 +16,10 @@ export const VIEWS = NAV.map((n) => n.key) as readonly string[];
 export const CAD_TABS_URL = ["pessoas", "produtos", "areas"];
 
 /** Prefixo da referência aceito em cada seção. Fora daqui, a seção não abre card. */
-const REF_DA_VIEW: Record<string, RegExp> = {
-  comercial: /^D-\d+$/,
-  operacoes: /^A-\d+$/,
+/** Tipo de referência que cada seção abre. Fora daqui, a seção não abre card. */
+const REF_DA_VIEW: Record<string, "oportunidade" | "atividade"> = {
+  comercial: "oportunidade",
+  operacoes: "atividade",
 };
 
 export type Rota = {
@@ -52,10 +53,12 @@ export function lerRota(segmentos: string[] | undefined): Rota | null {
     return CAD_TABS_URL.includes(tab) ? { view, tab } : null;
   }
 
-  const formato = REF_DA_VIEW[view];
-  if (!formato) return null;
-  const ref = segundo.toUpperCase();
-  return formato.test(ref) ? { view, ref } : null;
+  const tipo = REF_DA_VIEW[view];
+  if (!tipo) return null;
+  // Aceita a forma antiga (D-104, A-1012) e a sem zeros (C-104): a rota devolve sempre a
+  // CANÔNICA, e a página redireciona quando o endereço pedido era outro.
+  const ref = refCanonica(segundo);
+  return ref && tipoDaRef(ref) === tipo ? { view, ref } : null;
 }
 
 /** Caminho canônico de um estado de tela. É o que vai para a barra de endereço e para o link. */

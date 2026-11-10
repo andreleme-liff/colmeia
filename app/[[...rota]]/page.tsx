@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
-import { lerRota } from "@/lib/rotas";
+import { caminhoDe, lerRota } from "@/lib/rotas";
 import Ops from "../components/Ops";
 
 // A sessão é lida a cada requisição — nada aqui pode ser pré-renderizado no build.
@@ -24,6 +24,9 @@ export default async function Home({ params }: PageProps<"/[[...rota]]">) {
   // Caminho que não existe é 404 de verdade, e não a visão geral disfarçada: quem recebeu
   // um link errado precisa saber que ele está errado.
   if (!rota) notFound();
+  // Link antigo (/comercial/D-104) ou sem zeros (/comercial/c-104): leva para o endereço de
+  // hoje. Um link colado em 2025 continua abrindo o mesmo card.
+  if (rota.ref && `/${(segmentos ?? []).join("/")}` !== caminhoDe(rota)) redirect(caminhoDe(rota));
 
   return <Ops rotaInicial={rota} />;
 }
