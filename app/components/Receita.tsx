@@ -34,8 +34,8 @@ const S_ASSINATURA: Serie = { key: "assinatura", label: "Assinatura", cor: "var(
 const S_IMPLANTACAO: Serie = { key: "implantacao", label: "Implantação", cor: "var(--rec-implantacao)", valor: (m) => m.implantacao };
 const S_CUSTOMIZACAO: Serie = { key: "customizacao", label: "Customização", cor: "var(--rec-customizacao)", valor: (m) => m.customizacao };
 const S_CONTRATADA: Serie = { key: "contratada", label: "Contratada", cor: "var(--rec-contratada)", valor: contratadaDoMes };
-const S_PROVAVEL: Serie = { key: "provavel", label: "Em assinatura", cor: "var(--rec-prevista)", valor: (m) => m.provavel };
-const S_POSSIVEL: Serie = { key: "possivel", label: "Em proposta", cor: "var(--rec-prevista)", textura: true, valor: (m) => m.possivel };
+const S_PROVAVEL: Serie = { key: "provavel", label: "Provável", cor: "var(--rec-prevista)", valor: (m) => m.provavel };
+const S_POSSIVEL: Serie = { key: "possivel", label: "Possível", cor: "var(--rec-prevista)", textura: true, valor: (m) => m.possivel };
 
 /** Como a receita contratada aparece: um total só (consolidada), ou aberta nos três tipos. */
 type Visao = "consolidada" | "detalhada";
@@ -173,12 +173,11 @@ export default function Receita({
       <section>
         <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", marginBottom: 14 }}>
           <div style={eyebrow(11, C.dust, "0.14em")}>RECEITA POR MÊS</div>
-          {/* Contratada sempre aparece: um total (Contratada) ou aberta nos três tipos (Detalhado).
-              Em assinatura (chance alta) e Em proposta (chance baixa) entram por cima, cada um com
-              o seu botão. */}
+          {/* Contratada sempre aparece: um total (Contratado) ou aberta nos três tipos (Ver detalhes).
+              Provável (chance alta) e Possível (chance baixa) entram por cima, cada um com o seu botão. */}
           <div className="rec-controles">
             <div role="group" aria-label="Receita contratada" className="liff-densidade">
-              {([["consolidada", "Contratada"], ["detalhada", "Detalhado"]] as const).map(([v, rotulo]) => (
+              {([["consolidada", "Contratado"], ["detalhada", "Ver detalhes"]] as const).map(([v, rotulo]) => (
                 <button key={v} type="button" aria-pressed={visao === v} onClick={() => setVisao(v)}>
                   {rotulo}
                 </button>
