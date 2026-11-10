@@ -106,11 +106,13 @@ export async function GET() {
       ORDER BY d.ref ASC
     `,
     sql<
-      { id: number; criado_em: Date; autor: string | null; area: string | null; entidade: string; texto: string }[]
+      { id: number; criado_em: Date; autor: string | null; area: string | null; entidade: string; texto: string; via: string | null }[]
     >`
-      SELECT l.id, l.criado_em, u.nome AS autor, l.area, l.entidade, l.texto
+      SELECT l.id, l.criado_em, u.nome AS autor, l.area, l.entidade, l.texto,
+             CASE WHEN l.origem = 'mcp' THEN COALESCE(k.client_nome, 'conexão externa') END AS via
       FROM audit_log l
       LEFT JOIN users u ON u.id = l.actor_user_id
+      LEFT JOIN oauth_concessoes k ON k.id = l.concessao_id
       WHERE l.area IS NULL OR l.area = ANY(${areas})
       ORDER BY l.criado_em DESC, l.id DESC
       LIMIT 200
@@ -222,6 +224,7 @@ export async function GET() {
       id: l.id,
       criadoEm: l.criado_em.toISOString(),
       autor: l.autor ?? "sistema",
+      via: l.via,
       area: l.area,
       entidade: l.entidade,
       texto: l.texto,

@@ -10,6 +10,8 @@ import { C, GHOST_FIX, MONO, SANS, dot, eyebrow, mesh, prioColor, statusColor } 
 import type { Activity, AreaCadastro, Deal, LogEntry, Pessoa } from "./api";
 import SeletorArea, { type OpcaoArea } from "./SeletorArea";
 import Historico from "./Historico";
+import ViaConexao from "./ViaConexao";
+import Conexoes from "./Conexoes";
 import {
   ADMIN_CARDS, PAPEIS, STAGES, STATUS, areaOf, brl, ddmm, porTexto, stamp, statusLabel, todasAreas,
 } from "@/lib/domain";
@@ -216,7 +218,10 @@ export function Overview({
             style={{ display: "grid", gap: 20, alignItems: "baseline", padding: "13px 0", borderTop: `1px solid ${C.panel2}` }}
           >
             <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>{stamp(l.criadoEm)}</span>
-            <span style={{ fontSize: 14, color: C.dust }}>{l.autor}</span>
+            <span style={{ fontSize: 14, color: C.dust }}>
+              {l.autor}
+              {l.via && <ViaConexao nome={l.via} />}
+            </span>
             <span style={{ fontSize: 14, color: C.ink, lineHeight: 1.5 }}>{l.texto}</span>
           </div>
         ))}
@@ -787,6 +792,8 @@ export const CAD_TABS = [
   { key: "pessoas", label: "pessoas" },
   { key: "produtos", label: "produtos" },
   { key: "areas", label: "áreas" },
+  // Aplicativos externos (o Claude) autorizados a agir em nome de alguém, pelo MCP.
+  { key: "conexoes", label: "conexões" },
 ] as const;
 
 const TITULO_NOVO: Record<string, string> = {
@@ -1293,6 +1300,9 @@ export function Cadastros({
         ))}
       </div>
 
+      {tab === "conexoes" ? (
+        <Conexoes />
+      ) : (
       <div className="liff-cad-split" style={mesh({ display: "grid", gap: 1 })}>
         <div className="liff-scroll-x" style={{ background: C.cell }}>
           {tab === "areas" ? (
@@ -1360,6 +1370,7 @@ export function Cadastros({
           </div>
         </div>
       </div>
+      )}
     </>
   );
 }
@@ -1675,7 +1686,10 @@ export function Auditoria({ logs }: { logs: LogEntry[] }) {
               <div style={{ padding: "13px 16px", fontFamily: MONO, fontSize: 11, color: C.faint }}>
                 {stamp(l.criadoEm)}
               </div>
-              <div style={{ padding: "13px 16px", fontSize: 13, color: C.body }}>{l.autor}</div>
+              <div style={{ padding: "13px 16px", fontSize: 13, color: C.body }}>
+                {l.autor}
+                {l.via && <ViaConexao nome={l.via} />}
+              </div>
               <div
                 style={{
                   padding: "13px 16px",

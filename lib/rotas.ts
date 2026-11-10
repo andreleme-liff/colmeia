@@ -13,7 +13,7 @@ import { NAV } from "./domain";
 export const VIEWS = NAV.map((n) => n.key) as readonly string[];
 
 /** Abas de Cadastros que viram segmento próprio. */
-export const CAD_TABS_URL = ["pessoas", "produtos", "areas"];
+export const CAD_TABS_URL = ["pessoas", "produtos", "areas", "conexoes"];
 
 /** Prefixo da referência aceito em cada seção. Fora daqui, a seção não abre card. */
 const REF_DA_VIEW: Record<string, RegExp> = {

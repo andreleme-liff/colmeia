@@ -73,6 +73,8 @@ export type LogEntry = {
   id: number;
   criadoEm: string;
   autor: string;
+  /** Nome do aplicativo quando a escrita veio de uma conexão externa (MCP); nulo = interface. */
+  via: string | null;
   area: string | null;
   entidade: string;
   texto: string;

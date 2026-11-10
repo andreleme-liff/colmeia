@@ -43,11 +43,16 @@ export async function GET(_req: Request, ctxRoute: RouteContext<"/api/logs/[enti
   const linhas = await sql<
     {
       id: number; criado_em: Date; autor: string | null; campo: string | null;
-      valor_anterior: string | null; valor_novo: string | null; texto: string;
+      valor_anterior: string | null; valor_novo: string | null; texto: string; via: string | null;
     }[]
   >`
-    SELECT l.id, l.criado_em, u.nome AS autor, l.campo, l.valor_anterior, l.valor_novo, l.texto
-    FROM audit_log l LEFT JOIN users u ON u.id = l.actor_user_id
+    SELECT l.id, l.criado_em, u.nome AS autor, l.campo, l.valor_anterior, l.valor_novo, l.texto,
+           -- Escrita feita por uma conexão externa (MCP): o nome do aplicativo, para a tela
+           -- mostrar "via Claude" ao lado do autor.
+           CASE WHEN l.origem = 'mcp' THEN COALESCE(k.client_nome, 'conexão externa') END AS via
+    FROM audit_log l
+    LEFT JOIN users u ON u.id = l.actor_user_id
+    LEFT JOIN oauth_concessoes k ON k.id = l.concessao_id
     WHERE l.entidade = ${ref}
     ORDER BY l.criado_em DESC, l.id DESC
   `;
@@ -57,6 +62,7 @@ export async function GET(_req: Request, ctxRoute: RouteContext<"/api/logs/[enti
       id: l.id,
       criadoEm: l.criado_em.toISOString(),
       autor: l.autor ?? "sistema",
+      via: l.via,
       campo: l.campo,
       de: l.valor_anterior,
       para: l.valor_novo,

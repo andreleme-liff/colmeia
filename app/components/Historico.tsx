@@ -10,11 +10,13 @@
 import { useEffect, useState } from "react";
 import { C, MONO, eyebrow } from "./tokens";
 import { stamp } from "@/lib/domain";
+import ViaConexao from "./ViaConexao";
 
 type Entrada = {
   id: number;
   criadoEm: string;
   autor: string;
+  via: string | null;
   campo: string | null;
   de: string | null;
   para: string | null;
@@ -94,7 +96,8 @@ export default function Historico({ entidade }: { entidade: string }) {
           )}
 
           <div style={{ ...eyebrow(10, C.faint, "0.1em"), marginTop: 4 }}>
-            {e.autor} · {stamp(e.criadoEm)}
+            {e.autor}
+            {e.via && <ViaConexao nome={e.via} />} · {stamp(e.criadoEm)}
           </div>
         </div>
       ))}
