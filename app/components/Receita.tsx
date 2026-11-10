@@ -25,7 +25,7 @@ import {
   type Contrato, type LinhaReceita, type MesForecast, type SituacaoEfetiva, type TipoReceita,
 } from "@/lib/forecast";
 
-const HORIZONTES = [6, 12, 24] as const;
+const HORIZONTES = [6, 12, 24, 36] as const;
 
 /** Uma série do gráfico. A cor vem do CSS (`--rec-*`), validada nos dois temas. */
 type Serie = { key: string; label: string; cor: string; textura?: boolean; valor: (m: MesForecast) => number };
@@ -329,7 +329,8 @@ function Grafico({ serie, series }: { serie: MesForecast[]; series: Serie[] }) {
   const teto = tetoDoEixo(Math.max(...totais));
   const marcas = [0, 0.25, 0.5, 0.75, 1].map((f) => f * teto);
   const vazio = totais.every((t) => t === 0);
-  const passo = serie.length > 12 ? 2 : 1;
+  // Rótulo de mês: todos até 12, um sim um não até 24, um a cada três no de 36.
+  const passo = serie.length > 24 ? 3 : serie.length > 12 ? 2 : 1;
 
   return (
     <div className="rec-grafico">
@@ -350,7 +351,7 @@ function Grafico({ serie, series }: { serie: MesForecast[]; series: Serie[] }) {
           ))}
         </div>
         {vazio && <div className="rec-grafico__vazio">Sem receita no horizonte.</div>}
-        <div className="rec-grafico__barras">
+        <div className="rec-grafico__barras" style={serie.length > 24 ? { gap: 3 } : undefined}>
           {serie.map((m, i) => {
             const presentes = series.filter((s) => s.valor(m) > 0);
             return (
@@ -377,7 +378,7 @@ function Grafico({ serie, series }: { serie: MesForecast[]; series: Serie[] }) {
                       />
                     ))}
                 </div>
-                {/* Rótulo de mês um sim, um não no horizonte de 24; no celular, a metade disso. */}
+                {/* No celular, a metade dos rótulos que a tela larga mostra. */}
                 {i % passo === 0 && (
                   <span className="rec-grafico__mes" data-alterno={(i / passo) % 2 === 1 ? "1" : undefined}>
                     {rotuloMes(m.mes)}
