@@ -1,8 +1,13 @@
 // Auditoria. Toda escrita do sistema passa por aqui — o registro guarda autor, horário,
 // entidade, campo e o par valor anterior/novo, que é o que a tela de administração promete.
 // A tabela é append-only: nada no app faz UPDATE ou DELETE em audit_log.
+//
+// `origem` e `concessaoId` dizem POR ONDE a escrita veio. Nulos: a interface, como sempre foi.
+// `origem = 'mcp'`: um sistema externo (o Claude, por exemplo) agindo em nome da pessoa, por
+// uma conexão que ela mesma autorizou — `concessaoId` aponta qual. Sem chave estrangeira, como
+// `entidade`: revogar a conexão não pode apagar o rastro do que ela fez.
 
-import type { Db } from "./db";
+import type { Queryable } from "./db";
 
 export type Mudanca = {
   actorUserId: number;
@@ -12,11 +17,14 @@ export type Mudanca = {
   de?: string | null;
   para?: string | null;
   texto: string;
+  origem?: "mcp" | null;
+  concessaoId?: number | null;
 };
 
-export async function registrar(sql: Db, m: Mudanca): Promise<void> {
+export async function registrar(sql: Queryable, m: Mudanca): Promise<void> {
   await sql`
-    INSERT INTO audit_log (actor_user_id, area, entidade, campo, valor_anterior, valor_novo, texto)
-    VALUES (${m.actorUserId}, ${m.area}, ${m.entidade}, ${m.campo ?? null}, ${m.de ?? null}, ${m.para ?? null}, ${m.texto})
+    INSERT INTO audit_log (actor_user_id, area, entidade, campo, valor_anterior, valor_novo, texto, origem, concessao_id)
+    VALUES (${m.actorUserId}, ${m.area}, ${m.entidade}, ${m.campo ?? null}, ${m.de ?? null}, ${m.para ?? null}, ${m.texto},
+            ${m.origem ?? null}, ${m.concessaoId ?? null})
   `;
 }

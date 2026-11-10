@@ -365,6 +365,89 @@ async function migrate(): Promise<void> {
     await sql`CREATE INDEX IF NOT EXISTS idx_audit_recente ON audit_log(criado_em DESC)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_perms_user ON user_area_perms(user_id)`;
 
+    // ---- Acesso por sistemas externos (MCP + OAuth 2.1) ----
+    //
+    // De onde veio cada escrita. Nulo é a interface, como sempre foi. Sem chave estrangeira
+    // para a concessão, pelo mesmo motivo de `entidade`: revogar a conexão não pode apagar o
+    // rastro do que ela fez.
+    await sql`ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS origem TEXT`;
+    await sql`ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS concessao_id INTEGER`;
+
+    // Uma concessão é "esta pessoa autorizou este cliente (o Claude no claude.ai, o Claude
+    // Code) a agir em nome dela, com estes escopos". O token não carrega permissão: carrega a
+    // pessoa, e a permissão por área é recalculada a cada chamada. Revogar = marcar aqui.
+    await sql`
+      CREATE TABLE IF NOT EXISTS oauth_concessoes (
+        id               SERIAL PRIMARY KEY,
+        user_id          INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        client_id        TEXT NOT NULL,
+        client_nome      TEXT NOT NULL,
+        redirect_uri     TEXT NOT NULL,
+        resource         TEXT NOT NULL,
+        escopos          TEXT NOT NULL,
+        criado_em        TIMESTAMPTZ NOT NULL DEFAULT now(),
+        ultimo_uso_em    TIMESTAMPTZ,
+        revogado_em      TIMESTAMPTZ,
+        revogado_por     INTEGER REFERENCES users(id),
+        motivo_revogacao TEXT
+      )
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS idx_concessoes_user ON oauth_concessoes(user_id)`;
+
+    // Códigos de autorização e tokens guardam SÓ o hash SHA-256. O valor em claro existe uma
+    // vez, na resposta ao cliente; um vazamento desta tabela não dá acesso a nada.
+    await sql`
+      CREATE TABLE IF NOT EXISTS oauth_codigos (
+        hash           TEXT PRIMARY KEY,
+        concessao_id   INTEGER NOT NULL REFERENCES oauth_concessoes(id) ON DELETE CASCADE,
+        code_challenge TEXT NOT NULL,
+        redirect_uri   TEXT NOT NULL,
+        expira_em      TIMESTAMPTZ NOT NULL,
+        usado_em       TIMESTAMPTZ
+      )
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS oauth_tokens (
+        hash         TEXT PRIMARY KEY,
+        concessao_id INTEGER NOT NULL REFERENCES oauth_concessoes(id) ON DELETE CASCADE,
+        tipo         TEXT NOT NULL CHECK (tipo IN ('acesso','refresh')),
+        expira_em    TIMESTAMPTZ NOT NULL,
+        criado_em    TIMESTAMPTZ NOT NULL DEFAULT now(),
+        -- Refresh já trocado por um novo. Reaparecer depois disso é sinal de roubo, e a
+        -- concessão inteira cai (rotação com detecção de reuso, OAuth 2.1 §4.3.1).
+        usado_em     TIMESTAMPTZ
+      )
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS idx_tokens_concessao ON oauth_tokens(concessao_id)`;
+
+    // Toda chamada de ferramenta, leitura inclusive — é o que responde "o que o Claude leu
+    // da carteira e quando". Append-only, como audit_log, e sem chave estrangeira pelo mesmo
+    // motivo. A gravação feita pela chamada entra na MESMA transação que esta linha.
+    await sql`
+      CREATE TABLE IF NOT EXISTS mcp_chamadas (
+        id                 BIGSERIAL PRIMARY KEY,
+        concessao_id       INTEGER NOT NULL,
+        user_id            INTEGER NOT NULL,
+        ferramenta         TEXT NOT NULL,
+        argumentos         JSONB NOT NULL DEFAULT '{}'::jsonb,
+        escrita            BOOLEAN NOT NULL DEFAULT false,
+        ok                 BOOLEAN NOT NULL,
+        erro               TEXT,
+        ref                TEXT,
+        chave_idempotencia TEXT,
+        duracao_ms         INTEGER,
+        criado_em          TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS idx_chamadas_recente ON mcp_chamadas(concessao_id, criado_em DESC)`;
+    // Repetir uma criação com a mesma chave devolve o registro já criado: o cliente reenvia
+    // depois de um timeout e a oportunidade não pode nascer duas vezes.
+    await sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_chamadas_idempotencia
+      ON mcp_chamadas(concessao_id, chave_idempotencia)
+      WHERE chave_idempotencia IS NOT NULL AND ok
+    `;
+
     // A Supabase expõe o schema `public` pela API REST (PostgREST), que atende usando os
     // papéis `anon` e `authenticated` — e concede privilégios a eles por padrão em tabelas
     // novas. A chave anon é pública por definição (nasceu para ir em código de navegador),
@@ -383,10 +466,10 @@ async function migrate(): Promise<void> {
       BEGIN
         FOREACH papel IN ARRAY ARRAY['anon','authenticated'] LOOP
           IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = papel) THEN
-            EXECUTE format(
-              'REVOKE ALL ON users, user_area_perms, activities, deals, sessions, audit_log FROM %I',
-              papel
-            );
+            -- TODAS as tabelas, não uma lista. A lista nomeada deixava de fora toda tabela
+            -- criada depois dela (areas e produtos já estavam fora) — e as tabelas de OAuth
+            -- guardam hash de token. Tabela nova fica fechada sem ninguém lembrar de incluí-la.
+            EXECUTE format('REVOKE ALL ON ALL TABLES IN SCHEMA public FROM %I', papel);
             EXECUTE format('REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM %I', papel);
           END IF;
         END LOOP;
