@@ -4,9 +4,9 @@
 // problemas, a mensagem devolvida continua sendo a mesma de antes, e a interface (que mostra
 // o texto do erro) não muda de comportamento.
 
-import { PRIORIDADES, STATUS_KEYS, ddmm, statusLabel } from "../domain.ts";
+import { PRIORIDADES, STATUS_KEYS, ddmm, refCanonica, statusLabel } from "../domain.ts";
 import {
-  LIMITES, dataOuNula, falha, idDePessoa, isoDoBanco, produtoNaArea, texto,
+  LIMITES, dataOuNula, falha, idDePessoa, isoDoBanco, produtoNaArea, resolverOportunidade, rotuloOportunidade, texto,
   type Falha, type Fatos, type Mudanca, type Permissoes,
 } from "./comum.ts";
 
@@ -21,6 +21,7 @@ export type AtividadeNova = {
   proximoPasso: string;
   proximoPassoEm: string | null;
   produtoId: string | null;
+  oportunidadeId: number | null;
 };
 
 /** A linha como ela está no banco, com o nome do responsável já resolvido. */
@@ -38,6 +39,7 @@ export type AtividadeAtual = {
   proximo_passo_em: Date | null;
   produto_id: string | null;
   prazo: Date | null;
+  oportunidade_id: number | null;
 };
 
 type Entrada = Record<string, unknown>;
@@ -78,6 +80,13 @@ export function planejarCriacaoAtividade(
     responsavelId = id;
   }
 
+  // A oportunidade comercial a que esta tarefa serve. Opcional.
+  let oportunidade: { id: number; ref: string; conta: string; area: string } | null = null;
+  if (body.oportunidade != null && body.oportunidade !== "") {
+    oportunidade = resolverOportunidade(body.oportunidade, fatos, perm, refCanonica);
+    if (!oportunidade) return falha("Oportunidade não encontrada.");
+  }
+
   const linha: AtividadeNova = {
     titulo,
     area,
@@ -91,6 +100,7 @@ export function planejarCriacaoAtividade(
     // como fim da semana corrente.
     proximoPassoEm: dataOuNula(body.proximoPassoEm),
     produtoId,
+    oportunidadeId: oportunidade?.id ?? null,
   };
 
   return {
@@ -100,7 +110,9 @@ export function planejarCriacaoAtividade(
       campo: "criacao",
       de: null,
       para: statusLabel(status),
-      texto: `Criou "${titulo}" em ${perm.labelArea(area)}`,
+      texto: `Criou "${titulo}" em ${perm.labelArea(area)}${
+        oportunidade ? `, ligada à oportunidade ${rotuloOportunidade(oportunidade, area)}` : ""
+      }`,
     },
   };
 }
@@ -108,7 +120,7 @@ export function planejarCriacaoAtividade(
 /** Colunas que a alteração pode tocar. A lista fecha o conjunto: nada fora dela vira SQL. */
 export type ColunaAtividade =
   | "area" | "titulo" | "status" | "prioridade" | "situacao" | "proximo_passo"
-  | "responsavel_user_id" | "prazo" | "proximo_passo_em" | "produto_id";
+  | "responsavel_user_id" | "prazo" | "proximo_passo_em" | "produto_id" | "oportunidade_id";
 
 export type PlanoAtualizacao = {
   ok: true;
@@ -285,6 +297,33 @@ export function planejarAtualizacaoAtividade(
       texto: `Removeu o produto de "${atual.titulo}" — não pertence a ${perm.labelArea(areaFinal)}`,
     });
     sets.produto_id = null;
+  }
+
+  // Ligar, trocar ou desligar a oportunidade. A anterior pode ser de uma área que quem age
+  // não enxerga: o histórico mostra só a referência dela, sem a conta.
+  if (body.oportunidade !== undefined) {
+    let nova: { id: number; ref: string; conta: string; area: string } | null = null;
+    if (body.oportunidade !== null && body.oportunidade !== "") {
+      nova = resolverOportunidade(body.oportunidade, fatos, perm, refCanonica);
+      if (!nova) return falha("Oportunidade não encontrada.");
+    }
+    if ((nova?.id ?? null) !== atual.oportunidade_id) {
+      // A linha mora na área FINAL da tarefa — é ela que decide se a conta pode aparecer.
+      const antiga = fatos.oportunidades.find((o) => o.id === atual.oportunidade_id);
+      const deAntiga = antiga ? rotuloOportunidade(antiga, areaFinal) : "—";
+      const paraNova = nova ? rotuloOportunidade(nova, areaFinal) : "—";
+      mudancas.push({
+        campo: "oportunidade",
+        de: deAntiga,
+        para: paraNova,
+        texto: nova
+          ? antiga
+            ? `Ligou "${atual.titulo}" à oportunidade ${paraNova}, no lugar de ${deAntiga}`
+            : `Ligou "${atual.titulo}" à oportunidade ${paraNova}`
+          : `Desligou "${atual.titulo}" da oportunidade ${deAntiga}`,
+      });
+      sets.oportunidade_id = nova?.id ?? null;
+    }
   }
 
   return { ok: true, sets, mudancas, areaFinal };

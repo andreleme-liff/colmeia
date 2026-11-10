@@ -75,13 +75,15 @@ export async function GET() {
         id: number; ref: string; titulo: string; area: string; status: string;
         prioridade: string; prazo: Date | null; responsavel_user_id: number | null; responsavel: string | null;
         situacao: string; proximo_passo: string; proximo_passo_em: Date | null; produto_id: string | null;
+        oportunidade_id: number | null; op_ref: string | null; op_conta: string | null; op_area: string | null;
       }[]
     >`
       SELECT a.id, a.ref, a.titulo, a.area, a.status, a.prioridade, a.prazo,
              a.responsavel_user_id, a.situacao, a.proximo_passo, a.proximo_passo_em, a.produto_id,
-             u.nome AS responsavel
+             u.nome AS responsavel, a.oportunidade_id, o.ref AS op_ref, o.conta AS op_conta, o.area AS op_area
       FROM activities a
       LEFT JOIN users u ON u.id = a.responsavel_user_id
+      LEFT JOIN deals o ON o.id = a.oportunidade_id
       WHERE a.area = ANY(${areas})
       ORDER BY a.ref ASC
     `,
@@ -201,6 +203,11 @@ export async function GET() {
       produtoId: a.produto_id,
       proximoPassoEm: a.proximo_passo_em ? a.proximo_passo_em.toISOString().slice(0, 10) : null,
       podeEditar: ctx.podeEditar(a.area),
+      // A oportunidade ligada, só se quem olha enxerga a área dela. Tarefa de Operações
+      // ligada a uma venda de outra vertical mostra que HÁ vínculo, sem abrir a carteira alheia.
+      ...(a.oportunidade_id && a.op_area && ctx.podeVer(a.op_area)
+        ? { oportunidadeId: a.oportunidade_id, oportunidadeRef: a.op_ref, oportunidadeConta: a.op_conta, oportunidadeOculta: false }
+        : { oportunidadeId: null, oportunidadeRef: null, oportunidadeConta: null, oportunidadeOculta: !!a.oportunidade_id }),
     })),
     deals: oportunidades.map((d) => ({
       id: d.id,

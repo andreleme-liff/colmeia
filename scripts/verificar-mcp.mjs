@@ -96,6 +96,10 @@ checa("ref nova de oportunidade aceita", valida("atualizar_oportunidade", { ref:
 checa("ref nova de tarefa aceita", valida("atualizar_atividade", { ref: "T-1012", status: "revisao" }), []);
 checa("tarefa na ferramenta de oportunidade recusada", valida("atualizar_oportunidade", { ref: "T-1012" }), ["ref: formato inválido"]);
 checa("oportunidade na ferramenta de tarefa recusada", valida("atualizar_atividade", { ref: "C-0108" }), ["ref: formato inválido"]);
+checa("tarefa ligada a oportunidade pela referência", valida("criar_atividade", { titulo: "X", area: "tax", oportunidade: "C-0104" }), []);
+checa("null desliga a oportunidade", valida("atualizar_atividade", { ref: "T-1012", oportunidade: null }), []);
+checa("referência de tarefa no campo oportunidade recusada", valida("atualizar_atividade", { ref: "T-1012", oportunidade: "T-0001" }), ["oportunidade: formato inválido"]);
+checa("listar tarefas de uma oportunidade", valida("listar_atividades", { oportunidade: "c-104" }), []);
 checa("ver_registro aceita as quatro letras", ["C-1", "T-1", "D-1", "A-1"].every((r) => !valida("ver_registro", { ref: r }).length), true);
 checa("chave de idempotência curta demais",
   valida("criar_oportunidade", { conta: "X", area: "tax", chave_idempotencia: "1" }), ["chave_idempotencia: no mínimo 8 caracteres"]);

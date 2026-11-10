@@ -53,12 +53,18 @@ const perm2 = { ...perm, podeVer: (a) => !!NIVEL2[a], podeEditar: (a) => NIVEL2[
 const fatos = {
   pessoas: new Map([[1, "Bruno Santo"], [2, "Bianka Moreira"]]),
   produtos: [{ id: "regtrack", area: "tax" }, { id: "observa", area: "tech" }],
+  oportunidades: [
+    { id: 20, ref: "C-0120", conta: "JBS", area: "tax" },
+    { id: 21, ref: "C-0121", conta: "Natura", area: "tech" },
+    { id: 22, ref: "C-0122", conta: "Banco Sigiloso", area: "jur" },
+  ],
 };
 
 const ATIV = {
   id: 10, ref: "A-1010", titulo: "Mapear obrigações", area: "tax", status: "backlog",
   prioridade: "media", responsavel_user_id: 1, responsavel: "Bruno Santo", situacao: "",
   proximo_passo: "", proximo_passo_em: null, produto_id: "regtrack", prazo: new Date("2026-11-20T00:00:00Z"),
+  oportunidade_id: null,
 };
 const OPOR = {
   id: 20, ref: "D-120", conta: "JBS", escopo: "", area: "tax", estagio: "qualificacao",
@@ -182,7 +188,48 @@ for (const rota of ROTAS) {
 checa("achou as mensagens antigas (sanidade do extrator)", antigas.size >= 14, true);
 for (const msg of [...antigas].sort()) checa(`continua existindo: ${JSON.stringify(msg)}`, NOVO.includes(msg), true);
 
-console.log("\n7. referências C-0000 (comercial) e T-0000 (tarefa)");
+console.log("\n7. tarefa ligada a oportunidade");
+const criadaLigada = planejarCriacaoAtividade({ titulo: "Implantar", area: "tax", oportunidade: 20 }, perm, fatos);
+checa("liga pelo id (o que a tela manda)", criadaLigada.linha?.oportunidadeId, 20);
+checa("a criação conta no histórico a que venda serve",
+  criadaLigada.auditoria?.texto, 'Criou "Implantar" em LIFF Tax, ligada à oportunidade C-0120 · JBS');
+checa("liga pela referência (o que o Claude manda)",
+  planejarCriacaoAtividade({ titulo: "X", area: "tax", oportunidade: "c-120" }, perm, fatos).linha?.oportunidadeId, 20);
+checa("liga pela referência antiga", planejarCriacaoAtividade({ titulo: "X", area: "tax", oportunidade: "D-121" }, perm, fatos).linha?.oportunidadeId, 21);
+checa("oportunidade de outra área que a pessoa vê: vale (a venda e a tarefa nem sempre são da mesma vertical)",
+  planejarCriacaoAtividade({ titulo: "X", area: "tax", oportunidade: 21 }, perm, fatos).ok, true);
+// Não enxergar responde igual a não existir: confirmar a referência vazaria a carteira alheia.
+checa("oportunidade de área invisível: 'não encontrada'",
+  erro(planejarCriacaoAtividade({ titulo: "X", area: "tax", oportunidade: "C-0122" }, perm, fatos)), "400 Oportunidade não encontrada.");
+checa("…igual à que não existe",
+  erro(planejarCriacaoAtividade({ titulo: "X", area: "tax", oportunidade: "C-9999" }, perm, fatos)), "400 Oportunidade não encontrada.");
+checa("referência de tarefa no lugar de oportunidade não liga",
+  erro(planejarCriacaoAtividade({ titulo: "X", area: "tax", oportunidade: "T-0120" }, perm, fatos)), "400 Oportunidade não encontrada.");
+checa("sem oportunidade é o normal", planejarCriacaoAtividade({ titulo: "X", area: "tax" }, perm, fatos).linha?.oportunidadeId, null);
+const ligar = planejarAtualizacaoAtividade(ATIV, { oportunidade: "C-0120" }, perm, fatos);
+checa("ligar uma tarefa existente", [ligar.sets?.oportunidade_id, ligar.mudancas?.[0].para], [20, "C-0120 · JBS"]);
+checa("mesma oportunidade de novo não é mudança",
+  planejarAtualizacaoAtividade({ ...ATIV, oportunidade_id: 20 }, { oportunidade: 20 }, perm, fatos).mudancas.length, 0);
+const desligar = planejarAtualizacaoAtividade({ ...ATIV, oportunidade_id: 20 }, { oportunidade: null }, perm, fatos);
+checa("desligar", [desligar.sets?.oportunidade_id, desligar.mudancas?.[0].texto], [null, 'Desligou "Mapear obrigações" da oportunidade C-0120 · JBS']);
+checa("'' do seletor também desliga", planejarAtualizacaoAtividade({ ...ATIV, oportunidade_id: 20 }, { oportunidade: "" }, perm, fatos).sets?.oportunidade_id, null);
+// Trocar a partir de uma oportunidade que quem age não vê: o histórico não pode revelar a conta.
+const troca = planejarAtualizacaoAtividade({ ...ATIV, oportunidade_id: 22 }, { oportunidade: 20 }, perm, fatos);
+checa("trocar a partir de oportunidade invisível: o histórico mostra só a referência dela",
+  troca.mudancas?.[0].de, "C-0122");
+checa("…e nenhum texto do histórico cita a conta escondida", troca.mudancas.some((m) => m.texto.includes("Sigiloso")), false);
+// O caso que vazou no teste de ponta a ponta: quem LIGA enxerga a venda de outra área, mas
+// quem LÊ o histórico da tarefa pode não enxergar. A linha mora na área da tarefa.
+const cruzada = planejarAtualizacaoAtividade(ATIV, { oportunidade: 21 }, perm, fatos);
+checa("venda de outra área: o histórico da tarefa guarda só a referência", cruzada.mudancas?.[0].para, "C-0121");
+checa("…sem o nome da conta em texto nenhum", cruzada.mudancas.some((m) => `${m.texto}${m.de}${m.para}`.includes("Natura")), false);
+const criadaCruzada = planejarCriacaoAtividade({ titulo: "Y", area: "tax", oportunidade: 21 }, perm, fatos);
+checa("…nem na criação", criadaCruzada.auditoria.texto.includes("Natura"), false);
+// A área FINAL decide: mover a tarefa para a área da venda junto com o vínculo libera a conta.
+checa("tarefa movida para a área da venda no mesmo passo: a conta pode aparecer",
+  planejarAtualizacaoAtividade(ATIV, { area: "tech", oportunidade: 21 }, perm2, fatos).mudancas.find((m) => m.campo === "oportunidade")?.para, "C-0121 · Natura");
+
+console.log("\n8. referências C-0000 (comercial) e T-0000 (tarefa)");
 checa("nova oportunidade", formatarRef("oportunidade", "108"), "C-0108");
 checa("nova tarefa", formatarRef("atividade", 1000), "T-1000");
 checa("passa de 9999 sem cortar", formatarRef("oportunidade", 12345), "C-12345");

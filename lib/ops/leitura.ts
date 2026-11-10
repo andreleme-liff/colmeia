@@ -30,6 +30,7 @@ type LinhaAtividade = {
   ref: string; titulo: string; area: string; status: string; prioridade: string; prazo: Date | null;
   responsavel_user_id: number | null; responsavel: string | null; situacao: string; proximo_passo: string;
   proximo_passo_em: Date | null; produto_id: string | null; atualizado_em: Date | null; criado_em: Date;
+  oportunidade_id: number | null; op_ref: string | null; op_conta: string | null; op_area: string | null;
 };
 
 function atividadeDto(a: LinhaAtividade, ctx: Ctx, base: string) {
@@ -49,6 +50,14 @@ function atividadeDto(a: LinhaAtividade, ctx: Ctx, base: string) {
     proximo_passo_em: iso(a.proximo_passo_em),
     produto_id: a.produto_id,
     atualizado_em: (a.atualizado_em ?? a.criado_em).toISOString(),
+    // A oportunidade ligada, só se quem pergunta enxerga a área dela; senão, só o fato de
+    // que há vínculo — a mesma regra da tela.
+    oportunidade:
+      a.oportunidade_id && a.op_area && ctx.podeVer(a.op_area)
+        ? { ref: a.op_ref, conta: a.op_conta, url: base + caminhoDe({ view: "comercial", ref: a.op_ref ?? undefined }) }
+        : a.oportunidade_id
+          ? "ligada a uma oportunidade de área sem acesso"
+          : null,
     pode_editar: ctx.podeEditar(a.area),
     url: base + caminhoDe({ view: "operacoes", ref: a.ref }),
   };
@@ -87,17 +96,37 @@ function oportunidadeDto(d: LinhaOportunidade, ctx: Ctx, base: string) {
   };
 }
 
-export type FiltroAtividades = { area?: string; status?: string; responsavelId?: number; busca?: string; limite: number };
+export type FiltroAtividades = {
+  area?: string; status?: string; responsavelId?: number; busca?: string; limite: number;
+  /** Só as tarefas ligadas a esta oportunidade (C-0104 ou a forma antiga D-104). */
+  oportunidade?: string;
+};
+
+/** Id da oportunidade pela referência, se quem pergunta a enxerga. Não enxergar = não existir. */
+export async function oportunidadeVisivel(sql: Queryable, ctx: Ctx, refBruta: string): Promise<number | null> {
+  const ref = refCanonica(refBruta);
+  if (!ref || tipoDaRef(ref) !== "oportunidade") return null;
+  const [d] = await sql<{ id: number; area: string }[]>`SELECT id, area FROM deals WHERE ref = ${ref}`;
+  return d && ctx.podeVer(d.area) ? d.id : null;
+}
 
 export async function listarAtividades(sql: Queryable, ctx: Ctx, f: FiltroAtividades, base: string) {
   const areas = areasDoFiltro(ctx, f.area);
   if (!areas.length) return { itens: [], total: 0 };
+  let oportunidadeId: number | null = null;
+  if (f.oportunidade) {
+    oportunidadeId = await oportunidadeVisivel(sql, ctx, f.oportunidade);
+    if (oportunidadeId === null) return { erro: "Oportunidade não encontrada." } as const;
+  }
   const linhas = await sql<LinhaAtividade[]>`
     SELECT a.ref, a.titulo, a.area, a.status, a.prioridade, a.prazo, a.responsavel_user_id, u.nome AS responsavel,
-           a.situacao, a.proximo_passo, a.proximo_passo_em, a.produto_id, a.atualizado_em, a.criado_em
+           a.situacao, a.proximo_passo, a.proximo_passo_em, a.produto_id, a.atualizado_em, a.criado_em,
+           a.oportunidade_id, o.ref AS op_ref, o.conta AS op_conta, o.area AS op_area
     FROM activities a LEFT JOIN users u ON u.id = a.responsavel_user_id
+      LEFT JOIN deals o ON o.id = a.oportunidade_id
     WHERE a.area = ANY(${areas})
       ${f.status ? sql`AND a.status = ${f.status}` : sql``}
+      ${oportunidadeId !== null ? sql`AND a.oportunidade_id = ${oportunidadeId}` : sql``}
       ${f.busca ? sql`AND (a.titulo ILIKE ${padraoBusca(f.busca)} ESCAPE '\\' OR a.situacao ILIKE ${padraoBusca(f.busca)} ESCAPE '\\'
                           OR a.proximo_passo ILIKE ${padraoBusca(f.busca)} ESCAPE '\\')` : sql``}
     ORDER BY a.ref ASC
@@ -153,8 +182,10 @@ export async function verRegistro(sql: Queryable, ctx: Ctx, refBruta: string, ba
   if (tipoDaRef(ref) === "atividade") {
     const [a] = await sql<(LinhaAtividade & { ref_antiga: string | null })[]>`
       SELECT a.ref, a.titulo, a.area, a.status, a.prioridade, a.prazo, a.responsavel_user_id, u.nome AS responsavel,
-             a.situacao, a.proximo_passo, a.proximo_passo_em, a.produto_id, a.atualizado_em, a.criado_em, a.ref_antiga
-      FROM activities a LEFT JOIN users u ON u.id = a.responsavel_user_id WHERE a.ref = ${ref}
+             a.situacao, a.proximo_passo, a.proximo_passo_em, a.produto_id, a.atualizado_em, a.criado_em,
+           a.oportunidade_id, o.ref AS op_ref, o.conta AS op_conta, o.area AS op_area, a.ref_antiga
+      FROM activities a LEFT JOIN users u ON u.id = a.responsavel_user_id
+      LEFT JOIN deals o ON o.id = a.oportunidade_id WHERE a.ref = ${ref}
     `;
     if (a && ctx.podeVer(a.area)) {
       refAntiga = a.ref_antiga;
@@ -170,7 +201,22 @@ export async function verRegistro(sql: Queryable, ctx: Ctx, refBruta: string, ba
     `;
     if (d && ctx.podeVer(d.area)) {
       refAntiga = d.ref_antiga;
-      registro = { tipo: "oportunidade", ...oportunidadeDto(d, ctx, base) };
+      // O lado operacional desta venda, só nas áreas que quem pergunta enxerga.
+      const tarefas = await sql<{ ref: string; titulo: string; status: string; area: string; responsavel: string | null; prazo: Date | null }[]>`
+        SELECT a.ref, a.titulo, a.status, a.area, u.nome AS responsavel, a.prazo
+        FROM activities a LEFT JOIN users u ON u.id = a.responsavel_user_id
+        WHERE a.oportunidade_id = (SELECT id FROM deals WHERE ref = ${ref}) AND a.area = ANY(${ctx.areasVisiveis})
+        ORDER BY a.ref
+      `;
+      registro = {
+        tipo: "oportunidade",
+        ...oportunidadeDto(d, ctx, base),
+        tarefas: tarefas.map((t) => ({
+          ref: t.ref, titulo: t.titulo, status: t.status, status_nome: statusLabel(t.status),
+          area: t.area, responsavel: t.responsavel, prazo: iso(t.prazo),
+          url: base + caminhoDe({ view: "operacoes", ref: t.ref }),
+        })),
+      };
       area = d.area;
     }
   }

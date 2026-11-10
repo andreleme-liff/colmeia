@@ -52,6 +52,8 @@ export type Fatos = {
   pessoas: Map<number, string>;
   /** Todo produto: para conferir que pertence à área (final) do registro. */
   produtos: { id: string; area: string }[];
+  /** Toda oportunidade: para ligar uma tarefa a ela, por id (tela) ou referência (MCP). */
+  oportunidades: { id: number; ref: string; conta: string; area: string }[];
 };
 
 export const DATA_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -76,6 +78,40 @@ export function texto(v: unknown, max: number): string {
 /** Id de pessoa válido para a regra, ou `undefined` quando não é inteiro. */
 export function idDePessoa(v: unknown): number | undefined {
   return typeof v === "number" && Number.isInteger(v) && v > 0 ? v : undefined;
+}
+
+/**
+ * A oportunidade a que uma tarefa vai ficar ligada. Aceita o id (o que a tela manda) ou a
+ * referência, inclusive a antiga — "C-0104", "D-104" (o que o Claude manda).
+ *
+ * Quem liga precisa ENXERGAR a oportunidade. Não enxergar responde igual a não existir, como
+ * em todo o sistema: confirmar que a referência existe já seria vazar a carteira de outra área.
+ */
+export function resolverOportunidade(
+  v: unknown,
+  fatos: Fatos,
+  perm: Permissoes,
+  refCanonica: (r: string) => string | null
+): { id: number; ref: string; conta: string; area: string } | null {
+  const alvo =
+    typeof v === "number" && Number.isInteger(v)
+      ? fatos.oportunidades.find((o) => o.id === v)
+      : typeof v === "string"
+        ? fatos.oportunidades.find((o) => o.ref === refCanonica(v))
+        : undefined;
+  return alvo && perm.podeVer(alvo.area) ? alvo : null;
+}
+
+/**
+ * Como uma oportunidade aparece numa linha do histórico de uma TAREFA.
+ *
+ * A linha fica na área da tarefa, e quem lê é quem enxerga essa área — não quem a escreveu.
+ * Se a oportunidade é de outra área, um leitor pode não ter acesso a ela, e o nome da conta
+ * na linha abriria a carteira alheia pelo histórico. Por isso a conta só entra quando as
+ * duas são da mesma área; fora disso, só a referência.
+ */
+export function rotuloOportunidade(o: { ref: string; conta: string; area: string }, areaDaLinha: string): string {
+  return o.area === areaDaLinha ? `${o.ref} · ${o.conta}` : o.ref;
 }
 
 export function produtoNaArea(fatos: Fatos, produtoId: unknown, area: string): string | null {

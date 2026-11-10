@@ -565,6 +565,16 @@ export function Operacoes({
                     {c.titulo}
                   </div>
 
+                  {/* A oportunidade a que a tarefa serve: é o que liga o quadro ao pipeline. */}
+                  {c.oportunidadeRef && (
+                    <div
+                      title="Oportunidade comercial ligada"
+                      style={{ fontFamily: MONO, fontSize: 10, color: C.dust, marginTop: 5, letterSpacing: "0.02em" }}
+                    >
+                      ↳ {c.oportunidadeRef} · {c.oportunidadeConta}
+                    </div>
+                  )}
+
                   {/* Produto abaixo do título, como no card do Comercial. A cor continua
                       sendo a da área, para não haver duas dimensões cromáticas competindo. */}
                   {c.produtoId && (
@@ -1783,6 +1793,8 @@ export function Drawer({
   onProximoEm,
   onPrazo,
   produtos,
+  oportunidades,
+  onOportunidade,
 }: {
   act: Activity;
   pessoas: Pessoa[];
@@ -1800,6 +1812,9 @@ export function Drawer({
   onProximoEm: (d: string | null) => void;
   onPrazo: (d: string | null) => void;
   produtos: { id: string; label: string; area: string; ativo: boolean }[];
+  /** As oportunidades que a pessoa enxerga, para ligar a tarefa. */
+  oportunidades: { id: number; ref: string; conta: string }[];
+  onOportunidade: (id: number | null) => void;
 }) {
   const a = areaOf(act.area);
   const editavel = act.podeEditar;
@@ -1903,6 +1918,34 @@ export function Drawer({
                   </option>
                 ))}
             </select>
+          </div>
+
+          {/* A oportunidade comercial a que esta tarefa serve — o elo entre o pipeline e o
+              quadro. Qualquer oportunidade que a pessoa enxergue, de qualquer área: a tarefa
+              de implantação em Tax costuma servir a uma venda fechada em Corporate. */}
+          <div>
+            <div style={{ ...eyebrow(10, C.faint), marginBottom: 9 }}>OPORTUNIDADE</div>
+            {act.oportunidadeOculta ? (
+              // Ligada a uma oportunidade de área que esta pessoa não vê: mostrar que o vínculo
+              // existe, sem o nome da conta — e sem oferecer um seletor que o desfaria às cegas.
+              <div style={{ fontSize: 13, color: C.faint, lineHeight: 1.5 }}>
+                Ligada a uma oportunidade de uma área que você não acessa.
+              </div>
+            ) : (
+              <select
+                value={act.oportunidadeId ?? ""}
+                onChange={(e) => onOportunidade(e.target.value ? Number(e.target.value) : null)}
+                disabled={!editavel}
+                style={nativeSelectStyle}
+              >
+                <option value="">— nenhuma —</option>
+                {oportunidades.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.ref} · {o.conta}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
@@ -2364,6 +2407,8 @@ export function FormOportunidade({
   onExcluir,
   onSalvar,
   onFechar,
+  tarefas = [],
+  onAbrirTarefa,
 }: {
   areasEditaveis: { id: string; label: string }[];
   pessoas: OpcaoPessoa[];
@@ -2391,6 +2436,9 @@ export function FormOportunidade({
     aceAws: boolean;
   }) => void;
   onFechar: () => void;
+  /** Tarefas ligadas a esta oportunidade, já filtradas pelo que a pessoa enxerga. */
+  tarefas?: { ref: string; titulo: string; status: string }[];
+  onAbrirTarefa?: (ref: string) => void;
 }) {
   const editando = !!inicial;
   const [conta, setConta] = useState(inicial?.conta ?? "");
@@ -2546,6 +2594,36 @@ export function FormOportunidade({
           portal da AWS; aqui fica só a marca de quem já foi.
         </span>
       </div>
+
+      {/* O lado operacional desta venda: as tarefas ligadas a ela. Só as que a pessoa
+          enxerga — tarefa de área sem acesso não aparece, como em todo o sistema. */}
+      {editando && (
+        <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 18 }}>
+          <div style={{ ...eyebrow(11, C.dust), marginBottom: 12 }}>TAREFAS LIGADAS</div>
+          {tarefas.length ? (
+            <div style={{ display: "grid", gap: 8 }}>
+              {tarefas.map((t) => (
+                <div
+                  key={t.ref}
+                  role="button"
+                  className="liff-hover-row"
+                  onClick={() => onAbrirTarefa?.(t.ref)}
+                  title="Abrir a tarefa"
+                  style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", gap: 10, alignItems: "baseline", padding: "6px 8px", cursor: "pointer", borderRadius: 4 }}
+                >
+                  <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>{t.ref}</span>
+                  <span style={{ fontSize: 13, color: C.ink, lineHeight: 1.4 }}>{t.titulo}</span>
+                  <span style={eyebrow(10, statusColor(t.status), "0.1em")}>{statusLabel(t.status)}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ fontSize: 13, color: C.faint, lineHeight: 1.5 }}>
+              Nenhuma tarefa ligada. Ligue uma tarefa pelo campo Oportunidade, no card dela em Operações.
+            </div>
+          )}
+        </div>
+      )}
 
       {editando && (
         <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 18 }}>

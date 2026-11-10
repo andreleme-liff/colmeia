@@ -1131,6 +1131,8 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           onSituacao={(v) => void acao(() => api.alterarAtividade(selecionadaObj.id, { situacao: v }))}
           onProximo={(v) => void acao(() => api.alterarAtividade(selecionadaObj.id, { proximoPasso: v }))}
           onProduto={(id) => void acao(() => api.alterarAtividade(selecionadaObj.id, { produtoId: id }))}
+          oportunidades={[...estado.deals].sort((x, y) => x.ref.localeCompare(y.ref, "pt-BR", { numeric: true }))}
+          onOportunidade={(id) => void acao(() => api.alterarAtividade(selecionadaObj.id, { oportunidade: id }))}
           onProximoEm={(d) => void acao(() => api.alterarAtividade(selecionadaObj.id, { proximoPassoEm: d }))}
           onPrazo={(d) => void acao(() => api.alterarAtividade(selecionadaObj.id, { prazo: d }))}
           produtos={estado.produtos}
@@ -1164,6 +1166,8 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
       {dealEmEdicao && (
         <FormOportunidade
           inicial={dealEmEdicao}
+          tarefas={estado.activities.filter((a) => a.oportunidadeId === dealEmEdicao.id)}
+          onAbrirTarefa={(ref) => navegar({ view: "operacoes", ref })}
           onExcluir={() => {
             if (
               !window.confirm(

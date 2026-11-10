@@ -14,7 +14,7 @@ import { requireCtx } from "@/lib/perms";
 import { deFalha, err, json, lerCorpo } from "@/lib/http";
 import { registrar } from "@/lib/log";
 import { brlExato } from "@/lib/domain";
-import { ehFalha } from "@/lib/ops/comum";
+import { ehFalha, rotuloOportunidade } from "@/lib/ops/comum";
 import { atualizarOportunidade } from "@/lib/ops/oportunidades";
 
 /**
@@ -43,6 +43,27 @@ export async function DELETE(_req: Request, ctxRoute: RouteContext<"/api/deals/[
 
     if (!ctx.podeVer(alvo.area)) return { ok: false as const, erro: "Oportunidade não encontrada.", status: 404 };
     if (!ctx.podeEditar(alvo.area)) return { ok: false as const, erro: "Sem permissão de edição nesta área.", status: 403 };
+
+    // As tarefas ligadas a esta oportunidade ficam; o vínculo cai (SET NULL). Cada uma ganha
+    // a linha que conta por quê — senão o histórico da tarefa mostraria um vínculo que
+    // simplesmente deixou de existir.
+    const ligadas = await tx<{ ref: string; titulo: string; area: string }[]>`
+      SELECT ref, titulo, area FROM activities WHERE oportunidade_id = ${dealId}
+    `;
+    for (const t of ligadas) {
+      // A linha fica na área da tarefa: a conta só aparece se a oportunidade era da mesma área
+      // (ver rotuloOportunidade) — quem lê o histórico da tarefa pode não enxergar a venda.
+      const rotulo = rotuloOportunidade(alvo, t.area);
+      await registrar(tx, {
+        actorUserId: ctx.user.userId,
+        area: t.area,
+        entidade: t.ref,
+        campo: "oportunidade",
+        de: rotulo,
+        para: "—",
+        texto: `"${t.titulo}" perdeu o vínculo: a oportunidade ${rotulo} foi excluída`,
+      });
+    }
 
     // Exclusão e auditoria na mesma transação: não existe registro apagado sem a linha que
     // conta quem apagou.

@@ -24,7 +24,7 @@ const MAPA: Record<string, string> = {
   responsavel_id: "responsavelId", situacao: "situacao", proximo_passo: "proximoPasso",
   proximo_passo_em: "proximoPassoEm", produto_id: "produtoId", conta: "conta", estagio: "estagio",
   valor_reais: "valorReais", escopo: "escopo", contato: "contato", responsavel_texto: "responsavelTexto",
-  pausado: "pausado", ace_aws: "aceAws",
+  pausado: "pausado", ace_aws: "aceAws", oportunidade: "oportunidade",
 };
 
 function paraNucleo(args: Record<string, unknown>): Record<string, unknown> {
@@ -80,16 +80,18 @@ const EXECUTORES: Record<NomeFerramenta, Executor> = {
 
   listar_cadastros: async (c) => ({ ok: true, dados: await listarCadastros(c.sql, c.ctx) }),
 
-  listar_atividades: async (c, a) => ({
-    ok: true,
-    dados: await listarAtividades(c.sql, c.ctx, {
+  listar_atividades: async (c, a) => {
+    const r = await listarAtividades(c.sql, c.ctx, {
       area: a.area as string | undefined,
       status: a.status as string | undefined,
       responsavelId: a.responsavel_id as number | undefined,
       busca: a.busca as string | undefined,
+      oportunidade: a.oportunidade as string | undefined,
       limite: (a.limite as number | undefined) ?? 50,
-    }, c.base),
-  }),
+    }, c.base);
+    if ("erro" in r && r.erro) return { ok: false, erro: r.erro };
+    return { ok: true, dados: r };
+  },
 
   listar_oportunidades: async (c, a) => ({
     ok: true,

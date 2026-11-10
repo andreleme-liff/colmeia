@@ -378,6 +378,12 @@ async function migrate(): Promise<void> {
     await sql`CREATE INDEX IF NOT EXISTS idx_audit_recente ON audit_log(criado_em DESC)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_perms_user ON user_area_perms(user_id)`;
 
+    // A oportunidade comercial a que uma tarefa serve — o elo entre o pipeline e o quadro
+    // operacional. Opcional. SET NULL na exclusão da oportunidade: a tarefa continua; quem
+    // registra a perda do vínculo é a rota de exclusão, na mesma transação.
+    await sql`ALTER TABLE activities ADD COLUMN IF NOT EXISTS oportunidade_id INTEGER REFERENCES deals(id) ON DELETE SET NULL`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_activities_oportunidade ON activities(oportunidade_id)`;
+
     // ---- Acesso por sistemas externos (MCP + OAuth 2.1) ----
     //
     // De onde veio cada escrita. Nulo é a interface, como sempre foi. Sem chave estrangeira

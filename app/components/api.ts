@@ -19,6 +19,12 @@ export type Activity = {
   /** Quando o próximo passo acontece. Nulo = sem data; o cronograma assume o fim da semana. */
   proximoPassoEm: string | null;
   podeEditar: boolean;
+  /** A oportunidade comercial ligada — só quando quem olha enxerga a área dela. */
+  oportunidadeId: number | null;
+  oportunidadeRef: string | null;
+  oportunidadeConta: string | null;
+  /** Há vínculo, com uma oportunidade de área que quem olha não enxerga. */
+  oportunidadeOculta: boolean;
 };
 
 export type Deal = {
@@ -199,6 +205,8 @@ export const api = {
       proximoPasso?: string;
       produtoId?: string | null;
       proximoPassoEm?: string | null;
+      /** Id da oportunidade comercial ligada; `null` desliga. */
+      oportunidade?: number | null;
     }
   ) => req<{ ok: boolean }>(`/api/activities/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
 

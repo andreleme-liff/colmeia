@@ -11,11 +11,16 @@ import { ehFalha, type Autor, type Falha, type Fatos, type Permissoes } from "./
 import { planejarAtualizacaoAtividade, planejarCriacaoAtividade, type AtividadeAtual } from "./regras-atividade";
 
 export async function carregarFatos(tx: Queryable): Promise<Fatos> {
-  const [pessoas, produtos] = await Promise.all([
+  const [pessoas, produtos, oportunidades] = await Promise.all([
     tx<{ id: number; nome: string }[]>`SELECT id, nome FROM users`,
     tx<{ id: string; area: string }[]>`SELECT id, area FROM produtos`,
+    tx<{ id: number; ref: string; conta: string; area: string }[]>`SELECT id, ref, conta, area FROM deals`,
   ]);
-  return { pessoas: new Map(pessoas.map((p) => [p.id, p.nome])), produtos: [...produtos] };
+  return {
+    pessoas: new Map(pessoas.map((p) => [p.id, p.nome])),
+    produtos: [...produtos],
+    oportunidades: [...oportunidades],
+  };
 }
 
 export async function criarAtividade(
@@ -37,9 +42,9 @@ export async function criarAtividade(
   // vocabulário do sistema.
   const [nova] = await tx<{ id: number }[]>`
     INSERT INTO activities (ref, titulo, area, status, responsavel_user_id, prazo, prioridade,
-                            situacao, proximo_passo, proximo_passo_em, produto_id)
+                            situacao, proximo_passo, proximo_passo_em, produto_id, oportunidade_id)
     VALUES (${ref}, ${l.titulo}, ${l.area}, ${l.status}, ${l.responsavelId}, ${l.prazo}, ${l.prioridade},
-            ${l.situacao}, ${l.proximoPasso}, ${l.proximoPassoEm}, ${l.produtoId})
+            ${l.situacao}, ${l.proximoPasso}, ${l.proximoPassoEm}, ${l.produtoId}, ${l.oportunidadeId})
     RETURNING id
   `;
 
@@ -64,7 +69,8 @@ export async function atualizarAtividade(
 ): Promise<Falha | { ok: true; ref: string; mudancas: number }> {
   const linhas = await tx<AtividadeAtual[]>`
     SELECT a.id, a.ref, a.titulo, a.area, a.status, a.prioridade, a.responsavel_user_id,
-           a.situacao, a.proximo_passo, a.proximo_passo_em, a.produto_id, a.prazo, u.nome AS responsavel
+           a.situacao, a.proximo_passo, a.proximo_passo_em, a.produto_id, a.prazo, a.oportunidade_id,
+           u.nome AS responsavel
     FROM activities a LEFT JOIN users u ON u.id = a.responsavel_user_id
     WHERE a.id = ${activityId}
     FOR UPDATE OF a

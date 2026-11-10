@@ -208,6 +208,14 @@ volta e o que a conexão poderá; **gravar é opção explícita**, desmarcada.
 - Autorizar e revogar também entram no `audit_log`. Cada pessoa vê e revoga as próprias
   conexões em **Conexões** (menu); a administração vê e revoga todas.
 
+### Referências e vínculo tarefa ↔ oportunidade
+
+Oportunidade é **C-0000** (comercial), tarefa é **T-0000**. Até nov/2026 eram D-104 e A-1012;
+a conversão manteve o número, e a forma antiga continua aceita na URL (redireciona), no
+histórico e no MCP. A tarefa pode ser ligada a uma oportunidade (campo Oportunidade no card,
+ou `oportunidade: "C-0104"` pelo MCP). Linha de histórico da tarefa só cita a conta quando a
+oportunidade é da mesma área — quem lê o histórico da tarefa pode não enxergar a venda.
+
 ### Teste de ponta a ponta local
 
 `scripts/e2e-mcp-local.mjs` faz o papel do Claude Code contra app e banco **locais** (recusa
