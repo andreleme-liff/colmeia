@@ -794,8 +794,6 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         return (
           <Comercial
             colunas={dados.colunasDeal}
-            produtos={estado.produtos}
-            origens={estado.origens}
             onMover={(id, dir) => void acao(() => api.moverOportunidade(id, dir))}
             // Arrastar manda o destino direto: a rota valida o estágio contra STAGE_KEYS e
             // registra o par anterior/novo, igual ao movimento pelas setas.

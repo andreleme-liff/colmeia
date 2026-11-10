@@ -240,22 +240,26 @@ function primeiroNome(d: Deal): string {
   return (nome || "—").split(/[\s/]+/)[0] || "—";
 }
 
-/** Próximo passo cortado para o card fechado; o texto inteiro fica no card aberto. */
-function resumoPasso(t: string): string {
-  return t.length > 60 ? `${t.slice(0, 58).trimEnd()}…` : t;
-}
+/** Corte em duas linhas para o card fechado; o texto inteiro fica no `title` e no card aberto. */
+const duasLinhas: CSSProperties = {
+  lineHeight: 1.45,
+  display: "-webkit-box",
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: "vertical",
+  overflow: "hidden",
+  overflowWrap: "anywhere",
+};
 
 /**
- * A data do próximo passo com a cor do status do FUP — o que a coluna "Status FUP" da planilha
- * calculava, aqui calculado na hora: atrasado em vermelho, próximos 7 dias em âmbar.
+ * O prazo (data do próximo passo) com a cor do status do FUP — o que a coluna "Status FUP" da
+ * planilha calculava, aqui calculado na hora: atrasado em vermelho, próximos 7 dias em âmbar.
  */
-function DataFup({ estagio, data }: { estagio: string; data: string | null }) {
+function Prazo({ estagio, data }: { estagio: string; data: string | null }) {
   const st = statusFup(estagio, data);
-  if (st === null) return data ? <span style={{ color: C.ghost }}> · {ddmm(data)}</span> : null;
+  if (st === null) return data ? <span style={{ color: C.ghost }}>{ddmm(data)}</span> : null;
   const cor = st === "atrasado" ? C.error : st === "proximos7" ? C.warning : st === "sem_data" ? C.ghost : C.faint;
   return (
     <span style={{ color: cor }} title={STATUS_FUP_LABEL[st]}>
-      {" · "}
       {data ? ddmm(data) : "sem data"}
     </span>
   );
@@ -263,15 +267,11 @@ function DataFup({ estagio, data }: { estagio: string; data: string | null }) {
 
 export function Comercial({
   colunas,
-  produtos,
-  origens = [],
   onMover,
   onSoltar,
   onAbrir,
 }: {
   colunas: ColunaDeal[];
-  produtos: { id: string; label: string }[];
-  origens?: Origem[];
   onMover: (id: number, dir: 1 | -1) => void;
   /** Arrastar manda o estágio de destino; as setas mandam a direção. Ver o comentário abaixo. */
   onSoltar: (id: number, estagio: string) => void;
@@ -320,6 +320,15 @@ export function Comercial({
           </div>
           {col.cards.map((d) => {
             const cor = areaOf(d.area).color;
+            const dono = primeiroNome(d);
+            // Alertas: o que trava (blocker) e, em Lost, o porquê da perda.
+            const alerta =
+              d.estagio === "lost"
+                ? [motivoPerdaLabel(d.motivoPerda) || "Motivo da perda não informado", d.motivoPerdaDetalhe].filter(Boolean).join(" · ")
+                : d.blocker || d.blockerTipo
+                  ? [blockerTipoLabel(d.blockerTipo), d.blocker].filter(Boolean).join(" · ")
+                  : "";
+            const noFunil = (FUNIL as readonly string[]).includes(d.estagio);
             return (
               <div
                 key={d.id}
@@ -331,115 +340,82 @@ export function Comercial({
                 title={d.podeEditar ? "Arraste para mover de estágio, ou clique para editar" : "Somente leitura nesta área"}
                 style={{ padding: 14, cursor: d.podeEditar ? "pointer" : "default" }}
               >
+                {/* Ordem fixa, de cima para baixo: quem é → de quem e para quando → como está →
+                    o que vem → o que trava → quanto vale. Tudo alinhado ao nome da empresa. */}
                 <div style={{ display: "flex", alignItems: "baseline", gap: 8, justifyContent: "space-between" }}>
-                  {/* A área virou o quadradinho do design system, no lugar da faixa colorida
-                      de ponta a ponta: a mesma informação, sem mais um fio no card. */}
                   <div style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0 }}>
                     <span aria-hidden style={{ ...dot(cor), flex: "none", transform: "translateY(-1px)" }} />
                     <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, lineHeight: 1.35 }}>{d.conta}</div>
                   </div>
-                  <span style={{ display: "flex", gap: 8, flex: "none" }}>
-                    {d.aceAws && (
-                      <span style={eyebrow(9, C.info, "0.1em")} title="Registrada no ACE da AWS">
-                        ace
-                      </span>
-                    )}
-                  </span>
-                </div>
-
-                {/* O card fechado responde, de relance, o que a coluna pede. Em Prospecção ainda
-                    não há valor: mostra de onde veio e quem abre a porta. Em Lost, só o porquê.
-                    No resto do funil: o que se vende, quanto, de quem e o que trava. Abaixo, em
-                    todos menos Lost, a situação atual cortada em duas linhas. */}
-                {d.estagio === "lost" ? (
-                  <div style={{ fontSize: 12, color: C.faint, marginTop: 6, lineHeight: 1.45 }}>
-                    {motivoPerdaLabel(d.motivoPerda) || "Motivo não informado"}
-                    {d.motivoPerdaDetalhe && <span style={{ color: C.ghost }}> · {d.motivoPerdaDetalhe}</span>}
-                  </div>
-                ) : d.estagio === "prospeccao" ? (
-                  (d.origemId || d.ponte) && (
-                    <div style={{ fontSize: 12, color: C.faint, marginTop: 6, lineHeight: 1.45 }}>
-                      {[origens.find((o) => o.id === d.origemId)?.label, d.ponte && `via ${d.ponte}`].filter(Boolean).join(" · ")}
-                    </div>
-                  )
-                ) : (
-                  <>
-                    {/* Módulo é o que se vende; a cor continua sendo a da área, para não haver
-                        duas dimensões cromáticas competindo no mesmo card. */}
-                    {d.modulos.length > 0 && (
-                      <div style={{ ...eyebrow(9, C.dust, "0.08em"), marginTop: 6, lineHeight: 1.5 }}>
-                        {d.modulos.map((id) => produtos.find((p) => p.id === id)?.label ?? id).join(" · ")}
-                      </div>
-                    )}
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
-                      <span style={{ fontFamily: MONO, fontSize: 13, color: cor }}>{d.valorCentavos ? brl(d.valorCentavos) : "—"}</span>
-                      <span style={eyebrow(10, C.faint, "0.1em")}>{primeiroNome(d)}</span>
-                    </div>
-                    {/* O que trava aparece no card fechado: é a pergunta da reunião semanal. */}
-                    {(d.blocker || d.blockerTipo) && (
-                      <div style={{ fontSize: 11, color: C.warning, marginTop: 8, lineHeight: 1.4 }} title={d.blockerDono ? `Resolve: ${d.blockerDono}` : undefined}>
-                        ▲ {[blockerTipoLabel(d.blockerTipo), d.blocker].filter(Boolean).join(" · ")}
-                      </div>
-                    )}
-                  </>
-                )}
-                {/* Situação atual: o estado de hoje, em até duas linhas. O texto inteiro fica
-                    no card aberto (e no `title`, ao passar o mouse). Em Lost o motivo já diz. */}
-                {d.estagio !== "lost" && d.situacao && (
-                  <div
-                    title={d.situacao}
-                    style={{
-                      fontSize: 12,
-                      color: C.dust,
-                      marginTop: 8,
-                      lineHeight: 1.45,
-                      display: "-webkit-box",
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden",
-                      overflowWrap: "anywhere",
-                    }}
-                  >
-                    {d.situacao}
-                  </div>
-                )}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginTop: 10 }}>
-                  {d.estagio === "lost" ? (
-                    <span />
-                  ) : (
-                    <span style={{ fontFamily: MONO, fontSize: 10, color: C.faint, lineHeight: 1.45, minWidth: 0 }}>
-                      {resumoPasso(d.proximoPasso)}
-                      <DataFup estagio={d.estagio} data={d.proximoPassoEm} />
-                      {d.estagio === "prospeccao" && primeiroNome(d) !== "—" && <span style={{ color: C.ghost }}> · {primeiroNome(d)}</span>}
+                  {d.aceAws && (
+                    <span style={{ ...eyebrow(9, C.info, "0.1em"), flex: "none" }} title="Registrada no ACE da AWS">
+                      ace
                     </span>
                   )}
-                  {/* As setas ficam mesmo com o arraste: arrastar não existe em navegador de
-                      celular, e sem elas o card ficaria imóvel no telefone. */}
-                  {/* On hold e Lost não são casas do funil: a seta não tira o card de lá.
-                      Sai arrastando, ou pelo formulário. */}
-                  <span style={{ display: "flex", gap: 6, visibility: (FUNIL as readonly string[]).includes(d.estagio) ? undefined : "hidden" }}>
-                    {([-1, 1] as const).map((dir) => (
-                      <span
-                        key={dir}
-                        draggable={false}
-                        className={d.podeEditar ? "liff-seta liff-seta--ativa" : "liff-seta"}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (d.podeEditar) onMover(d.id, dir);
-                        }}
-                        title={d.podeEditar ? "Mover uma casa" : "Sem permissão de edição nesta área"}
-                        style={{
-                          cursor: d.podeEditar ? "pointer" : "not-allowed",
-                          fontFamily: MONO,
-                          fontSize: 12,
-                          color: d.podeEditar ? C.dust : C.ghost,
-                          padding: "2px 6px",
-                        }}
-                      >
-                        {dir < 0 ? "←" : "→"}
+                </div>
+
+                <div style={{ paddingLeft: 15 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginTop: 6 }}>
+                    <span style={eyebrow(10, C.faint, "0.1em")}>{dono}</span>
+                    {d.estagio !== "lost" && (
+                      <span style={{ fontFamily: MONO, fontSize: 10, flex: "none" }}>
+                        <Prazo estagio={d.estagio} data={d.proximoPassoEm} />
                       </span>
-                    ))}
-                  </span>
+                    )}
+                  </div>
+
+                  {d.situacao && d.estagio !== "lost" && (
+                    <div title={d.situacao} style={{ ...duasLinhas, fontSize: 12, color: C.dust, marginTop: 8 }}>
+                      {d.situacao}
+                    </div>
+                  )}
+
+                  {d.proximoPasso && d.estagio !== "lost" && (
+                    <div title={d.proximoPasso} style={{ ...duasLinhas, fontFamily: MONO, fontSize: 10, color: C.faint, marginTop: 6 }}>
+                      → {d.proximoPasso}
+                    </div>
+                  )}
+
+                  {alerta && (
+                    <div
+                      style={{ fontSize: 11, color: d.estagio === "lost" ? C.faint : C.warning, marginTop: 8, lineHeight: 1.4 }}
+                      title={d.blockerDono ? `Resolve: ${d.blockerDono}` : undefined}
+                    >
+                      {d.estagio === "lost" ? "✕" : "▲"} {alerta}
+                    </div>
+                  )}
+
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginTop: 10 }}>
+                    <span style={{ fontFamily: MONO, fontSize: 13, color: d.valorCentavos ? cor : C.ghost }}>
+                      {d.valorCentavos ? brl(d.valorCentavos) : "—"}
+                    </span>
+                    {/* As setas ficam mesmo com o arraste: arrastar não existe em navegador de
+                        celular. On hold e Lost não são casas do funil: a seta não tira o card de
+                        lá — sai arrastando, ou pelo formulário. */}
+                    <span style={{ display: "flex", gap: 6, visibility: noFunil ? undefined : "hidden" }}>
+                      {([-1, 1] as const).map((dir) => (
+                        <span
+                          key={dir}
+                          draggable={false}
+                          className={d.podeEditar ? "liff-seta liff-seta--ativa" : "liff-seta"}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (d.podeEditar) onMover(d.id, dir);
+                          }}
+                          title={d.podeEditar ? "Mover uma casa" : "Sem permissão de edição nesta área"}
+                          style={{
+                            cursor: d.podeEditar ? "pointer" : "not-allowed",
+                            fontFamily: MONO,
+                            fontSize: 12,
+                            color: d.podeEditar ? C.dust : C.ghost,
+                            padding: "2px 6px",
+                          }}
+                        >
+                          {dir < 0 ? "←" : "→"}
+                        </span>
+                      ))}
+                    </span>
+                  </div>
                 </div>
               </div>
             );
