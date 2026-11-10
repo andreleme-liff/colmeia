@@ -874,7 +874,7 @@ export type TomPrazo = "erro" | "warning" | "sucesso" | "neutro";
 
 /**
  * Etiqueta do prazo (data do próximo passo). Completo: "Venceu 23/10 · há 18 dias",
- * "Prazo 24/11 · em 14 dias". Curto: "23/10 · −18d", "24/11 · +14d". O tom segue o status do
+ * "Prazo 24/11 · em 14 dias". Curto: "23/10 (−18d)", "24/11 (+14d)". O tom segue o status do
  * FUP: vencido = erro, próximos 7 dias = warning, depois disso = sucesso. Fora do funil aberto
  * (Ganho, On hold, Lost) a data, se houver, é neutra.
  */
@@ -890,16 +890,16 @@ export function etiquetaPrazo(
   const n = diasEntre(hoje, prazo);
   if (n < 0) {
     const k = -n;
-    return { texto: curto ? `${dm} · −${k}d` : `Venceu ${dm} · há ${k} ${k === 1 ? "dia" : "dias"}`, tom: "erro" };
+    return { texto: curto ? `${dm} (−${k}d)` : `Venceu ${dm} · há ${k} ${k === 1 ? "dia" : "dias"}`, tom: "erro" };
   }
   const tom: TomPrazo = n <= 7 ? "warning" : "sucesso";
-  if (n === 0) return { texto: curto ? `${dm} · hoje` : `Prazo ${dm} · hoje`, tom };
-  return { texto: curto ? `${dm} · +${n}d` : `Prazo ${dm} · em ${n} ${n === 1 ? "dia" : "dias"}`, tom };
+  if (n === 0) return { texto: curto ? `${dm} (hoje)` : `Prazo ${dm} · hoje`, tom };
+  return { texto: curto ? `${dm} (+${n}d)` : `Prazo ${dm} · em ${n} ${n === 1 ? "dia" : "dias"}`, tom };
 }
 
 /**
- * Prazo ao lado do rótulo PRÓXIMO PASSO, sem prefixo (o rótulo já diz o que é): "27/10 · −14d",
- * "26/11 · +16d", "10/11 · hoje" (a tela mostra em maiúsculas). O tom segue `etiquetaPrazo`.
+ * Prazo ao lado do rótulo PRÓXIMO PASSO, sem prefixo (o rótulo já diz o que é): "27/10 (−14d)",
+ * "26/11 (+16d)", "10/11 (hoje)" (a tela mostra em maiúsculas). O tom segue `etiquetaPrazo`.
  */
 export function prazoDoPasso(
   estagio: string,
@@ -910,9 +910,9 @@ export function prazoDoPasso(
   if (!base || !prazo || base.tom === "neutro") return base && prazo ? { texto: ddmm(prazo), tom: "neutro" } : base;
   const dm = ddmm(prazo);
   const n = diasEntre(hoje, prazo);
-  if (n < 0) return { texto: `${dm} · −${-n}d`, tom: base.tom };
-  if (n === 0) return { texto: `${dm} · hoje`, tom: base.tom };
-  return { texto: `${dm} · +${n}d`, tom: base.tom };
+  if (n < 0) return { texto: `${dm} (−${-n}d)`, tom: base.tom };
+  if (n === 0) return { texto: `${dm} (hoje)`, tom: base.tom };
+  return { texto: `${dm} (+${n}d)`, tom: base.tom };
 }
 
 /** "1 módulo", "3 módulos". */
