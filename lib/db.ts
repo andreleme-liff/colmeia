@@ -120,6 +120,13 @@ async function migrate(): Promise<void> {
     // Cadastro das verticais. Vem primeiro porque as demais tabelas apontam para ela: o
     // conjunto de áreas é aberto, e quem garante que um registro não aponte para área
     // inexistente é a chave estrangeira, não uma lista fixa no código.
+    //
+    // A semente entra SÓ quando a tabela nasce. Antes ela rodava a cada partida a frio com
+    // `ON CONFLICT DO NOTHING`, e isso recriava toda área da semente que a administração
+    // tivesse excluído — a exclusão "voltava" na próxima vez que o servidor subia.
+    const [{ areasNova }] = await sql<{ areasNova: boolean }[]>`
+      SELECT to_regclass('public.areas') IS NULL AS "areasNova"
+    `;
     await sql`
       CREATE TABLE IF NOT EXISTS areas (
         id     TEXT PRIMARY KEY,
@@ -130,12 +137,14 @@ async function migrate(): Promise<void> {
         planilha_url TEXT
       )
     `;
-    for (const [i, a] of AREAS_SEMENTE.entries()) {
-      await sql`
-        INSERT INTO areas (id, label, short, cor, ordem)
-        VALUES (${a.id}, ${a.label}, ${a.short}, ${a.cor}, ${i})
-        ON CONFLICT (id) DO NOTHING
-      `;
+    if (areasNova) {
+      for (const [i, a] of AREAS_SEMENTE.entries()) {
+        await sql`
+          INSERT INTO areas (id, label, short, cor, ordem)
+          VALUES (${a.id}, ${a.label}, ${a.short}, ${a.cor}, ${i})
+          ON CONFLICT (id) DO NOTHING
+        `;
+      }
     }
 
     // Produto é o que se vende dentro de uma vertical — "Regtrack Farma" dentro de
