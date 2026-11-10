@@ -31,13 +31,14 @@ import CoresDasAreas from "./CoresDasAreas";
 import ImportarPlanilha from "./ImportarPlanilha";
 import SeletorArea from "./SeletorArea";
 import SeletorResponsaveis from "./SeletorResponsaveis";
+import CampoBusca from "./CampoBusca";
 import Conexoes from "./Conexoes";
 import { EditarPessoa, EditarProduto } from "./EditarCadastro";
 import { api, type State } from "./api";
 import {
   NAV, STAGES, STATUS, TITLES, areaOf, brl, daISO, ddmm, diaISO, ehDoResponsavel, estagioEmAberto,
   escreverSelecaoDeResponsaveis, fimDaSemana, inicioDaSemana, lerSelecaoDeResponsaveis,
-  opcoesDeResponsavel, porTexto, rotuloDaSemana, setAreas, stageLabel, statusLabel, todasAreas,
+  aplicarBusca, opcoesDeResponsavel, porTexto, prepararBusca, rotuloDaSemana, setAreas, stageLabel, statusLabel, todasAreas,
   type RegistroComResponsavel,
 } from "@/lib/domain";
 import { caminhoDe, type Rota } from "@/lib/rotas";
@@ -77,6 +78,14 @@ function resumirPasso(texto: string, limite = 80): string {
   return (espaco > limite * 0.6 ? corte.slice(0, espaco) : corte) + "…";
 }
 
+/**
+ * A busca sobrevive à troca de tela. Cada clique no menu remonta este componente (a rota é
+ * dinâmica e a página é renderizada de novo), e o estado local voltaria vazio: guardar aqui,
+ * no módulo, mantém o termo enquanto a aba estiver aberta. Recarregar a página limpa, de
+ * propósito — busca é coisa do momento, não preferência do perfil.
+ */
+let buscaGuardada = "";
+
 export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
   const router = useRouter();
   const [estado, setEstado] = useState<State | null>(null);
@@ -90,6 +99,13 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
   // Lateral recolhida mostra só os ícones. Só vale na tela larga: abaixo de 860px a lateral é
   // gaveta, sempre aberta por inteiro (o CSS ignora o atributo lá).
   const [recolhida, setRecolhida] = useState(false);
+  // Busca por termo do Comercial, Operações, Cronograma e Auditoria. Uma só para as quatro:
+  // procurar "Ambev" no pipeline e ir à auditoria ver o histórico dela é o caminho natural.
+  const [busca, setBuscaEstado] = useState(() => buscaGuardada);
+  const setBusca = useCallback((v: string) => {
+    buscaGuardada = v;
+    setBuscaEstado(v);
+  }, []);
   // Filtro de responsável, paralelo ao de área: um recorta a vertical, o outro recorta a
   // carteira. Combinam — "só os meus" dentro de Tax é uma pergunta legítima.
   const [responsaveis, setResponsaveis] = useState<string[]>([]);
@@ -290,6 +306,19 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
 
     const atividades = porResponsavel(atividadesEmArea);
     const oportunidades = porResponsavel(oportunidadesEmArea);
+
+    // Busca por termo, somada aos filtros acima. Só para as telas que têm o campo: o painel
+    // inicial continua mostrando o recorte inteiro.
+    const termo = prepararBusca(busca);
+    const rotuloProduto = (id: string | null) => (id ? estado.produtos.find((p) => p.id === id)?.label ?? id : null);
+    const oportunidadesBuscadas = aplicarBusca(oportunidades, termo, (d) => [
+      d.ref, d.conta, d.situacao, d.proximoPasso, d.blocker, d.responsavel, d.responsavelTexto, d.contato,
+      d.dor, d.erp, d.notas, ...d.modulos.map(rotuloProduto),
+    ]);
+    const atividadesBuscadas = aplicarBusca(atividades, termo, (a) => [
+      a.ref, a.titulo, a.situacao, a.proximoPasso, a.responsavel, a.oportunidadeRef, a.oportunidadeConta,
+      rotuloProduto(a.produtoId),
+    ]);
     const logs = estado.logs.filter((l) => areaEfetiva === "all" || l.area === areaEfetiva);
     const areasVisiveis = todasAreas().filter((a) => estado.areasVisiveis.includes(a.id));
     /**
@@ -469,7 +498,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     };
 
     const colunasDeal = STAGES.map((s) => {
-      const cards = oportunidades.filter((d) => d.estagio === s.key);
+      const cards = oportunidadesBuscadas.filter((d) => d.estagio === s.key);
       return {
         key: s.key,
         label: s.label,
@@ -481,14 +510,14 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     const colunasBoard = STATUS.map((s) => ({
       key: s.key,
       label: s.label,
-      cards: atividades.filter((a) => a.status === s.key),
+      cards: atividadesBuscadas.filter((a) => a.status === s.key),
     }));
 
     return {
       atividades, oportunidades, logs, areasVisiveis, painel, colunasDeal, colunasBoard,
-      opcoesResponsavel,
+      opcoesResponsavel, atividadesBuscadas, oportunidadesBuscadas,
     };
-  }, [estado, areaEfetiva, responsaveis]);
+  }, [estado, areaEfetiva, responsaveis, busca]);
 
   // ---------- cadastros ----------
   const cadSet: CadSet | null = useMemo(() => {
@@ -572,7 +601,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     type Bruto = { areaId: string; quando: string; semData: boolean; item: Omit<ItemCronograma, "quando" | "semData" | "atrasado"> };
     const brutos: Bruto[] = [];
 
-    for (const d of dados.oportunidades) {
+    for (const d of dados.oportunidadesBuscadas) {
       // Só o que está em aberto tem próximo passo a cumprir: Ganho, On hold e Lost ficam fora.
       if (!estagioEmAberto(d.estagio)) continue;
       const semData = !d.proximoPassoEm;
@@ -592,7 +621,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
       });
     }
 
-    for (const a of dados.atividades) {
+    for (const a of dados.atividadesBuscadas) {
       if (a.status === "concluido") continue;
       const semData = !a.proximoPassoEm;
       brutos.push({
@@ -908,7 +937,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         );
       }
       case "auditoria":
-        return <Auditoria area={areaEfetiva} gatilho={estado.logs[0]?.id} />;
+        return <Auditoria area={areaEfetiva} busca={busca} gatilho={estado.logs[0]?.id} />;
       case "conexoes":
         return <Conexoes mcpHabilitado={estado.mcpHabilitado} />;
       default:
@@ -1114,6 +1143,9 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           {/* Os dois filtros do cabeçalho moram juntos: área recorta a vertical, "meus"
               recorta a carteira. Separá-los faria parecer que um é filtro e o outro é modo. */}
           <div className="liff-filtros" style={{ marginLeft: "auto" }}>
+            {["comercial", "operacoes", "cronograma", "auditoria"].includes(view) && (
+              <CampoBusca valor={busca} onChange={setBusca} />
+            )}
             {/* Conexão não pertence a área nenhuma: na tela delas o recorte por área só
                 confundiria. */}
             {view !== "conexoes" && (

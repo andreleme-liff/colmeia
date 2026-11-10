@@ -14,7 +14,7 @@ import ViaConexao from "./ViaConexao";
 import { CardOportunidade } from "./CardOportunidade";
 import { CardAtividade } from "./CardAtividade";
 import {
-  ADMIN_CARDS, BLOCKER_TIPOS, ERP_SUGESTOES, ESTAGIO_INICIAL, MOTIVOS_PERDA, PAPEIS, STAGES, STATUS, areaOf, ddmm, porTexto, stamp, statusLabel, todasAreas,
+  ADMIN_CARDS, BLOCKER_TIPOS, ERP_SUGESTOES, ESTAGIO_INICIAL, MOTIVOS_PERDA, PAPEIS, STAGES, STATUS, aplicarBusca, areaOf, prepararBusca, ddmm, porTexto, stamp, statusLabel, todasAreas,
 } from "@/lib/domain";
 
 /* =========================================================
@@ -1408,7 +1408,7 @@ function PermissoesPorPessoa({
    ========================================================= */
 const AUDIT_COLS = "0.8fr 1fr 1fr 2.6fr";
 
-export function Auditoria({ area, gatilho }: { area: string; gatilho: number | undefined }) {
+export function Auditoria({ area, busca, gatilho }: { area: string; busca: string; gatilho: number | undefined }) {
   // Busca própria (até 10.000 linhas). `gatilho` é o id da linha de log mais recente do
   // estado: mudou, alguém gravou algo, e a lista recarrega.
   const [todas, setTodas] = useState<LogEntry[] | null>(null);
@@ -1433,12 +1433,17 @@ export function Auditoria({ area, gatilho }: { area: string; gatilho: number | u
   if (falha && !todas) return <Aviso>{falha}</Aviso>;
   if (!todas) return <div style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>carregando auditoria…</div>;
 
-  const logs = area === "all" ? todas : todas.filter((l) => l.area === area);
+  const naArea = area === "all" ? todas : todas.filter((l) => l.area === area);
+  const logs = aplicarBusca(naArea, prepararBusca(busca), (l) => [
+    l.texto, l.autor, l.entidade, l.via, l.area ? areaOf(l.area).label : "sistema",
+  ]);
   return (
     <>
     <div style={{ fontFamily: MONO, fontSize: 11, color: C.faint, marginBottom: 12 }}>
-      {logs.length.toLocaleString("pt-BR")} {logs.length === 1 ? "linha" : "linhas"}
-      {todas.length >= limite ? ` · mostrando as ${limite.toLocaleString("pt-BR")} mais recentes` : ""}
+      {logs.length.toLocaleString("pt-BR")}
+      {logs.length !== todas.length ? ` de ${todas.length.toLocaleString("pt-BR")}` : ""}
+      {todas.length === 1 ? " linha" : " linhas"}
+      {todas.length >= limite ? ` · as ${limite.toLocaleString("pt-BR")} mais recentes` : ""}
     </div>
     <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}` }}>
       <div style={{ minWidth: 760 }}>

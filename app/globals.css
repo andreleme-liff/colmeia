@@ -139,6 +139,18 @@ body { background: var(--liff-canvas); color: var(--liff-text); }
   justify-content: center;
 }
 
+/* ---------- busca do cabeçalho ---------- */
+.liff-busca { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 8px 0 10px; box-sizing: border-box;
+  border: 1px solid var(--liff-border); background: var(--liff-surface, transparent); color: var(--liff-text-muted); min-width: 200px; }
+.liff-busca:focus-within { border-color: var(--liff-accent); color: var(--liff-text); }
+.liff-busca input { all: unset; flex: 1; min-width: 0; font-family: var(--liff-font-mono); font-size: 12px; color: var(--liff-text); }
+.liff-busca input::placeholder { color: var(--liff-text-faint); text-transform: uppercase; letter-spacing: .1em; font-size: 11px; }
+.liff-busca input::-webkit-search-cancel-button { display: none; }
+.liff-busca button { all: unset; cursor: pointer; font-size: 16px; line-height: 1; padding: 0 4px; color: var(--liff-text-muted); }
+.liff-busca button:hover { color: var(--liff-text); }
+.liff-busca button:focus-visible { outline: 2px solid var(--liff-accent); }
+@media (max-width: 560px) { .liff-busca { min-width: 0; width: 100%; } }
+
 /* ---------- shell ---------- */
 .liff-shell {
   height: 100vh;

@@ -944,3 +944,54 @@ export function vizinhosNoFunil(estagio: string): { anterior: StageKey | null; p
   if (i < 0) return { anterior: null, proxima: null };
   return { anterior: i > 0 ? FUNIL[i - 1] : null, proxima: i < FUNIL.length - 1 ? FUNIL[i + 1] : null };
 }
+
+/* ---------------- busca por termo ---------------- */
+
+/** Minúsculas, sem acento e com espaços colapsados: "Ação  Fiscal" → "acao fiscal". */
+export function normalizarBusca(texto: string): string {
+  return texto.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+export type Busca = { frase: string; termos: string[] };
+
+/** Lê o que a pessoa digitou. Vazio (ou só espaço) é "sem busca": devolve null. */
+export function prepararBusca(consulta: string): Busca | null {
+  const frase = normalizarBusca(consulta);
+  if (!frase) return null;
+  return { frase, termos: [...new Set(frase.split(" "))] };
+}
+
+/**
+ * Quanto um registro casa com a busca; 0 = não casa. Vale QUALQUER termo (busca por dois
+ * termos também mostra quem tem só um), mas a ordem premia, de cima para baixo:
+ *  1. a frase inteira, como foi digitada (só conta com dois termos ou mais);
+ *  2. todos os termos, em qualquer ordem e campo;
+ *  3. mais termos encontrados.
+ * Os campos são unidos por um separador que nenhum termo atravessa: a frase "joão silva" não
+ * casa com um campo terminado em "joão" seguido de outro começando em "silva".
+ */
+export function pontuarBusca(busca: Busca, campos: (string | null | undefined)[]): number {
+  const alvo = campos
+    .filter((c): c is string => !!c)
+    .map(normalizarBusca)
+    .join(" \u0000 ");
+  const achados = busca.termos.filter((t) => alvo.includes(t)).length;
+  if (!achados) return 0;
+  let pontos = achados;
+  if (achados === busca.termos.length) pontos += 100;
+  if (busca.termos.length > 1 && alvo.includes(busca.frase)) pontos += 1000;
+  return pontos;
+}
+
+/**
+ * Filtra e ordena pela pontuação; empate mantém a ordem de entrada (o sort é estável), então
+ * quem já vinha ordenado por data ou referência continua assim dentro de cada faixa.
+ */
+export function aplicarBusca<T>(lista: T[], busca: Busca | null, campos: (x: T) => (string | null | undefined)[]): T[] {
+  if (!busca) return lista;
+  return lista
+    .map((x) => ({ x, p: pontuarBusca(busca, campos(x)) }))
+    .filter((r) => r.p > 0)
+    .sort((a, b) => b.p - a.p)
+    .map((r) => r.x);
+}
