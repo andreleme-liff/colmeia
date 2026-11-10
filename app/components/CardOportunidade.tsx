@@ -2,7 +2,7 @@
 
 // Card da oportunidade no kanban comercial (v4) — completo e compacto.
 //
-// De cima para baixo: identificação (cliente com ACE + valor, módulos; a área é o contorno superior) → andamento
+// De cima para baixo: identificação (cliente + valor, módulos; a área é o contorno superior) → andamento
 // (situação com a data dela, próximo passo, bloqueio) → rodapé (responsável e as setas, pequenas).
 // Estilo em `globals.css` (`.cop-*`): o tema escuro, o foco de teclado e o hover moram lá.
 //
@@ -126,9 +126,9 @@ export function CardOportunidade({
     );
   };
 
-  // ACE só aparece quando existe, logo depois do nome do cliente.
+  // ACE só aparece quando existe: etiqueta azul na mesma linha do bloqueio.
   const ace = d.aceAws ? (
-    <span className="cop-ace" title="ACE criada no AWS Partner Central">
+    <span className="cop-tag cop-tag--info cop-tag--ace" title="ACE criada no AWS Partner Central">
       ACE
     </span>
   ) : null;
@@ -162,13 +162,9 @@ export function CardOportunidade({
               >
                 {d.conta}
               </button>
-              {ace}
             </h3>
           ) : (
-            <h3 className="cop-cliente">
-              {d.conta}
-              {ace}
-            </h3>
+            <h3 className="cop-cliente">{d.conta}</h3>
           )}
           <p className="cop-valor">{valorCurto(d.valorCentavos)}</p>
         </div>
@@ -194,16 +190,17 @@ export function CardOportunidade({
           </p>
         )}
 
-        {(prazo || (compacto && temBloqueio)) && (
-        <div className="cop-tags">
-          {prazo && <Etiqueta tom={prazo.tom}>{prazo.texto}</Etiqueta>}
-          {compacto && etiquetaBloqueio}
-        </div>
+        {(prazo || (compacto && (temBloqueio || ace))) && (
+          <div className="cop-tags">
+            {prazo && <Etiqueta tom={prazo.tom}>{prazo.texto}</Etiqueta>}
+            {compacto && etiquetaBloqueio}
+            {compacto && ace}
+          </div>
         )}
       </div>
 
       {/* ---------- 2 · andamento (só no completo) ---------- */}
-      {!compacto && (d.situacao || d.proximoPasso || datado || temBloqueio || lost) && (
+      {!compacto && (d.situacao || d.proximoPasso || datado || temBloqueio || ace || lost) && (
         <div className="cop-bloco cop-bloco--fio">
           {lost ? (
             <div>
@@ -236,7 +233,12 @@ export function CardOportunidade({
                   {d.proximoPasso && <p className="cop-texto cop-texto--forte">{d.proximoPasso}</p>}
                 </div>
               )}
-              {temBloqueio && <div className="cop-tags">{etiquetaBloqueio}</div>}
+              {(temBloqueio || ace) && (
+                <div className="cop-tags">
+                  {etiquetaBloqueio}
+                  {ace}
+                </div>
+              )}
             </>
           )}
         </div>
