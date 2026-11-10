@@ -9,7 +9,7 @@
 // Cor de área identifica, nunca indica estado: o nome da área vem sempre junto do quadrado, e
 // estado (prazo, ACE, bloqueio) usa só as cores semânticas.
 
-import type { CSSProperties, DragEvent } from "react";
+import type { CSSProperties, DragEvent, ReactNode } from "react";
 import type { Deal } from "./api";
 import {
   areaOf, blockerTipoLabel, brl, diaMes, etiquetaPrazo, hojeISO, motivoPerdaLabel, prazoDoPasso,
@@ -25,10 +25,10 @@ function valorCurto(centavos: number): string {
   return brl(centavos);
 }
 
-function Etiqueta({ tom, children, title }: { tom: TomPrazo | "info"; children: string; title?: string }) {
+function Etiqueta({ tom, children, title, icone }: { tom: TomPrazo | "info"; children: string; title?: string; icone?: ReactNode }) {
   return (
     <span className={`cop-tag cop-tag--${tom}`} title={title}>
-      <span aria-hidden className="cop-tag__dot" />
+      {icone ?? <span aria-hidden className="cop-tag__dot" />}
       {children}
     </span>
   );
@@ -44,7 +44,7 @@ function Chevron({ dir }: { dir: -1 | 1 }) {
 
 function Alerta() {
   return (
-    <svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="cop-bloqueio__icone">
+    <svg aria-hidden width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="cop-tag__icone">
       <path d="M10.3 3.9 1.8 18.2A2 2 0 0 0 3.5 21h17a2 2 0 0 0 1.7-2.8L13.7 3.9a2 2 0 0 0-3.4 0Z" />
       <path d="M12 9v4M12 17h.01" />
     </svg>
@@ -88,6 +88,13 @@ export function CardOportunidade({
   const datado = !!d.proximoPassoEm;
   const temBloqueio = !lost && !!(d.blocker || d.blockerTipo);
   const tipoBloqueio = blockerTipoLabel(d.blockerTipo);
+  // Bloqueio é uma etiqueta só, nos dois modos: o tipo à vista, a descrição e quem resolve no title.
+  const dicaBloqueio = [d.blocker, d.blockerDono ? `Resolve: ${d.blockerDono}` : ""].filter(Boolean).join(" · ") || undefined;
+  const etiquetaBloqueio = temBloqueio ? (
+    <Etiqueta tom="warning" title={dicaBloqueio} icone={<Alerta />}>
+      {tipoBloqueio || "Bloqueio"}
+    </Etiqueta>
+  ) : null;
 
   const pessoa = d.responsavelId ? pessoas.find((p) => p.id === d.responsavelId) : undefined;
   const nomeDono = pessoa?.nome ?? (d.responsavelTexto || "");
@@ -193,11 +200,7 @@ export function CardOportunidade({
         {(prazo || (compacto && temBloqueio)) && (
         <div className="cop-tags">
           {prazo && <Etiqueta tom={prazo.tom}>{prazo.texto}</Etiqueta>}
-          {compacto && temBloqueio && (
-            <Etiqueta tom="warning" title={d.blocker || undefined}>
-              {tipoBloqueio || "Bloqueio"}
-            </Etiqueta>
-          )}
+          {compacto && etiquetaBloqueio}
         </div>
         )}
       </div>
@@ -236,15 +239,7 @@ export function CardOportunidade({
                   {d.proximoPasso && <p className="cop-texto cop-texto--forte">{d.proximoPasso}</p>}
                 </div>
               )}
-              {temBloqueio && (
-                <div className="cop-bloqueio" title={d.blockerDono ? `Resolve: ${d.blockerDono}` : undefined}>
-                  <Alerta />
-                  <div>
-                    <p className="cop-rotulo cop-bloqueio__rotulo">BLOQUEIO{tipoBloqueio ? ` · ${tipoBloqueio.toUpperCase()}` : ""}</p>
-                    {d.blocker && <p className="cop-texto cop-bloqueio__texto">{d.blocker}</p>}
-                  </div>
-                </div>
-              )}
+              {temBloqueio && <div className="cop-tags">{etiquetaBloqueio}</div>}
             </>
           )}
         </div>
