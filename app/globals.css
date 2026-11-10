@@ -140,22 +140,18 @@ body { background: var(--liff-canvas); color: var(--liff-text); }
 }
 
 /* ---------- forecast de receita ----------
-   Cores das séries: paleta categórica validada (dataviz) contra o fundo do card nos dois
-   temas, na ordem em que empilham. Contratada parte do paprika da marca; previsão é violeta
-   (provável sólida, possível com textura), longe do paprika e das outras duas. */
+   Cores das séries, por pedido do usuário (nov/2026), amarradas às verticais do cadastro:
+   contratada e assinatura no verde da LIFF Tax, implantação na cor da Regtrack, customização
+   no roxo da Legal Dept, previsão (provável sólida, possível com textura) no paprika da marca.
+   Por serem as variáveis das áreas, seguem o cadastro e o escurecimento do tema claro. Ordem de
+   empilhamento validada (dataviz): separação e contraste passam nos dois temas; a Regtrack fica
+   mais clara que as demais no escuro. O valor depois da vírgula vale se a vertical sumir. */
 :root {
-  --rec-contratada: #EB5E28;
-  --rec-assinatura: #EB5E28;
-  --rec-implantacao: #1E9FAF;
-  --rec-customizacao: #B8891A;
-  --rec-prevista: #8E74E6;
-}
-:root[data-theme="light"] {
-  --rec-contratada: #D9531F;
-  --rec-assinatura: #D9531F;
-  --rec-implantacao: #008FA3;
-  --rec-customizacao: #B8860B;
-  --rec-prevista: #6E52C9;
+  --rec-contratada: var(--liff-app-area-tax, #0d9488);
+  --rec-assinatura: var(--liff-app-area-tax, #0d9488);
+  --rec-implantacao: var(--liff-app-area-regtrack, #2ad7d0);
+  --rec-customizacao: var(--liff-app-area-corporate, #7e58df);
+  --rec-prevista: var(--liff-paprika, #EB5E28);
 }
 .rec-numeros { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--liff-border); border: 1px solid var(--liff-border); }
 .rec-numero { background: var(--liff-app-card); padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; }
