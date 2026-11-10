@@ -253,10 +253,12 @@ export function Comercial({
   const [alvo, setAlvo] = useState<string | null>(null);
 
   return (
-    <div style={mesh({ display: "flex", gap: 1, overflowX: "auto" })}>
+    <div className="liff-kanban">
       {colunas.map((col) => (
         <div
           key={col.key}
+          className="liff-raia"
+          data-alvo={alvo === col.key ? "1" : undefined}
           onDragOver={(e) => {
             e.preventDefault();
             if (alvo !== col.key) setAlvo(col.key);
@@ -275,16 +277,15 @@ export function Comercial({
             onSoltar(id, col.key);
           }}
           style={{
-            background: alvo === col.key ? C.panel2 : C.cell,
             minWidth: 236,
             flex: 1,
-            padding: 16,
+            padding: 12,
             display: "flex",
             flexDirection: "column",
-            gap: 12,
+            gap: 10,
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "4px 4px 2px" }}>
             <span style={eyebrow(11, C.dust, "0.14em")}>{col.label}</span>
             <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>{col.total}</span>
           </div>
@@ -293,22 +294,21 @@ export function Comercial({
             return (
               <div
                 key={d.id}
-                className={d.podeEditar ? "liff-hover-card" : undefined}
+                className={d.podeEditar ? "liff-card liff-card--ativo" : "liff-card"}
                 draggable={d.podeEditar}
                 onDragStart={(e) => e.dataTransfer.setData("text/plain", String(d.id))}
                 onDragEnd={() => setAlvo(null)}
                 onClick={() => d.podeEditar && onAbrir(d.id)}
                 title={d.podeEditar ? "Arraste para mover de estágio, ou clique para editar" : "Somente leitura nesta área"}
-                style={{
-                  background: C.panel,
-                  border: `1px solid ${C.line}`,
-                  borderTop: `2px solid ${cor}`,
-                  padding: 14,
-                  cursor: d.podeEditar ? "pointer" : "default",
-                }}
+                style={{ padding: 14, cursor: d.podeEditar ? "pointer" : "default" }}
               >
                 <div style={{ display: "flex", alignItems: "baseline", gap: 8, justifyContent: "space-between" }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, lineHeight: 1.35 }}>{d.conta}</div>
+                  {/* A área virou o quadradinho do design system, no lugar da faixa colorida
+                      de ponta a ponta: a mesma informação, sem mais um fio no card. */}
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0 }}>
+                    <span aria-hidden style={{ ...dot(cor), flex: "none", transform: "translateY(-1px)" }} />
+                    <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, lineHeight: 1.35 }}>{d.conta}</div>
+                  </div>
                   <span style={{ display: "flex", gap: 8, flex: "none" }}>
                     {d.aceAws && (
                       <span style={eyebrow(9, C.info, "0.1em")} title="Registrada no ACE da AWS">
@@ -347,16 +347,7 @@ export function Comercial({
                   <span style={{ fontFamily: MONO, fontSize: 13, color: cor }}>{brl(d.valorCentavos)}</span>
                   <span style={eyebrow(10, C.faint, "0.1em")}>{d.responsavel.split(" ")[0]}</span>
                 </div>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginTop: 12,
-                    borderTop: `1px solid ${C.line}`,
-                    paddingTop: 10,
-                  }}
-                >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginTop: 10 }}>
                   <span style={{ fontFamily: MONO, fontSize: 10, color: C.faint }}>{d.proximoPasso}</span>
                   {/* As setas ficam mesmo com o arraste: arrastar não existe em navegador de
                       celular, e sem elas o card ficaria imóvel no telefone. */}
@@ -365,6 +356,7 @@ export function Comercial({
                       <span
                         key={dir}
                         draggable={false}
+                        className={d.podeEditar ? "liff-seta liff-seta--ativa" : "liff-seta"}
                         onClick={(e) => {
                           e.stopPropagation();
                           if (d.podeEditar) onMover(d.id, dir);
@@ -375,8 +367,7 @@ export function Comercial({
                           fontFamily: MONO,
                           fontSize: 12,
                           color: d.podeEditar ? C.dust : C.ghost,
-                          padding: "0 5px",
-                          border: `1px solid ${C.line}`,
+                          padding: "2px 6px",
                         }}
                       >
                         {dir < 0 ? "←" : "→"}
@@ -515,10 +506,12 @@ export function Operacoes({
 
   return (
     <>
-      <div style={mesh({ display: "flex", gap: 1, overflowX: "auto", alignItems: "stretch" })}>
+      <div className="liff-kanban">
         {colunas.map((col) => (
           <div
             key={col.key}
+            className="liff-raia"
+            data-alvo={alvo === col.key ? "1" : undefined}
             onDragOver={(e) => {
               e.preventDefault();
               if (alvo !== col.key) setAlvo(col.key);
@@ -535,25 +528,16 @@ export function Operacoes({
               onSoltar(id, col.key);
             }}
             style={{
-              background: alvo === col.key ? C.panel2 : C.cell,
               minWidth: 262,
               flex: 1,
-              padding: 16,
+              padding: 12,
               display: "flex",
               flexDirection: "column",
-              gap: 12,
+              gap: 10,
               minHeight: 420,
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "baseline",
-                borderBottom: `1px solid ${C.line}`,
-                paddingBottom: 10,
-              }}
-            >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "4px 4px 2px" }}>
               <span style={eyebrow(11, C.dust, "0.14em")}>{col.label}</span>
               <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>{col.cards.length}</span>
             </div>
@@ -562,21 +546,19 @@ export function Operacoes({
               return (
                 <div
                   key={c.id}
-                  className="liff-hover-card"
+                  className="liff-card liff-card--ativo"
                   draggable={c.podeEditar}
                   onDragStart={(e) => e.dataTransfer.setData("text/plain", String(c.id))}
                   onDragEnd={() => setAlvo(null)}
                   onClick={() => onAbrir(c.id)}
-                  style={{
-                    background: C.panel,
-                    border: `1px solid ${C.line}`,
-                    borderLeft: `2px solid ${area.color}`,
-                    padding: 14,
-                    cursor: "pointer",
-                  }}
+                  style={{ padding: 14, cursor: "pointer" }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                    <span style={eyebrow(10, area.color, "0.12em")}>{area.short}</span>
+                    {/* Quadradinho da área no lugar da faixa lateral — ver o Comercial. */}
+                    <span style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                      <span aria-hidden style={{ ...dot(area.color), flex: "none" }} />
+                      <span style={eyebrow(10, area.color, "0.12em")}>{area.short}</span>
+                    </span>
                     <span style={eyebrow(10, prioColor(c.prioridade), "0.12em")}>{c.prioridade}</span>
                   </div>
                   <div style={{ fontSize: 14, color: C.ink, lineHeight: 1.4, marginTop: 9, fontWeight: 600 }}>
@@ -628,8 +610,6 @@ export function Operacoes({
                     <div
                       style={{
                         marginTop: 10,
-                        borderTop: `1px solid ${C.line}`,
-                        paddingTop: 10,
                         fontFamily: MONO,
                         fontSize: 10,
                         color: C.faint,
@@ -646,16 +626,7 @@ export function Operacoes({
 
                   {/* As mesmas setas do pipeline, pelo mesmo motivo: arrastar não existe em
                       navegador de celular, e sem elas o card ficaria imóvel no telefone. */}
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "flex-end",
-                      gap: 6,
-                      marginTop: 10,
-                      borderTop: `1px solid ${C.line}`,
-                      paddingTop: 10,
-                    }}
-                  >
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, marginTop: 8 }}>
                     {([-1, 1] as const).map((dir) => {
                       const i = STATUS.findIndex((s) => s.key === c.status);
                       const destino = STATUS[i + dir];
@@ -664,6 +635,7 @@ export function Operacoes({
                         <span
                           key={dir}
                           draggable={false}
+                          className={ativo ? "liff-seta liff-seta--ativa" : "liff-seta"}
                           onClick={(e) => {
                             e.stopPropagation();
                             if (ativo) onSoltar(c.id, destino.key);
@@ -680,8 +652,7 @@ export function Operacoes({
                             fontFamily: MONO,
                             fontSize: 12,
                             color: ativo ? C.dust : C.ghost,
-                            padding: "0 5px",
-                            border: `1px solid ${C.line}`,
+                            padding: "2px 6px",
                           }}
                         >
                           {dir < 0 ? "←" : "→"}

@@ -50,6 +50,13 @@
   --liff-app-area-tax:           var(--liff-tax-mid);
   --liff-app-area-labs:          var(--liff-labs-core);
   --liff-app-area-social:        var(--liff-social-mid);
+
+  /* Kanban: a separação é por PREENCHIMENTO, não por fio. A raia (coluna) recua
+     e o card avança sobre ela; nenhum dos dois tem contorno. No escuro a raia é a
+     célula e o card é o passo 2 do painel — o degrau que dá para ver. */
+  --liff-app-raia:       var(--liff-cell);
+  --liff-app-card:       var(--liff-panel-2);
+  --liff-app-card-hover: color-mix(in srgb, var(--liff-floral) 6%, var(--liff-panel-2));
 }
 
 :root[data-theme="light"] {
@@ -60,6 +67,12 @@
   --liff-surface-cell: var(--liff-floral);
   --liff-surface-2:    color-mix(in srgb, var(--liff-dust) 42%, var(--liff-floral));
   --liff-code-bg:      color-mix(in srgb, var(--liff-dust) 16%, var(--liff-floral));
+
+  /* Kanban no claro: a raia afunda um passo abaixo do canvas (mais Dust) e o
+     card é o Floral puro — o "branco" do sistema, sem contorno. */
+  --liff-app-raia:       color-mix(in srgb, var(--liff-dust) 36%, var(--liff-floral));
+  --liff-app-card:       var(--liff-floral);
+  --liff-app-card-hover: color-mix(in srgb, var(--liff-dust) 10%, var(--liff-floral));
 
   /* A hairline clareia; o cinza apagado escurece — no escuro os dois são
      Charcoal, aqui precisam ir para lados opostos. */
@@ -228,6 +241,22 @@ textarea::placeholder {
 .liff-hover-cell:hover,
 .liff-hover-card:hover,
 .liff-hover-row:hover { background: var(--liff-surface-2) !important; }
+
+/* ---------- kanban (Comercial e Operações) ----------
+   Sem fios: nem entre colunas, nem em volta do card, nem dentro dele. Quem separa é o
+   espaço e o degrau de preenchimento raia → card. O fundo de cada peça mora AQUI e não
+   em estilo inline — inline vence a classe, e o hover e o "alvo do arraste" não
+   apareceriam. */
+.liff-kanban { display: flex; gap: 12px; overflow-x: auto; align-items: stretch; padding-bottom: 4px; }
+.liff-raia { background: var(--liff-app-raia); border-radius: var(--liff-radius-sm, 6px); transition: background .15s; }
+/* Alvo do arraste: um véu da cor de destaque sobre a raia. Não pode ser o passo 2 da
+   superfície — no escuro ele é exatamente a cor do card, e os cards da coluna de destino
+   sumiriam no fundo bem na hora em que se está mirando neles. */
+.liff-raia[data-alvo="1"] { background: color-mix(in srgb, var(--liff-accent) 14%, var(--liff-app-raia)); }
+.liff-card { background: var(--liff-app-card); border-radius: var(--liff-radius-sm, 6px); transition: background .15s; }
+.liff-card--ativo:hover { background: var(--liff-app-card-hover); }
+.liff-seta { border-radius: 4px; transition: background .15s, color .15s; }
+.liff-seta--ativa:hover { background: var(--liff-surface-2); color: var(--liff-text) !important; }
 .liff-nav-item:hover { color: var(--liff-text) !important; }
 
 /* ---------- responsivo ---------- */
