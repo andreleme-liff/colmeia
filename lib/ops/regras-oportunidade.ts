@@ -3,7 +3,7 @@
 // Mesma convenção das atividades: a ORDEM das checagens é a da rota antiga, para a mensagem
 // de erro não mudar quando a entrada tem mais de um problema.
 
-import { STAGES, STAGE_KEYS, brlExato, stageLabel } from "../domain.ts";
+import { ESTAGIO_INICIAL, FUNIL, STAGE_KEYS, brlExato, stageLabel } from "../domain.ts";
 import {
   LIMITES, dataOuNula, falha, idDePessoa, isoDoBanco, produtoNaArea, texto,
   type Falha, type Fatos, type Mudanca, type Permissoes,
@@ -22,7 +22,6 @@ export type OportunidadeNova = {
   contato: string;
   responsavelTexto: string;
   produtoId: string | null;
-  pausado: boolean;
   aceAws: boolean;
 };
 
@@ -42,7 +41,6 @@ export type OportunidadeAtual = {
   contato: string;
   responsavel_texto: string;
   produto_id: string | null;
-  pausado: boolean;
   proximo_passo_em: Date | null;
   ace_aws: boolean;
 };
@@ -74,7 +72,7 @@ export function planejarCriacaoOportunidade(
   if (!perm.areasExistentes.includes(area)) return falha("Área inválida.");
   if (!perm.podeEditar(area)) return falha(`Sem permissão de edição em ${perm.labelArea(area)}.`, 403);
 
-  const estagio = body.estagio ?? "lead";
+  const estagio = body.estagio ?? ESTAGIO_INICIAL;
   if (typeof estagio !== "string" || !STAGE_KEYS.includes(estagio)) return falha("Estágio inválido.");
 
   const valorCentavos = centavosDe(body.valorReais ?? 0);
@@ -95,9 +93,10 @@ export function planejarCriacaoOportunidade(
     if (!produtoId) return falha("Produto inválido para esta área.");
   }
 
-  const pausado = booleanoOpcional(body.pausado);
+  // "Em pausa" deixou de ser interruptor: virou o estágio On hold. Um `pausado` vindo de um
+  // cliente antigo é ignorado, como qualquer campo que a regra não conhece.
   const aceAws = booleanoOpcional(body.aceAws);
-  if (pausado === "invalido" || aceAws === "invalido") return falha("Requisição inválida.");
+  if (aceAws === "invalido") return falha("Requisição inválida.");
 
   const linha: OportunidadeNova = {
     conta,
@@ -112,7 +111,6 @@ export function planejarCriacaoOportunidade(
     contato: texto(body.contato, LIMITES.contato),
     responsavelTexto: texto(body.responsavelTexto, LIMITES.responsavelTexto),
     produtoId,
-    pausado: pausado ?? false,
     aceAws: aceAws ?? false,
   };
 
@@ -131,7 +129,7 @@ export function planejarCriacaoOportunidade(
 export type ColunaOportunidade =
   | "area" | "conta" | "escopo" | "estagio" | "valor_centavos" | "proximo_passo"
   | "situacao" | "contato" | "responsavel_texto" | "proximo_passo_em" | "produto_id"
-  | "pausado" | "ace_aws" | "responsavel_user_id";
+  | "ace_aws" | "responsavel_user_id";
 
 export type PlanoOportunidade = {
   ok: true;
@@ -150,6 +148,9 @@ function precondicao(atual: OportunidadeAtual, perm: Permissoes): Falha | null {
 /**
  * O movimento de uma casa no pipeline, feito pelas setas do card. O cliente manda a direção
  * e o servidor calcula o destino, para não dar para pular etapas.
+ *
+ * As setas andam só pelo FUNIL (Prospecção → … → Ganho). On hold e Lost são desvios, não
+ * casas: a seta não leva até eles nem tira deles — para isso, arrastar ou o formulário.
  */
 export function planejarMovimento(
   atual: OportunidadeAtual,
@@ -162,18 +163,19 @@ export function planejarMovimento(
   const direcao = Number(direcaoBruta);
   if (direcao !== 1 && direcao !== -1) return falha("Direção inválida.");
 
-  const i = STAGES.findIndex((s) => s.key === atual.estagio);
-  const j = Math.max(0, Math.min(STAGES.length - 1, i + direcao));
+  const i = FUNIL.indexOf(atual.estagio as (typeof FUNIL)[number]);
+  if (i < 0) return falha(`${stageLabel(atual.estagio)} não é uma casa do funil: arraste o card ou use o formulário.`);
+  const j = Math.max(0, Math.min(FUNIL.length - 1, i + direcao));
   if (i === j) return { ok: true, sets: {}, mudancas: [], areaFinal: atual.area };
 
   return {
     ok: true,
-    sets: { estagio: STAGES[j].key },
+    sets: { estagio: FUNIL[j] },
     mudancas: [{
       campo: "estagio",
-      de: STAGES[i].key,
-      para: STAGES[j].key,
-      texto: `Moveu ${atual.conta} de ${STAGES[i].label} para ${STAGES[j].label}`,
+      de: FUNIL[i],
+      para: FUNIL[j],
+      texto: `Moveu ${atual.conta} de ${stageLabel(FUNIL[i])} para ${stageLabel(FUNIL[j])}`,
     }],
     areaFinal: atual.area,
   };
@@ -320,18 +322,6 @@ export function planejarAtualizacaoOportunidade(
       texto: `Removeu o produto de ${atual.conta} — não pertence a ${perm.labelArea(areaFinal)}`,
     });
     sets.produto_id = null;
-  }
-
-  const pausado = booleanoOpcional(body.pausado);
-  if (pausado === "invalido") return falha("Requisição inválida.");
-  if (pausado !== undefined && pausado !== atual.pausado) {
-    mudancas.push({
-      campo: "pausado",
-      de: String(atual.pausado),
-      para: String(pausado),
-      texto: `${pausado ? "Pausou" : "Retomou"} ${atual.conta}`,
-    });
-    sets.pausado = pausado;
   }
 
   const aceAws = booleanoOpcional(body.aceAws);

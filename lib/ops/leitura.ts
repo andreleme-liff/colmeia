@@ -67,7 +67,7 @@ type LinhaOportunidade = {
   ref: string; conta: string; escopo: string; area: string; estagio: string; valor_centavos: string;
   responsavel_user_id: number | null; responsavel: string | null; responsavel_texto: string;
   proximo_passo: string; proximo_passo_em: Date | null; situacao: string; contato: string;
-  produto_id: string | null; pausado: boolean; ace_aws: boolean; atualizado_em: Date | null; criado_em: Date;
+  produto_id: string | null; ace_aws: boolean; atualizado_em: Date | null; criado_em: Date;
 };
 
 function oportunidadeDto(d: LinhaOportunidade, ctx: Ctx, base: string) {
@@ -88,7 +88,6 @@ function oportunidadeDto(d: LinhaOportunidade, ctx: Ctx, base: string) {
     situacao: d.situacao,
     contato: d.contato,
     produto_id: d.produto_id,
-    pausado: d.pausado,
     ace_aws: d.ace_aws,
     atualizado_em: (d.atualizado_em ?? d.criado_em).toISOString(),
     pode_editar: ctx.podeEditar(d.area),
@@ -138,7 +137,7 @@ export async function listarAtividades(sql: Queryable, ctx: Ctx, f: FiltroAtivid
 }
 
 export type FiltroOportunidades = {
-  area?: string; estagio?: string; responsavelId?: number; pausado?: boolean; busca?: string; limite: number;
+  area?: string; estagio?: string; responsavelId?: number; busca?: string; limite: number;
 };
 
 export async function listarOportunidades(sql: Queryable, ctx: Ctx, f: FiltroOportunidades, base: string) {
@@ -147,11 +146,10 @@ export async function listarOportunidades(sql: Queryable, ctx: Ctx, f: FiltroOpo
   const linhas = await sql<LinhaOportunidade[]>`
     SELECT d.ref, d.conta, d.escopo, d.area, d.estagio, d.valor_centavos, d.responsavel_user_id, u.nome AS responsavel,
            d.responsavel_texto, d.proximo_passo, d.proximo_passo_em, d.situacao, d.contato, d.produto_id,
-           d.pausado, d.ace_aws, d.atualizado_em, d.criado_em
+           d.ace_aws, d.atualizado_em, d.criado_em
     FROM deals d LEFT JOIN users u ON u.id = d.responsavel_user_id
     WHERE d.area = ANY(${areas})
       ${f.estagio ? sql`AND d.estagio = ${f.estagio}` : sql``}
-      ${f.pausado !== undefined ? sql`AND d.pausado = ${f.pausado}` : sql``}
       ${f.busca ? sql`AND (d.conta ILIKE ${padraoBusca(f.busca)} ESCAPE '\\' OR d.escopo ILIKE ${padraoBusca(f.busca)} ESCAPE '\\'
                           OR d.situacao ILIKE ${padraoBusca(f.busca)} ESCAPE '\\' OR d.contato ILIKE ${padraoBusca(f.busca)} ESCAPE '\\')` : sql``}
     ORDER BY d.ref ASC
@@ -196,7 +194,7 @@ export async function verRegistro(sql: Queryable, ctx: Ctx, refBruta: string, ba
     const [d] = await sql<(LinhaOportunidade & { ref_antiga: string | null })[]>`
       SELECT d.ref, d.conta, d.escopo, d.area, d.estagio, d.valor_centavos, d.responsavel_user_id, u.nome AS responsavel,
              d.responsavel_texto, d.proximo_passo, d.proximo_passo_em, d.situacao, d.contato, d.produto_id,
-             d.pausado, d.ace_aws, d.atualizado_em, d.criado_em, d.ref_antiga
+             d.ace_aws, d.atualizado_em, d.criado_em, d.ref_antiga
       FROM deals d LEFT JOIN users u ON u.id = d.responsavel_user_id WHERE d.ref = ${ref}
     `;
     if (d && ctx.podeVer(d.area)) {

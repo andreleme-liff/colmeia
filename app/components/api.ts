@@ -45,8 +45,6 @@ export type Deal = {
   produtoId: string | null;
   /** Quando o próximo passo acontece. Nulo = sem data; o cronograma assume o fim da semana. */
   proximoPassoEm: string | null;
-  /** Paralelo ao estágio: "não é o momento" não é uma casa do funil. */
-  pausado: boolean;
   /** Oportunidade já registrada no ACE do AWS Partner Central. */
   aceAws: boolean;
   /** ISO da última mexida no card — ou da criação, se nunca foi editado. */
@@ -65,7 +63,6 @@ export type LinhaImport = {
   contato: string;
   responsavelTexto: string;
   produtoId: string | null;
-  pausado: boolean;
 };
 
 export type LinhaImportAtividade = {
@@ -157,7 +154,6 @@ export type NovaOportunidade = {
   contato: string;
   responsavelTexto: string;
   produtoId: string | null;
-  pausado: boolean;
   proximoPassoEm: string | null;
   aceAws: boolean;
 };

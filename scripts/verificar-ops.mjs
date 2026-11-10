@@ -13,7 +13,7 @@
 //     das rotas como estavam antes da refatoração (git) e exige que todas continuem existindo.
 
 import { execSync } from "node:child_process";
-import { formatarRef, refCanonica, tipoDaRef } from "../lib/domain.ts";
+import { ESTAGIO_INICIAL, FUNIL, STAGE_KEYS, estagioEmAberto, formatarRef, refCanonica, tipoDaRef } from "../lib/domain.ts";
 import { readFileSync } from "node:fs";
 import {
   planejarAtualizacaoAtividade, planejarCriacaoAtividade,
@@ -67,10 +67,10 @@ const ATIV = {
   oportunidade_id: null,
 };
 const OPOR = {
-  id: 20, ref: "D-120", conta: "JBS", escopo: "", area: "tax", estagio: "qualificacao",
+  id: 20, ref: "C-0120", conta: "JBS", escopo: "", area: "tax", estagio: "qualificado",
   valor_centavos: "6000000", proximo_passo: "", responsavel_user_id: null, responsavel: null,
   situacao: "", contato: "", responsavel_texto: "Agente 2", produto_id: "regtrack",
-  pausado: false, proximo_passo_em: null, ace_aws: false,
+  proximo_passo_em: null, ace_aws: false,
 };
 
 console.log("\n1. criação: permissão vem antes de tudo o que depende da área");
@@ -103,8 +103,9 @@ checa("responsável que não é inteiro recusa",
 checa("valor negativo recusa", erro(planejarCriacaoOportunidade({ conta: "X", area: "tax", valorReais: -1 }, perm, fatos)), "400 Valor inválido.");
 checa("valor em string numérica vale (o formulário manda assim)",
   planejarCriacaoOportunidade({ conta: "X", area: "tax", valorReais: "1500.5" }, perm, fatos).linha?.valorCentavos, 150050);
-checa("pausado que não é booleano recusa",
-  erro(planejarCriacaoOportunidade({ conta: "X", area: "tax", pausado: "false" }, perm, fatos)), "400 Requisição inválida.");
+// "Em pausa" virou o estágio On hold: um `pausado` de cliente antigo não grava nada.
+checa("pausado (legado) é ignorado na criação",
+  "pausado" in (planejarCriacaoOportunidade({ conta: "X", area: "tax", pausado: true }, perm, fatos).linha ?? {}), false);
 checa("data malformada vira nula, sem erro (comportamento antigo)",
   planejarCriacaoAtividade({ titulo: "X", area: "tax", prazo: "20/11/2026" }, perm, fatos).linha?.prazo, null);
 // A criação não cortava texto nenhum; um agente externo gravaria cem mil caracteres.
@@ -127,8 +128,8 @@ checa("mover com edição nas duas pontas passa", movida.areaFinal, "tech");
 checa("o produto da vertical antiga cai junto, com registro",
   movida.mudancas.map((m) => m.campo), ["area", "produto"]);
 checa("e o produto vai para nulo", movida.sets.produto_id, null);
-checa("o setas não pula etapa e ignora o resto do corpo",
-  planejarMovimento(OPOR, 1, perm).sets, { estagio: "validacao" });
+checa("a seta não pula etapa e ignora o resto do corpo",
+  planejarMovimento(OPOR, 1, perm).sets, { estagio: "proposta" });
 checa("seta no fim do funil não muda nada",
   planejarMovimento({ ...OPOR, estagio: "ganho" }, 1, perm).mudancas.length, 0);
 checa("direção arbitrária recusa", erro(planejarMovimento(OPOR, 3, perm)), "400 Direção inválida.");
@@ -165,12 +166,13 @@ const COLUNAS = new Set(["area", "conta", "escopo", "estagio", "valor_centavos",
   "responsavel_texto", "proximo_passo_em", "produto_id", "pausado", "ace_aws", "responsavel_user_id", "titulo",
   "status", "prioridade", "prazo"]);
 const tudo = planejarAtualizacaoOportunidade(OPOR, {
-  area: "tech", conta: "B", escopo: "c", estagio: "lead", valorReais: 1, proximoPasso: "p", situacao: "s",
+  area: "tech", conta: "B", escopo: "c", estagio: "prospeccao", valorReais: 1, proximoPasso: "p", situacao: "s",
   contato: "k", responsavelTexto: "r", proximoPassoEm: "2026-12-01", produtoId: "observa", pausado: true,
   aceAws: true, responsavelId: 2,
 }, perm2, fatos);
+checa("pausado (legado) não vira coluna nenhuma", "pausado" in tudo.sets, false);
 checa("todas as colunas possíveis estão na lista conhecida", Object.keys(tudo.sets).every((k) => COLUNAS.has(k)), true);
-checa("e são todas as 14 da oportunidade", Object.keys(tudo.sets).length, 14);
+checa("e são todas as 13 da oportunidade", Object.keys(tudo.sets).length, 13);
 
 console.log("\n6. as mensagens de erro são as mesmas de antes da refatoração");
 // Extrai todo `err("...")` das rotas como estavam no commit anterior à extração do núcleo e
@@ -248,6 +250,23 @@ checa("tipo pela letra antiga", [tipoDaRef("D-1"), tipoDaRef("A-1")], ["oportuni
 const ANTIGAS = ["D-01", "D-08", "D-100", "D-108", "A-101", "A-602", "A-1000"];
 checa("conversão sem colisão no conjunto do seed + sequências",
   new Set(ANTIGAS.map(refCanonica)).size, ANTIGAS.length);
+
+console.log("\n9. estágios do pipeline (nov/2026)");
+checa("a lista, na ordem combinada", STAGE_KEYS,
+  ["prospeccao", "primeira_reuniao", "qualificado", "proposta", "validacao", "contrato", "ganho", "on_hold", "lost"]);
+checa("o funil são as sete primeiras", FUNIL, STAGE_KEYS.slice(0, 7));
+checa("nasce em Prospecção", [ESTAGIO_INICIAL, planejarCriacaoOportunidade({ conta: "X", area: "tax" }, perm, fatos).linha?.estagio], ["prospeccao", "prospeccao"]);
+checa("estágio antigo é recusado", erro(planejarCriacaoOportunidade({ conta: "X", area: "tax", estagio: "negociacao" }, perm, fatos)), "400 Estágio inválido.");
+checa("Contrato → Ganho pela seta", planejarMovimento({ ...OPOR, estagio: "contrato" }, 1, perm).sets, { estagio: "ganho" });
+checa("Ganho não anda para On hold pela seta", planejarMovimento({ ...OPOR, estagio: "ganho" }, 1, perm).sets, {});
+checa("Prospecção não volta", planejarMovimento({ ...OPOR, estagio: "prospeccao" }, -1, perm).sets, {});
+checa("seta em On hold é recusada com explicação",
+  erro(planejarMovimento({ ...OPOR, estagio: "on_hold" }, -1, perm)), "400 On hold não é uma casa do funil: arraste o card ou use o formulário.");
+checa("seta em Lost também", planejarMovimento({ ...OPOR, estagio: "lost" }, 1, perm).ok, false);
+checa("pelo formulário vai para On hold", planejarAtualizacaoOportunidade(OPOR, { estagio: "on_hold" }, perm, fatos).sets, { estagio: "on_hold" });
+checa("…e volta para o funil", planejarAtualizacaoOportunidade({ ...OPOR, estagio: "on_hold" }, { estagio: "proposta" }, perm, fatos).sets, { estagio: "proposta" });
+checa("em aberto: do início ao Contrato", FUNIL.slice(0, 6).every(estagioEmAberto), true);
+checa("fora do aberto: Ganho, On hold, Lost", ["ganho", "on_hold", "lost"].some(estagioEmAberto), false);
 
 console.log(`\n${ok} passaram, ${falhou} falharam`);
 process.exit(falhou ? 1 : 0);

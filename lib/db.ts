@@ -215,7 +215,7 @@ async function migrate(): Promise<void> {
       conta               TEXT NOT NULL,
       escopo              TEXT NOT NULL DEFAULT '',
       area                TEXT NOT NULL REFERENCES areas(id),
-      estagio             TEXT NOT NULL DEFAULT 'lead' CHECK (estagio IN (${inList(STAGE_KEYS)})),
+      estagio             TEXT NOT NULL DEFAULT 'prospeccao' CHECK (estagio IN (${inList(STAGE_KEYS)})),
       valor_centavos      BIGINT NOT NULL DEFAULT 0,
       responsavel_user_id INTEGER REFERENCES users(id),
       proximo_passo       TEXT NOT NULL DEFAULT '',
@@ -336,6 +336,8 @@ async function migrate(): Promise<void> {
       END $$;
     `);
     await sql`CREATE INDEX IF NOT EXISTS idx_deals_produto ON deals(produto_id)`;
+
+    await reiniciarPipeline(sql);
 
     /**
      * Os CHECK de lista fechada são gerados a partir de domain.ts no CREATE TABLE — mas o
@@ -575,6 +577,70 @@ async function converterReferencias(sql: Queryable): Promise<void> {
 }
 
 /**
+ * Estágios novos do pipeline (nov/2026): Prospecção → 1ª Reunião → Qualificado → Proposta →
+ * Validação → Contrato → Ganho, mais On hold e Lost.
+ *
+ * 1. LIMPEZA, uma vez só. A decisão foi apagar todas as oportunidades e recarregar o pipeline
+ *    do zero nos estágios novos, em vez de adivinhar para onde ia cada uma. Cada exclusão deixa
+ *    a sua linha no audit_log (conta, valor, estágio) e o fim deixa uma MARCA; com a marca
+ *    presente, a limpeza nunca mais roda — o que for carregado depois está a salvo. Roda ANTES
+ *    do seed: base nova limpa zero oportunidades, grava a marca, e o seed entra normalmente.
+ * 2. RESTO: se algo no formato antigo aparecer depois (uma instância com código velho gravando
+ *    durante o deploy), o estágio é traduzido, com registro, e "Em pausa" vira On hold.
+ * 3. O CHECK antigo cai ANTES da tradução — ele só aceita os estágios velhos e recusaria o
+ *    UPDATE. O bloco de CHECKs logo depois recria com a lista nova.
+ */
+const MARCA_LIMPEZA = "limpeza-pipeline-2026-11";
+const ESTAGIO_ANTIGO: Record<string, string> = {
+  lead: "prospeccao",
+  qualificacao: "qualificado",
+  validacao: "validacao",
+  proposta: "proposta",
+  negociacao: "contrato",
+  ganho: "ganho",
+};
+
+async function reiniciarPipeline(sql: Queryable): Promise<void> {
+  const [feita] = await sql`SELECT 1 FROM audit_log WHERE entidade = 'SISTEMA' AND campo = ${MARCA_LIMPEZA} LIMIT 1`;
+  if (!feita) {
+    const alvos = await sql<{ id: number; ref: string; conta: string; area: string; estagio: string; valor_centavos: string }[]>`
+      SELECT id, ref, conta, area, estagio, valor_centavos FROM deals ORDER BY id
+    `;
+    for (const d of alvos) {
+      await sql`
+        INSERT INTO audit_log (actor_user_id, area, entidade, campo, valor_anterior, valor_novo, texto)
+        VALUES (NULL, ${d.area}, ${d.ref}, 'exclusao', ${d.conta}, NULL,
+                ${`Excluiu a oportunidade ${d.conta} (${(Number(d.valor_centavos) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}, estágio ${d.estagio}) na limpeza do pipeline para os novos estágios`})
+      `;
+    }
+    if (alvos.length) await sql`DELETE FROM deals WHERE id = ANY(${alvos.map((d) => d.id)})`;
+    await sql`
+      INSERT INTO audit_log (actor_user_id, area, entidade, campo, valor_anterior, valor_novo, texto)
+      VALUES (NULL, NULL, 'SISTEMA', ${MARCA_LIMPEZA}, NULL, ${String(alvos.length)},
+              ${`Limpeza do pipeline comercial para os novos estágios: ${alvos.length} oportunidade(s) excluída(s); o histórico de cada uma continua na auditoria`})
+    `;
+    console.log(`[db] limpeza do pipeline: ${alvos.length} oportunidade(s) excluída(s)`);
+  }
+
+  await sql`ALTER TABLE deals DROP CONSTRAINT IF EXISTS deals_estagio_check`;
+  await sql`ALTER TABLE deals ALTER COLUMN estagio SET DEFAULT 'prospeccao'`;
+
+  const restos = await sql<{ id: number; ref: string; area: string; estagio: string; pausado: boolean }[]>`
+    SELECT id, ref, area, estagio, pausado FROM deals
+    WHERE pausado OR NOT (estagio = ANY(${STAGE_KEYS as string[]}))
+  `;
+  for (const d of restos) {
+    const novo = d.pausado ? "on_hold" : (ESTAGIO_ANTIGO[d.estagio] ?? "prospeccao");
+    await sql`UPDATE deals SET estagio = ${novo}, pausado = false WHERE id = ${d.id}`;
+    await sql`
+      INSERT INTO audit_log (actor_user_id, area, entidade, campo, valor_anterior, valor_novo, texto)
+      VALUES (NULL, ${d.area}, ${d.ref}, 'estagio', ${d.estagio}, ${novo},
+              ${`Estágio convertido para o pipeline novo: ${d.estagio}${d.pausado ? " (em pausa)" : ""} → ${novo}`})
+    `;
+  }
+}
+
+/**
  * Conjunto de demonstração — só entra em base vazia, e só se SEED_DEMO não estiver desligado.
  * São os mesmos dados que o protótipo estático carregava em memória, agora persistidos.
  */
@@ -653,14 +719,14 @@ async function seed(sql: Queryable): Promise<void> {
 
   // valor em centavos: 420000 reais → 42000000
   const oportunidades: [string, string, string, string, string, number, string, string][] = [
-    ["D-01", "Vieira & Costa Advogados", "law-v · 80 usuários", "law-firms", "negociacao", 420000, "marina@getliff.ai", "Reunião 08/08"],
+    ["D-01", "Vieira & Costa Advogados", "law-v · 80 usuários", "law-firms", "contrato", 420000, "marina@getliff.ai", "Reunião 08/08"],
     ["D-02", "Grupo Andrade", "law-v + Docflows", "law-firms", "proposta", 260000, "marina@getliff.ai", "Enviar proposta"],
-    ["D-03", "Metalcorp S.A.", "Regtrack corporate", "corporate", "qualificacao", 180000, "marina@getliff.ai", "Discovery 12/08"],
-    ["D-04", "Instituto Vega", "Compliance ESG", "corporate", "lead", 95000, "leme@getliff.ai", "Qualificar"],
+    ["D-03", "Metalcorp S.A.", "Regtrack corporate", "corporate", "qualificado", 180000, "marina@getliff.ai", "Discovery 12/08"],
+    ["D-04", "Instituto Vega", "Compliance ESG", "corporate", "prospeccao", 95000, "leme@getliff.ai", "Qualificar"],
     ["D-05", "Tribunal de Contas MG", "Controle interno", "public-sector", "proposta", 610000, "leme@getliff.ai", "Edital 11/08"],
     ["D-06", "Nutrimax Alimentos", "LIFF Tax · DRE Impact", "tax", "ganho", 340000, "marina@getliff.ai", "Kickoff feito"],
-    ["D-07", "Cimentos Boa Vista", "Reforma tributária", "tax", "negociacao", 275000, "leme@getliff.ai", "Ajuste de escopo"],
-    ["D-08", "Rede Solidária Brasil", "Acesso à justiça", "social", "lead", 60000, "clara@getliff.ai", "Primeiro contato"],
+    ["D-07", "Cimentos Boa Vista", "Reforma tributária", "tax", "contrato", 275000, "leme@getliff.ai", "Ajuste de escopo"],
+    ["D-08", "Rede Solidária Brasil", "Acesso à justiça", "social", "prospeccao", 60000, "clara@getliff.ai", "Primeiro contato"],
   ];
   for (const [ref, conta, escopo, area, estagio, reais, email, prox] of oportunidades) {
     await sql`

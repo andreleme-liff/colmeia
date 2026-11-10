@@ -30,10 +30,10 @@ export async function criarOportunidade(
   const [nova] = await tx<{ id: number }[]>`
     INSERT INTO deals (ref, conta, escopo, area, estagio, valor_centavos, responsavel_user_id,
                        proximo_passo, proximo_passo_em, situacao, contato, responsavel_texto,
-                       produto_id, pausado, ace_aws)
+                       produto_id, ace_aws)
     VALUES (${ref}, ${l.conta}, ${l.escopo}, ${l.area}, ${l.estagio}, ${l.valorCentavos}, ${l.responsavelId},
             ${l.proximoPasso}, ${l.proximoPassoEm}, ${l.situacao}, ${l.contato}, ${l.responsavelTexto},
-            ${l.produtoId}, ${l.pausado}, ${l.aceAws})
+            ${l.produtoId}, ${l.aceAws})
     RETURNING id
   `;
 
@@ -53,7 +53,7 @@ async function lerAtual(tx: Queryable, dealId: number): Promise<OportunidadeAtua
   const linhas = await tx<OportunidadeAtual[]>`
     SELECT d.id, d.ref, d.conta, d.escopo, d.area, d.estagio, d.valor_centavos, d.proximo_passo,
            d.responsavel_user_id, u.nome AS responsavel,
-           d.situacao, d.contato, d.responsavel_texto, d.produto_id, d.pausado, d.proximo_passo_em,
+           d.situacao, d.contato, d.responsavel_texto, d.produto_id, d.proximo_passo_em,
            d.ace_aws
     FROM deals d LEFT JOIN users u ON u.id = d.responsavel_user_id
     WHERE d.id = ${dealId}

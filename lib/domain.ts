@@ -24,24 +24,34 @@ export type StatusKey = (typeof STATUS)[number]["key"];
 export const STATUS_KEYS = STATUS.map((s) => s.key) as readonly string[];
 
 /**
- * O funil. `validacao` é onde a conta já topou explorar e os dois lados estão provando que dá
- * para fazer, antes de existir preço: NDA, transferência de dados, POC, refinamento de escopo.
- * Fica antes de `proposta` de propósito — sem ela, um card em NDA ficava obrigado a se declarar
- * em Proposta ou Negociação, adiantando o pipeline sobre trabalho que ainda é técnico e jurídico.
+ * Os estágios do pipeline comercial (nov/2026). As sete primeiras casas são o FUNIL, na ordem
+ * em que uma venda anda; On hold e Lost ficam fora dele — não são passos, são desvios. On hold
+ * substituiu o antigo interruptor "Em pausa" ("não é o momento"): virou coluna própria.
  *
- * A ordem desta lista é o funil: mover ±1 anda por ela, e o CHECK do banco é gerado a partir
- * das chaves (ver `lib/db.ts`).
+ * O CHECK do banco é gerado a partir destas chaves (ver `lib/db.ts`), e as setas do card andam
+ * só pelo FUNIL.
  */
 export const STAGES = [
-  { key: "lead", label: "Lead" },
-  { key: "qualificacao", label: "Qualificação" },
-  { key: "validacao", label: "Validação" },
+  { key: "prospeccao", label: "Prospecção" },
+  { key: "primeira_reuniao", label: "1ª Reunião" },
+  { key: "qualificado", label: "Qualificado" },
   { key: "proposta", label: "Proposta" },
-  { key: "negociacao", label: "Negociação" },
+  { key: "validacao", label: "Validação" },
+  { key: "contrato", label: "Contrato" },
   { key: "ganho", label: "Ganho" },
+  { key: "on_hold", label: "On hold" },
+  { key: "lost", label: "Lost" },
 ] as const;
 
 export type StageKey = (typeof STAGES)[number]["key"];
+/** Onde uma oportunidade nasce quando ninguém diz o estágio. */
+export const ESTAGIO_INICIAL: StageKey = "prospeccao";
+/** As casas por onde as setas andam, em ordem. On hold e Lost ficam de fora. */
+export const FUNIL: readonly StageKey[] = ["prospeccao", "primeira_reuniao", "qualificado", "proposta", "validacao", "contrato", "ganho"];
+/** Em aberto = no funil e ainda não ganha. On hold e Lost não contam no pipeline aberto. */
+export function estagioEmAberto(k: string): boolean {
+  return (FUNIL as readonly string[]).includes(k) && k !== "ganho";
+}
 export const STAGE_KEYS = STAGES.map((s) => s.key) as readonly string[];
 
 export const PRIORIDADES = ["alta", "media", "baixa"] as const;

@@ -497,7 +497,6 @@ export default function ImportarPlanilha({
                                   <span style={eyebrow(9, l.existente ? C.info : C.success, "0.1em")}>
                                     {l.existente ? "atualiza" : "nova"}
                                   </span>
-                                  {l.pausado && <span style={eyebrow(9, C.warning, "0.1em")}>pausada</span>}
                                 </div>
                               </div>
                             );
@@ -535,7 +534,6 @@ export default function ImportarPlanilha({
                       contato: l.contato,
                       responsavelTexto: l.responsavelTexto,
                       produtoId: l.produtoId,
-                      pausado: l.pausado,
                     })),
                   atividades: abasAtivas
                     .flatMap((a) => (a.tipo === "atividades" ? a.linhas : []))

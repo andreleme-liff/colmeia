@@ -107,7 +107,10 @@ checa("chave de idempotência no formato UUID passa",
   valida("criar_oportunidade", { conta: "X", area: "tax", chave_idempotencia: "0b6f3c9e-2f1a-4c6e-9d6a-3b8f2a1c7e55" }), []);
 checa("atualizar não aceita chave de idempotência (só criação)",
   valida("atualizar_atividade", { ref: "A-1", chave_idempotencia: "12345678" }), ["campo desconhecido: chave_idempotencia"]);
-checa("pausado precisa ser booleano", valida("atualizar_oportunidade", { ref: "D-1", pausado: "true" }).length, 1);
+// "Em pausa" virou o estágio On hold: o campo saiu do esquema.
+checa("pausado não existe mais (é o estágio on_hold)", valida("atualizar_oportunidade", { ref: "C-1", pausado: true }), ["campo desconhecido: pausado"]);
+checa("on_hold e lost são estágios aceitos", ["on_hold", "lost"].every((e) => !valida("atualizar_oportunidade", { ref: "C-1", estagio: e }).length), true);
+checa("estágio antigo recusado", valida("atualizar_oportunidade", { ref: "C-1", estagio: "negociacao" }).length, 1);
 checa("limite acima de 200 recusado", valida("listar_oportunidades", { limite: 1000 }), ["limite: máximo 200"]);
 checa("ferramenta sem parâmetros recusa qualquer um", valida("contexto", { x: 1 }), ["campo desconhecido: x"]);
 checa("argumentos que não são objeto", valida("contexto", []), ["os argumentos devem ser um objeto"]);

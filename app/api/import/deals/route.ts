@@ -13,7 +13,7 @@ import { getDb } from "@/lib/db";
 import { requireCtx } from "@/lib/perms";
 import { json, err } from "@/lib/http";
 import { registrar } from "@/lib/log";
-import { STAGE_KEYS, formatarRef, normalizarConta } from "@/lib/domain";
+import { ESTAGIO_INICIAL, STAGE_KEYS, formatarRef, normalizarConta } from "@/lib/domain";
 
 type Linha = {
   conta?: string;
@@ -24,6 +24,7 @@ type Linha = {
   contato?: string;
   responsavelTexto?: string;
   produtoId?: string | null;
+  /** Legado: "Em pausa" virou o estágio On hold. Se vier, a linha entra em On hold. */
   pausado?: boolean;
 };
 
@@ -73,7 +74,7 @@ export async function POST(req: Request) {
       continue;
     }
 
-    const estagio = String(l.estagio ?? "lead");
+    const estagio = l.pausado ? "on_hold" : String(l.estagio ?? ESTAGIO_INICIAL);
     if (!STAGE_KEYS.includes(estagio)) {
       ignoradas.push({ linha: i + 1, motivo: `estágio inválido (${estagio})` });
       continue;
@@ -94,7 +95,6 @@ export async function POST(req: Request) {
       proximo: String(l.proximoPasso ?? "").trim().slice(0, 2000),
       contato: String(l.contato ?? "").trim().slice(0, 300),
       responsavel: String(l.responsavelTexto ?? "").trim().slice(0, 200),
-      pausado: !!l.pausado,
     };
 
     const jaExiste = porConta.get(normalizarConta(conta));
@@ -105,7 +105,7 @@ export async function POST(req: Request) {
           escopo = ${campos.escopo}, estagio = ${estagio}, situacao = ${campos.situacao},
           proximo_passo = ${campos.proximo}, contato = ${campos.contato},
           responsavel_texto = ${campos.responsavel}, produto_id = ${produtoId},
-          pausado = ${campos.pausado}, atualizado_em = now()
+          atualizado_em = now()
         WHERE id = ${jaExiste.id}
       `;
       await registrar(sql, {
@@ -125,9 +125,9 @@ export async function POST(req: Request) {
     const ref = formatarRef("oportunidade", n);
     await sql`
       INSERT INTO deals (ref, conta, escopo, area, estagio, valor_centavos, proximo_passo,
-                         situacao, contato, responsavel_texto, produto_id, pausado)
+                         situacao, contato, responsavel_texto, produto_id)
       VALUES (${ref}, ${conta}, ${campos.escopo}, ${area}, ${estagio}, 0, ${campos.proximo},
-              ${campos.situacao}, ${campos.contato}, ${campos.responsavel}, ${produtoId}, ${campos.pausado})
+              ${campos.situacao}, ${campos.contato}, ${campos.responsavel}, ${produtoId})
     `;
     await registrar(sql, {
       actorUserId: ctx.user.userId,

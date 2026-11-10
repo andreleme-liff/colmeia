@@ -24,7 +24,7 @@ const MAPA: Record<string, string> = {
   responsavel_id: "responsavelId", situacao: "situacao", proximo_passo: "proximoPasso",
   proximo_passo_em: "proximoPassoEm", produto_id: "produtoId", conta: "conta", estagio: "estagio",
   valor_reais: "valorReais", escopo: "escopo", contato: "contato", responsavel_texto: "responsavelTexto",
-  pausado: "pausado", ace_aws: "aceAws", oportunidade: "oportunidade",
+  ace_aws: "aceAws", oportunidade: "oportunidade",
 };
 
 function paraNucleo(args: Record<string, unknown>): Record<string, unknown> {
@@ -99,7 +99,6 @@ const EXECUTORES: Record<NomeFerramenta, Executor> = {
       area: a.area as string | undefined,
       estagio: a.estagio as string | undefined,
       responsavelId: a.responsavel_id as number | undefined,
-      pausado: a.pausado as boolean | undefined,
       busca: a.busca as string | undefined,
       limite: (a.limite as number | undefined) ?? 50,
     }, c.base),

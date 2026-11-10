@@ -34,7 +34,7 @@ import SeletorResponsaveis from "./SeletorResponsaveis";
 import Conexoes from "./Conexoes";
 import { api, type State } from "./api";
 import {
-  NAV, STAGES, STATUS, TITLES, areaOf, brl, daISO, ddmm, diaISO, ehDoResponsavel,
+  NAV, STAGES, STATUS, TITLES, areaOf, brl, daISO, ddmm, diaISO, ehDoResponsavel, estagioEmAberto,
   escreverSelecaoDeResponsaveis, fimDaSemana, inicioDaSemana, lerSelecaoDeResponsaveis,
   opcoesDeResponsavel, porTexto, rotuloDaSemana, setAreas, stageLabel, statusLabel, todasAreas,
   type RegistroComResponsavel,
@@ -296,7 +296,8 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
       return d > 0 && d <= DIAS_CRITICO;
     });
     const emAtraso = comPrazo.filter((a) => diasAtePrazo(a.prazo!) < 0);
-    const emAberto = oportunidades.filter((d) => d.estagio !== "ganho");
+    // Aberto = no funil e ainda não ganho. On hold e Lost ficam fora do pipeline aberto.
+    const emAberto = oportunidades.filter((d) => estagioEmAberto(d.estagio));
     const ganhas = oportunidades.filter((d) => d.estagio === "ganho");
     const somaAberto = emAberto.reduce((s, d) => s + d.valorCentavos, 0);
     const somaGanho = ganhas.reduce((s, d) => s + d.valorCentavos, 0);
@@ -350,7 +351,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         {
           label: "FASE FINAL",
           valor: brl(
-            oportunidades.filter((d) => d.estagio === "negociacao").reduce((s, d) => s + d.valorCentavos, 0)
+            oportunidades.filter((d) => d.estagio === "contrato").reduce((s, d) => s + d.valorCentavos, 0)
           ),
           cor: C.warning,
         },
@@ -361,30 +362,31 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
        * Foco da semana do comercial. Não é "as maiores": é o que exige ação.
        *
        * Parada há muito tempo vem primeiro, e a mais parada antes — é a que corre risco de
-       * ser esquecida. Depois as adiantadas no funil, onde a semana rende mais. Ganho fica
-       * de fora: fechado não é foco. Em pausa entra por último, sinalizada, porque foi
+       * ser esquecida. Depois as adiantadas no funil, onde a semana rende mais. Ganho e Lost
+       * ficam de fora: fechado não é foco. On hold entra por último, sinalizada, porque foi
        * decisão e não esquecimento.
        */
       focoComercial: (() => {
         const posicao = (k: string) => STAGES.findIndex((s) => s.key === k);
         return oportunidades
-          .filter((d) => d.estagio !== "ganho")
+          .filter((d) => d.estagio !== "ganho" && d.estagio !== "lost")
           .map((d) => {
             const dias = diasParado(d.atualizadoEm);
-            const parada = !d.pausado && dias >= DIAS_SEM_MOVIMENTO;
-            return { d, dias, parada };
+            const emEspera = d.estagio === "on_hold";
+            const parada = !emEspera && dias >= DIAS_SEM_MOVIMENTO;
+            return { d, dias, parada, emEspera };
           })
           .sort((x, y) => {
             if (x.parada !== y.parada) return x.parada ? -1 : 1;
             if (x.parada && y.parada) return y.dias - x.dias;
-            if (x.d.pausado !== y.d.pausado) return x.d.pausado ? 1 : -1;
+            if (x.emEspera !== y.emEspera) return x.emEspera ? 1 : -1;
             return posicao(y.d.estagio) - posicao(x.d.estagio) || y.d.valorCentavos - x.d.valorCentavos;
           })
           .slice(0, 6)
-          .map(({ d, dias, parada }) => ({
+          .map(({ d, dias, parada, emEspera }) => ({
             ref: d.ref,
-            sinal: parada ? `parada ${dias}d` : d.pausado ? "em pausa" : stageLabel(d.estagio).toLowerCase(),
-            sinalCor: parada ? C.error : d.pausado ? C.warning : C.faint,
+            sinal: parada ? `parada ${dias}d` : stageLabel(d.estagio).toLowerCase(),
+            sinalCor: parada ? C.error : emEspera ? C.warning : C.faint,
             titulo: d.conta,
             cor: areaOf(d.area).color,
             contexto: [d.responsavelTexto || d.responsavel, resumirPasso(d.proximoPasso, 40)]
@@ -538,7 +540,8 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     const brutos: Bruto[] = [];
 
     for (const d of dados.oportunidades) {
-      if (d.estagio === "ganho" || d.pausado) continue;
+      // Só o que está em aberto tem próximo passo a cumprir: Ganho, On hold e Lost ficam fora.
+      if (!estagioEmAberto(d.estagio)) continue;
       const semData = !d.proximoPassoEm;
       brutos.push({
         areaId: d.area,
@@ -651,13 +654,17 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     }
 
     if (deals.length) {
-      const abertos = deals.filter((x) => x.estagio !== "ganho");
+      const abertos = deals.filter((x) => estagioEmAberto(x.estagio));
       L.push("*Comercial*");
       L.push(
         `- Pipeline aberto: ${brl(abertos.reduce((s, x) => s + x.valorCentavos, 0))} em ${abertos.length} oportunidades`
       );
       const ganhos = deals.filter((x) => x.estagio === "ganho");
       if (ganhos.length) L.push(`- Ganhos no período: ${ganhos.map((g) => g.conta).join(", ")}`);
+      // On hold saiu do pipeline aberto, mas não pode sumir do resumo: foi decisão de esperar,
+      // e quem lê precisa saber o que está esperando.
+      const emEspera = deals.filter((x) => x.estagio === "on_hold");
+      if (emEspera.length) L.push(`- On hold: ${emEspera.map((x) => x.conta).join(", ")}`);
 
       // Todas as oportunidades abertas, do fim do funil para o começo. Antes eram três, de
       // um trecho do funil — quem lia o resumo não tinha como saber que o resto existia.
@@ -667,12 +674,8 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         .sort((a, b) => posicao(b.estagio) - posicao(a.estagio) || b.valorCentavos - a.valorCentavos)
         .forEach((x) => {
           const partes = [stageLabel(x.estagio), brl(x.valorCentavos)];
-          // Pausa é decisão, parada é esquecimento. Só a segunda merece alarme.
-          if (x.pausado) partes.push("em pausa");
-          else {
-            const dias = diasParado(x.atualizadoEm);
-            if (dias >= DIAS_SEM_MOVIMENTO) partes.push(`⚠ parada há ${dias}d`);
-          }
+          const dias = diasParado(x.atualizadoEm);
+          if (dias >= DIAS_SEM_MOVIMENTO) partes.push(`⚠ parada há ${dias}d`);
           const passo = resumirPasso(x.proximoPasso);
           L.push(`- ${x.conta}: ${partes.join(" · ")}${passo ? ` (${passo})` : ""}`);
         });

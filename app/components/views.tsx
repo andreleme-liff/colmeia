@@ -12,7 +12,7 @@ import SeletorArea, { type OpcaoArea } from "./SeletorArea";
 import Historico from "./Historico";
 import ViaConexao from "./ViaConexao";
 import {
-  ADMIN_CARDS, PAPEIS, STAGES, STATUS, areaOf, brl, ddmm, porTexto, stamp, statusLabel, todasAreas,
+  ADMIN_CARDS, ESTAGIO_INICIAL, FUNIL, PAPEIS, STAGES, STATUS, areaOf, brl, ddmm, porTexto, stamp, statusLabel, todasAreas,
 } from "@/lib/domain";
 
 /* =========================================================
@@ -315,7 +315,6 @@ export function Comercial({
                         ace
                       </span>
                     )}
-                    {d.pausado && <span style={eyebrow(9, C.warning, "0.1em")}>pausada</span>}
                   </span>
                 </div>
 
@@ -351,7 +350,9 @@ export function Comercial({
                   <span style={{ fontFamily: MONO, fontSize: 10, color: C.faint }}>{d.proximoPasso}</span>
                   {/* As setas ficam mesmo com o arraste: arrastar não existe em navegador de
                       celular, e sem elas o card ficaria imóvel no telefone. */}
-                  <span style={{ display: "flex", gap: 6 }}>
+                  {/* On hold e Lost não são casas do funil: a seta não tira o card de lá.
+                      Sai arrastando, ou pelo formulário. */}
+                  <span style={{ display: "flex", gap: 6, visibility: (FUNIL as readonly string[]).includes(d.estagio) ? undefined : "hidden" }}>
                     {([-1, 1] as const).map((dir) => (
                       <span
                         key={dir}
@@ -2431,7 +2432,6 @@ export function FormOportunidade({
     contato: string;
     responsavelTexto: string;
     produtoId: string | null;
-    pausado: boolean;
     proximoPassoEm: string | null;
     aceAws: boolean;
   }) => void;
@@ -2445,7 +2445,7 @@ export function FormOportunidade({
   const [escopo, setEscopo] = useState(inicial?.escopo ?? "");
   // Na edição vem a área do registro; na criação, em branco — ver NovaAtividade.
   const [area, setArea] = useState(inicial?.area ?? "");
-  const [estagio, setEstagio] = useState(inicial?.estagio ?? "lead");
+  const [estagio, setEstagio] = useState<string>(inicial?.estagio ?? ESTAGIO_INICIAL);
   const [valor, setValor] = useState(inicial ? String(inicial.valorCentavos / 100) : "");
   const [proximo, setProximo] = useState(inicial?.proximoPasso ?? "");
   const [responsavel, setResponsavel] = useState<string>(
@@ -2455,7 +2455,6 @@ export function FormOportunidade({
   const [contato, setContato] = useState(inicial?.contato ?? "");
   const [respTexto, setRespTexto] = useState(inicial?.responsavelTexto ?? "");
   const [produtoId, setProdutoId] = useState(inicial?.produtoId ?? "");
-  const [pausado, setPausado] = useState(inicial?.pausado ?? false);
   const [proximoEm, setProximoEm] = useState(inicial?.proximoPassoEm ?? "");
   const [aceAws, setAceAws] = useState(inicial?.aceAws ?? false);
   // Fechado por padrão: o formulário existe para editar, o histórico é consulta.
@@ -2477,7 +2476,6 @@ export function FormOportunidade({
       contato,
       responsavelTexto: respTexto,
       produtoId: produtoId || null,
-      pausado,
       proximoPassoEm: proximoEm || null,
       aceAws,
     });
@@ -2576,15 +2574,6 @@ export function FormOportunidade({
 
       {/* `flex: none` no interruptor: sem isso o flex o encolhe e o rótulo quebra em uma
           palavra por linha — "ACE / na / AWS". A explicação é que fica com a folga. */}
-      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-        <span style={{ flex: "none" }}>
-          <Switch checked={pausado} onChange={setPausado} label="Em pausa" />
-        </span>
-        <span style={{ fontSize: 12, color: C.faint, lineHeight: 1.5 }}>
-          Marque quando o motivo da parada não é o estágio — &quot;não é o momento&quot;, aguardando terceiro.
-        </span>
-      </div>
-
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
         <span style={{ flex: "none" }}>
           <Switch checked={aceAws} onChange={setAceAws} label="ACE na AWS" />

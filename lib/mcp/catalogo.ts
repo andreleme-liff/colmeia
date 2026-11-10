@@ -5,7 +5,7 @@
 //
 // Nenhuma ferramenta exclui nada, e nenhuma toca em cadastro, permissão ou preferência.
 
-import { PRIORIDADES, STAGES, STAGE_KEYS, STATUS, STATUS_KEYS, stageLabel, statusLabel } from "../domain.ts";
+import { ESTAGIO_INICIAL, PRIORIDADES, STAGES, STAGE_KEYS, STATUS, STATUS_KEYS, stageLabel, statusLabel } from "../domain.ts";
 import { LIMITES } from "../ops/comum.ts";
 import { temEscopo } from "../oauth/protocolo.ts";
 import type { Esquema, Prop } from "./protocolo.ts";
@@ -72,7 +72,11 @@ const CAMPOS_ATIVIDADE: Record<string, Prop> = {
 const CAMPOS_OPORTUNIDADE: Record<string, Prop> = {
   conta: { type: "string", minLength: 1, maxLength: LIMITES.conta, description: "Nome do cliente/conta." },
   area: AREA,
-  estagio: { type: "string", enum: STAGE_KEYS, description: STAGES.map((s) => `${s.key} = ${s.label}`).join("; ") },
+  estagio: {
+    type: "string",
+    enum: STAGE_KEYS,
+    description: `${STAGES.map((s) => `${s.key} = ${s.label}`).join("; ")}. As sete primeiras são o funil, em ordem; on_hold é "não é o momento" e lost é perdida.`,
+  },
   valor_reais: { type: "number", minimum: 0, description: "Valor em reais (não em centavos)." },
   escopo: { type: "string", maxLength: LIMITES.escopo },
   situacao: { type: "string", maxLength: LIMITES.situacao },
@@ -82,7 +86,6 @@ const CAMPOS_OPORTUNIDADE: Record<string, Prop> = {
   responsavel_id: RESP,
   responsavel_texto: { type: "string", maxLength: LIMITES.responsavelTexto, description: "Responsável em texto livre, quando não é alguém cadastrado." },
   produto_id: PRODUTO,
-  pausado: { type: "boolean", description: "\"Não é o momento\": paralelo ao estágio." },
   ace_aws: { type: "boolean", description: "Já registrada no ACE do AWS Partner Central." },
 };
 
@@ -136,7 +139,6 @@ export const CATALOGO = [
       area: AREA,
       estagio: { type: "string", enum: STAGE_KEYS },
       responsavel_id: { type: "integer", minimum: 1 },
-      pausado: { type: "boolean" },
       busca: BUSCA,
       limite: LIMITE_LISTA,
     }),
@@ -171,7 +173,7 @@ export const CATALOGO = [
   {
     name: "criar_oportunidade",
     title: "Criar oportunidade",
-    description: `Cria uma oportunidade no pipeline comercial. Exige nível 'editar' na área. Estágio padrão lead (${stageLabel("lead")}).`,
+    description: `Cria uma oportunidade no pipeline comercial. Exige nível 'editar' na área. Estágio padrão ${ESTAGIO_INICIAL} (${stageLabel(ESTAGIO_INICIAL)}).`,
     escrita: true,
     inputSchema: objeto({ ...CAMPOS_OPORTUNIDADE, chave_idempotencia: CHAVE }, ["conta", "area"]),
     annotations: CRIACAO,

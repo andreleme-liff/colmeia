@@ -20,7 +20,6 @@ export type LinhaImportada = {
   contato: string;
   responsavelTexto: string;
   produtoId: string | null;
-  pausado: boolean;
 };
 
 export type LinhaAtividadeImportada = {
@@ -87,30 +86,26 @@ function statusSugerido(bruto: string): string {
 }
 
 /**
- * Estágio inferido do texto da situação. É deliberadamente conservador — na dúvida, o
- * estágio mais atrás, porque adiantar um card indevidamente engana o pipeline.
+ * Estágio inferido do texto da situação — só uma SUGESTÃO: a prévia da importação mostra o
+ * estágio de cada linha e deixa trocar antes de gravar. Na dúvida, o estágio mais atrás,
+ * porque adiantar um card indevidamente engana o pipeline.
  *
- * NDA, POC, transferência de dados e refinamento de escopo caem todos em `validacao`: são
- * fases do mesmo trabalho de provar que dá para fazer, e nenhuma delas significa que existe
- * proposta comercial.
- *
- * A ORDEM dos testes é o que resolve o caso ambíguo. "Proposta de POC enviada" fala de
- * proposta e de POC, mas é a POC que está em jogo — checar POC/NDA primeiro devolve
- * `validacao`, que é o estágio mais atrás dos dois. Só cai em `proposta` quem fala de
- * proposta sem falar de POC, como "Proposta LIFF Tax enviada".
+ * NDA, POC, transferência de dados e refinamento de escopo caem em `validacao`, como antes da
+ * troca de estágios (nov/2026). No funil novo Validação vem DEPOIS de Proposta, então "Proposta
+ * de POC enviada" agora cai no estágio mais à frente dos dois — vale conferir na prévia.
  */
 function estagioSugerido(situacao: string): string {
   const t = situacao.toLowerCase();
-  if (!t || PLACEHOLDER.test(t)) return "lead";
+  if (!t || PLACEHOLDER.test(t)) return "prospeccao";
   // `tra\w*fer` de propósito: a planilha real escreve "tranferência", sem o s. Casar só a
   // grafia correta jogaria o card para o início do funil por causa de um typo.
   if (/\bnda\b|\bpoc\b|tra\w*fer[êe]ncia d[eo]s? dados|refinamento de escopo/.test(t)) return "validacao";
   if (/proposta\b/.test(t)) return "proposta";
-  if (/reuni[ãa]o|apresenta[çc][ãa]o|fup|contato|aproxima[çc][ãa]o/.test(t)) return "qualificacao";
-  return "lead";
+  if (/reuni[ãa]o|apresenta[çc][ãa]o|fup|contato|aproxima[çc][ãa]o/.test(t)) return "primeira_reuniao";
+  return "prospeccao";
 }
 
-/** "não é o momento", "aguardar" — parado, mas não num estágio. */
+/** "não é o momento", "aguardar" — vai para On hold. */
 function pausaSugerida(situacao: string, proximo: string): boolean {
   const t = (situacao + " " + proximo).toLowerCase();
   return /n[ãa]o [ée] o momento|n[ãa]o insistir|aguardar|segundo momento|dificuldades financeiras/.test(t);
@@ -168,13 +163,14 @@ export function lerAba(
       linhas.push({
         conta,
         escopo: "",
-        estagio: estagioSugerido(situacao),
+        // "Não é o momento" não é casa do funil: é o estágio On hold, que substituiu o antigo
+        // interruptor "Em pausa".
+        estagio: pausaSugerida(situacao, proximo) ? "on_hold" : estagioSugerido(situacao),
         situacao,
         proximoPasso: proximo,
         contato: campos.contato ?? "",
         responsavelTexto: campos.responsavelTexto ?? "",
         produtoId: setor ? slugificar(setor) : null,
-        pausado: pausaSugerida(situacao, proximo),
         setorOriginal: setor,
         existente: jaExistem.contas.has(normalizarConta(conta)),
       });
