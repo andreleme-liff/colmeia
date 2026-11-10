@@ -2,7 +2,7 @@
 
 // Card da oportunidade no kanban comercial (v4) — completo e compacto.
 //
-// De cima para baixo: identificação (cliente + valor com ACE, módulos; a área é o contorno superior) → andamento
+// De cima para baixo: identificação (cliente com ACE + valor, módulos; a área é o contorno superior) → andamento
 // (situação com a data dela, próximo passo, bloqueio) → rodapé (responsável e as setas, pequenas).
 // Estilo em `globals.css` (`.cop-*`): o tema escuro, o foco de teclado e o hover moram lá.
 //
@@ -126,6 +126,13 @@ export function CardOportunidade({
     );
   };
 
+  // ACE só aparece quando existe, logo depois do nome do cliente.
+  const ace = d.aceAws ? (
+    <span className="cop-ace" title="ACE criada no AWS Partner Central">
+      ACE
+    </span>
+  ) : null;
+
   const corArea = { "--cop-area": area.color } as CSSProperties;
 
   return (
@@ -155,19 +162,15 @@ export function CardOportunidade({
               >
                 {d.conta}
               </button>
+              {ace}
             </h3>
           ) : (
-            <h3 className="cop-cliente">{d.conta}</h3>
+            <h3 className="cop-cliente">
+              {d.conta}
+              {ace}
+            </h3>
           )}
-          {/* ACE só aparece quando existe, colado ao valor (com ou sem valor preenchido). */}
-          <p className="cop-valor">
-            {d.aceAws && (
-              <span className="cop-ace" title="ACE criada no AWS Partner Central">
-                ACE
-              </span>
-            )}
-            {valorCurto(d.valorCentavos)}
-          </p>
+          <p className="cop-valor">{valorCurto(d.valorCentavos)}</p>
         </div>
 
         {modulos.length > 0 && (
