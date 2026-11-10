@@ -155,7 +155,15 @@ export function CardOportunidade({
           ) : (
             <h3 className="cop-cliente">{d.conta}</h3>
           )}
-          <p className="cop-valor">{valorCurto(d.valorCentavos)}</p>
+          {/* ACE só aparece quando existe, colado ao valor (com ou sem valor preenchido). */}
+          <p className="cop-valor">
+            {d.aceAws && (
+              <span className="cop-ace" title="Registrada no ACE da AWS">
+                ACE
+              </span>
+            )}
+            {valorCurto(d.valorCentavos)}
+          </p>
         </div>
 
         {modulos.length > 0 && (
@@ -179,8 +187,8 @@ export function CardOportunidade({
           </p>
         )}
 
+        {(prazo || (compacto && temBloqueio)) && (
         <div className="cop-tags">
-          {d.aceAws ? <Etiqueta tom="info">{compacto ? "ACE" : "AWS ACE · aberta"}</Etiqueta> : <Etiqueta tom="neutro">Sem ACE</Etiqueta>}
           {prazo && <Etiqueta tom={prazo.tom}>{prazo.texto}</Etiqueta>}
           {compacto && temBloqueio && (
             <Etiqueta tom="warning" title={d.blocker || undefined}>
@@ -188,6 +196,7 @@ export function CardOportunidade({
             </Etiqueta>
           )}
         </div>
+        )}
       </div>
 
       {/* ---------- 2 · andamento (só no completo) ---------- */}

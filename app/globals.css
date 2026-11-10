@@ -299,7 +299,9 @@ textarea::placeholder {
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .cop-cliente__botao { all: unset; cursor: pointer; border-radius: 2px; }
 .cop-cliente__botao:focus-visible { outline: 2px solid var(--liff-accent); outline-offset: 2px; }
-.cop-valor { font-family: var(--liff-font-mono); font-size: 16px; font-weight: 600; white-space: nowrap; color: var(--liff-text); }
+.cop-valor { font-family: var(--liff-font-mono); font-size: 16px; font-weight: 600; white-space: nowrap; color: var(--liff-text);
+  display: inline-flex; align-items: baseline; gap: 8px; }
+.cop-ace { font-size: 11px; font-weight: 600; letter-spacing: .1em; color: var(--cop-ink-info); }
 .cop-modulos, .cop-tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .cop-pill { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; box-sizing: border-box;
   background: color-mix(in srgb, var(--cop-area) 12%, transparent); border: 1px solid color-mix(in srgb, var(--cop-area) 40%, transparent);
@@ -341,6 +343,7 @@ textarea::placeholder {
 .cop--compacto { gap: 10px; padding: 12px 12px 12px 14px; }
 .cop--compacto .cop-cliente { font-size: 16px; }
 .cop--compacto .cop-valor { font-size: 14px; }
+.cop--compacto .cop-ace { font-size: 10px; }
 .cop--compacto .cop-rodape { border-top: 0; padding-top: 0; }
 .cop--compacto .cop-dono__nome { font-size: 13px; }
 
