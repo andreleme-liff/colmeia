@@ -173,7 +173,12 @@ body { background: var(--liff-canvas); color: var(--liff-text); }
 .rec-grafico__eixo { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; padding-bottom: 22px;
   font-family: var(--liff-font-mono); font-size: 10px; color: var(--liff-text-faint); transform: translateY(6px); }
 .rec-grafico__area { position: relative; padding-bottom: 22px; }
-.rec-grafico__grade { position: absolute; left: 0; right: 0; border-top: 1px solid var(--liff-border); margin-bottom: 22px; pointer-events: none; }
+.rec-grafico__plot { position: absolute; inset: 0 0 22px 0; pointer-events: none; }
+.rec-grafico__grade { position: absolute; left: 0; right: 0; border-top: 1px solid var(--liff-border); }
+.rec-grafico__grade:first-child { border-top-color: var(--liff-text-faint); }
+.rec-check { display: inline-flex; align-items: center; gap: 6px; font-family: var(--liff-font-mono); font-size: 11px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--liff-text-muted); cursor: pointer; }
+.rec-check input { accent-color: var(--liff-accent); margin: 0; }
 .rec-grafico__vazio { position: absolute; inset: 0 0 22px; display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--liff-text-faint); }
 .rec-grafico__barras { position: absolute; inset: 0; display: flex; gap: 6px; align-items: stretch; }
 .rec-grafico__coluna { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 22px; outline: none; }

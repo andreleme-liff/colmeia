@@ -27,16 +27,26 @@ import {
 
 const HORIZONTES = [6, 12, 24] as const;
 
-/** As cinco séries do gráfico, de baixo para cima. A cor vem do CSS (`--rec-*`), validada nos dois temas. */
-const SERIES: { key: keyof Omit<MesForecast, "mes">; label: string; cor: string; textura?: boolean }[] = [
-  { key: "assinatura", label: "Assinatura", cor: "var(--rec-assinatura)" },
-  { key: "implantacao", label: "Implantação", cor: "var(--rec-implantacao)" },
-  { key: "customizacao", label: "Customização", cor: "var(--rec-customizacao)" },
-  { key: "provavel", label: "Provável", cor: "var(--rec-prevista)" },
-  { key: "possivel", label: "Possível", cor: "var(--rec-prevista)", textura: true },
-];
+/** Uma série do gráfico. A cor vem do CSS (`--rec-*`), validada nos dois temas. */
+type Serie = { key: string; label: string; cor: string; textura?: boolean; valor: (m: MesForecast) => number };
 
-const fundoSerie = (s: (typeof SERIES)[number]): CSSProperties =>
+const S_ASSINATURA: Serie = { key: "assinatura", label: "Assinatura", cor: "var(--rec-assinatura)", valor: (m) => m.assinatura };
+const S_IMPLANTACAO: Serie = { key: "implantacao", label: "Implantação", cor: "var(--rec-implantacao)", valor: (m) => m.implantacao };
+const S_CUSTOMIZACAO: Serie = { key: "customizacao", label: "Customização", cor: "var(--rec-customizacao)", valor: (m) => m.customizacao };
+const S_CONTRATADA: Serie = { key: "contratada", label: "Contratada", cor: "var(--rec-assinatura)", valor: contratadaDoMes };
+const S_PROVAVEL: Serie = { key: "provavel", label: "Provável", cor: "var(--rec-prevista)", valor: (m) => m.provavel };
+const S_POSSIVEL: Serie = { key: "possivel", label: "Possível", cor: "var(--rec-prevista)", textura: true, valor: (m) => m.possivel };
+
+/** Como a receita contratada aparece: um total só, ou aberta por tipo. */
+type Visao = "contratada" | "tipo";
+
+/** Séries de baixo para cima: a contratada (total ou por tipo) e, se pedido, a previsão por cima. */
+function seriesDe(visao: Visao, comPrevisao: boolean): Serie[] {
+  const base = visao === "tipo" ? [S_ASSINATURA, S_IMPLANTACAO, S_CUSTOMIZACAO] : [S_CONTRATADA];
+  return comPrevisao ? [...base, S_PROVAVEL, S_POSSIVEL] : base;
+}
+
+const fundoSerie = (s: Serie): CSSProperties =>
   s.textura
     ? { background: `repeating-linear-gradient(45deg, ${s.cor} 0 2px, transparent 2px 6px)`, boxShadow: `inset 0 0 0 1px ${s.cor}` }
     : { background: s.cor };
@@ -72,6 +82,8 @@ export default function Receita({
   const [versao, setVersao] = useState(0);
   const [horizonte, setHorizonte] = useState<(typeof HORIZONTES)[number]>(12);
   const [verTabela, setVerTabela] = useState(false);
+  const [visao, setVisao] = useState<Visao>("tipo");
+  const [comPrevisao, setComPrevisao] = useState(true);
   const [editando, setEditando] = useState<Partial<Contrato> | null>(null);
 
   useEffect(() => {
@@ -124,6 +136,7 @@ export default function Receita({
     linhas: [],
   });
 
+  const series = seriesDe(visao, comPrevisao);
   const pendencias = calc.ganhosSemReceita.length + calc.finaisFora.length + calc.previsoesFora.length;
 
   return (
@@ -159,8 +172,19 @@ export default function Receita({
       <section>
         <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", marginBottom: 14 }}>
           <div style={eyebrow(11, C.dust, "0.14em")}>RECEITA POR MÊS</div>
+          <div role="group" aria-label="Receita contratada" className="liff-densidade">
+            {([["contratada", "contratada"], ["tipo", "por tipo"]] as const).map(([v, rotulo]) => (
+              <button key={v} type="button" aria-pressed={visao === v} onClick={() => setVisao(v)}>
+                {rotulo}
+              </button>
+            ))}
+          </div>
+          <label className="rec-check">
+            <input type="checkbox" checked={comPrevisao} onChange={(e) => setComPrevisao(e.target.checked)} />
+            com previsão
+          </label>
           <ul className="rec-legenda" aria-label="Legenda">
-            {SERIES.map((s) => (
+            {series.map((s) => (
               <li key={s.key}>
                 <span aria-hidden className="rec-legenda__marca" style={fundoSerie(s)} />
                 {s.label}
@@ -171,7 +195,7 @@ export default function Receita({
             {verTabela ? "ver gráfico" : "ver tabela"}
           </button>
         </div>
-        {verTabela ? <TabelaMensal serie={calc.serie} /> : <Grafico serie={calc.serie} />}
+        {verTabela ? <TabelaMensal serie={calc.serie} series={series} /> : <Grafico serie={calc.serie} series={series} />}
       </section>
 
       {/* ---------- 3 · pendências ---------- */}
@@ -288,9 +312,9 @@ function tetoDoEixo(max: number): number {
   return 10 * p;
 }
 
-function Grafico({ serie }: { serie: MesForecast[] }) {
+function Grafico({ serie, series }: { serie: MesForecast[]; series: Serie[] }) {
   const [foco, setFoco] = useState<number | null>(null);
-  const totais = serie.map((m) => SERIES.reduce((t, s) => t + m[s.key], 0));
+  const totais = serie.map((m) => series.reduce((t, s) => t + s.valor(m), 0));
   const teto = tetoDoEixo(Math.max(...totais));
   const marcas = [0, 0.25, 0.5, 0.75, 1].map((f) => f * teto);
   const vazio = totais.every((t) => t === 0);
@@ -307,13 +331,17 @@ function Grafico({ serie }: { serie: MesForecast[] }) {
           ))}
       </div>
       <div className="rec-grafico__area" onMouseLeave={() => setFoco(null)}>
-        {marcas.map((v) => (
-          <div key={v} className="rec-grafico__grade" style={{ bottom: `${(v / teto) * 100}%` }} aria-hidden />
-        ))}
+        {/* Grade na mesma caixa das barras (acima da faixa dos meses), na mesma escala delas. Sem a
+            linha do teto: ela ficava colada embaixo da legenda e só repetia a borda. */}
+        <div className="rec-grafico__plot" aria-hidden>
+          {marcas.slice(0, -1).map((v) => (
+            <div key={v} className="rec-grafico__grade" style={{ bottom: `${(v / teto) * 100}%` }} />
+          ))}
+        </div>
         {vazio && <div className="rec-grafico__vazio">Sem receita no horizonte.</div>}
         <div className="rec-grafico__barras">
           {serie.map((m, i) => {
-            const presentes = SERIES.filter((s) => m[s.key] > 0);
+            const presentes = series.filter((s) => s.valor(m) > 0);
             return (
               <div
                 key={m.mes}
@@ -334,7 +362,7 @@ function Grafico({ serie }: { serie: MesForecast[] }) {
                         key={s.key}
                         className="rec-grafico__segmento"
                         data-topo={k === 0 ? "1" : undefined}
-                        style={{ flexGrow: m[s.key], ...fundoSerie(s) }}
+                        style={{ flexGrow: s.valor(m), ...fundoSerie(s) }}
                       />
                     ))}
                 </div>
@@ -347,18 +375,20 @@ function Grafico({ serie }: { serie: MesForecast[] }) {
                 {foco === i && totais[i] > 0 && (
                   <div className="rec-dica" role="tooltip" data-lado={i > serie.length / 2 ? "esq" : "dir"}>
                     <div style={{ ...eyebrow(10, C.faint, "0.12em"), marginBottom: 8 }}>{rotuloMes(m.mes)}</div>
-                    {SERIES.map((s) => (
+                    {series.map((s) => (
                       <div key={s.key} className="rec-dica__linha">
                         <span aria-hidden className="rec-legenda__marca" style={fundoSerie(s)} />
                         <span>{s.label}</span>
-                        <span className="rec-dica__valor">{brlExato(m[s.key])}</span>
+                        <span className="rec-dica__valor">{brlExato(s.valor(m))}</span>
                       </div>
                     ))}
-                    <div className="rec-dica__linha rec-dica__total">
-                      <span />
-                      <span>Contratada</span>
-                      <span className="rec-dica__valor">{brlExato(contratadaDoMes(m))}</span>
-                    </div>
+                    {series.length > 1 && (
+                      <div className="rec-dica__linha rec-dica__total">
+                        <span />
+                        <span>Total</span>
+                        <span className="rec-dica__valor">{brlExato(totais[i])}</span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -370,13 +400,14 @@ function Grafico({ serie }: { serie: MesForecast[] }) {
   );
 }
 
-function TabelaMensal({ serie }: { serie: MesForecast[] }) {
-  const cols = "0.8fr repeat(6, 1fr)";
+function TabelaMensal({ serie, series }: { serie: MesForecast[]; series: Serie[] }) {
+  const comTotal = series.length > 1;
+  const cols = `0.8fr repeat(${series.length + (comTotal ? 1 : 0)}, 1fr)`;
   return (
     <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}` }}>
-      <div style={{ minWidth: 760 }}>
+      <div style={{ minWidth: 120 + (series.length + 1) * 130 }}>
         <div style={{ display: "grid", gridTemplateColumns: cols, background: C.canvas, borderBottom: `1px solid ${C.line}` }}>
-          {["MÊS", ...SERIES.map((s) => s.label.toUpperCase()), "CONTRATADA"].map((h) => (
+          {["MÊS", ...series.map((s) => s.label.toUpperCase()), ...(comTotal ? ["TOTAL"] : [])].map((h) => (
             <div key={h} style={{ padding: "10px 12px", ...eyebrow(10, C.faint), textAlign: h === "MÊS" ? "left" : "right" }}>
               {h}
             </div>
@@ -385,7 +416,7 @@ function TabelaMensal({ serie }: { serie: MesForecast[] }) {
         {serie.map((m) => (
           <div key={m.mes} style={{ display: "grid", gridTemplateColumns: cols, background: C.cell, borderBottom: `1px solid ${C.line}` }}>
             <div style={{ padding: "10px 12px", fontFamily: MONO, fontSize: 12, color: C.body }}>{rotuloMes(m.mes)}</div>
-            {[...SERIES.map((s) => m[s.key]), contratadaDoMes(m)].map((v, k) => (
+            {[...series.map((s) => s.valor(m)), ...(comTotal ? [series.reduce((t, s) => t + s.valor(m), 0)] : [])].map((v, k) => (
               <div key={k} style={{ padding: "10px 12px", fontFamily: MONO, fontSize: 12, color: v ? C.ink : C.ghost, textAlign: "right" }}>
                 {v ? brlExato(v) : "—"}
               </div>
