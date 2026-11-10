@@ -11,7 +11,6 @@ import type { Activity, AreaCadastro, Deal, LogEntry, Pessoa } from "./api";
 import SeletorArea, { type OpcaoArea } from "./SeletorArea";
 import Historico from "./Historico";
 import ViaConexao from "./ViaConexao";
-import Conexoes from "./Conexoes";
 import {
   ADMIN_CARDS, PAPEIS, STAGES, STATUS, areaOf, brl, ddmm, porTexto, stamp, statusLabel, todasAreas,
 } from "@/lib/domain";
@@ -792,8 +791,6 @@ export const CAD_TABS = [
   { key: "pessoas", label: "pessoas" },
   { key: "produtos", label: "produtos" },
   { key: "areas", label: "áreas" },
-  // Aplicativos externos (o Claude) autorizados a agir em nome de alguém, pelo MCP.
-  { key: "conexoes", label: "conexões" },
 ] as const;
 
 const TITULO_NOVO: Record<string, string> = {
@@ -1300,9 +1297,6 @@ export function Cadastros({
         ))}
       </div>
 
-      {tab === "conexoes" ? (
-        <Conexoes />
-      ) : (
       <div className="liff-cad-split" style={mesh({ display: "grid", gap: 1 })}>
         <div className="liff-scroll-x" style={{ background: C.cell }}>
           {tab === "areas" ? (
@@ -1370,7 +1364,6 @@ export function Cadastros({
           </div>
         </div>
       </div>
-      )}
     </>
   );
 }

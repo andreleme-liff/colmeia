@@ -31,6 +31,15 @@ function origemDaConexao(): string {
   return "POSTGRES_URL_NON_POOLING";
 }
 
+function ehLoopback(url: string): boolean {
+  try {
+    const h = new URL(url).hostname;
+    return h === "localhost" || h === "127.0.0.1" || h === "[::1]";
+  } catch {
+    return false;
+  }
+}
+
 function rawSql(): Db {
   if (_sql) return _sql;
   const url = connectionString();
@@ -50,7 +59,10 @@ function rawSql(): Db {
   }
 
   _sql = postgres(url, {
-    ssl: "require",
+    // TLS obrigatório para qualquer host de rede. A exceção é só loopback: um Postgres
+    // descartável na própria máquina (o teste de ponta a ponta local) não fala TLS, e o
+    // tráfego nunca sai do computador.
+    ssl: ehLoopback(url) ? false : "require",
     prepare: false, // compatível com o Transaction Pooler (pgbouncer) da Supabase
   });
   return _sql;
@@ -466,10 +478,16 @@ async function migrate(): Promise<void> {
       BEGIN
         FOREACH papel IN ARRAY ARRAY['anon','authenticated'] LOOP
           IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = papel) THEN
-            -- TODAS as tabelas, não uma lista. A lista nomeada deixava de fora toda tabela
-            -- criada depois dela (areas e produtos já estavam fora) — e as tabelas de OAuth
-            -- guardam hash de token. Tabela nova fica fechada sem ninguém lembrar de incluí-la.
-            EXECUTE format('REVOKE ALL ON ALL TABLES IN SCHEMA public FROM %I', papel);
+            -- Lista EXPLÍCITA, com todas as tabelas deste app. A anterior parava em audit_log:
+            -- areas e produtos ficavam de fora, e as tabelas de OAuth guardam hash de token.
+            -- Não é "ALL TABLES IN SCHEMA public" de propósito: o projeto da Supabase pode ter
+            -- tabelas de outro sistema no mesmo schema, e cortar o acesso delas em silêncio
+            -- não cabe a esta migração. TABELA NOVA NESTE APP ENTRA NESTA LISTA.
+            EXECUTE format(
+              'REVOKE ALL ON users, user_area_perms, activities, deals, sessions, audit_log, areas, produtos, '
+              'oauth_concessoes, oauth_codigos, oauth_tokens, mcp_chamadas FROM %I',
+              papel
+            );
             EXECUTE format('REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM %I', papel);
           END IF;
         END LOOP;

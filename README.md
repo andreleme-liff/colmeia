@@ -160,6 +160,71 @@ sem alterar o kit.
 - Prazo crítico agora é calculado (vence nos próximos 7 dias e não está concluído), não mais
   uma lista fixa de datas.
 
+## Conectar o Claude (servidor MCP)
+
+O LIFF tasks expõe um servidor MCP em `/api/mcp` para o Claude (claude.ai, app desktop,
+celular e Claude Code) ler e gravar **em nome de uma pessoa**, com as permissões dela.
+
+### Ligar
+
+Desligado por padrão: sem `MCP_HABILITADO=1`, o endpoint, a tela de consentimento e os
+metadados OAuth respondem 404. Variáveis:
+
+| Variável | Padrão | Para quê |
+|---|---|---|
+| `MCP_HABILITADO` | — | `1` liga. Qualquer outro valor mantém desligado. |
+| `MCP_URL_CANONICA` | `https://tasks.liff.tech/api/mcp` | O `resource` a que todo token fica preso. Em outro domínio, mude aqui. |
+| `MCP_CLIENTES_PERMITIDOS` | `claude.ai` | Hosts aceitos como dono do documento do cliente (CIMD), separados por vírgula. |
+
+### Conectar
+
+- **claude.ai / desktop**: Configurações → Conectores → Adicionar conector personalizado →
+  `https://tasks.liff.tech/api/mcp`. Deixe os campos de OAuth em branco.
+- **Claude Code**: `claude mcp add --transport http liff-tasks https://tasks.liff.tech/api/mcp`
+  e depois `/mcp` para entrar.
+
+O login é o Google de sempre. A tela de consentimento mostra quem pede, para onde o acesso
+volta e o que a conexão poderá; **gravar é opção explícita**, desmarcada.
+
+### Modelo de segurança
+
+- O app é o próprio servidor OAuth 2.1 (`lib/oauth/`). Só Client ID Metadata Document, **sem
+  registro dinâmico**: o `client_id` tem de ser `https` num host de `MCP_CLIENTES_PERMITIDOS`.
+- PKCE S256 obrigatório; `redirect_uri` exato (ou loopback com qualquer porta, para o Claude
+  Code); `resource` preso ao MCP; tokens opacos guardados só como SHA-256; acesso de 1 h,
+  refresh de 30 dias com rotação, reuso de refresh ou de código revoga a concessão.
+- **O token carrega a pessoa, não a permissão.** Cada chamada recalcula as áreas com o mesmo
+  `Ctx` da interface: tirar uma área ou desativar a pessoa corta o MCP na hora.
+- Grava só atividades e oportunidades, só onde a pessoa tem `edit`. **Nada é excluído** e
+  nada de cadastro, permissão ou preferência é alcançável.
+- 60 chamadas e 20 gravações por minuto por conexão. `Origin` alheia → 403.
+
+### Rastreabilidade
+
+- Gravação pelo MCP passa pelo mesmo núcleo da interface (`lib/ops/`) e entra no
+  `audit_log` com `origem = 'mcp'` e a concessão; o histórico mostra "via Claude".
+- **Toda** chamada, leitura inclusive, fica em `mcp_chamadas`, na mesma transação da
+  gravação quando há uma.
+- Autorizar e revogar também entram no `audit_log`. Cada pessoa vê e revoga as próprias
+  conexões em **Conexões** (menu); a administração vê e revoga todas.
+
+### Teste de ponta a ponta local
+
+`scripts/e2e-mcp-local.mjs` faz o papel do Claude Code contra app e banco **locais** (recusa
+qualquer outro host). Com um Postgres descartável em memória:
+
+```bash
+npx @electric-sql/pglite-socket --db=memory:// --port=5433 --max-connections=10
+PGMAX=1 DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5433/postgres \
+  MCP_HABILITADO=1 MCP_URL_CANONICA=http://localhost:3010/api/mcp npm run dev -- -p 3010
+E2E_BASE=http://localhost:3010 node scripts/e2e-mcp-local.mjs
+```
+
+O script imprime a URL de consentimento e espera o clique. **`PGMAX=1` é obrigatório com o
+PGlite**: o multiplexador dele divide uma única sessão entre conexões, e consultas paralelas
+com parâmetro se embaralham (o statement sem nome é um só por sessão). Postgres de verdade não
+tem isso — é limitação do banco de teste, não do app.
+
 ## Deploy
 
 Destino: **https://tasks.liff.tech**, no **AWS Amplify Hosting**, a partir do GitHub

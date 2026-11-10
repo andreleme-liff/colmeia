@@ -31,6 +31,7 @@ import CoresDasAreas from "./CoresDasAreas";
 import ImportarPlanilha from "./ImportarPlanilha";
 import SeletorArea from "./SeletorArea";
 import SeletorResponsaveis from "./SeletorResponsaveis";
+import Conexoes from "./Conexoes";
 import { api, type State } from "./api";
 import {
   NAV, STAGES, STATUS, TITLES, areaOf, brl, daISO, ddmm, diaISO, ehDoResponsavel,
@@ -846,6 +847,8 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         );
       case "auditoria":
         return <Auditoria logs={dados.logs} />;
+      case "conexoes":
+        return <Conexoes mcpHabilitado={estado.mcpHabilitado} />;
       default:
         return <Overview
           dados={dados.painel}
@@ -973,7 +976,9 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
 
           <div style={{ minWidth: 200 }}>
             <div style={eyebrow(10, C.faint)}>
-              {`LIFF/ ${view === "overview" ? "PAINEL" : view.toUpperCase()} · ${rotuloArea.toUpperCase()}`}
+              {view === "conexoes"
+                ? "LIFF/ CONEXÕES"
+                : `LIFF/ ${view === "overview" ? "PAINEL" : view.toUpperCase()} · ${rotuloArea.toUpperCase()}`}
             </div>
             <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em", color: C.ink }}>{TITLES[view]}</div>
           </div>
@@ -981,9 +986,13 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           {/* Os dois filtros do cabeçalho moram juntos: área recorta a vertical, "meus"
               recorta a carteira. Separá-los faria parecer que um é filtro e o outro é modo. */}
           <div className="liff-filtros" style={{ marginLeft: "auto" }}>
-            <div className="liff-area-chips">
-              <SeletorArea opcoes={chips} valor={area} onChange={trocarArea} />
-            </div>
+            {/* Conexão não pertence a área nenhuma: na tela delas o recorte por área só
+                confundiria. */}
+            {view !== "conexoes" && (
+              <div className="liff-area-chips">
+                <SeletorArea opcoes={chips} valor={area} onChange={trocarArea} />
+              </div>
+            )}
             {/* O seletor de responsável fica ao lado do de área porque os dois recortam a
                 mesma lista. "Só eu" só aparece quando a pessoa tem algo em escopo — um
                 atalho que esvazia a tela sem dizer por quê não ajuda ninguém. */}

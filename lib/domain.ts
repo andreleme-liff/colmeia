@@ -78,6 +78,10 @@ export const NAV = [
   { key: "cadastros", label: "cadastros" },
   { key: "admin", label: "administração" },
   { key: "auditoria", label: "auditoria" },
+  // Aplicativos externos (o Claude) que alguém autorizou a agir em seu nome pelo MCP. Para
+  // TODOS, não só admin: cada pessoa revoga as próprias conexões — por isso não mora em
+  // Cadastros, que é só da administração.
+  { key: "conexoes", label: "conexões" },
 ] as const;
 
 export const TITLES: Record<string, string> = {
@@ -88,6 +92,7 @@ export const TITLES: Record<string, string> = {
   cadastros: "Cadastros",
   admin: "Administração",
   auditoria: "Auditoria",
+  conexoes: "Conexões",
 };
 
 export const ADMIN_CARDS = [

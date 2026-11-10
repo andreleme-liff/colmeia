@@ -118,6 +118,8 @@ export type State = {
   dominioLogin: string;
   /** Se esta pessoa já autorizou a leitura de planilhas do Drive. */
   sheetsConectado: boolean;
+  /** Se o servidor MCP está ligado (MCP_HABILITADO=1) neste ambiente. */
+  mcpHabilitado: boolean;
   activities: Activity[];
   deals: Deal[];
   logs: LogEntry[];

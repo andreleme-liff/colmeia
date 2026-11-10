@@ -41,7 +41,7 @@ const CHIP = (cor: string) => ({
   whiteSpace: "nowrap" as const,
 });
 
-export default function Conexoes() {
+export default function Conexoes({ mcpHabilitado }: { mcpHabilitado: boolean }) {
   const [lista, setLista] = useState<Conexao[] | null>(null);
   const [todas, setTodas] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -100,8 +100,11 @@ export default function Conexoes() {
 
   return (
     <div className="liff-cad-split" style={mesh({ display: "grid", gap: 1 })}>
-      <div className="liff-scroll-x" style={{ background: C.cell }}>
-        <div style={{ minWidth: 560 }}>
+      {/* Sem largura mínima nem rolagem lateral, ao contrário das tabelas de cadastro: cada
+          linha é um bloco que quebra o texto, e o botão Revogar precisa estar sempre à vista
+          — no celular inclusive, que é onde se revoga às pressas. */}
+      <div style={{ background: C.cell, minWidth: 0 }}>
+        <div>
           <div style={{ padding: "14px 16px", borderBottom: `1px solid ${C.line}`, background: C.canvas, ...eyebrow(10, C.faint) }}>
             {todas ? "Conexões de todas as pessoas" : "Suas conexões"}
           </div>
@@ -169,17 +172,24 @@ export default function Conexoes() {
 
       <div style={{ background: C.cell, padding: 22 }}>
         <div style={{ ...eyebrow(11, C.dust), marginBottom: 18 }}>CONECTAR O CLAUDE</div>
+        {!mcpHabilitado ? (
+          // Desligado: não ensinar um endereço que responde 404.
+          <div style={{ fontSize: 13, lineHeight: 1.6, color: C.faint }}>
+            O acesso pelo Claude ainda não foi ligado neste ambiente. Quando a administração ligar, as instruções para
+            conectar aparecem aqui.
+          </div>
+        ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 16, fontSize: 13, lineHeight: 1.6, color: C.body }}>
           <div>
             <div style={{ ...eyebrow(10, C.faint, "0.12em"), marginBottom: 6 }}>claude.ai e app desktop</div>
             Configurações → Conectores → Adicionar conector personalizado, com o endereço:
-            <code style={{ display: "block", marginTop: 6, fontFamily: MONO, fontSize: 12, color: C.ink, background: C.code, padding: "8px 10px", wordBreak: "break-all" }}>
+            <code style={{ display: "block", marginTop: 6, fontFamily: MONO, fontSize: 12, color: C.ink, background: C.code, padding: "8px 10px", overflowWrap: "anywhere" }}>
               {urlMcp}
             </code>
           </div>
           <div>
             <div style={{ ...eyebrow(10, C.faint, "0.12em"), marginBottom: 6 }}>claude code</div>
-            <code style={{ display: "block", fontFamily: MONO, fontSize: 12, color: C.ink, background: C.code, padding: "8px 10px", wordBreak: "break-all" }}>
+            <code style={{ display: "block", fontFamily: MONO, fontSize: 12, color: C.ink, background: C.code, padding: "8px 10px", overflowWrap: "anywhere" }}>
               claude mcp add --transport http liff-tasks {urlMcp}
             </code>
           </div>
@@ -188,6 +198,7 @@ export default function Conexoes() {
             exclui nada. Cada gravação aparece no histórico do registro marcada com o nome do aplicativo.
           </div>
         </div>
+        )}
       </div>
     </div>
   );

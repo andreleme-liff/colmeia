@@ -6,6 +6,7 @@ import { requireCtx } from "@/lib/perms";
 import { json } from "@/lib/http";
 import { porTexto } from "@/lib/domain";
 import { DOMINIO_PERMITIDO } from "@/lib/google-oauth";
+import { lerConfig } from "@/lib/oauth/protocolo";
 
 export type ActivityDTO = {
   id: number;
@@ -183,6 +184,8 @@ export async function GET() {
     // dessa verdade é uma variável de ambiente do servidor.
     dominioLogin: DOMINIO_PERMITIDO,
     sheetsConectado: ctx.user.temSheets,
+    // A tela de Conexões só ensina a conectar quando o MCP está ligado neste ambiente.
+    mcpHabilitado: lerConfig(process.env).habilitado,
     activities: atividades.map((a) => ({
       id: a.id,
       ref: a.ref,
