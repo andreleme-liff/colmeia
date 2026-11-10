@@ -296,6 +296,12 @@ textarea::placeholder {
 .cop-cliente__botao { all: unset; cursor: pointer; border-radius: 2px; }
 .cop-cliente__botao:focus-visible { outline: 2px solid var(--liff-accent); outline-offset: 2px; }
 .cop-valor { font-family: var(--liff-font-mono); font-size: 16px; font-weight: 600; white-space: nowrap; color: var(--liff-text); }
+.cop-cliente--atividade { font-size: 16px; }
+.cop-prio { font-family: var(--liff-font-mono); font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+  white-space: nowrap; color: var(--liff-text-muted); }
+.cop-prio--alta { color: var(--cop-ink-error); }
+.cop-prio--media { color: var(--cop-ink-warning); }
+.cop-vinculo { font-family: var(--liff-font-mono); font-size: 11px; color: var(--liff-text-muted); overflow-wrap: anywhere; }
 .cop-modulos, .cop-tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .cop-pill { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; box-sizing: border-box;
   background: color-mix(in srgb, var(--cop-area) 12%, transparent); border: 1px solid color-mix(in srgb, var(--cop-area) 40%, transparent);

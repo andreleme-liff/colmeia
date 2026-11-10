@@ -1,7 +1,7 @@
 // Funções puras do card do kanban comercial (v4). Sem banco.
 //   node --experimental-strip-types scripts/verificar-card.mjs
 import {
-  diasEntre, diaMes, etiquetaPrazo, hojeISO, prazoDoPasso, iniciaisDoNome, rotuloModulos, separarDataDaSituacao, vizinhosNoFunil,
+  diasEntre, diaMes, etiquetaPrazo, hojeISO, prazoDoPasso, prazoRelativo, iniciaisDoNome, rotuloModulos, separarDataDaSituacao, vizinhosNoFunil,
 } from "../lib/domain.ts";
 
 let ok = 0;
@@ -34,6 +34,9 @@ checa("passo hoje", prazoDoPasso("proposta", HOJE, HOJE), { texto: "10/11 (hoje)
 checa("passo sem data", prazoDoPasso("proposta", null, HOJE), { texto: "Sem prazo", tom: "neutro" });
 checa("passo fora do funil", prazoDoPasso("ganho", "2026-10-01", HOJE), { texto: "01/10", tom: "neutro" });
 checa("passo lost sem data", prazoDoPasso("lost", null, HOJE), null);
+checa("atividade em aberto vencida", prazoRelativo("2026-11-03", HOJE, true), { texto: "03/11 (−7d)", tom: "erro" });
+checa("atividade concluída: data neutra", prazoRelativo("2026-11-03", HOJE, false), { texto: "03/11", tom: "neutro" });
+checa("atividade concluída sem data: nada", prazoRelativo(null, HOJE, false), null);
 checa("diasEntre atravessa mês", diasEntre("2026-10-31", "2026-11-01"), 1);
 
 console.log("\n2. data da situação");

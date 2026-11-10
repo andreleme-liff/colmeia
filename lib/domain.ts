@@ -898,21 +898,31 @@ export function etiquetaPrazo(
 }
 
 /**
- * Prazo ao lado do rótulo PRÓXIMO PASSO, sem prefixo (o rótulo já diz o que é): "27/10 (−14d)",
- * "26/11 (+16d)", "10/11 (hoje)" (a tela mostra em maiúsculas). O tom segue `etiquetaPrazo`.
+ * Data relativa a hoje, sem prefixo: "27/10 (−14d)", "26/11 (+16d)", "10/11 (hoje)" (a tela mostra
+ * em maiúsculas). Vencido é erro; até 7 dias, warning; depois, sucesso. Fora de andamento
+ * (`aberto` falso) a data fica neutra, sem contagem; sem data, "Sem prazo" só quando aberto.
  */
+export function prazoRelativo(
+  prazo: string | null,
+  hoje: string,
+  aberto: boolean
+): { texto: string; tom: TomPrazo } | null {
+  if (!prazo) return aberto ? { texto: "Sem prazo", tom: "neutro" } : null;
+  const dm = ddmm(prazo);
+  if (!aberto) return { texto: dm, tom: "neutro" };
+  const n = diasEntre(hoje, prazo);
+  if (n < 0) return { texto: `${dm} (−${-n}d)`, tom: "erro" };
+  const tom: TomPrazo = n <= 7 ? "warning" : "sucesso";
+  return { texto: n === 0 ? `${dm} (hoje)` : `${dm} (+${n}d)`, tom };
+}
+
+/** Prazo ao lado do rótulo PRÓXIMO PASSO no card do comercial. */
 export function prazoDoPasso(
   estagio: string,
   prazo: string | null,
   hoje: string = hojeISO()
 ): { texto: string; tom: TomPrazo } | null {
-  const base = etiquetaPrazo(estagio, prazo, hoje);
-  if (!base || !prazo || base.tom === "neutro") return base && prazo ? { texto: ddmm(prazo), tom: "neutro" } : base;
-  const dm = ddmm(prazo);
-  const n = diasEntre(hoje, prazo);
-  if (n < 0) return { texto: `${dm} (−${-n}d)`, tom: base.tom };
-  if (n === 0) return { texto: `${dm} (hoje)`, tom: base.tom };
-  return { texto: `${dm} (+${n}d)`, tom: base.tom };
+  return prazoRelativo(prazo, hoje, estagioEmAberto(estagio));
 }
 
 /** "1 módulo", "3 módulos". */

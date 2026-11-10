@@ -6,12 +6,13 @@
 
 import { useState, type CSSProperties, type MouseEvent, type ReactNode, useRef } from "react";
 import { Button, Field, Input, Select, Switch } from "./ds";
-import { C, GHOST_FIX, MONO, SANS, dot, eyebrow, mesh, prioColor, statusColor } from "./tokens";
+import { C, GHOST_FIX, MONO, SANS, dot, eyebrow, mesh, statusColor } from "./tokens";
 import type { Activity, AreaCadastro, Deal, LogEntry, NovaOportunidade, Origem, Pessoa } from "./api";
 import SeletorArea, { type OpcaoArea } from "./SeletorArea";
 import Historico from "./Historico";
 import ViaConexao from "./ViaConexao";
 import { CardOportunidade } from "./CardOportunidade";
+import { CardAtividade } from "./CardAtividade";
 import {
   ADMIN_CARDS, BLOCKER_TIPOS, ERP_SUGESTOES, ESTAGIO_INICIAL, MOTIVOS_PERDA, PAPEIS, STAGES, STATUS, areaOf, ddmm, porTexto, stamp, statusLabel, todasAreas,
 } from "@/lib/domain";
@@ -458,7 +459,7 @@ export function Operacoes({
               onSoltar(id, col.key);
             }}
             style={{
-              minWidth: 262,
+              minWidth: 280,
               flex: 1,
               padding: 12,
               display: "flex",
@@ -471,138 +472,17 @@ export function Operacoes({
               <span style={eyebrow(11, C.dust, "0.14em")}>{col.label}</span>
               <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>{col.cards.length}</span>
             </div>
-            {col.cards.map((c) => {
-              const area = areaOf(c.area);
-              return (
-                <div
-                  key={c.id}
-                  className="liff-card liff-card--ativo"
-                  draggable={c.podeEditar}
-                  onDragStart={(e) => e.dataTransfer.setData("text/plain", String(c.id))}
-                  onDragEnd={() => setAlvo(null)}
-                  onClick={() => onAbrir(c.id)}
-                  style={{ padding: 14, cursor: "pointer" }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                    {/* Quadradinho da área no lugar da faixa lateral — ver o Comercial. */}
-                    <span style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                      <span aria-hidden style={{ ...dot(area.color), flex: "none" }} />
-                      <span style={eyebrow(10, area.color, "0.12em")}>{area.short}</span>
-                    </span>
-                    <span style={eyebrow(10, prioColor(c.prioridade), "0.12em")}>{c.prioridade}</span>
-                  </div>
-                  <div style={{ fontSize: 14, color: C.ink, lineHeight: 1.4, marginTop: 9, fontWeight: 600 }}>
-                    {c.titulo}
-                  </div>
-
-                  {/* A oportunidade a que a tarefa serve: é o que liga o quadro ao pipeline. */}
-                  {c.oportunidadeRef && (
-                    <div
-                      title="Oportunidade comercial ligada"
-                      style={{ fontFamily: MONO, fontSize: 10, color: C.dust, marginTop: 5, letterSpacing: "0.02em" }}
-                    >
-                      ↳ {c.oportunidadeRef} · {c.oportunidadeConta}
-                    </div>
-                  )}
-
-                  {/* Produto abaixo do título, como no card do Comercial. A cor continua
-                      sendo a da área, para não haver duas dimensões cromáticas competindo. */}
-                  {c.produtoId && (
-                    <div style={{ ...eyebrow(9, C.dust, "0.12em"), marginTop: 6 }}>
-                      {produtos.find((p) => p.id === c.produtoId)?.label ?? c.produtoId}
-                    </div>
-                  )}
-
-                  {/* Cortada em três linhas, como no card do Comercial: o card responde "onde
-                      isto está" de relance; o texto inteiro fica no drawer. */}
-                  {c.situacao && (
-                    <div
-                      style={{
-                        fontSize: 12,
-                        color: C.faint,
-                        marginTop: 8,
-                        lineHeight: 1.5,
-                        display: "-webkit-box",
-                        WebkitLineClamp: 3,
-                        WebkitBoxOrient: "vertical",
-                        overflow: "hidden",
-                      }}
-                    >
-                      {c.situacao}
-                    </div>
-                  )}
-
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      marginTop: 12,
-                      fontFamily: MONO,
-                      fontSize: 10,
-                      color: C.faint,
-                    }}
-                  >
-                    <span>{c.responsavel.split(" ")[0]}</span>
-                    <span>{ddmm(c.prazo)}</span>
-                  </div>
-
-                  {c.proximoPasso && (
-                    <div
-                      style={{
-                        marginTop: 10,
-                        fontFamily: MONO,
-                        fontSize: 10,
-                        color: C.faint,
-                        lineHeight: 1.5,
-                        display: "-webkit-box",
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: "vertical",
-                        overflow: "hidden",
-                      }}
-                    >
-                      {c.proximoPasso}
-                    </div>
-                  )}
-
-                  {/* As mesmas setas do pipeline, pelo mesmo motivo: arrastar não existe em
-                      navegador de celular, e sem elas o card ficaria imóvel no telefone. */}
-                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, marginTop: 8 }}>
-                    {([-1, 1] as const).map((dir) => {
-                      const i = STATUS.findIndex((s) => s.key === c.status);
-                      const destino = STATUS[i + dir];
-                      const ativo = c.podeEditar && !!destino;
-                      return (
-                        <span
-                          key={dir}
-                          draggable={false}
-                          className={ativo ? "liff-seta liff-seta--ativa" : "liff-seta"}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (ativo) onSoltar(c.id, destino.key);
-                          }}
-                          title={
-                            !c.podeEditar
-                              ? "Sem permissão de edição nesta área"
-                              : destino
-                                ? `Mover para ${destino.label}`
-                                : "Já está na ponta do quadro"
-                          }
-                          style={{
-                            cursor: ativo ? "pointer" : "not-allowed",
-                            fontFamily: MONO,
-                            fontSize: 12,
-                            color: ativo ? C.dust : C.ghost,
-                            padding: "2px 6px",
-                          }}
-                        >
-                          {dir < 0 ? "←" : "→"}
-                        </span>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
+            {col.cards.map((c) => (
+              <CardAtividade
+                key={c.id}
+                c={c}
+                produtos={produtos}
+                onAbrir={() => onAbrir(c.id)}
+                onMover={(status) => onSoltar(c.id, status)}
+                onDragStart={(e) => e.dataTransfer.setData("text/plain", String(c.id))}
+                onDragEnd={() => setAlvo(null)}
+              />
+            ))}
           </div>
         ))}
       </div>

@@ -25,7 +25,7 @@ function valorCurto(centavos: number): string {
   return brl(centavos);
 }
 
-function Etiqueta({ tom, children, title, icone }: { tom: TomPrazo | "info"; children: string; title?: string; icone?: ReactNode }) {
+export function Etiqueta({ tom, children, title, icone }: { tom: TomPrazo | "info"; children: string; title?: string; icone?: ReactNode }) {
   return (
     <span className={`cop-tag cop-tag--${tom}`} title={title}>
       {icone ?? <span aria-hidden className="cop-tag__dot" />}
@@ -34,7 +34,7 @@ function Etiqueta({ tom, children, title, icone }: { tom: TomPrazo | "info"; chi
   );
 }
 
-function Chevron({ dir }: { dir: -1 | 1 }) {
+export function Chevron({ dir }: { dir: -1 | 1 }) {
   return (
     <svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
       <path d={dir < 0 ? "M15 18l-6-6 6-6" : "M9 18l6-6-6-6"} />
