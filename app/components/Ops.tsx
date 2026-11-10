@@ -32,6 +32,7 @@ import ImportarPlanilha from "./ImportarPlanilha";
 import SeletorArea from "./SeletorArea";
 import SeletorResponsaveis from "./SeletorResponsaveis";
 import CampoBusca from "./CampoBusca";
+import Receita from "./Receita";
 import Conexoes from "./Conexoes";
 import { EditarPessoa, EditarProduto } from "./EditarCadastro";
 import { api, type State } from "./api";
@@ -765,6 +766,14 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     return L.join("\n");
   }, [estado, waArea]);
 
+  // Tela só de admin aberta por quem não é (link colado, estado antigo): volta para o início,
+  // em vez de mostrar o título da tela sobre o conteúdo de outra.
+  const soAdminSemPermissao = !!estado && !estado.isAdmin && NAV.some((n) => n.key === view && "soAdmin" in n);
+  // Só troca a URL (sistema externo); a tela acompanha a rota pelo ajuste feito no render.
+  useEffect(() => {
+    if (soAdminSemPermissao) router.replace("/");
+  }, [soAdminSemPermissao, router]);
+
   const ultimoLog = estado?.logs[0]?.id;
   useEffect(() => {
     if (view !== "auditoria") return;
@@ -974,6 +983,15 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           </>
         );
       }
+      case "receita":
+        return (
+          <Receita
+            deals={estado.deals}
+            area={areaEfetiva}
+            gatilho={estado.logs[0]?.id}
+            onAbrirDeal={(ref) => navegar({ view: "comercial", ref })}
+          />
+        );
       case "auditoria":
         return <Auditoria
             todas={auditoria.logs}

@@ -566,6 +566,38 @@ async function migrate(): Promise<void> {
       WHERE chave_idempotencia IS NOT NULL AND ok
     `;
 
+    // Forecast de receita (nov/2026, só admin por enquanto). Um contrato por cliente, com
+    // até três linhas: customização e implantação (total em N parcelas) e assinatura
+    // (valor mensal). O cronograma de parcelas sai daqui, e no futuro vira o faturamento.
+    // `deal_id` liga ao card do pipeline: excluir o card não apaga a receita (SET NULL), e
+    // um card tem no máximo um contrato.
+    await sql`
+      CREATE TABLE IF NOT EXISTS contratos (
+        id                 SERIAL PRIMARY KEY,
+        ref                TEXT UNIQUE,
+        deal_id            INTEGER UNIQUE REFERENCES deals(id) ON DELETE SET NULL,
+        conta              TEXT NOT NULL,
+        area               TEXT NOT NULL REFERENCES areas(id),
+        situacao           TEXT NOT NULL CHECK (situacao IN ('contratada', 'prevista')),
+        chance             TEXT CHECK (chance IN ('alta', 'baixa')),
+        inicio_faturamento DATE NOT NULL,
+        notas              TEXT NOT NULL DEFAULT '',
+        criado_em          TIMESTAMPTZ NOT NULL DEFAULT now(),
+        atualizado_em      TIMESTAMPTZ
+      )
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS contrato_receitas (
+        contrato_id    INTEGER NOT NULL REFERENCES contratos(id) ON DELETE CASCADE,
+        tipo           TEXT NOT NULL CHECK (tipo IN ('assinatura', 'implantacao', 'customizacao')),
+        valor_centavos BIGINT NOT NULL CHECK (valor_centavos >= 0),
+        parcelas       INTEGER NOT NULL DEFAULT 1 CHECK (parcelas >= 1),
+        inicio_mes     INTEGER NOT NULL DEFAULT 0 CHECK (inicio_mes >= 0),
+        duracao_meses  INTEGER CHECK (duracao_meses IS NULL OR duracao_meses >= 1),
+        PRIMARY KEY (contrato_id, tipo)
+      )
+    `;
+
     // A Supabase expõe o schema `public` pela API REST (PostgREST), que atende usando os
     // papéis `anon` e `authenticated` — e concede privilégios a eles por padrão em tabelas
     // novas. A chave anon é pública por definição (nasceu para ir em código de navegador),
@@ -591,7 +623,8 @@ async function migrate(): Promise<void> {
             -- não cabe a esta migração. TABELA NOVA NESTE APP ENTRA NESTA LISTA.
             EXECUTE format(
               'REVOKE ALL ON users, user_area_perms, activities, deals, sessions, audit_log, areas, produtos, '
-              'oauth_concessoes, oauth_codigos, oauth_tokens, mcp_chamadas, origens, oportunidade_modulos FROM %I',
+              'oauth_concessoes, oauth_codigos, oauth_tokens, mcp_chamadas, origens, oportunidade_modulos, '
+              'contratos, contrato_receitas FROM %I',
               papel
             );
             EXECUTE format('REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM %I', papel);

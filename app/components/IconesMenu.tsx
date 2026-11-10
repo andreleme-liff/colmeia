@@ -66,6 +66,14 @@ const DESENHOS: Record<string, ReactNode> = {
       <path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1" />
     </>
   ),
+  // Receita: barras crescendo com a linha de tendência.
+  receita: (
+    <>
+      <path d="M3.5 20.5h17" />
+      <path d="M6.5 20.5v-5M11 20.5v-8M15.5 20.5v-6M20 20.5V9" />
+      <path d="M5 11l5-4.5 4 3 5.5-5.5" />
+    </>
+  ),
   // Cadastros: base de dados.
   cadastros: (
     <>

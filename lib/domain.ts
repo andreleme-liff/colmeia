@@ -92,6 +92,8 @@ export const NAV = [
   { key: "conexoes", label: "conexões" },
   // Só admin, e por isso no fim do menu, num grupo separado. A antiga "administração" (a
   // matriz de permissões) virou parte de Cadastros → Pessoas; `/admin` redireciona para lá.
+  // Forecast de receita: em construção, por isso só admin. Mostra números da empresa inteira.
+  { key: "receita", label: "receita", soAdmin: true },
   { key: "cadastros", label: "cadastros", soAdmin: true },
 ] as const;
 
@@ -101,6 +103,7 @@ export const TITLES: Record<string, string> = {
   operacoes: "Quadro operacional",
   cronograma: "Cronograma",
   cadastros: "Cadastros",
+  receita: "Forecast de receita",
   auditoria: "Auditoria",
   conexoes: "Conexões",
 };

@@ -630,7 +630,7 @@ export function useFecharNoFundo(onFechar: () => void) {
  * exatamente nele. Aqui o clique em qualquer ponto do campo abre o seletor, e o CSS
  * (`globals.css`) inverte o ícone no tema escuro para ele existir aos olhos.
  */
-function CampoData({
+export function CampoData({
   valor,
   onChange,
   desabilitado,
@@ -2005,11 +2005,13 @@ const campoNativo: CSSProperties = {
   padding: "11px 13px",
 };
 
-export function Modal({ titulo, eyebrowTexto, children, onFechar }: {
+export function Modal({ titulo, eyebrowTexto, children, onFechar, largura = 520 }: {
   titulo: string;
   eyebrowTexto: string;
   children: ReactNode;
   onFechar: () => void;
+  /** Largura máxima; o padrão serve aos formulários de uma coluna. */
+  largura?: number;
 }) {
   const fundo = useFecharNoFundo(onFechar);
   return (
@@ -2029,7 +2031,7 @@ export function Modal({ titulo, eyebrowTexto, children, onFechar }: {
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: 520,
+          width: largura,
           maxWidth: "100%",
           maxHeight: "88vh",
           overflow: "auto",

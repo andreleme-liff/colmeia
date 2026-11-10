@@ -125,15 +125,17 @@ export async function DELETE(_req: Request, ctxRoute: RouteContext<"/api/areas/[
   const alvos = await sql<{ label: string }[]>`SELECT label FROM areas WHERE id = ${id}`;
   if (!alvos.length) return err("Vertical não encontrada.", 404);
 
-  const [{ atividades, oportunidades }] = await sql<{ atividades: number; oportunidades: number }[]>`
+  const [{ atividades, oportunidades, contratos }] = await sql<{ atividades: number; oportunidades: number; contratos: number }[]>`
     SELECT
       (SELECT COUNT(*)::int FROM activities WHERE area = ${id}) AS atividades,
-      (SELECT COUNT(*)::int FROM deals      WHERE area = ${id}) AS oportunidades
+      (SELECT COUNT(*)::int FROM deals      WHERE area = ${id}) AS oportunidades,
+      (SELECT COUNT(*)::int FROM contratos  WHERE area = ${id}) AS contratos
   `;
-  if (atividades > 0 || oportunidades > 0) {
+  if (atividades > 0 || oportunidades > 0 || contratos > 0) {
     const partes = [
       atividades > 0 ? `${atividades} atividade${atividades > 1 ? "s" : ""}` : null,
       oportunidades > 0 ? `${oportunidades} oportunidade${oportunidades > 1 ? "s" : ""}` : null,
+      contratos > 0 ? `${contratos} contrato${contratos > 1 ? "s" : ""} de receita` : null,
     ].filter(Boolean);
     return err(`${alvos[0].label} ainda tem ${partes.join(" e ")}. Mova ou exclua antes.`, 409);
   }

@@ -204,6 +204,13 @@ async function req<T>(url: string, opts: RequestInit = {}): Promise<T> {
 export const api = {
   estado: () => req<State>("/api/state"),
   /** Auditoria completa (até 10.000 linhas), fora do estado para não pesar as outras telas. */
+  /** Forecast de receita (só admin). */
+  receitas: () => req<{ contratos: import("@/lib/forecast").Contrato[] }>("/api/receita"),
+  criarReceita: (corpo: Record<string, unknown>) =>
+    req<{ ok: boolean; ref: string }>("/api/receita", { method: "POST", body: JSON.stringify(corpo) }),
+  alterarReceita: (id: number, corpo: Record<string, unknown>) =>
+    req<{ ok: boolean }>(`/api/receita/${id}`, { method: "PATCH", body: JSON.stringify(corpo) }),
+  excluirReceita: (id: number) => req<{ ok: boolean }>(`/api/receita/${id}`, { method: "DELETE" }),
   auditoria: () => req<{ limite: number; logs: (LogEntry & { autorId: number | null })[] }>("/api/logs"),
 
   criarAtividade: (dados: NovaAtividade) =>
