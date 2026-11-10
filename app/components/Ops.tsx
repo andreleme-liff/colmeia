@@ -8,6 +8,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LiffMark, Button } from "./ds";
 import ThemeToggle from "./ThemeToggle";
+import { IconeLua, IconeMenu, IconeRecolher, IconeSair, IconeSol } from "./IconesMenu";
 import {
   Auditoria,
   Aviso,
@@ -86,6 +87,9 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
   const [area, setArea] = useState("all");
   // Densidade do kanban comercial: card completo (padrão) ou compacto, guardada no perfil.
   const [densidade, setDensidade] = useState<"completo" | "compacto">("completo");
+  // Lateral recolhida mostra só os ícones. Só vale na tela larga: abaixo de 860px a lateral é
+  // gaveta, sempre aberta por inteiro (o CSS ignora o atributo lá).
+  const [recolhida, setRecolhida] = useState(false);
   // Filtro de responsável, paralelo ao de área: um recorta a vertical, o outro recorta a
   // carteira. Combinam — "só os meus" dentro de Tax é uma pergunta legítima.
   const [responsaveis, setResponsaveis] = useState<string[]>([]);
@@ -134,8 +138,9 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
          * de cache. Só na carga inicial — recarregar depois de uma escrita não pode
          * desfazer um filtro que a pessoa acabou de trocar.
          */
-        const { tema, area: areaSalva, responsaveis: respSalvos, densidade: densSalva } = s.me.preferencias ?? {};
+        const { tema, area: areaSalva, responsaveis: respSalvos, densidade: densSalva, menu: menuSalvo } = s.me.preferencias ?? {};
         if (densSalva === "compacto") setDensidade("compacto");
+        if (menuSalvo === "recolhido") setRecolhida(true);
         // O leitor descarta chave inválida, então preferência antiga ou corrompida volta
         // como "todos" em vez de virar um filtro que não casa com nada.
         const resp = lerSelecaoDeResponsaveis(respSalvos);
@@ -189,7 +194,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
   }
 
   /** Guarda a escolha no perfil. Falhar aqui não pode atrapalhar a navegação. */
-  const lembrar = useCallback((patch: { tema?: string; area?: string; responsaveis?: string; densidade?: string }) => {
+  const lembrar = useCallback((patch: { tema?: string; area?: string; responsaveis?: string; densidade?: string; menu?: string }) => {
     void api.salvarPreferencias(patch).catch(() => {});
   }, []);
 
@@ -920,7 +925,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
   };
 
   return (
-    <div className="liff-shell" data-menu={menuAberto ? "aberto" : "fechado"}>
+    <div className="liff-shell" data-menu={menuAberto ? "aberto" : "fechado"} data-lateral={recolhida ? "recolhida" : "expandida"}>
       <CoresDasAreas areas={estado.areas} />
 
       {/* Fundo da gaveta: fecha ao tocar fora, que é o gesto esperado no celular. */}
@@ -930,9 +935,25 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
 
       {/* ---- barra lateral ---- */}
       <aside className="liff-aside">
-        <div style={{ padding: "0 22px 26px" }}>
-          <LiffMark height={24} tone={markTone(theme)} />
-          <div style={{ ...eyebrow(10, C.accent, "0.18em"), marginTop: 10 }}>GESTÃO INTERNA</div>
+        <div className="liff-aside-topo">
+          <div className="liff-so-expandida" style={{ minWidth: 0 }}>
+            <LiffMark height={24} tone={markTone(theme)} />
+            <div style={{ ...eyebrow(10, C.accent, "0.18em"), marginTop: 10 }}>GESTÃO INTERNA</div>
+          </div>
+          <button
+            type="button"
+            className="liff-recolher"
+            onClick={() => {
+              const nova = !recolhida;
+              setRecolhida(nova);
+              lembrar({ menu: nova ? "recolhido" : "expandido" });
+            }}
+            aria-label={recolhida ? "Expandir o menu" : "Recolher o menu"}
+            aria-expanded={!recolhida}
+            title={recolhida ? "Expandir o menu" : "Recolher o menu"}
+          >
+            <IconeRecolher recolhido={recolhida} />
+          </button>
         </div>
 
         <nav style={{ display: "flex", flexDirection: "column" }}>
@@ -941,68 +962,107 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
               <Fragment key={gi}>
                 {gi > 0 && (
                   <div className="liff-nav-grupo" aria-hidden>
-                    <span style={eyebrow(9, C.faint, "0.16em")}>só admin</span>
+                    <span className="liff-so-expandida" style={eyebrow(9, C.faint, "0.16em")}>só admin</span>
                   </div>
                 )}
-              {grupo.map((n) => {
-                const on = view === n.key;
-                return (
-                  <div
-                    key={n.key}
-                    className="liff-nav-item"
-                    onClick={() => {
-                      navegar({ view: n.key, tab: n.key === "cadastros" ? cadTab : undefined });
-                      // Escolher um item é a razão de a gaveta existir; ela se fecha sozinha.
-                      setMenuAberto(false);
-                    }}
-                    style={{
-                      padding: "11px 22px",
-                      cursor: "pointer",
-                      ...eyebrow(12, on ? C.ink : C.dust, "0.1em"),
-                      borderLeft: `2px solid ${on ? C.accent : "transparent"}`,
-                      background: on ? C.panel : "transparent",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    <span>/ {n.label}</span>
-                    <span style={{ fontSize: 10, color: C.faint }}>{contagens[n.key] ?? ""}</span>
-                  </div>
-                );
-              })}
+                {grupo.map((n) => {
+                  const on = view === n.key;
+                  const conta = contagens[n.key];
+                  return (
+                    <a
+                      key={n.key}
+                      href={caminhoDe({ view: n.key, tab: n.key === "cadastros" ? cadTab : undefined })}
+                      className="liff-nav-item"
+                      aria-current={on ? "page" : undefined}
+                      // Recolhida, o rótulo some: o nome fica no title (e no aria-label, que o
+                      // leitor de tela já leria do texto escondido só por CSS).
+                      title={recolhida ? `${n.label}${conta ? ` · ${conta}` : ""}` : undefined}
+                      onClick={(e) => {
+                        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                        e.preventDefault();
+                        navegar({ view: n.key, tab: n.key === "cadastros" ? cadTab : undefined });
+                        // Escolher um item é a razão de a gaveta existir; ela se fecha sozinha.
+                        setMenuAberto(false);
+                      }}
+                      style={{
+                        ...eyebrow(12, on ? C.ink : C.dust, "0.1em"),
+                        borderLeft: `2px solid ${on ? C.accent : "transparent"}`,
+                        background: on ? C.panel : "transparent",
+                        color: on ? C.ink : C.dust,
+                      }}
+                    >
+                      <span className="liff-nav-icone" style={{ color: on ? C.accent : undefined }}>
+                        <IconeMenu chave={n.key} />
+                      </span>
+                      <span className="liff-nav-rotulo liff-so-expandida">{n.label}</span>
+                      <span className="liff-so-expandida" style={{ fontSize: 10, color: C.faint, marginLeft: "auto" }}>
+                        {conta ?? ""}
+                      </span>
+                    </a>
+                  );
+                })}
               </Fragment>
             )
           )}
         </nav>
 
-        <div style={{ marginTop: "auto", padding: "26px 22px 0" }}>
-          <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 18, marginBottom: 18 }}>
-            <div style={{ ...eyebrow(10, C.faint, "0.14em"), marginBottom: 9 }}>FUNDO</div>
-            <ThemeToggle theme={theme} onChange={trocarTemaSalvando} />
-          </div>
-          <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 18 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-              <div style={avatarStyle(32)}>{me.iniciais}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, color: C.ink, fontWeight: 600 }}>{me.nome}</div>
-                <div style={eyebrow(10, C.faint, "0.1em")}>{me.papel}</div>
-              </div>
+        <div className="liff-aside-rodape">
+          {/* Recolhida: tema e sair viram botões de ícone. Expandida, o de sempre. */}
+          <div className="liff-so-recolhida liff-aside-icones">
+            <button
+              type="button"
+              className="liff-recolher"
+              onClick={() => trocarTemaSalvando(theme === "dark" ? "light" : "dark")}
+              aria-label={theme === "dark" ? "Usar fundo claro" : "Usar fundo escuro"}
+              title={theme === "dark" ? "Usar fundo claro" : "Usar fundo escuro"}
+            >
+              {theme === "dark" ? <IconeSol /> : <IconeLua />}
+            </button>
+            <div style={avatarStyle(32)} title={`${me.nome} · ${me.papel}`}>
+              {me.iniciais}
             </div>
-            <div style={{ marginTop: 14 }}>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() =>
-                  void api.sair().then(() => {
-                    window.location.href = "/login";
-                  })
-                }
-                style={{ width: "100%", justifyContent: "center", ...GHOST_FIX }}
-              >
-                sair
-              </Button>
+            <button
+              type="button"
+              className="liff-recolher"
+              onClick={() =>
+                void api.sair().then(() => {
+                  window.location.href = "/login";
+                })
+              }
+              aria-label="Sair"
+              title="Sair"
+            >
+              <IconeSair />
+            </button>
+          </div>
+
+          <div className="liff-so-expandida">
+            <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 18, marginBottom: 18 }}>
+              <div style={{ ...eyebrow(10, C.faint, "0.14em"), marginBottom: 9 }}>FUNDO</div>
+              <ThemeToggle theme={theme} onChange={trocarTemaSalvando} />
+            </div>
+            <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 18 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+                <div style={avatarStyle(32)}>{me.iniciais}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, color: C.ink, fontWeight: 600 }}>{me.nome}</div>
+                  <div style={eyebrow(10, C.faint, "0.1em")}>{me.papel}</div>
+                </div>
+              </div>
+              <div style={{ marginTop: 14 }}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    void api.sair().then(() => {
+                      window.location.href = "/login";
+                    })
+                  }
+                  style={{ width: "100%", justifyContent: "center", ...GHOST_FIX }}
+                >
+                  sair
+                </Button>
+              </div>
             </div>
           </div>
         </div>

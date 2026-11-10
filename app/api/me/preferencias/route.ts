@@ -1,5 +1,5 @@
 // Preferências da própria pessoa: tema, filtro de área, filtro de responsável e densidade do
-// kanban comercial (card completo ou compacto).
+// kanban comercial (card completo ou compacto) e o menu lateral (expandido ou recolhido).
 //
 // Guardadas no perfil, e não só no navegador, porque a promessa é "o sistema abre do jeito
 // que você deixou" — inclusive em outra máquina, e inclusive depois de limpar o cache.
@@ -13,10 +13,11 @@ import { requireCtx } from "@/lib/perms";
 import { json, err } from "@/lib/http";
 import { lerSelecaoDeResponsaveis, MAX_RESPONSAVEIS_NA_SELECAO } from "@/lib/domain";
 
-type Body = { tema?: string; area?: string; responsaveis?: string; densidade?: string };
+type Body = { tema?: string; area?: string; responsaveis?: string; densidade?: string; menu?: string };
 
 const TEMAS = ["dark", "light"];
 const DENSIDADES = ["completo", "compacto"];
+const MENUS = ["expandido", "recolhido"];
 
 export async function PATCH(req: Request) {
   const ctx = await requireCtx();
@@ -39,6 +40,11 @@ export async function PATCH(req: Request) {
   if (body.densidade !== undefined) {
     if (!DENSIDADES.includes(body.densidade)) return err("Densidade inválida.", 400);
     patch.densidade = body.densidade;
+  }
+
+  if (body.menu !== undefined) {
+    if (!MENUS.includes(body.menu)) return err("Menu inválido.", 400);
+    patch.menu = body.menu;
   }
 
   if (body.area !== undefined) {

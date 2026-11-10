@@ -123,7 +123,7 @@ export type Me = {
    * texto para texto, e um tipo misto aqui convidaria a um `=== true` falhando contra
    * "true". `responsaveis` são as chaves do filtro separadas por vírgula; vazio é "todos".
    */
-  preferencias: { tema?: string; area?: string; responsaveis?: string; densidade?: string };
+  preferencias: { tema?: string; area?: string; responsaveis?: string; densidade?: string; menu?: string };
 };
 
 export type AreaCadastro = { id: string; label: string; short: string; cor: string; planilhaUrl: string | null };
