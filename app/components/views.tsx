@@ -4,10 +4,10 @@
 // devolvem eventos. Quem decide o que pode ser alterado é o servidor — `podeEditar` que
 // chega em cada registro é o eco daquela decisão, usado só para desenhar o estado.
 
-import { useState, type CSSProperties, type MouseEvent, type ReactNode, useRef } from "react";
+import { useEffect, useState, type CSSProperties, type MouseEvent, type ReactNode, useRef } from "react";
 import { Button, Field, Input, Select, Switch } from "./ds";
 import { C, GHOST_FIX, MONO, SANS, dot, eyebrow, mesh, statusColor } from "./tokens";
-import type { Activity, AreaCadastro, Deal, LogEntry, NovaOportunidade, Origem, Pessoa } from "./api";
+import { api, type Activity, type AreaCadastro, type Deal, type LogEntry, type NovaOportunidade, type Origem, type Pessoa } from "./api";
 import SeletorArea, { type OpcaoArea } from "./SeletorArea";
 import Historico from "./Historico";
 import ViaConexao from "./ViaConexao";
@@ -1408,8 +1408,38 @@ function PermissoesPorPessoa({
    ========================================================= */
 const AUDIT_COLS = "0.8fr 1fr 1fr 2.6fr";
 
-export function Auditoria({ logs }: { logs: LogEntry[] }) {
+export function Auditoria({ area, gatilho }: { area: string; gatilho: number | undefined }) {
+  // Busca própria (até 10.000 linhas). `gatilho` é o id da linha de log mais recente do
+  // estado: mudou, alguém gravou algo, e a lista recarrega.
+  const [todas, setTodas] = useState<LogEntry[] | null>(null);
+  const [limite, setLimite] = useState(0);
+  const [falha, setFalha] = useState<string | null>(null);
+  useEffect(() => {
+    let vivo = true;
+    api.auditoria().then(
+      (r) => {
+        if (!vivo) return;
+        setTodas(r.logs);
+        setLimite(r.limite);
+        setFalha(null);
+      },
+      (e: unknown) => vivo && setFalha(e instanceof Error ? e.message : "Não foi possível carregar a auditoria.")
+    );
+    return () => {
+      vivo = false;
+    };
+  }, [gatilho]);
+
+  if (falha && !todas) return <Aviso>{falha}</Aviso>;
+  if (!todas) return <div style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>carregando auditoria…</div>;
+
+  const logs = area === "all" ? todas : todas.filter((l) => l.area === area);
   return (
+    <>
+    <div style={{ fontFamily: MONO, fontSize: 11, color: C.faint, marginBottom: 12 }}>
+      {logs.length.toLocaleString("pt-BR")} {logs.length === 1 ? "linha" : "linhas"}
+      {todas.length >= limite ? ` · mostrando as ${limite.toLocaleString("pt-BR")} mais recentes` : ""}
+    </div>
     <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}` }}>
       <div style={{ minWidth: 760 }}>
         <div
@@ -1437,6 +1467,9 @@ export function Auditoria({ logs }: { logs: LogEntry[] }) {
                 background: C.cell,
                 borderBottom: `1px solid ${C.line}`,
                 alignItems: "center",
+                // Com milhares de linhas, o navegador só desenha as que estão na tela.
+                contentVisibility: "auto",
+                containIntrinsicSize: "auto 48px",
               }}
             >
               <div style={{ padding: "13px 16px", fontFamily: MONO, fontSize: 11, color: C.faint }}>
@@ -1465,6 +1498,7 @@ export function Auditoria({ logs }: { logs: LogEntry[] }) {
         })}
       </div>
     </div>
+    </>
   );
 }
 

@@ -740,7 +740,6 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
   const contagens: Record<string, number> = {
     comercial: dados.oportunidades.length,
     operacoes: dados.atividades.length,
-    auditoria: dados.logs.length,
   };
   const chips = [{ id: "all", label: "Todas", color: C.dust }, ...dados.areasVisiveis];
   // Só oferece criar nas áreas onde a pessoa realmente escreve.
@@ -909,7 +908,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         );
       }
       case "auditoria":
-        return <Auditoria logs={dados.logs} />;
+        return <Auditoria area={areaEfetiva} gatilho={estado.logs[0]?.id} />;
       case "conexoes":
         return <Conexoes mcpHabilitado={estado.mcpHabilitado} />;
       default:
