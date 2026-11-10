@@ -1076,6 +1076,25 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           {/* As ações ficam num grupo próprio para quebrarem juntas quando o cabeçalho
               não couber, em vez de uma delas cair sozinha para a linha de baixo. */}
           <div style={{ display: "flex", gap: 10, alignItems: "center", marginLeft: "auto" }}>
+            {/* Densidade do kanban comercial. Fica no perfil: abre do jeito que a pessoa deixou. */}
+            {view === "comercial" && (
+              <div role="group" aria-label="Densidade dos cards" className="liff-densidade">
+                {(["completo", "compacto"] as const).map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    aria-pressed={densidade === d}
+                    onClick={() => {
+                      setDensidade(d);
+                      lembrar({ densidade: d });
+                    }}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* Criar aparece onde a coisa vive: atividade no quadro operacional,
                 oportunidade no pipeline. Desabilita quando não há área com permissão de
                 edição — o servidor recusaria de todo jeito. */}
@@ -1094,25 +1113,6 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
               >
                 + {view === "comercial" ? "oportunidade" : "atividade"}
               </Button>
-            )}
-
-            {/* Densidade do kanban comercial. Fica no perfil: abre do jeito que a pessoa deixou. */}
-            {view === "comercial" && (
-              <div role="group" aria-label="Densidade dos cards" className="liff-densidade">
-                {(["completo", "compacto"] as const).map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    aria-pressed={densidade === d}
-                    onClick={() => {
-                      setDensidade(d);
-                      lembrar({ densidade: d });
-                    }}
-                  >
-                    {d}
-                  </button>
-                ))}
-              </div>
             )}
 
             {/* Também no quadro operacional: a importação passou a ler abas de to-dos, e
