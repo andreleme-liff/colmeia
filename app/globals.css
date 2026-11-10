@@ -320,6 +320,13 @@ textarea::placeholder {
 .cop-tag--neutro { background: transparent; border-color: var(--liff-border); }
 .cop-rotulo { font-family: var(--liff-font-mono); font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
   color: var(--liff-text-muted); margin-bottom: 4px !important; }
+.cop-rotulo-linha { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; margin-bottom: 4px; }
+.cop-rotulo-linha .cop-rotulo { margin: 0 !important; }
+.cop-prazo { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: 3px; box-sizing: border-box;
+  font-family: var(--liff-font-mono); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap;
+  background: color-mix(in srgb, var(--cop-tom, var(--liff-text-faint)) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--cop-tom, var(--liff-text-faint)) 35%, transparent); color: var(--cop-tom-ink, var(--liff-text-body)); }
+.cop-prazo.cop-tag--neutro { background: transparent; border-color: var(--liff-border); }
 .cop-texto { font-size: 14px; line-height: 1.5; color: var(--liff-text-body); overflow-wrap: anywhere; }
 .cop-texto--3l { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .cop-texto--forte { font-weight: 600; color: var(--liff-text); }

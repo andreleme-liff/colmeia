@@ -12,7 +12,7 @@
 import type { CSSProperties, DragEvent } from "react";
 import type { Deal } from "./api";
 import {
-  areaOf, blockerTipoLabel, brl, diaMes, etiquetaPrazo, hojeISO, motivoPerdaLabel,
+  areaOf, blockerTipoLabel, brl, diaMes, etiquetaPrazo, hojeISO, motivoPerdaLabel, prazoDoPasso,
   rotuloModulos, stageLabel, vizinhosNoFunil, type TomPrazo,
 } from "@/lib/domain";
 
@@ -82,7 +82,10 @@ export function CardOportunidade({
   const visiveis = modulos.slice(0, maxModulos);
   const resto = modulos.slice(maxModulos);
 
-  const prazo = lost ? null : etiquetaPrazo(d.estagio, d.proximoPassoEm, hoje, compacto);
+  // No completo o prazo fica ao lado do rótulo PRÓXIMO PASSO; no compacto, na linha de etiquetas.
+  const prazo = lost || !compacto ? null : etiquetaPrazo(d.estagio, d.proximoPassoEm, hoje, true);
+  const prazoPasso = lost || compacto ? null : prazoDoPasso(d.estagio, d.proximoPassoEm, hoje);
+  const datado = !!d.proximoPassoEm;
   const temBloqueio = !lost && !!(d.blocker || d.blockerTipo);
   const tipoBloqueio = blockerTipoLabel(d.blockerTipo);
 
@@ -200,7 +203,7 @@ export function CardOportunidade({
       </div>
 
       {/* ---------- 2 · andamento (só no completo) ---------- */}
-      {!compacto && (d.situacao || d.proximoPasso || temBloqueio || lost) && (
+      {!compacto && (d.situacao || d.proximoPasso || datado || temBloqueio || lost) && (
         <div className="cop-bloco cop-bloco--fio">
           {lost ? (
             <div>
@@ -220,10 +223,17 @@ export function CardOportunidade({
                   </p>
                 </div>
               )}
-              {d.proximoPasso && (
+              {(d.proximoPasso || datado) && (
                 <div>
-                  <p className="cop-rotulo">PRÓXIMO PASSO</p>
-                  <p className="cop-texto cop-texto--forte">{d.proximoPasso}</p>
+                  <div className="cop-rotulo-linha">
+                    <p className="cop-rotulo">PRÓXIMO PASSO</p>
+                    {prazoPasso && (
+                      <span className={`cop-prazo cop-tag--${prazoPasso.tom}`} title={`Prazo do próximo passo: ${prazoPasso.texto}`}>
+                        {prazoPasso.texto}
+                      </span>
+                    )}
+                  </div>
+                  {d.proximoPasso && <p className="cop-texto cop-texto--forte">{d.proximoPasso}</p>}
                 </div>
               )}
               {temBloqueio && (
