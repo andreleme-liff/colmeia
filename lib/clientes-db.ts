@@ -80,6 +80,21 @@ export async function lerClientes(sql: Queryable, id?: number, areas?: string[])
   }));
 }
 
+/**
+ * Quem não é admin edita a organização se edita algum produto em que ela tem oportunidade; a
+ * que não tem oportunidade nenhuma, se edita algum produto. A interface e o MCP perguntam aqui.
+ */
+export async function editaOrganizacao(sql: Queryable, id: number, areasEditaveis: string[]): Promise<boolean> {
+  if (!areasEditaveis.length) return false;
+  const [ok] = await sql<{ id: number }[]>`
+    SELECT c.id FROM clientes c
+    WHERE c.id = ${id}
+      AND (EXISTS (SELECT 1 FROM deals d WHERE d.cliente_id = c.id AND d.area = ANY(${areasEditaveis}::text[]))
+           OR NOT EXISTS (SELECT 1 FROM deals d WHERE d.cliente_id = c.id))
+  `;
+  return !!ok;
+}
+
 // ---------- vínculo pelo nome ----------
 
 /**

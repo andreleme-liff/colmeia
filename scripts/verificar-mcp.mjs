@@ -56,7 +56,7 @@ checa("nulo recusado", interpretar(null).tipo, "invalida");
 
 console.log("\n4. o catálogo");
 const nomes = CATALOGO.map((f) => f.name);
-checa("vinte e oito ferramentas (9 do dia a dia, 11 de receita e faturamento, 8 de funding)", nomes.length, 28);
+checa("trinta e duas ferramentas (9 do dia a dia, 4 de organizações, 11 de receita e faturamento, 8 de funding)", nomes.length, 32);
 checa("nenhuma exclui", nomes.some((n) => /exclu|apag|delet|remov/.test(n)), false);
 checa("nenhuma toca em cadastro, permissão ou usuário",
   nomes.some((n) => /permiss|usuario|pessoa_|area_|produto_|preferenc/.test(n)), false);
@@ -68,8 +68,8 @@ checa("nenhuma ferramenta fala com o mundo de fora (openWorld)", CATALOGO.every(
 checa("todo esquema fecha campos extras", CATALOGO.every((f) => f.inputSchema.additionalProperties === false), true);
 checa("nomes no formato da spec", nomes.every((n) => /^[A-Za-z0-9_.-]{1,128}$/.test(n)), true);
 const soLeitura = descreverFerramentas("leitura offline_access").map((f) => f.name);
-checa("conexão só de leitura não vê ferramenta de gravação", soLeitura, ["contexto", "listar_cadastros", "listar_atividades", "listar_oportunidades", "ver_registro"]);
-checa("com escrita vê as nove (sem ser admin)", descreverFerramentas("leitura escrita").length, 9);
+checa("conexão só de leitura não vê ferramenta de gravação", soLeitura, ["contexto", "listar_cadastros", "listar_atividades", "listar_oportunidades", "ver_registro", "listar_organizacoes", "ver_organizacao"]);
+checa("com escrita vê as treze (sem ser admin)", descreverFerramentas("leitura escrita").length, 13);
 const FIN = ["resumo_receita", "listar_receitas", "ver_receita", "listar_faturas", "criar_receita", "atualizar_receita",
   "emitir_fatura", "registrar_pagamento", "corrigir_fatura", "estornar_pagamento", "cancelar_fatura",
   "resumo_funding", "listar_arquetipos", "ver_estimativa", "criar_estimativa", "atualizar_estimativa", "registrar_funding",
@@ -77,7 +77,7 @@ const FIN = ["resumo_receita", "listar_receitas", "ver_receita", "listar_faturas
 checa("receita e faturamento são todas só de admin", FIN.every((n) => CATALOGO.find((f) => f.name === n)?.soAdmin === true), true);
 checa("as do dia a dia não são só de admin", CATALOGO.filter((f) => !FIN.includes(f.name)).every((f) => !f.soAdmin), true);
 checa("quem não é admin não vê nenhuma de receita", descreverFerramentas("leitura escrita", false).some((f) => FIN.includes(f.name)), false);
-checa("admin com escrita vê as vinte e oito", descreverFerramentas("leitura escrita", true).length, 28);
+checa("admin com escrita vê as trinta e duas", descreverFerramentas("leitura escrita", true).length, 32);
 checa("admin só de leitura vê as de leitura de receita, não as de gravação",
   descreverFerramentas("leitura", true).map((f) => f.name).filter((n) => FIN.includes(n)),
   ["resumo_receita", "listar_receitas", "ver_receita", "listar_faturas", "resumo_funding", "listar_arquetipos", "ver_estimativa"]);
@@ -102,6 +102,13 @@ checa("emitir: competência obrigatória", valida("emitir_fatura", { contrato: "
 checa("emitir: competência fora do formato", valida("emitir_fatura", { competencia: "2026-13" }), ["competencia: formato inválido"]);
 checa("cancelar exige motivo", valida("cancelar_fatura", { fatura: "F-0001" }), ["campo obrigatório ausente: motivo"]);
 checa("ref de fatura no formato F-", valida("registrar_pagamento", { fatura: "C-0001" }), ["fatura: formato inválido"]);
+checa("oportunidade pela organização, sem conta", valida("criar_oportunidade", { organizacao: "CLI-0012", produto: "tax" }), []);
+checa("referência de organização no formato CLI-", valida("criar_oportunidade", { organizacao: "C-0012", produto: "tax" }), ["organizacao: formato inválido"]);
+checa("organização mínima", valida("criar_organizacao", { nome: "Globe Química" }), []);
+checa("organização sem nome", valida("criar_organizacao", { cnpj: "11.222.333/0001-81" }), ["campo obrigatório ausente: nome"]);
+checa("contato sem nome", valida("atualizar_organizacao", { organizacao: "CLI-1", contatos: [{ email: "a@b.co" }] }), ["campo obrigatório ausente: contatos[0].nome"]);
+checa("papel de contato fora da lista", valida("atualizar_organizacao", { organizacao: "CLI-1", contatos: [{ nome: "Ana", papel: "chefe" }] })[0].startsWith("contatos[0].papel: valor fora da lista"), true);
+checa("nenhuma ferramenta mescla organizações", nomes.some((n) => /mescl/.test(n)), false);
 checa("criar atividade mínima", valida("criar_atividade", { titulo: "Revisar NCM", produto: "tax" }), []);
 checa("título obrigatório", valida("criar_atividade", { produto: "tax" }), ["campo obrigatório ausente: titulo"]);
 checa("título só com espaço", valida("criar_atividade", { titulo: "   ", produto: "tax" }), ["titulo: não pode ser vazio"]);

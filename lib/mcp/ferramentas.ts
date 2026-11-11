@@ -20,6 +20,7 @@ import {
   atualizarEstimativa, atualizarFunding, criarEstimativa, listarArquetipos, registrarFunding, resumoFunding, salvarCalculadora,
   verEstimativa,
 } from "./funding";
+import { atualizarOrganizacao, criarOrganizacao, listarOrganizacoes, organizacaoPorRef, verOrganizacao } from "./organizacoes";
 
 export type Contexto = { sql: Queryable; ctx: Ctx; acesso: Acesso; base: string };
 export type Saida = { ok: true; dados: Record<string, unknown>; ref?: string } | { ok: false; erro: string };
@@ -69,6 +70,18 @@ async function depoisDeGravar(c: Contexto, ref: string, extra: Record<string, un
   return { ok: true, ref, dados: { ...extra, ref, url: (visto?.registro as { url?: string })?.url, registro: visto?.registro ?? null } };
 }
 
+/**
+ * Corpo da oportunidade para o núcleo. `organizacao` (CLI-…) vira o id do cadastro; sem ela,
+ * vale o nome em `conta`. Na criação, uma das duas é obrigatória.
+ */
+async function comOrganizacao(c: Contexto, a: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const corpo = paraNucleo(a);
+  if (a.organizacao === undefined) return corpo;
+  const org = await organizacaoPorRef(c, a.organizacao);
+  if (!org) return { erro: "Organização não encontrada." };
+  return { ...corpo, clienteId: org.id, conta: org.nome };
+}
+
 const EXECUTORES: Record<NomeFerramenta, Executor> = {
   contexto: async (c) => ({
     ok: true,
@@ -86,6 +99,8 @@ const EXECUTORES: Record<NomeFerramenta, Executor> = {
       status_atividade: STATUS.map((s) => ({ id: s.key, nome: s.label })),
       estagios_oportunidade: STAGES.map((s) => ({ id: s.key, nome: s.label })),
       prioridades: [...PRIORIDADES],
+      organizacoes:
+        "Toda oportunidade pertence a uma organização do cadastro (refs CLI-0000): listar_organizacoes, ver_organizacao e, com permissão de gravar, criar_organizacao e atualizar_organizacao. Ao criar oportunidade, prefira `organizacao` a `conta`.",
       receita_e_faturamento: c.ctx.isAdmin
         ? "Disponível (admin): receita, faturamento e funding AWS — resumo_receita, listar_receitas, ver_receita, listar_faturas, resumo_funding, listar_arquetipos, ver_estimativa e, com permissão de gravar, contratos, faturas, estimativas, funding e calculadoras."
         : "Indisponível: restrito à administração.",
@@ -139,7 +154,9 @@ const EXECUTORES: Record<NomeFerramenta, Executor> = {
   },
 
   criar_oportunidade: async (c, a) => {
-    const r = await criarOportunidade(c.sql, c.ctx, paraNucleo(a), autorDe(c));
+    const corpo = await comOrganizacao(c, a);
+    if ("erro" in corpo) return { ok: false, erro: corpo.erro as string };
+    const r = await criarOportunidade(c.sql, c.ctx, corpo, autorDe(c));
     if (ehFalha(r)) return { ok: false, erro: r.erro };
     return depoisDeGravar(c, r.ref, { criado: true });
   },
@@ -147,10 +164,18 @@ const EXECUTORES: Record<NomeFerramenta, Executor> = {
   atualizar_oportunidade: async (c, a) => {
     const id = await idPorRef(c, "oportunidade", a.ref as string);
     if (!id) return { ok: false, erro: "Oportunidade não encontrada." };
-    const r = await atualizarOportunidade(c.sql, c.ctx, id, paraNucleo(semRef(a)), autorDe(c));
+    const corpo = await comOrganizacao(c, semRef(a));
+    if ("erro" in corpo) return { ok: false, erro: corpo.erro as string };
+    const r = await atualizarOportunidade(c.sql, c.ctx, id, corpo, autorDe(c));
     if (ehFalha(r)) return { ok: false, erro: r.erro };
     return depoisDeGravar(c, r.ref, { campos_alterados: r.mudancas });
   },
+
+  // Organizações — ver `organizacoes.ts`.
+  listar_organizacoes: listarOrganizacoes,
+  ver_organizacao: verOrganizacao,
+  criar_organizacao: criarOrganizacao,
+  atualizar_organizacao: atualizarOrganizacao,
 
   // Receita e faturamento (só admin) — ver `financeiro.ts`.
   resumo_receita: resumoReceita,

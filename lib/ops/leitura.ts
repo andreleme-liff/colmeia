@@ -75,6 +75,7 @@ type LinhaOportunidade = {
   ultima_interacao: Date | null; blocker: string; blocker_tipo: string | null; blocker_dono: string | null;
   motivo_perda: string | null; motivo_perda_detalhe: string; notas: string;
   modulos: string[]; modulos_ids: string[];
+  org_ref: string | null; org_nome: string | null;
 };
 
 /** Colunas da oportunidade nas leituras do MCP — as mesmas nas duas consultas. */
@@ -83,7 +84,7 @@ const COLUNAS_OPORTUNIDADE = `
   d.responsavel_texto, d.proximo_passo, d.proximo_passo_em, d.situacao, d.situacao_em, d.contato, d.ace_aws,
   d.atualizado_em, d.criado_em, o.label AS origem, d.ponte, d.contato_operacional, d.dor, d.erp, d.proposta_url,
   d.ultima_interacao, d.blocker, d.blocker_tipo, bd.nome AS blocker_dono, d.motivo_perda,
-  d.motivo_perda_detalhe, d.notas,
+  d.motivo_perda_detalhe, d.notas, cl.ref AS org_ref, cl.nome AS org_nome,
   COALESCE((SELECT array_agg(p.label ORDER BY p.label) FROM oportunidade_modulos m JOIN produtos p ON p.id = m.produto_id
             WHERE m.deal_id = d.id), '{}') AS modulos,
   COALESCE((SELECT array_agg(m.produto_id ORDER BY m.produto_id) FROM oportunidade_modulos m
@@ -92,12 +93,15 @@ const DE_OPORTUNIDADE = `
   FROM deals d
   LEFT JOIN users u ON u.id = d.responsavel_user_id
   LEFT JOIN users bd ON bd.id = d.blocker_dono_id
-  LEFT JOIN origens o ON o.id = d.origem_id`;
+  LEFT JOIN origens o ON o.id = d.origem_id
+  LEFT JOIN clientes cl ON cl.id = d.cliente_id`;
 
 function oportunidadeDto(d: LinhaOportunidade, ctx: Ctx, base: string) {
   return {
     ref: d.ref,
+    // A conta é uma organização do cadastro; `conta` é o nome dela.
     conta: d.conta,
+    organizacao: d.org_ref,
     produto: d.area,
     produto_nome: ctx.labelArea(d.area),
     estagio: d.estagio,

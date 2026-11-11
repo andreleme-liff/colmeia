@@ -6,7 +6,7 @@ import { getDb } from "@/lib/db";
 import { requireAdmin, requireCtx } from "@/lib/perms";
 import { err, json, lerCorpo } from "@/lib/http";
 import { lerCliente } from "@/lib/cliente";
-import { atualizarCliente, excluirCliente, historicoDoCliente, lerClientes } from "@/lib/clientes-db";
+import { atualizarCliente, editaOrganizacao, excluirCliente, historicoDoCliente, lerClientes } from "@/lib/clientes-db";
 
 async function idDe(ctxRoute: RouteContext<"/api/clientes/[id]">): Promise<number | null> {
   const { id } = await ctxRoute.params;
@@ -41,14 +41,7 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/clientes/
     // Edita o cadastro quem edita algum produto em que a organização tem oportunidade.
     const [atual] = await lerClientes(sql, id, ctx.areasVisiveis);
     if (!atual) return err("Organização não encontrada.", 404);
-    const [edita] = ctx.areasEditaveis.length
-      ? await sql<{ id: number }[]>`
-          SELECT c.id FROM clientes c
-          WHERE c.id = ${id}
-            AND (EXISTS (SELECT 1 FROM deals d WHERE d.cliente_id = c.id AND d.area = ANY(${ctx.areasEditaveis}::text[]))
-                 OR NOT EXISTS (SELECT 1 FROM deals d WHERE d.cliente_id = c.id))
-        `
-      : [];
+    const edita = await editaOrganizacao(sql, id, ctx.areasEditaveis);
     if (!edita) return err("Sem permissão de edição nesta organização.", 403);
     // Cobrança é da administração: o que vier no corpo é ignorado e fica o que já estava.
     e.emailCobranca = atual.emailCobranca;
