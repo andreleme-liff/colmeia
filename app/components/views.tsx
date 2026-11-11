@@ -21,7 +21,6 @@ import {
    Visão geral
    ========================================================= */
 
-export type HeroNumero = { label: string; valor: string; hint: string; cor: string };
 /**
  * Linha de foco. A mesma forma serve para atividade e para oportunidade: as duas listas
  * respondem a mesma pergunta — o que merece atenção esta semana — e ficarem paralelas é o
@@ -40,20 +39,16 @@ export type LinhaFoco = {
   metaCor: string;
   podeAbrir: boolean;
 };
-export type MetricaComercial = { label: string; valor: string; cor: string };
 export type PainelDados = {
   escopoFrase: string;
   escopoAreas: string;
-  hero: HeroNumero[];
-  comercial: MetricaComercial[];
   focoComercial: LinhaFoco[];
-  atividades: MetricaComercial[];
   focoAtividades: LinhaFoco[];
   logs: LogEntry[];
 };
 
 /** Título de seção com um link à direita. Repetido três vezes no painel. */
-function CabecalhoSecao({ titulo, meta, acao }: { titulo: string; meta?: string; acao?: { texto: string; onClick: () => void } }) {
+export function CabecalhoSecao({ titulo, meta, acao }: { titulo: string; meta?: string; acao?: { texto: string; onClick: () => void } }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 16, marginBottom: 24 }}>
       <div style={eyebrow(11, C.dust)}>{titulo}</div>
@@ -71,27 +66,11 @@ function CabecalhoSecao({ titulo, meta, acao }: { titulo: string; meta?: string;
   );
 }
 
-/** Faixa de métricas de uma seção. Idêntica no comercial e nas atividades. */
-function FaixaMetricas({ itens }: { itens: MetricaComercial[] }) {
-  return (
-    <div style={{ display: "flex", gap: 56, flexWrap: "wrap", marginBottom: 30 }}>
-      {itens.map((c) => (
-        <div key={c.label}>
-          <div style={eyebrow(10, C.faint, "0.14em")}>{c.label}</div>
-          <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.035em", color: c.cor, lineHeight: 1.1, marginTop: 6 }}>
-            {c.valor}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 /**
  * Foco da semana de uma seção. A primeira coluna diz POR QUE a linha está ali — atraso,
  * prazo, parada, prioridade —, que é a informação que a lista existe para dar.
  */
-function ListaFoco({
+export function ListaFoco({
   linhas,
   vazio,
   onAbrir,
@@ -131,103 +110,6 @@ function ListaFoco({
         </div>
       ))}
     </>
-  );
-}
-
-/**
- * Painel inicial. O desenho é documental de propósito: seções separadas por fio, sem card,
- * sem sombra, sem canto arredondado — a hierarquia vem do tamanho do número e do espaço.
- *
- * As cores vêm dos tokens e não dos HEX do handoff: o desenho é só escuro, e o sistema tem
- * os dois temas. Cada HEX do documento tem um alias equivalente aqui.
- */
-export function Overview({
-  dados,
-  onAbrirAtividade,
-  onAbrirDeal,
-  onVerPipeline,
-  onVerQuadro,
-  onVerAuditoria,
-}: {
-  dados: PainelDados;
-  onAbrirAtividade: (ref: string) => void;
-  onAbrirDeal: (ref: string) => void;
-  onVerPipeline: () => void;
-  onVerQuadro: () => void;
-  onVerAuditoria: () => void;
-}) {
-  return (
-    <div style={{ maxWidth: 1180 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap", paddingBottom: 34 }}>
-        <span style={{ fontSize: 15, color: C.dust }}>{dados.escopoFrase}</span>
-        <span style={eyebrow(11, C.faint, "0.1em")}>{dados.escopoAreas}</span>
-      </div>
-
-      {/* `nowrap` no número: valores longos quebravam a coluna, e a forma curta do dinheiro
-          existe justamente para caber aqui. */}
-      <div className="liff-hero" style={{ display: "grid", gap: 40, paddingBottom: 44, borderBottom: `1px solid ${C.line}` }}>
-        {dados.hero.map((k) => (
-          <div key={k.label}>
-            <div style={eyebrow(10, C.faint)}>{k.label}</div>
-            <div
-              style={{
-                fontSize: 60,
-                fontWeight: 800,
-                letterSpacing: "-0.04em",
-                color: k.cor,
-                lineHeight: 0.98,
-                marginTop: 10,
-                whiteSpace: "nowrap",
-              }}
-            >
-              {k.valor}
-            </div>
-            <div style={{ fontSize: 14, lineHeight: 1.55, color: C.faint, marginTop: 8 }}>{k.hint}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Comercial antes de atividades: a pergunta "como está a receita" vem antes de "o que
-          estou executando" para quem abre o sistema de manhã. */}
-      <section style={{ padding: "40px 0", borderBottom: `1px solid ${C.line}` }}>
-        <CabecalhoSecao titulo="COMERCIAL" acao={{ texto: "ver pipeline →", onClick: onVerPipeline }} />
-        <FaixaMetricas itens={dados.comercial} />
-        <ListaFoco
-          linhas={dados.focoComercial}
-          vazio="Nada exigindo atenção no pipeline esta semana."
-          onAbrir={onAbrirDeal}
-        />
-      </section>
-
-      <section style={{ padding: "40px 0", borderBottom: `1px solid ${C.line}` }}>
-        <CabecalhoSecao titulo="ATIVIDADES" acao={{ texto: "ver quadro →", onClick: onVerQuadro }} />
-        <FaixaMetricas itens={dados.atividades} />
-        <ListaFoco
-          linhas={dados.focoAtividades}
-          vazio="Nenhuma atividade em atraso, com prazo próximo ou em execução."
-          onAbrir={onAbrirAtividade}
-        />
-      </section>
-
-      <section style={{ padding: "40px 0 12px" }}>
-        <CabecalhoSecao titulo="ALTERAÇÕES RECENTES" acao={{ texto: "auditoria completa →", onClick: onVerAuditoria }} />
-        {dados.logs.length === 0 && <div style={{ fontSize: 14, color: C.faint }}>Nada registrado ainda.</div>}
-        {dados.logs.map((l) => (
-          <div
-            key={l.id}
-            className="liff-painel-log"
-            style={{ display: "grid", gap: 20, alignItems: "baseline", padding: "13px 0", borderTop: `1px solid ${C.panel2}` }}
-          >
-            <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>{stamp(l.criadoEm)}</span>
-            <span style={{ fontSize: 14, color: C.dust }}>
-              {l.autor}
-              {l.via && <ViaConexao nome={l.via} />}
-            </span>
-            <span style={{ fontSize: 14, color: C.ink, lineHeight: 1.5 }}>{l.texto}</span>
-          </div>
-        ))}
-      </section>
-    </div>
   );
 }
 

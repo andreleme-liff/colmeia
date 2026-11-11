@@ -19,7 +19,6 @@ import {
   NovaAtividade,
   FormOportunidade,
   Operacoes,
-  Overview,
   WaModal,
   type CadSet,
   type PainelDados,
@@ -33,6 +32,7 @@ import SeletorArea from "./SeletorArea";
 import SeletorResponsaveis from "./SeletorResponsaveis";
 import CampoBusca from "./CampoBusca";
 import Receita from "./Receita";
+import Painel from "./Painel";
 import Faturamento from "./Faturamento";
 import Conexoes from "./Conexoes";
 import { EditarPessoa, EditarProduto } from "./EditarCadastro";
@@ -337,19 +337,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
      */
     const me = estado.me;
     const abertas = atividades.filter((a) => a.status !== "concluido");
-    const minhas = abertas.filter((a) => a.responsavelId === me.id);
-    const comPrazo = abertas.filter((a) => a.prazo);
-    const hoje = comPrazo.filter((a) => diasAtePrazo(a.prazo!) === 0);
-    const proximos7 = comPrazo.filter((a) => {
-      const d = diasAtePrazo(a.prazo!);
-      return d > 0 && d <= DIAS_CRITICO;
-    });
-    const emAtraso = comPrazo.filter((a) => diasAtePrazo(a.prazo!) < 0);
-    // Aberto = no funil e ainda não ganho. On hold e Lost ficam fora do pipeline aberto.
-    const emAberto = oportunidades.filter((d) => estagioEmAberto(d.estagio));
-    const ganhas = oportunidades.filter((d) => d.estagio === "ganho");
-    const somaAberto = emAberto.reduce((s, d) => s + d.valorCentavos, 0);
-    const somaGanho = ganhas.reduce((s, d) => s + d.valorCentavos, 0);
+    // Os grandes números e os gráficos do painel são calculados no próprio Painel.tsx.
 
     const painel: PainelDados = {
       escopoFrase:
@@ -361,52 +349,8 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         .map((a) => a.short + (estado.perms[a.id] === "edit" || estado.isAdmin ? "" : " (ver)"))
         .join(" · "),
 
-      hero: [
-        {
-          label: "ABERTAS NO ESCOPO",
-          valor: String(abertas.length),
-          hint: `${atividades.length - abertas.length} concluídas no período`,
-          cor: C.ink,
-        },
-        {
-          label: "MINHA RESPONSABILIDADE",
-          valor: String(minhas.length),
-          hint: `${minhas.filter((a) => a.prioridade === "alta").length} de prioridade alta`,
-          cor: C.accent,
-        },
-        {
-          label: `HOJE / ${DIAS_CRITICO} DIAS`,
-          valor: `${hoje.length} / ${proximos7.length}`,
-          hint: emAtraso.length ? `${emAtraso.length} em atraso` : "nada em atraso",
-          cor: hoje.length || emAtraso.length ? C.error : C.success,
-        },
-        {
-          label: "PIPELINE ABERTO",
-          valor: brl(somaAberto),
-          hint: `${emAberto.length} oportunidades · ${brl(somaGanho)} ganhos`,
-          cor: C.ink,
-        },
-      ],
-
       // Atrasadas primeiro, depois por proximidade do prazo. Seis linhas: o painel responde
       // "o que exige atenção agora", e uma lista longa deixaria de responder isso.
-      comercial: [
-        { label: "TOTAL EM JOGO", valor: brl(somaAberto + somaGanho), cor: C.ink },
-        {
-          label: "TICKET MÉDIO",
-          valor: brl(emAberto.length ? Math.round(somaAberto / emAberto.length) : 0),
-          cor: C.dust,
-        },
-        {
-          label: "FASE FINAL",
-          valor: brl(
-            oportunidades.filter((d) => d.estagio === "contrato").reduce((s, d) => s + d.valorCentavos, 0)
-          ),
-          cor: C.warning,
-        },
-        { label: "GANHO", valor: brl(somaGanho), cor: C.success },
-      ],
-
       /**
        * Foco da semana do comercial. Não é "as maiores": é o que exige ação.
        *
@@ -446,12 +390,6 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             podeAbrir: d.podeEditar,
           }));
       })(),
-
-      atividades: STATUS.map((s) => ({
-        label: s.label.toUpperCase(),
-        valor: String(atividades.filter((a) => a.status === s.key).length),
-        cor: statusColor(s.key),
-      })),
 
       /**
        * Foco da semana das atividades. Junta as duas leituras que antes eram seções
@@ -869,13 +807,18 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     // Rede de segurança: o menu já esconde estas telas de quem não é admin, mas um estado
     // antigo não pode virar uma tela vazia sem explicação.
     if (NAV.some((n) => n.key === view && "soAdmin" in n) && !estado.isAdmin) {
-      return <Overview
+      return <Painel
           dados={dados.painel}
+          atividades={dados.atividades}
+          oportunidades={dados.oportunidades}
+          todasOportunidades={estado.deals}
+          meId={me.id}
+          isAdmin={estado.isAdmin}
+          area={areaEfetiva}
+          gatilho={estado.logs[0]?.id}
           onAbrirAtividade={(ref) => navegar({ view: "operacoes", ref })}
           onAbrirDeal={(ref) => navegar({ view: "comercial", ref })}
-          onVerPipeline={() => navegar({ view: "comercial" })}
-          onVerQuadro={() => navegar({ view: "operacoes" })}
-          onVerAuditoria={() => navegar({ view: "auditoria" })}
+          onIr={(v) => navegar({ view: v })}
         />;
     }
     switch (view) {
@@ -1007,13 +950,18 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
       case "conexoes":
         return <Conexoes mcpHabilitado={estado.mcpHabilitado} />;
       default:
-        return <Overview
+        return <Painel
           dados={dados.painel}
+          atividades={dados.atividades}
+          oportunidades={dados.oportunidades}
+          todasOportunidades={estado.deals}
+          meId={me.id}
+          isAdmin={estado.isAdmin}
+          area={areaEfetiva}
+          gatilho={estado.logs[0]?.id}
           onAbrirAtividade={(ref) => navegar({ view: "operacoes", ref })}
           onAbrirDeal={(ref) => navegar({ view: "comercial", ref })}
-          onVerPipeline={() => navegar({ view: "comercial" })}
-          onVerQuadro={() => navegar({ view: "operacoes" })}
-          onVerAuditoria={() => navegar({ view: "auditoria" })}
+          onIr={(v) => navegar({ view: v })}
         />;
     }
   };

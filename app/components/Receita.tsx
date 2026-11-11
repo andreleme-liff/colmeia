@@ -28,14 +28,14 @@ import {
 const HORIZONTES = [6, 12, 24, 36] as const;
 
 /** Uma série do gráfico. A cor vem do CSS (`--rec-*`), validada nos dois temas. */
-type Serie = { key: string; label: string; cor: string; textura?: boolean; valor: (m: MesForecast) => number };
+export type Serie = { key: string; label: string; cor: string; textura?: boolean; valor: (m: MesForecast) => number };
 
 const S_ASSINATURA: Serie = { key: "assinatura", label: "Assinatura", cor: "var(--rec-assinatura)", valor: (m) => m.assinatura };
 const S_IMPLANTACAO: Serie = { key: "implantacao", label: "Implantação", cor: "var(--rec-implantacao)", valor: (m) => m.implantacao };
 const S_CUSTOMIZACAO: Serie = { key: "customizacao", label: "Customização", cor: "var(--rec-customizacao)", valor: (m) => m.customizacao };
-const S_CONTRATADA: Serie = { key: "contratada", label: "Contratada", cor: "var(--rec-contratada)", valor: contratadaDoMes };
-const S_PROVAVEL: Serie = { key: "provavel", label: "Provável", cor: "var(--rec-prevista)", valor: (m) => m.provavel };
-const S_POSSIVEL: Serie = { key: "possivel", label: "Possível", cor: "var(--rec-prevista)", textura: true, valor: (m) => m.possivel };
+export const S_CONTRATADA: Serie = { key: "contratada", label: "Contratada", cor: "var(--rec-contratada)", valor: contratadaDoMes };
+export const S_PROVAVEL: Serie = { key: "provavel", label: "Provável", cor: "var(--rec-prevista)", valor: (m) => m.provavel };
+export const S_POSSIVEL: Serie = { key: "possivel", label: "Possível", cor: "var(--rec-prevista)", textura: true, valor: (m) => m.possivel };
 
 /** Como a receita contratada aparece: um total só (consolidada), ou aberta nos três tipos. */
 type Visao = "consolidada" | "detalhada";
@@ -322,7 +322,7 @@ function tetoDoEixo(max: number): number {
   return 10 * p;
 }
 
-function Grafico({ serie, series }: { serie: MesForecast[]; series: Serie[] }) {
+export function Grafico({ serie, series }: { serie: MesForecast[]; series: Serie[] }) {
   const [foco, setFoco] = useState<number | null>(null);
   const totais = serie.map((m) => series.reduce((t, s) => t + s.valor(m), 0));
   const teto = tetoDoEixo(Math.max(...totais));
