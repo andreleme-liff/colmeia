@@ -89,8 +89,9 @@ export default function Painel({
 
   return (
     <div className="pn">
-      <div style={{ display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-0.01em", color: C.ink }}>{dados.saudacao}</span>
+      <div style={{ display: "flex", alignItems: "baseline", gap: "4px 14px", flexWrap: "wrap" }}>
+        <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-0.01em", color: C.ink }}>{dados.saudacao.titulo}</span>
+        <span style={{ fontSize: 14, color: C.dust }}>{dados.saudacao.linha}</span>
       </div>
 
       {/* ---------- 1 · grandes números ---------- */}

@@ -42,8 +42,8 @@ export type LinhaFoco = {
   podeAbrir: boolean;
 };
 export type PainelDados = {
-  /** "Boa tarde, André". */
-  saudacao: string;
+  /** "Boa tarde, André!" e a linha do dia (lib/saudacao.ts). */
+  saudacao: { titulo: string; linha: string };
   focoComercial: LinhaFoco[];
   focoAtividades: LinhaFoco[];
   logs: LogEntry[];

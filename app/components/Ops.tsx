@@ -45,10 +45,22 @@ import {
   type RegistroComResponsavel,
 } from "@/lib/domain";
 import { caminhoDe, type Rota } from "@/lib/rotas";
+import { saudar } from "@/lib/saudacao";
 
-/** "Bom dia" das 5h às 11h59, "Boa tarde" até 17h59, "Boa noite" no resto. */
-function saudacaoDaHora(hora: number): string {
-  return hora >= 5 && hora < 12 ? "Bom dia" : hora >= 12 && hora < 18 ? "Boa tarde" : "Boa noite";
+/**
+ * Dias desde a última vez que a pessoa abriu o sistema neste navegador (e marca a de agora).
+ * Lido uma vez por carga da página: é o que permite o "bom te ver de volta". `null` quando não
+ * dá para saber (primeira vez, navegação privada).
+ */
+function diasDesdeAUltimaVisita(userId: number): number | null {
+  const chave = `liff-go-visto-${userId}`;
+  try {
+    const antes = Number(window.localStorage.getItem(chave));
+    window.localStorage.setItem(chave, String(Date.now()));
+    return antes > 0 ? Math.floor((Date.now() - antes) / 86400000) : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Etapas que o resumo de status reporta quando a pessoa ainda não escolheu: tudo menos Prospecção e Lost. */
@@ -133,6 +145,17 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
   // Produto ou pessoa aberto para edição/exclusão em Cadastros (só administração).
   const [cadEditando, setCadEditando] = useState<{ tipo: "produto"; id: string } | { tipo: "pessoa"; id: number } | null>(null);
   const [waAberto, setWaAberto] = useState(false);
+  // O "agora" da saudação: fixado quando a página carrega, para a frase não mudar no meio do uso.
+  const [agoraMs] = useState(() => Date.now());
+  // Dias fora, para a saudação da home. Lido uma vez, quando se sabe quem é a pessoa.
+  const [diasFora, setDiasFora] = useState<number | null>(null);
+  const idDeQuemOlha = estado?.me.id;
+  useEffect(() => {
+    if (idDeQuemOlha === undefined) return;
+    const dias = diasDesdeAUltimaVisita(idDeQuemOlha);
+    // Atualiza depois do efeito, e só se há o que dizer: evita um render a mais no caso comum.
+    if (dias !== null && dias >= 3) window.setTimeout(() => setDiasFora(dias), 0);
+  }, [idDeQuemOlha]);
   const [waArea, setWaArea] = useState("all");
   // Etapas do funil que entram no resumo. O padrão deixa de fora Prospecção (ainda não houve
   // conversa) e Lost; a escolha fica no perfil, como as outras preferências.
@@ -393,9 +416,40 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     const abertas = atividades.filter((a) => a.status !== "concluido");
     // Os grandes números e os gráficos do painel são calculados no próprio Painel.tsx.
 
+    // Saudação e linha do dia (lib/saudacao.ts). Os fatos saem do estado INTEIRO, não do
+    // recorte dos filtros do cabeçalho: "o que vence hoje para você" não muda com o filtro.
+    const agora = new Date(agoraMs);
+    const hojeLocal = diaISO(agora);
+    const amanhaLocal = diaISO(new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + 1));
+    const prazos = [
+      ...estado.activities.filter((a) => a.status !== "concluido").map((a) => ({ meu: a.responsavelId === me.id, prazo: a.prazo })),
+      ...estado.deals.filter((d) => estagioEmAberto(d.estagio)).map((d) => ({ meu: d.responsavelId === me.id, prazo: d.proximoPassoEm })),
+    ];
+    const conta = (meu: boolean | null, teste: (p: string) => boolean) =>
+      prazos.filter((x) => (meu === null || x.meu === meu) && !!x.prazo && teste(x.prazo.slice(0, 10))).length;
+    const ha48h = agoraMs - 48 * 3600 * 1000;
+    const ganhosRecentes = [
+      ...new Set(
+        estado.logs
+          .filter((l) => / para Ganho$/.test(l.texto) && Date.parse(l.criadoEm) >= ha48h)
+          .map((l) => estado.deals.find((d) => d.ref === l.entidade && d.estagio === "ganho")?.conta)
+          .filter((c): c is string => !!c)
+      ),
+    ];
+    const saudacao = saudar(me.nome.split(" ")[0], me.id, agora, {
+      ganhosRecentes,
+      diasFora,
+      meus: {
+        vencidos: conta(true, (p) => p < hojeLocal),
+        hoje: conta(true, (p) => p === hojeLocal),
+        amanha: conta(true, (p) => p === amanhaLocal),
+        abertos: prazos.filter((x) => x.meu).length,
+      },
+      time: { vencidos: conta(null, (p) => p < hojeLocal), hoje: conta(null, (p) => p === hojeLocal) },
+    });
+
     const painel: PainelDados = {
-      // Só a saudação, pela hora do relógio de quem está olhando.
-      saudacao: `${saudacaoDaHora(new Date().getHours())}, ${me.nome.split(" ")[0]}!`,
+      saudacao,
 
       // Atrasadas primeiro, depois por proximidade do prazo. Seis linhas: o painel responde
       // "o que exige atenção agora", e uma lista longa deixaria de responder isso.
@@ -516,7 +570,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
       atividades, oportunidades, logs, areasVisiveis, painel, colunasDeal, colunasBoard,
       opcoesResponsavel, atividadesBuscadas, oportunidadesBuscadas,
     };
-  }, [estado, areaEfetiva, responsaveis, busca]);
+  }, [estado, areaEfetiva, responsaveis, busca, diasFora, agoraMs]);
 
   // ---------- cadastros ----------
   const cadSet: CadSet | null = useMemo(() => {
@@ -1318,7 +1372,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
                 edição — o servidor recusaria de todo jeito. */}
             {["operacoes", "comercial"].includes(view) && (
               <Button
-                variant="outline"
+                variant="solid"
                 size="sm"
                 disabled={areasEditaveis.length === 0}
                 title={
@@ -1334,7 +1388,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             )}
 
             <Button
-              variant="solid"
+              variant={["operacoes", "comercial"].includes(view) ? "outline" : "solid"}
               size="sm"
               onClick={() => {
                 setWaArea(area);
