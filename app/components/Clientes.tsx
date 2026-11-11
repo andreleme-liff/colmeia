@@ -3,7 +3,7 @@
 // Clientes (só admin, por enquanto): a visão centrada no cliente.
 //
 // De cima para baixo:
-//  1. números — quantos clientes, quantos com oportunidade aberta, com contrato (receita
+//  1. números — quantos clientes, quantos em negociação (organizações distintas, sem prospecção), com contrato (receita
 //     CONTRATADA; previsão não é contrato), e a pendência
 //     que trava o faturamento (contrato sem CNPJ no cadastro);
 //  2. possíveis duplicados — o que a deduplicação automática não juntou, com a mescla a um clique;
@@ -27,10 +27,13 @@ import {
 } from "@/lib/cliente";
 import type { ClienteLido, EventoCliente } from "@/lib/clientes-db";
 
+/** Em negociação = no funil, depois da prospecção e antes do ganho. */
+const emNegociacao = (estagio: string) => estagioEmAberto(estagio) && estagio !== "prospeccao";
+
 type Filtro = "todos" | "abertas" | "contrato" | "semcnpj";
 const FILTROS: { key: Filtro; label: string }[] = [
   { key: "todos", label: "todos" },
-  { key: "abertas", label: "com oportunidade aberta" },
+  { key: "abertas", label: "em negociação" },
   { key: "contrato", label: "com contrato" },
   { key: "semcnpj", label: "contrato sem CNPJ" },
 ];
@@ -39,6 +42,11 @@ const FILTROS: { key: Filtro; label: string }[] = [
 type Visao = {
   c: ClienteLido;
   deals: Deal[];
+  /**
+   * Oportunidades em negociação: da 1ª Reunião ao Contrato. Prospecção fica de fora (ainda não
+   * houve conversa), assim como Lost e On hold (não há conversa agora) e Ganho (já fechou).
+   * Com um produto escolhido no cabeçalho, só as daquele produto.
+   */
   abertas: Deal[];
   pipeline: number;
   /** Tudo o que está cadastrado em Receita para o cliente: contratado ou só previsto. */
@@ -103,7 +111,7 @@ export default function Clientes({
     const fs = dados.faturas.filter((f) =>
       f.contratoId != null ? idsContrato.has(f.contratoId) : c.chaves.includes(chaveCliente(f.conta))
     );
-    const abertas = ds.filter((d) => estagioEmAberto(d.estagio));
+    const abertas = ds.filter((d) => emNegociacao(d.estagio) && (area === "all" || d.area === area));
     const interacoes = ds.map((d) => d.ultimaInteracao).filter((x): x is string => !!x).sort();
     return {
       c,
@@ -170,9 +178,10 @@ export default function Clientes({
       <div className="rec-numeros">
         <Numero rotulo="ORGANIZAÇÕES" valor={String(naArea.length)} detalhe={area === "all" ? "No cadastro" : `Com oportunidade ou receita em ${areaOf(area).label}`} />
         <Numero
-          rotulo="COM OPORTUNIDADE ABERTA"
+          rotulo="EM NEGOCIAÇÃO"
           valor={String(naArea.filter((v) => v.abertas.length).length)}
-          detalhe={`${brl(naArea.reduce((t, v) => t + v.pipeline, 0))} em pipeline aberto`}
+          titulo="Organizações distintas com ao menos uma oportunidade da 1ª Reunião ao Contrato. Cada organização conta uma vez, mesmo com oportunidades em vários produtos. Prospecção, On hold, Lost e Ganho não entram."
+          detalhe={`Organizações distintas, da 1ª Reunião ao Contrato · ${brl(naArea.reduce((t, v) => t + v.pipeline, 0))}`}
         />
         <Numero rotulo="COM CONTRATO" valor={String(naArea.filter((v) => v.contratos.length).length)} detalhe="Receita contratada: venda ganha" />
         <Numero
@@ -245,7 +254,7 @@ export default function Clientes({
         <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}` }}>
           <div style={{ minWidth: 1040 }}>
             <div style={{ display: "grid", gridTemplateColumns: cols, background: C.canvas, borderBottom: `1px solid ${C.line}` }}>
-              {["ORGANIZAÇÃO", "PRODUTOS", "OPORTUNIDADES", "PIPELINE ABERTO", "CONTRATOS", "ÚLT. INTERAÇÃO", "CNPJ"].map((h, k) => (
+              {["ORGANIZAÇÃO", "PRODUTOS", "OPORTUNIDADES", "EM NEGOCIAÇÃO (R$)", "CONTRATOS", "ÚLT. INTERAÇÃO", "CNPJ"].map((h, k) => (
                 <div key={h} style={{ padding: "12px 14px", ...eyebrow(10, C.faint), textAlign: k === 3 ? "right" : "left" }}>
                   {h}
                 </div>
@@ -276,7 +285,7 @@ export default function Clientes({
                 <div style={{ padding: "12px 14px", fontSize: 13, color: C.body }}>
                   {v.deals.length ? (
                     <>
-                      <strong style={{ color: C.ink, fontWeight: 600 }}>{v.abertas.length}</strong> aberta{v.abertas.length === 1 ? "" : "s"}
+                      <strong style={{ color: C.ink, fontWeight: 600 }}>{v.abertas.length}</strong> em negociação
                       <span style={{ color: C.faint }}> de {v.deals.length}</span>
                     </>
                   ) : (
@@ -321,9 +330,9 @@ export default function Clientes({
   );
 }
 
-function Numero({ rotulo, valor, detalhe, alerta }: { rotulo: string; valor: string; detalhe: string; alerta?: boolean }) {
+function Numero({ rotulo, valor, detalhe, alerta, titulo }: { rotulo: string; valor: string; detalhe: string; alerta?: boolean; titulo?: string }) {
   return (
-    <div className="rec-numero">
+    <div className="rec-numero" title={titulo}>
       <div style={eyebrow(10, C.faint, "0.12em")}>{rotulo}</div>
       <div className="rec-numero__valor" style={alerta ? { color: C.warning } : undefined}>
         {valor}
