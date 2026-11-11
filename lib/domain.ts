@@ -129,7 +129,7 @@ export const ADMIN_CARDS = [
   },
   {
     title: "SSO GOOGLE",
-    body: "Login restrito ao domínio getliff.ai. Novos usuários entram sem produto atribuído até liberação.",
+    body: "Login restrito ao domínio getliff.ai. Quem entra pela primeira vez sem pré-cadastro vê tudo e não edita, até a administração mudar o papel.",
   },
   {
     title: "RETENÇÃO DE LOG",

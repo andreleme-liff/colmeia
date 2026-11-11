@@ -950,7 +950,7 @@ function NovaPessoa({
       </Button>
       <div style={{ fontSize: 12, lineHeight: 1.6, color: C.faint }}>
         A pessoa entra sozinha no primeiro login pelo Google — o cadastro só a espera do outro
-        lado, já com papel e permissões.
+        lado, já com o papel escolhido.
       </div>
     </>
   );
@@ -1196,7 +1196,7 @@ export function Cadastros({
         ))}
       </div>
 
-      <div className="liff-cad-split" style={mesh({ display: "grid", gap: 1, ...(tab === "pessoas" ? { gridTemplateColumns: "minmax(0, 1fr)" } : null) })}>
+      <div className="liff-cad-split" style={mesh({ display: "grid", gap: 1 })}>
         <div className="liff-scroll-x" style={{ background: C.cell }}>
           {tab === "pessoas" ? (
             <Permissoes
@@ -1262,7 +1262,7 @@ export function Cadastros({
 
         <div style={{ background: C.cell, padding: 22 }}>
           <div style={{ ...eyebrow(11, C.dust), marginBottom: 18 }}>{TITULO_NOVO[tab] ?? "NOVO REGISTRO"}</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: tab === "pessoas" ? 420 : undefined }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {/* Um formulário por aba, e não um genérico com Nome/Área/Observação: pessoa e
                 produto não pedem os mesmos campos, e o formulário único não conseguia
                 enviar nenhum dos dois. Produtos e módulos são configuração do sistema —
@@ -1281,7 +1281,7 @@ export function Cadastros({
               <NovoProduto salvando={salvandoArea} areas={areasEditaveis} onCriar={onCriarProduto} area={areaNovoModulo} setArea={setAreaNovoModulo} focoRef={focoNovoModulo} />
             )}
             <div style={{ fontSize: 12, lineHeight: 1.6, color: C.faint }}>
-              Cadastros alimentam os seletores de atividades, oportunidades e permissões. Alterações entram no
+              Cadastros alimentam os seletores de atividades, oportunidades e responsáveis. Alterações entram no
               changelog.
             </div>
           </div>
