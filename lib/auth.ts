@@ -4,6 +4,7 @@
 import { randomBytes } from "crypto";
 import { cookies } from "next/headers";
 import { getDb } from "./db";
+import { registrar } from "./log";
 import type { Papel } from "./domain";
 
 const SESSION_DAYS = 30;
@@ -144,8 +145,8 @@ export function iniciaisDe(nome: string): string {
 /**
  * Login via SSO: casa por e-mail. Se a conta já existe (inclusive pré-cadastrada pela
  * administração, sem google_sub), linka e assume nome/foto reais do Google na primeira vez.
- * Conta nova entra como 'membro' e SEM nenhuma área — precisa de liberação na administração,
- * que é exatamente o que a tela promete. A exceção é ADMIN_EMAIL, que entra como admin para
+ * Conta nova entra como 'membro', vendo todos os produtos e sem editar nenhum (pedido de
+ * nov/2026; antes entrava sem nenhum produto). A exceção é ADMIN_EMAIL, que entra como admin para
  * a primeira instalação não ficar sem ninguém que possa liberar acesso.
  */
 export async function findOrCreateGoogleUser(
@@ -174,10 +175,33 @@ export async function findOrCreateGoogleUser(
   const adminEmail = (process.env.ADMIN_EMAIL ?? "").trim().toLowerCase();
   const papel: Papel = adminEmail && email.toLowerCase() === adminEmail ? "admin" : "membro";
 
-  const [row] = await sql<{ id: number }[]>`
-    INSERT INTO users (nome, email, papel, iniciais, google_sub, avatar_url)
-    VALUES (${nome}, ${email}, ${papel}, ${iniciaisDe(nome)}, ${googleSub}, ${avatarUrl})
-    RETURNING id
-  `;
-  return row.id;
+  // Conta nova (primeiro login de alguém do domínio, sem pré-cadastro): vê todos os produtos
+  // que existem agora e não edita nenhum. Editar continua sendo liberação da administração,
+  // produto a produto, em Cadastros → pessoas. Produto criado depois não entra sozinho.
+  const id = await sql.begin(async (tx) => {
+    const [row] = await tx<{ id: number }[]>`
+      INSERT INTO users (nome, email, papel, iniciais, google_sub, avatar_url)
+      VALUES (${nome}, ${email}, ${papel}, ${iniciaisDe(nome)}, ${googleSub}, ${avatarUrl})
+      RETURNING id
+    `;
+    if (papel !== "admin") {
+      const liberadas = await tx<{ area: string }[]>`
+        INSERT INTO user_area_perms (user_id, area, nivel)
+        SELECT ${row.id}::int, a.id, 'view' FROM areas a
+        ON CONFLICT DO NOTHING
+        RETURNING area
+      `;
+      await registrar(tx, {
+        actorUserId: null,
+        area: null,
+        entidade: `U-${row.id}`,
+        campo: "permissoes",
+        de: null,
+        para: `ver em ${liberadas.length} produto(s)`,
+        texto: `Primeiro acesso de ${nome}: liberado para ver todos os produtos, sem editar`,
+      });
+    }
+    return row.id;
+  });
+  return id;
 }
