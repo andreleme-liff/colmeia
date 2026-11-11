@@ -14,6 +14,7 @@ import { Switch } from "./ds";
 import { C, eyebrow } from "./tokens";
 import type { Pessoa } from "./api";
 import { porTexto } from "@/lib/domain";
+import { useOrdem } from "./ordenacao";
 
 const PAPEIS_TELA: { key: string; nome: string; faz: string }[] = [
   { key: "leitura", nome: "leitura", faz: "vê tudo, não edita" },
@@ -92,6 +93,7 @@ export default function Permissoes({
   const [busca, setBusca] = useState("");
   const [verInativos, setVerInativos] = useState(false);
   const [marcados, setMarcados] = useState<number[]>([]);
+  const ord = useOrdem();
 
   const inativos = pessoas.filter((p) => !p.ativo).length;
   const visiveis = useMemo(() => {
@@ -169,12 +171,15 @@ export default function Permissoes({
                 title="Marcar todas as pessoas da lista"
               />
             </div>
-            <div style={{ padding: "10px 8px", ...eyebrow(10, C.faint) }}>PESSOA</div>
-            <div style={{ padding: "10px 6px", ...eyebrow(10, C.faint) }}>PAPEL</div>
-            <div style={{ padding: "10px 6px", ...eyebrow(10, C.faint), textAlign: "center" }}>ATIVA</div>
+            {ord.th("pessoa", "PESSOA", { padding: "10px 8px", ...eyebrow(10, C.faint) })}
+            {ord.th("papel", "PAPEL", { padding: "10px 6px", ...eyebrow(10, C.faint) })}
+            {ord.th("ativa", "ATIVA", { padding: "10px 6px", ...eyebrow(10, C.faint), textAlign: "center" })}
           </div>
 
-          {visiveis.map((p) => {
+          {ord
+            // Papel na ordem de acesso (leitura → admin), não alfabética.
+            .aplicar(visiveis, { pessoa: (p) => p.nome, papel: (p) => PAPEIS_TELA.findIndex((x) => x.key === p.papel), ativa: (p) => p.ativo })
+            .map((p) => {
             const eu = p.id === meuId;
             const marcado = selecao.includes(p.id);
             return (

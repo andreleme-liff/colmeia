@@ -19,6 +19,7 @@ import { Button, Field, Input, Select } from "./ds";
 import { C, GHOST_FIX, MONO, eyebrow } from "./tokens";
 import { api, type Deal } from "./api";
 import { CampoData, Modal } from "./views";
+import { useOrdem } from "./ordenacao";
 import { areaOf, brl, brlExato, hojeISO, porTexto, stageLabel, todasAreas } from "@/lib/domain";
 import {
   ETAPAS_FINAIS, FORMAS_COBRANCA, ROTULO_SITUACAO, TIPOS_RECEITA, contratadaDoMes, lancamentos, mesDe, rotuloMes, serieMensal,
@@ -503,16 +504,28 @@ function TabelaContratos({
 }) {
   const cols = "1.6fr 0.9fr 0.9fr 0.7fr 1fr 1fr 1fr 1fr";
   const linha = (c: Contrato, t: TipoReceita) => c.linhas.find((l) => l.tipo === t);
-  const ordenados = [...itens].sort((a, b) => porTexto(a.contrato.conta, b.contrato.conta));
+  const ord = useOrdem();
+  const valorDe = (c: Contrato, t: TipoReceita) => linha(c, t)?.valorCentavos ?? null;
+  const ordenados = ord.aplicar([...itens].sort((a, b) => porTexto(a.contrato.conta, b.contrato.conta)), {
+    conta: (i) => i.contrato.conta,
+    produto: (i) => areaOf(i.contrato.area).label,
+    situacao: (i) => ROTULO_SITUACAO[i.efetiva],
+    inicio: (i) => i.contrato.inicioFaturamento,
+    assinatura: (i) => valorDe(i.contrato, "assinatura"),
+    implantacao: (i) => valorDe(i.contrato, "implantacao"),
+    customizacao: (i) => valorDe(i.contrato, "customizacao"),
+    total: (i) => (i.efetiva === "fora" ? null : totalNoPeriodo(i.contrato, de, ate)),
+  });
   return (
     <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}` }}>
       <div style={{ minWidth: 980 }}>
         <div style={{ display: "grid", gridTemplateColumns: cols, background: C.canvas, borderBottom: `1px solid ${C.line}` }}>
-          {["CLIENTE", "PRODUTO", "SITUAÇÃO", "INÍCIO", "ASSINATURA / MÊS", "IMPLANTAÇÃO", "CUSTOMIZAÇÃO", `TOTAL · ${horizonte} MESES`].map((h, k) => (
-            <div key={h} style={{ padding: "12px 14px", ...eyebrow(10, C.faint), textAlign: k >= 4 ? "right" : "left" }}>
-              {h}
-            </div>
-          ))}
+          {(
+            [
+              ["conta", "CLIENTE"], ["produto", "PRODUTO"], ["situacao", "SITUAÇÃO"], ["inicio", "INÍCIO"], ["assinatura", "ASSINATURA / MÊS"],
+              ["implantacao", "IMPLANTAÇÃO"], ["customizacao", "CUSTOMIZAÇÃO"], ["total", `TOTAL · ${horizonte} MESES`],
+            ] as const
+          ).map(([chave, h], k) => ord.th(chave, h, { padding: "12px 14px", ...eyebrow(10, C.faint), textAlign: k >= 4 ? "right" : "left" }))}
         </div>
         {ordenados.map(({ contrato: c, efetiva }) => {
           const d = c.dealId != null ? dealPorId.get(c.dealId) : undefined;

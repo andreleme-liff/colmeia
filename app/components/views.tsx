@@ -10,6 +10,7 @@ import { C, GHOST_FIX, MONO, SANS, dot, eyebrow, mesh, statusColor } from "./tok
 import { type Activity, type AreaCadastro, type Deal, type LogEntry, type NovaOportunidade, type OrganizacaoResumo, type Origem, type Pessoa } from "./api";
 import SeletorArea, { type OpcaoArea } from "./SeletorArea";
 import Historico, { LinhaDoTempo } from "./Historico";
+import { useOrdem } from "./ordenacao";
 import { chaveCliente } from "@/lib/cliente";
 import Permissoes from "./Permissoes";
 import ViaConexao from "./ViaConexao";
@@ -746,6 +747,7 @@ function TabelaAreas({
   onExcluir: (id: string, label: string) => void;
   onNome: (id: string, patch: { label?: string; short?: string }) => void;
 }) {
+  const ord = useOrdem();
   return (
     <div style={{ minWidth: 520 }}>
       <div
@@ -756,13 +758,11 @@ function TabelaAreas({
           borderBottom: `1px solid ${C.line}`,
         }}
       >
-        {["PRODUTO", "COR", "ATIVIDADES", ""].map((h, i) => (
-          <div key={i} style={{ padding: "12px 16px", ...eyebrow(10, C.faint) }}>
-            {h}
-          </div>
-        ))}
+        {(
+          [["produto", "PRODUTO"], [null, "COR"], ["atividades", "ATIVIDADES"], [null, ""]] as const
+        ).map(([chave, h], i) => ord.th(chave, h, { padding: "12px 16px", ...eyebrow(10, C.faint) }, i))}
       </div>
-      {areas.map((a) => (
+      {ord.aplicar(areas, { produto: (a) => a.label, atividades: (a) => contagem(a.id) }).map((a) => (
         <div
           key={a.id}
           style={{ display: "grid", gridTemplateColumns: COLS_AREA, borderBottom: `1px solid ${C.line}`, alignItems: "center" }}
@@ -1157,6 +1157,7 @@ export function Cadastros({
 }) {
   const [areaNovoModulo, setAreaNovoModulo] = useState("");
   const focoNovoModulo = useRef<HTMLDivElement | null>(null);
+  const ordCad = useOrdem();
   return (
     <>
       <div style={mesh({ display: "flex", gap: 1, width: "fit-content", marginBottom: 22, flexWrap: "wrap" })}>
@@ -1212,13 +1213,9 @@ export function Cadastros({
                 borderBottom: `1px solid ${C.line}`,
               }}
             >
-              {set.head.map((h) => (
-                <div key={h} style={{ padding: "12px 16px", ...eyebrow(10, C.faint) }}>
-                  {h}
-                </div>
-              ))}
+              {set.head.map((h, k) => ordCad.th(["a", "b", "c"][k] ?? null, h, { padding: "12px 16px", ...eyebrow(10, C.faint) }, h))}
             </div>
-            {set.rows.map((r) => (
+            {ordCad.aplicar(set.rows, { a: (r) => r.a, b: (r) => r.b, c: (r) => r.c }).map((r) => (
               <div
                 key={r.key}
                 className={r.abrir ? "liff-hover-row" : undefined}
@@ -1314,6 +1311,7 @@ export function Auditoria({
   /** Chaves do filtro Quem (`u:<id>` ou "sem" para o sistema); vazio = todos. */
   autores: readonly string[];
 }) {
+  const ord = useOrdem();
   if (falha && !todas) return <Aviso>{falha}</Aviso>;
   if (!todas) return <div style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>carregando changelog…</div>;
 
@@ -1342,13 +1340,18 @@ export function Auditoria({
             borderBottom: `1px solid ${C.line}`,
           }}
         >
-          {["QUANDO", "QUEM", "PRODUTO", "O QUE MUDOU"].map((h) => (
-            <div key={h} style={{ padding: "12px 16px", ...eyebrow(10, C.faint) }}>
-              {h}
-            </div>
-          ))}
+          {(
+            [["quando", "QUANDO"], ["quem", "QUEM"], ["produto", "PRODUTO"], ["texto", "O QUE MUDOU"]] as const
+          ).map(([chave, h]) => ord.th(chave, h, { padding: "12px 16px", ...eyebrow(10, C.faint) }))}
         </div>
-        {logs.map((l) => {
+        {ord
+          .aplicar(logs, {
+            quando: (l) => l.criadoEm,
+            quem: (l) => l.autor,
+            produto: (l) => (l.area ? areaOf(l.area).label : null),
+            texto: (l) => l.texto,
+          })
+          .map((l) => {
           const a = l.area ? areaOf(l.area) : null;
           return (
             <div

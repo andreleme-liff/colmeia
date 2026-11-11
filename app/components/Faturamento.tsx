@@ -11,6 +11,7 @@
 // As regras moram em `lib/faturamento.ts`. A fatura só passa a existir no banco quando é
 // emitida; antes disso, "a emitir" é calculada do contrato.
 
+import { useOrdem } from "./ordenacao";
 import { useEffect, useState } from "react";
 import { Button, Field, Input, Select } from "./ds";
 import { C, GHOST_FIX, MONO, eyebrow } from "./tokens";
@@ -308,18 +309,26 @@ function Numero({ rotulo, valor, detalhe, alerta }: { rotulo: string; valor: num
 const COLS_MES = "1.6fr 1.1fr 0.9fr 0.8fr 0.8fr 0.9fr 140px";
 
 function TabelaMes({ itens, vazio, hoje, onAcao }: { itens: ItemDoMes[]; vazio: string; hoje: string; onAcao: (a: Acao) => void }) {
+  const ord = useOrdem();
   if (!itens.length) return <div style={{ fontSize: 14, color: C.faint, lineHeight: 1.6, maxWidth: 640 }}>{vazio}</div>;
   return (
     <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}` }}>
       <div style={{ minWidth: 920 }}>
         <div className="fat-linha fat-linha--cab" style={{ gridTemplateColumns: COLS_MES }}>
-          {["CLIENTE", "O QUE", "VALOR", "VENCIMENTO", "NF", "SITUAÇÃO", ""].map((h, k) => (
-            <div key={k} style={{ ...eyebrow(10, C.faint), textAlign: h === "VALOR" ? "right" : "left" }}>
-              {h}
-            </div>
-          ))}
+          {(
+            [["conta", "CLIENTE"], ["oque", "O QUE"], ["valor", "VALOR"], ["vencimento", "VENCIMENTO"], ["nf", "NF"], ["situacao", "SITUAÇÃO"], [null, ""]] as const
+          ).map(([chave, h], k) => ord.th(chave, h, { ...eyebrow(10, C.faint), textAlign: h === "VALOR" ? "right" : "left" }, k))}
         </div>
-        {itens.map((i) => {
+        {ord
+          .aplicar(itens, {
+            conta: (i) => i.conta,
+            oque: (i) => (i.tipo === "avulsa" ? i.fatura?.descricao || "Avulsa" : `${rotuloTipoFatura(i.tipo)} ${i.parcela}`),
+            valor: (i) => i.valorCentavos,
+            vencimento: (i) => i.fatura?.vencimento ?? null,
+            nf: (i) => i.fatura?.nfNumero ?? null,
+            situacao: (i) => i.status,
+          })
+          .map((i) => {
           const f = i.fatura;
           return (
             <div
@@ -381,18 +390,26 @@ function TabelaAberto({
   hoje: string;
   onAcao: (a: Acao) => void;
 }) {
+  const ord = useOrdem();
   if (!faturas.length) return <div style={{ fontSize: 14, color: C.faint }}>Nenhuma fatura em aberto.</div>;
   return (
     <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}` }}>
       <div style={{ minWidth: 980 }}>
         <div className="fat-linha fat-linha--cab" style={{ gridTemplateColumns: COLS_ABERTO }}>
-          {["CLIENTE", "COMPETÊNCIA", "A RECEBER", "VENCIMENTO", "NF", "SITUAÇÃO", ""].map((h, k) => (
-            <div key={k} style={{ ...eyebrow(10, C.faint), textAlign: h === "A RECEBER" ? "right" : "left" }}>
-              {h}
-            </div>
-          ))}
+          {(
+            [["conta", "CLIENTE"], ["competencia", "COMPETÊNCIA"], ["receber", "A RECEBER"], ["vencimento", "VENCIMENTO"], ["nf", "NF"], ["situacao", "SITUAÇÃO"], [null, ""]] as const
+          ).map(([chave, h], k) => ord.th(chave, h, { ...eyebrow(10, C.faint), textAlign: h === "A RECEBER" ? "right" : "left" }, k))}
         </div>
-        {faturas.map((f) => {
+        {ord
+          .aplicar(faturas, {
+            conta: (f) => f.conta,
+            competencia: (f) => f.competencia,
+            receber: (f) => liquidoEsperado(f),
+            vencimento: (f) => f.vencimento,
+            nf: (f) => f.nfNumero,
+            situacao: (f) => statusDe(f, hoje),
+          })
+          .map((f) => {
           const s = statusDe(f, hoje);
           const email = f.contratoId != null ? contratoPorId.get(f.contratoId)?.cobranca.emailCobranca : "";
           return (

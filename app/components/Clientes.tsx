@@ -22,6 +22,7 @@ import { Button, Field, Input, Select } from "./ds";
 import { C, GHOST_FIX, MONO, dot, eyebrow } from "./tokens";
 import { api, type Deal } from "./api";
 import { Modal } from "./views";
+import { useOrdem } from "./ordenacao";
 import { areaOf, brl, brlExato, estagioEmAberto, porTexto, stageLabel } from "@/lib/domain";
 import { FORMAS_COBRANCA, ROTULO_SITUACAO, situacaoEfetiva, type Contrato } from "@/lib/forecast";
 import type { Fatura } from "@/lib/faturamento";
@@ -93,6 +94,7 @@ export default function Clientes({
   const [aberto, setAberto] = useState<number | "novo" | null>(null);
   const [verDuplicados, setVerDuplicados] = useState(false);
   const [mesclando, setMesclando] = useState(false);
+  const ord = useOrdem();
 
   useEffect(() => {
     let vivo = true;
@@ -161,6 +163,16 @@ export default function Clientes({
       filtro === "abertas" ? v.abertas.length > 0 : filtro === "contrato" ? fechou(v) > 0 : filtro === "prospeccao" ? soProspeccao(v) : true
     )
     .sort((a, b) => porTexto(a.c.nome, b.c.nome));
+
+  const ordenada = ord.aplicar(lista, {
+    nome: (v) => v.c.nome,
+    produtos: (v) => v.areas.map((a) => areaOf(a).label).join(", "),
+    oportunidades: (v) => (v.deals.length ? v.abertas.length * 10000 + v.deals.length : null),
+    pipeline: (v) => v.pipeline || null,
+    contratos: (v) => fechou(v) || null,
+    ultima: (v) => v.ultima,
+    cnpj: (v) => v.c.cnpj,
+  });
 
   const duplicados = possiveisDuplicados(dados.clientes);
   const visaoDe = (id: number) => visoes.find((v) => v.c.id === id);
@@ -278,13 +290,14 @@ export default function Clientes({
         <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}` }}>
           <div style={{ minWidth: 1040 }}>
             <div style={{ display: "grid", gridTemplateColumns: cols, background: C.canvas, borderBottom: `1px solid ${C.line}` }}>
-              {["ORGANIZAÇÃO", "PRODUTOS", "OPORTUNIDADES", "EM NEGOCIAÇÃO (R$)", "CONTRATOS", "ÚLT. INTERAÇÃO", "CNPJ"].map((h, k) => (
-                <div key={h} style={{ padding: "12px 14px", ...eyebrow(10, C.faint), textAlign: k === 3 ? "right" : "left" }}>
-                  {h}
-                </div>
-              ))}
+              {(
+                [
+                  ["nome", "ORGANIZAÇÃO"], ["produtos", "PRODUTOS"], ["oportunidades", "OPORTUNIDADES"], ["pipeline", "EM NEGOCIAÇÃO (R$)"],
+                  ["contratos", "CONTRATOS"], ["ultima", "ÚLT. INTERAÇÃO"], ["cnpj", "CNPJ"],
+                ] as const
+              ).map(([chave, h]) => ord.th(chave, h, { padding: "12px 14px", ...eyebrow(10, C.faint), textAlign: chave === "pipeline" ? "right" : "left" }))}
             </div>
-            {lista.map((v) => (
+            {ordenada.map((v) => (
               <div
                 key={v.c.id}
                 className="liff-hover-row"

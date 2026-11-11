@@ -478,6 +478,15 @@ textarea::placeholder {
 .liff-hover-cell:hover,
 .liff-hover-card:hover,
 .liff-hover-row:hover { background: var(--liff-surface-2) !important; }
+/* Título de coluna clicável (app/components/ordenacao.tsx). Herda a tipografia do cabeçalho;
+   a seta fica apagada até a coluna ser a da ordenação ou o mouse passar. */
+.liff-th { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; font: inherit; letter-spacing: inherit;
+  text-transform: inherit; color: inherit; text-align: inherit; }
+.liff-th:hover, .liff-th[data-ativa="1"] { color: var(--liff-text); }
+.liff-th:focus-visible { outline: 2px solid var(--liff-accent); outline-offset: 3px; }
+.liff-th__seta { font-size: 8px; line-height: 1; opacity: 0; letter-spacing: 0; }
+.liff-th:hover .liff-th__seta, .liff-th:focus-visible .liff-th__seta { opacity: .6; }
+.liff-th[data-ativa="1"] .liff-th__seta { opacity: 1; color: var(--liff-accent); }
 
 /* ---------- kanban (Comercial e Operações) ----------
    Sem fios: nem entre colunas, nem em volta do card, nem dentro dele. Quem separa é o

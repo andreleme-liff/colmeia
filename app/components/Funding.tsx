@@ -14,6 +14,7 @@
 // Regras em `lib/funding.ts`. A ligação da estimativa com o card do comercial existe no banco
 // (`dealId`), mas ainda não aparece aqui — vem numa próxima etapa.
 
+import { useOrdem } from "./ordenacao";
 import { useEffect, useState } from "react";
 import { Button, Field, Input, Select } from "./ds";
 import { C, GHOST_FIX, MONO, eyebrow } from "./tokens";
@@ -178,6 +179,7 @@ export default function Funding({ gatilho }: { gatilho: number | undefined }) {
 
 function Estimativas({ dados, arqPorId, onAbrir }: { dados: Dados; arqPorId: Map<number, Arquetipo>; onAbrir: (id: number) => void }) {
   const ests = dados.estimativas;
+  const ord = useOrdem();
   const somaMes = (k: "liff" | "cliente") => ests.reduce((t, e) => t + consumo(e).mensal[k], 0);
   const totalPeriodo = ests.reduce((t, e) => t + consumo(e).total, 0);
   const garantido = ests.reduce((t, e) => t + funding(e).garantido, 0);
@@ -201,13 +203,25 @@ function Estimativas({ dados, arqPorId, onAbrir }: { dados: Dados; arqPorId: Map
         <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}` }}>
           <div style={{ minWidth: 1080 }}>
             <div className="fat-linha fat-linha--cab" style={{ gridTemplateColumns: cols }}>
-              {["CLIENTE", "ARQUÉTIPO", "REGIÃO · PORTE", "LIFF/MÊS", "CLIENTE/MÊS", "IA/MÊS", "NO PERÍODO", "FUNDING GARANTIDO"].map((h, k) => (
-                <div key={h} style={{ ...eyebrow(10, C.faint), textAlign: k >= 3 ? "right" : "left" }}>
-                  {h}
-                </div>
-              ))}
+              {(
+                [
+                  ["conta", "CLIENTE"], ["arquetipo", "ARQUÉTIPO"], ["regiao", "REGIÃO · PORTE"], ["liff", "LIFF/MÊS"], ["cliente", "CLIENTE/MÊS"],
+                  ["ia", "IA/MÊS"], ["total", "NO PERÍODO"], ["garantido", "FUNDING GARANTIDO"],
+                ] as const
+              ).map(([chave, h], k) => ord.th(chave, h, { ...eyebrow(10, C.faint), textAlign: k >= 3 ? "right" : "left" }))}
             </div>
-            {ests.map((e) => {
+            {ord
+              .aplicar(ests, {
+                conta: (e) => e.conta,
+                arquetipo: (e) => (e.arquetipoId != null ? arqPorId.get(e.arquetipoId)?.nome : null),
+                regiao: (e) => `${e.regiao} ${e.porte ?? ""}`,
+                liff: (e) => consumo(e).mensal.liff,
+                cliente: (e) => e.clienteMensalCentavos,
+                ia: (e) => e.iaMensalCentavos || null,
+                total: (e) => consumo(e).total,
+                garantido: (e) => funding(e).garantido,
+              })
+              .map((e) => {
               const a = e.arquetipoId != null ? arqPorId.get(e.arquetipoId) : undefined;
               const c = consumo(e);
               const f = funding(e);
