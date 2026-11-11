@@ -656,6 +656,9 @@ textarea::placeholder {
   letter-spacing: .1em; text-transform: uppercase; color: var(--liff-text-muted); }
 .liff-densidade button[aria-pressed="true"] { background: var(--liff-surface-2); color: var(--liff-text); }
 .liff-densidade button:focus-visible { outline: 2px solid var(--liff-accent); outline-offset: -2px; }
+/* Versão só com ícones (tamanho do card no Comercial). */
+.liff-densidade--icones button { padding: 6px 9px; display: inline-flex; align-items: center; }
+.liff-densidade--icones button + button { border-left: 1px solid var(--liff-border); }
 
 /* ---------- responsivo ---------- */
 @media (max-width: 1100px) {

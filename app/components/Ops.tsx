@@ -1272,20 +1272,34 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           <div style={{ display: "flex", gap: 10, alignItems: "center", marginLeft: "auto" }}>
             {/* Densidade do kanban comercial. Fica no perfil: abre do jeito que a pessoa deixou. */}
             {view === "comercial" && (
-              <div role="group" aria-label="Densidade dos cards" className="liff-densidade">
-                {(["completo", "compacto"] as const).map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    aria-pressed={densidade === d}
-                    onClick={() => {
-                      setDensidade(d);
-                      lembrar({ densidade: d });
-                    }}
-                  >
-                    {d}
-                  </button>
-                ))}
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={eyebrow(10, C.faint, "0.14em")}>CARD</span>
+                <div role="group" aria-label="Tamanho dos cards" className="liff-densidade liff-densidade--icones">
+                  {(
+                    [
+                      // Completo: o card alto, com as linhas de situação e próximo passo.
+                      { d: "completo", rotulo: "Card completo", desenho: <><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></> },
+                      // Compacto: dois cards baixos, só com o título.
+                      { d: "compacto", rotulo: "Card compacto", desenho: <><rect x="4" y="4" width="16" height="6.5" rx="1.5" /><rect x="4" y="13.5" width="16" height="6.5" rx="1.5" /></> },
+                    ] as const
+                  ).map(({ d, rotulo, desenho }) => (
+                    <button
+                      key={d}
+                      type="button"
+                      aria-pressed={densidade === d}
+                      aria-label={rotulo}
+                      title={rotulo}
+                      onClick={() => {
+                        setDensidade(d);
+                        lembrar({ densidade: d });
+                      }}
+                    >
+                      <svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        {desenho}
+                      </svg>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
