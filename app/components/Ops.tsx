@@ -395,7 +395,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
 
     const painel: PainelDados = {
       // Só a saudação, pela hora do relógio de quem está olhando.
-      saudacao: `${saudacaoDaHora(new Date().getHours())}, ${me.nome.split(" ")[0]}`,
+      saudacao: `${saudacaoDaHora(new Date().getHours())}, ${me.nome.split(" ")[0]}!`,
 
       // Atrasadas primeiro, depois por proximidade do prazo. Seis linhas: o painel responde
       // "o que exige atenção agora", e uma lista longa deixaria de responder isso.
