@@ -245,7 +245,7 @@ export function EditarPessoa({
       destinos: u.destinos.map((d) => ({ value: String(d.id), label: d.nome })),
       extra:
         "A pessoa perde o acesso na hora: sessões" +
-        (u.conexoes ? ` e ${u.conexoes} conexão(ões) do Claude` : " e conexões do Claude") +
+        (u.conexoes ? ` e ${u.conexoes} conexão(ões) de assistentes (MCP)` : " e conexões de assistentes (MCP)") +
         ". O nome continua no histórico do que ela fez.",
     };
   });

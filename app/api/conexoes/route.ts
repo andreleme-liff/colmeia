@@ -2,6 +2,7 @@
 // todas. Revogadas nos últimos 30 dias continuam na lista, com motivo e autor da revogação —
 // some da lista o que já não diz nada, mas o audit_log guarda tudo para sempre.
 
+import { origemDoCliente } from "@/lib/oauth/protocolo";
 import { getDb } from "@/lib/db";
 import { requireCtx } from "@/lib/perms";
 import { json } from "@/lib/http";
@@ -39,7 +40,7 @@ export async function GET() {
       pessoa: k.pessoa,
       minha: k.user_id === ctx.user.userId,
       cliente: k.client_nome,
-      clienteHost: new URL(k.client_id).hostname,
+      clienteHost: origemDoCliente(k.client_id),
       retorno: hostDeRetorno(k.redirect_uri),
       escopos: k.escopos.split(" "),
       criadoEm: k.criado_em.toISOString(),

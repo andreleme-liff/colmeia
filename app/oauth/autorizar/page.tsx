@@ -7,7 +7,7 @@
 import { notFound, redirect } from "next/navigation";
 import { prepararPedido } from "@/lib/oauth/pedido";
 import { hostDeRetorno } from "@/lib/oauth/servidor";
-import { redirectEhLoopback } from "@/lib/oauth/protocolo";
+import { origemDoCliente, redirectEhLoopback } from "@/lib/oauth/protocolo";
 import TelaConsentimento from "./TelaConsentimento";
 import { autorizarConexao, recusarConexao } from "./acoes";
 
@@ -29,7 +29,7 @@ export default async function Autorizar(props: PageProps<"/oauth/autorizar">) {
       modo="pedido"
       query={q.toString()}
       cliente={p.doc.nome}
-      clienteHost={new URL(p.doc.clientId).hostname}
+      clienteHost={origemDoCliente(p.doc.clientId)}
       retorno={hostDeRetorno(p.pedido.redirectUri)}
       loopback={redirectEhLoopback(p.pedido.redirectUri)}
       pessoa={p.ctx.user.nome}

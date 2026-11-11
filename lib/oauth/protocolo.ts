@@ -25,10 +25,54 @@ export type Config = {
 };
 
 export const RESOURCE_PADRAO = "https://go.liff.tech/api/mcp";
+/**
+ * Hosts cujos aplicativos podem pedir acesso, quando `MCP_CLIENTES_PERMITIDOS` não diz outra
+ * coisa: Claude (claude.ai, desktop, Claude Code) e ChatGPT. Os dois se identificam por um
+ * Client ID Metadata Document no próprio host. Aplicativo que só sabe se cadastrar por
+ * registro dinâmico (DCR) não entra: este servidor não tem `registration_endpoint`.
+ */
+export const CLIENTES_PADRAO = "claude.ai,chatgpt.com,amazon-quick";
+
+/**
+ * Clientes pré-cadastrados: aplicativos que NÃO sabem se identificar por documento (CIMD) e
+ * pedem um client ID configurado à mão. O Amazon Quick é assim: sem registro dinâmico no
+ * servidor, quem cria a integração lá digita o client ID e marca "Public OAuth client".
+ *
+ * É cliente público (PKCE, sem segredo), e o código de autorização só volta para o endereço
+ * de retorno do próprio Quick, que é por região da AWS e sempre em quicksight.aws.amazon.com.
+ * A chave do mapa é o `client_id`; para valer, precisa constar em `MCP_CLIENTES_PERMITIDOS`.
+ */
+export const CLIENTES_FIXOS: Record<string, { nome: string; redirect: RegExp }> = {
+  "amazon-quick": {
+    nome: "Amazon Quick",
+    redirect: /^https:\/\/[a-z]{2}(?:-[a-z]+){1,2}-\d\.quicksight\.aws\.amazon\.com\/sn\/oauthcallback$/,
+  },
+};
+
+/**
+ * De onde o cliente vem, para mostrar na tela: o host do documento (claude.ai, chatgpt.com) ou,
+ * no cliente pré-cadastrado, cujo `client_id` não é URL, o próprio identificador.
+ */
+export const PRE_CADASTRADO = "pré-cadastrado";
+
+export function origemDoCliente(clientId: string): string {
+  try {
+    return new URL(clientId).hostname;
+  } catch {
+    return PRE_CADASTRADO;
+  }
+}
+
+/** O documento de um cliente pré-cadastrado, se o `client_id` é um deles e está liberado. */
+export function clienteFixo(clientId: string, permitidos: string[]): DocumentoCliente | null {
+  const fixo = Object.hasOwn(CLIENTES_FIXOS, clientId) ? CLIENTES_FIXOS[clientId] : undefined;
+  if (!fixo || !permitidos.includes(clientId)) return null;
+  return { clientId, nome: fixo.nome, redirectUris: [], redirectPadrao: fixo.redirect };
+}
 
 export function lerConfig(env: Record<string, string | undefined>): Config {
   const resource = canonizarResource(env.MCP_URL_CANONICA || RESOURCE_PADRAO) ?? RESOURCE_PADRAO;
-  const clientes = (env.MCP_CLIENTES_PERMITIDOS || "claude.ai")
+  const clientes = (env.MCP_CLIENTES_PERMITIDOS || CLIENTES_PADRAO)
     .split(",")
     .map((h) => h.trim().toLowerCase())
     .filter(Boolean);
@@ -125,6 +169,8 @@ export type DocumentoCliente = {
   clientId: string;
   nome: string;
   redirectUris: string[];
+  /** Só em cliente pré-cadastrado: o formato do endereço de retorno, quando varia (por região). */
+  redirectPadrao?: RegExp;
 };
 
 /** Valida o documento buscado. `null` = inutilizável. */
@@ -136,8 +182,13 @@ export function validarDocumentoCliente(doc: unknown, clientIdUrl: string): Docu
   if (d.client_id !== clientIdUrl) return null;
   if (!Array.isArray(d.redirect_uris) || !d.redirect_uris.length) return null;
   if (!d.redirect_uris.every((r) => typeof r === "string" && r.length <= 2000)) return null;
-  // Só cliente público. É o que anunciamos, e é o que o Claude usa via CIMD.
-  if (d.token_endpoint_auth_method !== undefined && d.token_endpoint_auth_method !== "none") return null;
+  // Só cliente público (PKCE, sem segredo): é o que anunciamos. O Claude declara `none`. O
+  // ChatGPT declara `private_key_jwt` como preferido, mas lista `none` entre os que sabe usar
+  // (`token_endpoint_auth_methods_supported`, no próprio documento) e cai nele quando o
+  // servidor só oferece esse. Documento que não sabe ser cliente público é recusado.
+  const metodo = d.token_endpoint_auth_method;
+  const sabeUsar = Array.isArray(d.token_endpoint_auth_methods_supported) ? d.token_endpoint_auth_methods_supported : [];
+  if (metodo !== undefined && metodo !== "none" && !sabeUsar.includes("none")) return null;
   const nome = typeof d.client_name === "string" && d.client_name.trim()
     ? d.client_name.trim().slice(0, 80)
     : new URL(clientIdUrl).hostname;
@@ -223,7 +274,8 @@ export function validarPedido(
   | { ok: false; naTela: string }
   | { ok: false; redirect: string; error: string; descricao: string } {
   const redirectUri = q.get("redirect_uri") ?? "";
-  if (!redirectUri || !redirectCasa(redirectUri, doc.redirectUris)) {
+  const casa = redirectCasa(redirectUri, doc.redirectUris) || (!!doc.redirectPadrao && doc.redirectPadrao.test(redirectUri));
+  if (!redirectUri || !casa) {
     return { ok: false, naTela: "O endereço de retorno não pertence a este cliente." };
   }
   const state = q.get("state") ?? undefined;
@@ -293,7 +345,9 @@ export function metadadosRecurso(cfg: Config) {
   return {
     resource: cfg.resource,
     authorization_servers: [cfg.issuer],
-    scopes_supported: ["leitura", "escrita"],
+    // `offline_access` entra aqui porque há cliente (o Amazon Quick) que tira os escopos deste
+    // documento, e sem ele não receberia refresh token: a conexão cairia a cada hora.
+    scopes_supported: ["leitura", "escrita", "offline_access"],
     bearer_methods_supported: ["header"],
     resource_name: "LIFF go",
   };

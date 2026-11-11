@@ -78,6 +78,7 @@ export default function Conexoes({ mcpHabilitado }: { mcpHabilitado: boolean }) 
     () => `${window.location.origin}/api/mcp`,
     () => "/api/mcp"
   );
+  const origem = urlMcp.replace(/\/api\/mcp$/, "");
 
   async function revogar(c: Conexao) {
     const de = c.minha ? "sua conexão" : `a conexão de ${c.pessoa}`;
@@ -113,7 +114,7 @@ export default function Conexoes({ mcpHabilitado }: { mcpHabilitado: boolean }) 
           {!lista && !erro && <div style={{ padding: 16, fontFamily: MONO, fontSize: 11, color: C.faint }}>carregando…</div>}
           {lista && !lista.length && (
             <div style={{ padding: "22px 16px", fontSize: 14, lineHeight: 1.6, color: C.faint, maxWidth: "52ch" }}>
-              Nenhuma conexão. Quando você autorizar o Claude a acessar o LIFF go, ela aparece aqui — com o que pode
+              Nenhuma conexão. Quando você autorizar um assistente (Claude, ChatGPT, Amazon Quick) a acessar o LIFF go, ela aparece aqui — com o que pode
               fazer, quando foi usada pela última vez e o botão para cortar o acesso.
             </div>
           )}
@@ -171,31 +172,64 @@ export default function Conexoes({ mcpHabilitado }: { mcpHabilitado: boolean }) 
       </div>
 
       <div style={{ background: C.cell, padding: 22 }}>
-        <div style={{ ...eyebrow(11, C.dust), marginBottom: 18 }}>CONECTAR O CLAUDE</div>
+        <div style={{ ...eyebrow(11, C.dust), marginBottom: 18 }}>CONECTAR UM ASSISTENTE</div>
         {!mcpHabilitado ? (
           // Desligado: não ensinar um endereço que responde 404.
           <div style={{ fontSize: 13, lineHeight: 1.6, color: C.faint }}>
-            O acesso pelo Claude ainda não foi ligado neste ambiente. Quando a administração ligar, as instruções para
+            O acesso por MCP ainda não foi ligado neste ambiente. Quando a administração ligar, as instruções para
             conectar aparecem aqui.
           </div>
         ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 16, fontSize: 13, lineHeight: 1.6, color: C.body }}>
           <div>
-            <div style={{ ...eyebrow(10, C.faint, "0.12em"), marginBottom: 6 }}>claude.ai e app desktop</div>
-            Configurações → Conectores → Adicionar conector personalizado, com o endereço:
+            O LIFF go é um servidor MCP: um assistente de IA conectado a ele consulta e atualiza cards conversando. No
+            aplicativo, adicione um servidor MCP remoto (às vezes chamado de conector ou app personalizado) com o endereço:
             <code style={{ display: "block", marginTop: 6, fontFamily: MONO, fontSize: 12, color: C.ink, background: C.code, padding: "8px 10px", overflowWrap: "anywhere" }}>
               {urlMcp}
             </code>
+            <div style={{ marginTop: 6, fontSize: 12, color: C.faint }}>
+              Deixe os campos de OAuth (client ID, segredo) em branco: o aplicativo se identifica sozinho e o login é o
+              Google de sempre.
+            </div>
           </div>
           <div>
-            <div style={{ ...eyebrow(10, C.faint, "0.12em"), marginBottom: 6 }}>claude code</div>
+            <div style={{ ...eyebrow(10, C.faint, "0.12em"), marginBottom: 6 }}>aplicativos aceitos</div>
+            <div>
+              <strong style={{ color: C.ink, fontWeight: 600 }}>Claude</strong> (claude.ai, app desktop e Claude Code),{" "}
+              <strong style={{ color: C.ink, fontWeight: 600 }}>ChatGPT</strong> e{" "}
+              <strong style={{ color: C.ink, fontWeight: 600 }}>Amazon Quick</strong>. Outros aplicativos precisam ser
+              liberados pela administração antes de conseguirem conectar.
+            </div>
+          </div>
+          <div>
+            <div style={{ ...eyebrow(10, C.faint, "0.12em"), marginBottom: 6 }}>amazon quick: preenchimento manual</div>
+            O Quick não se identifica sozinho. Em Connectors → Model Context Protocol (MCP), informe o endereço acima e,
+            na autenticação, escolha User authentication (OAuth), marque <em>Public OAuth client</em> e preencha:
+            <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 10px", marginTop: 8, alignItems: "baseline" }}>
+              {[
+                ["Client ID", "amazon-quick"],
+                ["Authorization URL", `${origem}/oauth/autorizar`],
+                ["Token URL", `${origem}/api/oauth/token`],
+              ].map(([rotulo, valor]) => (
+                <div key={rotulo} style={{ display: "contents" }}>
+                  <span style={{ fontSize: 12, color: C.faint, whiteSpace: "nowrap" }}>{rotulo}</span>
+                  <code style={{ fontFamily: MONO, fontSize: 12, color: C.ink, background: C.code, padding: "4px 8px", overflowWrap: "anywhere" }}>{valor}</code>
+                </div>
+              ))}
+            </div>
+            <div style={{ marginTop: 6, fontSize: 12, color: C.faint }}>
+              Redirect URL: mantenha o que o próprio Quick preenche. Client Secret: em branco.
+            </div>
+          </div>
+          <div>
+            <div style={{ ...eyebrow(10, C.faint, "0.12em"), marginBottom: 6 }}>linha de comando (claude code)</div>
             <code style={{ display: "block", fontFamily: MONO, fontSize: 12, color: C.ink, background: C.code, padding: "8px 10px", overflowWrap: "anywhere" }}>
               claude mcp add --transport http liff-go {urlMcp}
             </code>
           </div>
           <div style={{ fontSize: 12, color: C.faint }}>
-            O login é o mesmo Google de sempre. A conexão vê só os produtos que você vê e grava só onde você edita — nunca
-            exclui nada. Cada gravação aparece no histórico do registro marcada com o nome do aplicativo.
+            A conexão age em seu nome: vê o que você vê e grava só se o seu papel edita — nunca exclui nada. Cada
+            gravação aparece no histórico do registro marcada com o nome do aplicativo.
           </div>
         </div>
         )}

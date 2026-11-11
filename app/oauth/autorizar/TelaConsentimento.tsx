@@ -94,7 +94,7 @@ export default function TelaConsentimento(props: Props) {
                 {props.cliente}
               </h2>
               <div style={{ fontFamily: MONO, fontSize: 11, color: C.faint, marginBottom: 22 }}>
-                publicado por {props.clienteHost}
+                {props.clienteHost === "pré-cadastrado" ? "aplicativo pré-cadastrado pela administração" : `publicado por ${props.clienteHost}`}
               </div>
 
               <div style={{ display: "grid", gap: 10, marginBottom: 22 }}>
@@ -108,7 +108,7 @@ export default function TelaConsentimento(props: Props) {
                   <div style={{ fontFamily: MONO, fontSize: 13, color: C.ink }}>{props.retorno}</div>
                   {props.loopback && (
                     <p style={{ fontSize: 13, lineHeight: 1.55, color: C.body, margin: "8px 0 0" }}>
-                      É um programa rodando no seu computador, normalmente o Claude Code. Só autorize se foi você quem
+                      É um programa rodando no seu computador (o Claude Code, por exemplo). Só autorize se foi você quem
                       acabou de pedir esta conexão.
                     </p>
                   )}

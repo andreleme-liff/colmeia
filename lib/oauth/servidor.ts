@@ -3,7 +3,7 @@
 import type { Queryable } from "../db";
 import { registrar } from "../log";
 import {
-  DURACAO, PREFIXO, canonizarResource, clientIdAceito, gerarSegredo, hashDe, pkceConfere,
+  DURACAO, PREFIXO, canonizarResource, clienteFixo, clientIdAceito, gerarSegredo, hashDe, pkceConfere,
   redirectEhLoopback, temEscopo, urlDeRetorno, validarDocumentoCliente,
   type Config, type DocumentoCliente, type Escopo, type PedidoAutorizacao,
 } from "./protocolo";
@@ -39,6 +39,9 @@ async function lerComLimite(res: Response, limite: number): Promise<string | nul
  * claude.ai indica no `cache-control` do documento.
  */
 export async function buscarCliente(clientId: string, cfg: Config): Promise<DocumentoCliente | null> {
+  // Cliente pré-cadastrado (Amazon Quick): não há documento para buscar na rede.
+  const fixo = clienteFixo(clientId, cfg.clientesPermitidos);
+  if (fixo) return fixo;
   if (!clientIdAceito(clientId, cfg.clientesPermitidos)) {
     console.warn(`[oauth] client_id recusado: ${safeHost(clientId)}`);
     return null;

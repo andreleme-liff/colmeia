@@ -161,10 +161,10 @@ sem alterar o kit.
 - Prazo crítico agora é calculado (vence nos próximos 7 dias e não está concluído), não mais
   uma lista fixa de datas.
 
-## Conectar o Claude (servidor MCP)
+## Conectar um assistente (servidor MCP)
 
-O LIFF tasks expõe um servidor MCP em `/api/mcp` para o Claude (claude.ai, app desktop,
-celular e Claude Code) ler e gravar **em nome de uma pessoa**, com as permissões dela.
+O LIFF go expõe um servidor MCP em `/api/mcp` para assistentes de IA — Claude (claude.ai, desktop,
+celular e Claude Code) e ChatGPT — lerem e gravarem **em nome de uma pessoa**, com as permissões dela.
 
 ### Ligar
 
@@ -175,13 +175,13 @@ metadados OAuth respondem 404. Variáveis:
 |---|---|---|
 | `MCP_HABILITADO` | — | `1` liga. Qualquer outro valor mantém desligado. |
 | `MCP_URL_CANONICA` | `https://go.liff.tech/api/mcp` | O `resource` a que todo token fica preso. Em outro domínio, mude aqui. |
-| `MCP_CLIENTES_PERMITIDOS` | `claude.ai` | Hosts aceitos como dono do documento do cliente (CIMD), separados por vírgula. |
+| `MCP_CLIENTES_PERMITIDOS` | `claude.ai,chatgpt.com,amazon-quick` | Hosts aceitos como dono do documento do cliente (CIMD) e ids de clientes pré-cadastrados (`amazon-quick`), separados por vírgula. |
 
 ### Conectar
 
 - **claude.ai / desktop**: Configurações → Conectores → Adicionar conector personalizado →
   `https://go.liff.tech/api/mcp`. Deixe os campos de OAuth em branco.
-- **Claude Code**: `claude mcp add --transport http liff-tasks https://go.liff.tech/api/mcp`
+- **Claude Code**: `claude mcp add --transport http liff-go https://go.liff.tech/api/mcp`
   e depois `/mcp` para entrar.
 
 O login é o Google de sempre. A tela de consentimento mostra quem pede, para onde o acesso

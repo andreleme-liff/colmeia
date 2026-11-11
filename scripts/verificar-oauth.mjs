@@ -7,7 +7,7 @@
 // conectar; os ataques são os que a especificação do MCP e o RFC 8252 descrevem.
 
 import {
-  canonizarResource, clientIdAceito, desafio, escoposConcedidos, gerarSegredo, hashDe, lerConfig,
+  canonizarResource, clienteFixo, clientIdAceito, desafio, escoposConcedidos, gerarSegredo, hashDe, lerConfig, metadadosRecurso,
   lerEscopos, metadadosServidor, pkceConfere, redirectCasa, validarDocumentoCliente, validarPedido,
 } from "../lib/oauth/protocolo.ts";
 
@@ -49,7 +49,37 @@ checa("challenge de outro tamanho não estoura, só recusa", pkceConfere(VERIFIE
 
 console.log("\n2. quem pode ser cliente (client_id)");
 const PERMITIDOS = cfg.clientesPermitidos;
-checa("lista padrão é só claude.ai", PERMITIDOS, ["claude.ai"]);
+checa("lista padrão: Claude, ChatGPT e Amazon Quick", PERMITIDOS, ["claude.ai", "chatgpt.com", "amazon-quick"]);
+// Amazon Quick: cliente pré-cadastrado, público, com retorno só para o próprio Quick.
+const QUICK = clienteFixo("amazon-quick", PERMITIDOS);
+checa("Quick: client_id pré-cadastrado é reconhecido", [QUICK?.nome, QUICK?.redirectUris], ["Amazon Quick", []]);
+checa("Quick: fora da lista de permitidos, não vale", clienteFixo("amazon-quick", ["claude.ai"]), null);
+checa("client_id inventado não é pré-cadastrado", clienteFixo("outro-app", PERMITIDOS), null);
+checa("nome de propriedade herdada não vira cliente", clienteFixo("constructor", [...PERMITIDOS, "constructor"]), null);
+const pedidoQuick = (redirect) => validarPedido(new URLSearchParams({ response_type: "code", client_id: "amazon-quick", redirect_uri: redirect,
+  code_challenge: "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM", code_challenge_method: "S256", state: "s", resource: cfg.resource }), QUICK, cfg);
+checa("Quick: retorno us-east-1 aceito", pedidoQuick("https://us-east-1.quicksight.aws.amazon.com/sn/oauthcallback").ok, true);
+checa("Quick: retorno sa-east-1 aceito", pedidoQuick("https://sa-east-1.quicksight.aws.amazon.com/sn/oauthcallback").ok, true);
+checa("Quick: retorno us-gov-west-1 aceito", pedidoQuick("https://us-gov-west-1.quicksight.aws.amazon.com/sn/oauthcallback").ok, true);
+checa("Quick: outro caminho no mesmo host recusado", pedidoQuick("https://us-east-1.quicksight.aws.amazon.com/outro").naTela, "O endereço de retorno não pertence a este cliente.");
+checa("Quick: host-isca recusado", pedidoQuick("https://us-east-1.quicksight.aws.amazon.com.evil.com/sn/oauthcallback").ok, false);
+checa("Quick: subdomínio que não é região recusado", pedidoQuick("https://evil.quicksight.aws.amazon.com/sn/oauthcallback").ok, false);
+checa("Quick: http recusado", pedidoQuick("http://us-east-1.quicksight.aws.amazon.com/sn/oauthcallback").ok, false);
+checa("Quick: com query recusado", pedidoQuick("https://us-east-1.quicksight.aws.amazon.com/sn/oauthcallback?x=1").ok, false);
+checa("metadados do recurso anunciam offline_access (o Quick tira os escopos dali)", metadadosRecurso(cfg).scopes_supported, ["leitura", "escrita", "offline_access"]);
+checa("ChatGPT: client_id do documento aceito", clientIdAceito("https://chatgpt.com/oauth/client.json", PERMITIDOS), true);
+checa("ChatGPT: isca de subdomínio não", clientIdAceito("https://chatgpt.com.evil.com/oauth/client.json", PERMITIDOS), false);
+// Documento real, copiado de https://chatgpt.com/oauth/client.json em 11/11/2026.
+const DOC_CHATGPT = { client_id: "https://chatgpt.com/oauth/client.json", client_uri: "https://chatgpt.com/",
+  redirect_uris: ["https://chatgpt.com/connector_platform_oauth_redirect"], token_endpoint_auth_method: "private_key_jwt",
+  token_endpoint_auth_methods_supported: ["none", "private_key_jwt"], grant_types: ["authorization_code", "refresh_token"],
+  response_types: ["code"], client_name: "ChatGPT" };
+checa("ChatGPT: documento real é aceito (sabe ser cliente público)",
+  validarDocumentoCliente(DOC_CHATGPT, DOC_CHATGPT.client_id), { clientId: DOC_CHATGPT.client_id, nome: "ChatGPT", redirectUris: DOC_CHATGPT.redirect_uris });
+checa("cliente que SÓ sabe private_key_jwt é recusado",
+  validarDocumentoCliente({ ...DOC_CHATGPT, token_endpoint_auth_methods_supported: ["private_key_jwt"] }, DOC_CHATGPT.client_id), null);
+checa("cliente confidencial sem lista de métodos é recusado",
+  validarDocumentoCliente({ ...DOC_CHATGPT, token_endpoint_auth_methods_supported: undefined, token_endpoint_auth_method: "client_secret_basic" }, DOC_CHATGPT.client_id), null);
 checa("o documento real do Claude Code", clientIdAceito(CLAUDE_CODE_URL, PERMITIDOS), true);
 checa("http não", clientIdAceito("http://claude.ai/oauth/x", PERMITIDOS), false);
 checa("subdomínio-isca não", clientIdAceito("https://claude.ai.evil.com/x", PERMITIDOS), false);
