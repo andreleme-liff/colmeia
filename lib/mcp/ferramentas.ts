@@ -12,6 +12,10 @@ import { atualizarOportunidade, criarOportunidade } from "../ops/oportunidades";
 import { listarAtividades, listarCadastros, listarOportunidades, verRegistro } from "../ops/leitura";
 import { temEscopo } from "../oauth/protocolo";
 import { CATALOGO, type Definicao, type NomeFerramenta } from "./catalogo";
+import {
+  atualizarContratoMcp, cancelarFaturaMcp, corrigirFaturaMcp, criarContratoMcp, emitirFaturaMcp, estornarPagamentoMcp,
+  listarContratos, listarFaturas, registrarPagamentoMcp, resumoReceita, verContrato,
+} from "./financeiro";
 
 export type Contexto = { sql: Queryable; ctx: Ctx; acesso: Acesso; base: string };
 export type Saida = { ok: true; dados: Record<string, unknown>; ref?: string } | { ok: false; erro: string };
@@ -78,6 +82,9 @@ const EXECUTORES: Record<NomeFerramenta, Executor> = {
       status_atividade: STATUS.map((s) => ({ id: s.key, nome: s.label })),
       estagios_oportunidade: STAGES.map((s) => ({ id: s.key, nome: s.label })),
       prioridades: [...PRIORIDADES],
+      receita_e_faturamento: c.ctx.isAdmin
+        ? "Disponível (admin): resumo_receita, listar_contratos, ver_contrato, listar_faturas e, com permissão de gravar, contratos e faturas."
+        : "Indisponível: restrito à administração.",
       app: c.base,
     },
   }),
@@ -140,6 +147,19 @@ const EXECUTORES: Record<NomeFerramenta, Executor> = {
     if (ehFalha(r)) return { ok: false, erro: r.erro };
     return depoisDeGravar(c, r.ref, { campos_alterados: r.mudancas });
   },
+
+  // Receita e faturamento (só admin) — ver `financeiro.ts`.
+  resumo_receita: resumoReceita,
+  listar_contratos: listarContratos,
+  ver_contrato: verContrato,
+  listar_faturas: listarFaturas,
+  criar_contrato: criarContratoMcp,
+  atualizar_contrato: atualizarContratoMcp,
+  emitir_fatura: emitirFaturaMcp,
+  registrar_pagamento: registrarPagamentoMcp,
+  corrigir_fatura: corrigirFaturaMcp,
+  estornar_pagamento: estornarPagamentoMcp,
+  cancelar_fatura: cancelarFaturaMcp,
 };
 
 export const FERRAMENTAS: Ferramenta[] = CATALOGO.map((d) => ({ ...d, executar: EXECUTORES[d.name] }));

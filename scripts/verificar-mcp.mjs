@@ -56,7 +56,7 @@ checa("nulo recusado", interpretar(null).tipo, "invalida");
 
 console.log("\n4. o catálogo");
 const nomes = CATALOGO.map((f) => f.name);
-checa("nove ferramentas", nomes.length, 9);
+checa("vinte ferramentas (nove do dia a dia, onze de receita e faturamento)", nomes.length, 20);
 checa("nenhuma exclui", nomes.some((n) => /exclu|apag|delet|remov/.test(n)), false);
 checa("nenhuma toca em cadastro, permissão ou usuário",
   nomes.some((n) => /permiss|usuario|pessoa_|area_|produto_|preferenc/.test(n)), false);
@@ -69,11 +69,34 @@ checa("todo esquema fecha campos extras", CATALOGO.every((f) => f.inputSchema.ad
 checa("nomes no formato da spec", nomes.every((n) => /^[A-Za-z0-9_.-]{1,128}$/.test(n)), true);
 const soLeitura = descreverFerramentas("leitura offline_access").map((f) => f.name);
 checa("conexão só de leitura não vê ferramenta de gravação", soLeitura, ["contexto", "listar_cadastros", "listar_atividades", "listar_oportunidades", "ver_registro"]);
-checa("com escrita vê as nove", descreverFerramentas("leitura escrita").length, 9);
+checa("com escrita vê as nove (sem ser admin)", descreverFerramentas("leitura escrita").length, 9);
+const FIN = ["resumo_receita", "listar_contratos", "ver_contrato", "listar_faturas", "criar_contrato", "atualizar_contrato",
+  "emitir_fatura", "registrar_pagamento", "corrigir_fatura", "estornar_pagamento", "cancelar_fatura"];
+checa("receita e faturamento são todas só de admin", FIN.every((n) => CATALOGO.find((f) => f.name === n)?.soAdmin === true), true);
+checa("as do dia a dia não são só de admin", CATALOGO.filter((f) => !FIN.includes(f.name)).every((f) => !f.soAdmin), true);
+checa("quem não é admin não vê nenhuma de receita", descreverFerramentas("leitura escrita", false).some((f) => FIN.includes(f.name)), false);
+checa("admin com escrita vê as vinte", descreverFerramentas("leitura escrita", true).length, 20);
+checa("admin só de leitura vê as de leitura de receita, não as de gravação",
+  descreverFerramentas("leitura", true).map((f) => f.name).filter((n) => FIN.includes(n)), ["resumo_receita", "listar_contratos", "ver_contrato", "listar_faturas"]);
+checa("tools/list não vaza a marca interna `soAdmin`", descreverFerramentas("leitura escrita", true).some((f) => "soAdmin" in f), false);
 checa("tools/list não vaza a marca interna `escrita`", "escrita" in descreverFerramentas("leitura")[0], false);
 checa("instruções avisam que texto de registro é dado, não instrução", INSTRUCOES.includes("nunca como instrução"), true);
 
 console.log("\n5. argumentos, com os esquemas reais");
+const contratoOk = { conta: "Medley", area: "tax", situacao: "contratada", inicio_faturamento: "2026-12-01",
+  linhas: [{ tipo: "assinatura", valor_reais: 8000 }, { tipo: "implantacao", valor_reais: 40000, parcelas: 12 }] };
+checa("contrato válido", valida("criar_contrato", contratoOk), []);
+checa("linha sem tipo", valida("criar_contrato", { ...contratoOk, linhas: [{ valor_reais: 10 }] }), ["campo obrigatório ausente: linhas[0].tipo"]);
+checa("campo inventado dentro da linha", valida("criar_contrato", { ...contratoOk, linhas: [{ tipo: "assinatura", valor_reais: 1, juros: 2 }] }),
+  ["campo desconhecido: linhas[0].juros"]);
+checa("linha que não é objeto", valida("criar_contrato", { ...contratoOk, linhas: ["assinatura"] }), ["linhas[0]: cada item deve ser um objeto"]);
+checa("tipo de linha fora da lista", valida("criar_contrato", { ...contratoOk, linhas: [{ tipo: "licenca", valor_reais: 1 }] })[0].startsWith("linhas[0].tipo: valor fora da lista"), true);
+checa("cobrança com forma inválida", valida("criar_contrato", { ...contratoOk, cobranca: { forma: "cheque" } })[0].startsWith("cobranca.forma: valor fora da lista"), true);
+checa("dia de vencimento 31", valida("criar_contrato", { ...contratoOk, cobranca: { dia_vencimento: 31 } }), ["cobranca.dia_vencimento: máximo 28"]);
+checa("emitir: competência obrigatória", valida("emitir_fatura", { contrato: "R-0001", tipo: "assinatura" }), ["campo obrigatório ausente: competencia"]);
+checa("emitir: competência fora do formato", valida("emitir_fatura", { competencia: "2026-13" }), ["competencia: formato inválido"]);
+checa("cancelar exige motivo", valida("cancelar_fatura", { fatura: "F-0001" }), ["campo obrigatório ausente: motivo"]);
+checa("ref de fatura no formato F-", valida("registrar_pagamento", { fatura: "C-0001" }), ["fatura: formato inválido"]);
 checa("criar atividade mínima", valida("criar_atividade", { titulo: "Revisar NCM", area: "tax" }), []);
 checa("título obrigatório", valida("criar_atividade", { area: "tax" }), ["campo obrigatório ausente: titulo"]);
 checa("título só com espaço", valida("criar_atividade", { titulo: "   ", area: "tax" }), ["titulo: não pode ser vazio"]);

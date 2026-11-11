@@ -102,10 +102,10 @@ export type Esquema = {
 
 export type Prop = {
   type:
-    | "string" | "integer" | "number" | "boolean" | "array"
-    | Array<"string" | "integer" | "number" | "boolean" | "null" | "array">;
-  /** Só para `array`: os itens são texto. É o único tipo de lista que as ferramentas usam. */
-  items?: { type: "string"; maxLength?: number };
+    | "string" | "integer" | "number" | "boolean" | "array" | "object"
+    | Array<"string" | "integer" | "number" | "boolean" | "null" | "array" | "object">;
+  /** Só para `array`: o esquema de cada item — texto, ou objeto (linhas de um contrato). */
+  items?: Prop;
   maxItems?: number;
   description?: string;
   enum?: readonly (string | null)[];
@@ -114,6 +114,10 @@ export type Prop = {
   pattern?: string;
   minimum?: number;
   maximum?: number;
+  /** Só para `object`: os campos, os obrigatórios, e sempre fechado a campos extras. */
+  properties?: Record<string, Prop>;
+  required?: readonly string[];
+  additionalProperties?: false;
 };
 
 function tipoDe(v: unknown): string {
@@ -129,45 +133,65 @@ function aceitaTipo(prop: Prop, v: unknown): boolean {
   return tipos.some((x) => x === t || (x === "number" && t === "integer"));
 }
 
+/** Campos de um objeto: desconhecidos, obrigatórios e cada valor. `prefixo` nomeia o aninhado. */
+function validarObjeto(
+  properties: Record<string, Prop>,
+  required: readonly string[] | undefined,
+  obj: Record<string, unknown>,
+  prefixo: string,
+  erros: string[]
+): void {
+  for (const nome of Object.keys(obj)) {
+    if (!(nome in properties)) erros.push(`campo desconhecido: ${prefixo}${nome}`);
+  }
+  for (const nome of required ?? []) {
+    if (obj[nome] === undefined) erros.push(`campo obrigatório ausente: ${prefixo}${nome}`);
+  }
+  for (const [nome, prop] of Object.entries(properties)) {
+    if (obj[nome] !== undefined) validarValor(`${prefixo}${nome}`, prop, obj[nome], erros);
+  }
+}
+
+function validarValor(nome: string, prop: Prop, v: unknown, erros: string[]): void {
+  if (!aceitaTipo(prop, v)) {
+    erros.push(`${nome}: esperado ${Array.isArray(prop.type) ? prop.type.join(" ou ") : prop.type}, veio ${tipoDe(v)}`);
+    return;
+  }
+  if (prop.enum && !prop.enum.includes(v as string | null)) {
+    erros.push(`${nome}: valor fora da lista (${prop.enum.filter((e) => e !== null).join(", ")})`);
+  }
+  if (typeof v === "string") {
+    if (prop.maxLength !== undefined && v.length > prop.maxLength) erros.push(`${nome}: no máximo ${prop.maxLength} caracteres`);
+    if (prop.minLength !== undefined && v.trim().length < prop.minLength) {
+      erros.push(prop.minLength <= 1 ? `${nome}: não pode ser vazio` : `${nome}: no mínimo ${prop.minLength} caracteres`);
+    }
+    if (prop.pattern && !new RegExp(prop.pattern).test(v)) erros.push(`${nome}: formato inválido`);
+  }
+  if (typeof v === "number") {
+    if (prop.minimum !== undefined && v < prop.minimum) erros.push(`${nome}: mínimo ${prop.minimum}`);
+    if (prop.maximum !== undefined && v > prop.maximum) erros.push(`${nome}: máximo ${prop.maximum}`);
+  }
+  if (Array.isArray(v)) {
+    if (prop.maxItems !== undefined && v.length > prop.maxItems) erros.push(`${nome}: no máximo ${prop.maxItems} itens`);
+    const item = prop.items;
+    if (item?.type === "object") {
+      v.forEach((x, i) => {
+        if (!ehObjeto(x)) erros.push(`${nome}[${i}]: cada item deve ser um objeto`);
+        else validarObjeto(item.properties ?? {}, item.required, x, `${nome}[${i}].`, erros);
+      });
+    } else if (v.some((x) => typeof x !== "string")) erros.push(`${nome}: cada item deve ser texto`);
+    else if (item?.maxLength !== undefined && v.some((x) => x.length > item.maxLength!)) {
+      erros.push(`${nome}: item longo demais`);
+    }
+  }
+  if (ehObjeto(v) && prop.properties) validarObjeto(prop.properties, prop.required, v, `${nome}.`, erros);
+}
+
 /** Lista de problemas, em português; vazia = válido. */
 export function validarArgumentos(esquema: Esquema, args: unknown): string[] {
   if (!ehObjeto(args)) return ["os argumentos devem ser um objeto"];
   const erros: string[] = [];
-  for (const nome of Object.keys(args)) {
-    if (!(nome in esquema.properties)) erros.push(`campo desconhecido: ${nome}`);
-  }
-  for (const nome of esquema.required ?? []) {
-    if (args[nome] === undefined) erros.push(`campo obrigatório ausente: ${nome}`);
-  }
-  for (const [nome, prop] of Object.entries(esquema.properties)) {
-    const v = args[nome];
-    if (v === undefined) continue;
-    if (!aceitaTipo(prop, v)) {
-      erros.push(`${nome}: esperado ${Array.isArray(prop.type) ? prop.type.join(" ou ") : prop.type}, veio ${tipoDe(v)}`);
-      continue;
-    }
-    if (prop.enum && !prop.enum.includes(v as string | null)) {
-      erros.push(`${nome}: valor fora da lista (${prop.enum.filter((e) => e !== null).join(", ")})`);
-    }
-    if (typeof v === "string") {
-      if (prop.maxLength !== undefined && v.length > prop.maxLength) erros.push(`${nome}: no máximo ${prop.maxLength} caracteres`);
-      if (prop.minLength !== undefined && v.trim().length < prop.minLength) {
-        erros.push(prop.minLength <= 1 ? `${nome}: não pode ser vazio` : `${nome}: no mínimo ${prop.minLength} caracteres`);
-      }
-      if (prop.pattern && !new RegExp(prop.pattern).test(v)) erros.push(`${nome}: formato inválido`);
-    }
-    if (typeof v === "number") {
-      if (prop.minimum !== undefined && v < prop.minimum) erros.push(`${nome}: mínimo ${prop.minimum}`);
-      if (prop.maximum !== undefined && v > prop.maximum) erros.push(`${nome}: máximo ${prop.maximum}`);
-    }
-    if (Array.isArray(v)) {
-      if (prop.maxItems !== undefined && v.length > prop.maxItems) erros.push(`${nome}: no máximo ${prop.maxItems} itens`);
-      if (v.some((x) => typeof x !== "string")) erros.push(`${nome}: cada item deve ser texto`);
-      else if (prop.items?.maxLength !== undefined && v.some((x) => x.length > prop.items!.maxLength!)) {
-        erros.push(`${nome}: item longo demais`);
-      }
-    }
-  }
+  validarObjeto(esquema.properties, esquema.required, args, "", erros);
   return erros;
 }
 
