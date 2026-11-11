@@ -2421,7 +2421,7 @@ export function FormOportunidade({
           </datalist>
         </Field>
         {mostraNegocio && (
-          <Field label="Valor total · primeiros 12 meses (R$)" hint="Tudo o que a proposta soma no primeiro ano: assinatura, implantação e customização.">
+          <Field label="Valor total · 12 meses (R$)" hint="Tudo o que a proposta soma no primeiro ano: assinatura, implantação e customização.">
             <Input placeholder="294000" value={valor} onChange={setValor} />
           </Field>
         )}
