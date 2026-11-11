@@ -7,12 +7,14 @@ import type { Contrato, EntradaContrato } from "./forecast";
 type Linha = {
   id: number; ref: string; deal_id: number | null; conta: string; area: string; situacao: "contratada" | "prevista";
   chance: "alta" | "baixa" | null; inicio_faturamento: Date; notas: string;
+  cnpj: string; email_cobranca: string; dia_vencimento: number; forma_cobranca: string;
   linhas: { tipo: string; valor_centavos: string; parcelas: number; inicio_mes: number; duracao_meses: number | null }[];
 };
 
 export async function lerContratos(sql: Queryable): Promise<Contrato[]> {
   const rows = await sql<Linha[]>`
     SELECT c.id, c.ref, c.deal_id, c.conta, c.area, c.situacao, c.chance, c.inicio_faturamento, c.notas,
+           c.cnpj, c.email_cobranca, c.dia_vencimento, c.forma_cobranca,
            COALESCE((SELECT json_agg(json_build_object('tipo', r.tipo, 'valor_centavos', r.valor_centavos, 'parcelas', r.parcelas,
                                                       'inicio_mes', r.inicio_mes, 'duracao_meses', r.duracao_meses))
                      FROM contrato_receitas r WHERE r.contrato_id = c.id), '[]'::json) AS linhas
@@ -29,6 +31,12 @@ export async function lerContratos(sql: Queryable): Promise<Contrato[]> {
     chance: r.chance,
     inicioFaturamento: r.inicio_faturamento.toISOString().slice(0, 10),
     notas: r.notas,
+    cobranca: {
+      cnpj: r.cnpj,
+      emailCobranca: r.email_cobranca,
+      diaVencimento: r.dia_vencimento,
+      formaCobranca: r.forma_cobranca as Contrato["cobranca"]["formaCobranca"],
+    },
     linhas: r.linhas.map((l) => ({
       tipo: l.tipo as Contrato["linhas"][number]["tipo"],
       valorCentavos: Number(l.valor_centavos),
@@ -52,6 +60,15 @@ export async function conferir(tx: Queryable, c: EntradaContrato, idAtual: numbe
     if (outro) return `Esta oportunidade já tem receita cadastrada (${outro.ref}).`;
   }
   return null;
+}
+
+/** Grava os dados de cobrança (faz parte do mesmo formulário do contrato). */
+export async function gravarCobranca(tx: Queryable, contratoId: number, c: EntradaContrato): Promise<void> {
+  await tx`
+    UPDATE contratos SET cnpj = ${c.cobranca.cnpj}, email_cobranca = ${c.cobranca.emailCobranca},
+           dia_vencimento = ${c.cobranca.diaVencimento}, forma_cobranca = ${c.cobranca.formaCobranca}
+    WHERE id = ${contratoId}
+  `;
 }
 
 export async function gravarLinhas(tx: Queryable, contratoId: number, c: EntradaContrato): Promise<void> {

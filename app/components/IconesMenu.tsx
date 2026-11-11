@@ -74,6 +74,14 @@ const DESENHOS: Record<string, ReactNode> = {
       <path d="M5 11l5-4.5 4 3 5.5-5.5" />
     </>
   ),
+  // Faturamento: documento com o cifrão.
+  faturamento: (
+    <>
+      <path d="M6 3.5h9l3.5 3.5v13.5H6Z" />
+      <path d="M15 3.5V7h3.5" />
+      <path d="M12 10v7M14 11.3c-.4-.6-1.1-.9-2-.9-1.2 0-2 .6-2 1.4 0 1.9 4 1 4 2.9 0 .8-.9 1.5-2 1.5-.9 0-1.7-.4-2.1-1" />
+    </>
+  ),
   // Cadastros: base de dados.
   cadastros: (
     <>

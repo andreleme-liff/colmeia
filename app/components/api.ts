@@ -211,6 +211,12 @@ export const api = {
   alterarReceita: (id: number, corpo: Record<string, unknown>) =>
     req<{ ok: boolean }>(`/api/receita/${id}`, { method: "PATCH", body: JSON.stringify(corpo) }),
   excluirReceita: (id: number) => req<{ ok: boolean }>(`/api/receita/${id}`, { method: "DELETE" }),
+  /** Faturamento (só admin). */
+  faturas: () => req<{ faturas: import("@/lib/faturamento").Fatura[] }>("/api/faturamento"),
+  emitirFatura: (corpo: Record<string, unknown>) =>
+    req<{ ok: boolean; ref: string }>("/api/faturamento", { method: "POST", body: JSON.stringify(corpo) }),
+  acaoFatura: (id: number, corpo: Record<string, unknown>) =>
+    req<{ ok: boolean }>(`/api/faturamento/${id}`, { method: "PATCH", body: JSON.stringify(corpo) }),
   auditoria: () => req<{ limite: number; logs: (LogEntry & { autorId: number | null })[] }>("/api/logs"),
 
   criarAtividade: (dados: NovaAtividade) =>

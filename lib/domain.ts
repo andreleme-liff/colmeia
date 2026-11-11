@@ -94,6 +94,8 @@ export const NAV = [
   // matriz de permissões) virou parte de Cadastros → Pessoas; `/admin` redireciona para lá.
   // Forecast de receita: em construção, por isso só admin. Mostra números da empresa inteira.
   { key: "receita", label: "receita", soAdmin: true },
+  // Contas a receber: emissão e baixa das faturas que saem dos contratos da receita.
+  { key: "faturamento", label: "faturamento", soAdmin: true },
   { key: "cadastros", label: "cadastros", soAdmin: true },
 ] as const;
 
@@ -104,6 +106,7 @@ export const TITLES: Record<string, string> = {
   cronograma: "Cronograma",
   cadastros: "Cadastros",
   receita: "Forecast de receita",
+  faturamento: "Faturamento · contas a receber",
   auditoria: "Auditoria",
   conexoes: "Conexões",
 };

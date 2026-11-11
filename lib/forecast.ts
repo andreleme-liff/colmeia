@@ -27,6 +27,26 @@ export const TIPOS_RECEITA = [
 export type TipoReceita = (typeof TIPOS_RECEITA)[number]["key"];
 export const TIPO_KEYS = TIPOS_RECEITA.map((t) => t.key) as readonly string[];
 
+/** Como o cliente paga. Mora aqui (e não em faturamento.ts) porque é dado do contrato. */
+export const FORMAS_COBRANCA = [
+  { key: "boleto", label: "Boleto" },
+  { key: "pix", label: "PIX" },
+  { key: "transferencia", label: "Transferência" },
+  { key: "cartao", label: "Cartão" },
+] as const;
+export type FormaCobranca = (typeof FORMAS_COBRANCA)[number]["key"];
+export const FORMA_KEYS = FORMAS_COBRANCA.map((f) => f.key) as readonly string[];
+
+/** Dados de cobrança do contrato: o que o faturamento usa para emitir e cobrar. */
+export type Cobranca = {
+  cnpj: string;
+  emailCobranca: string;
+  /** Dia do mês em que as faturas vencem (1 a 28, para existir em todo mês). */
+  diaVencimento: number;
+  formaCobranca: FormaCobranca;
+};
+export const COBRANCA_PADRAO: Cobranca = { cnpj: "", emailCobranca: "", diaVencimento: 10, formaCobranca: "boleto" };
+
 export const SITUACOES = ["contratada", "prevista"] as const;
 export type Situacao = (typeof SITUACOES)[number];
 export const CHANCES = ["alta", "baixa"] as const;
@@ -62,6 +82,7 @@ export type Contrato = {
   inicioFaturamento: string;
   notas: string;
   linhas: LinhaReceita[];
+  cobranca: Cobranca;
 };
 
 /** O card ligado, no que importa para a situação efetiva. */
@@ -210,7 +231,23 @@ export type EntradaContrato = {
   inicioFaturamento: string;
   notas: string;
   linhas: LinhaReceita[];
+  cobranca: Cobranca;
 };
+
+/** Dados de cobrança; ausentes ficam no padrão (vencimento dia 10, boleto). */
+function lerCobranca(v: unknown): Cobranca | string {
+  if (v == null) return { ...COBRANCA_PADRAO };
+  if (typeof v !== "object") return "Dados de cobrança inválidos.";
+  const b = v as Record<string, unknown>;
+  const cnpj = typeof b.cnpj === "string" ? b.cnpj.trim().slice(0, 30) : "";
+  const email = typeof b.emailCobranca === "string" ? b.emailCobranca.trim().slice(0, 200) : "";
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "E-mail de cobrança inválido.";
+  const dia = b.diaVencimento == null || b.diaVencimento === "" ? COBRANCA_PADRAO.diaVencimento : inteiro(b.diaVencimento, 1, 28);
+  if (dia == null) return "Dia de vencimento entre 1 e 28.";
+  const forma = b.formaCobranca == null ? COBRANCA_PADRAO.formaCobranca : b.formaCobranca;
+  if (typeof forma !== "string" || !FORMA_KEYS.includes(forma)) return "Forma de cobrança inválida.";
+  return { cnpj, emailCobranca: email, diaVencimento: dia, formaCobranca: forma as FormaCobranca };
+}
 
 const inteiro = (v: unknown, min: number, max: number): number | null => {
   const n = typeof v === "string" && v.trim() !== "" ? Number(v) : v;
@@ -261,7 +298,9 @@ export function lerContrato(body: Record<string, unknown> | null): EntradaContra
     linhas.push({ tipo: tipo as TipoReceita, valorCentavos: valor, parcelas, inicioMes, duracaoMeses });
   }
   if (!linhas.length) return "Informe ao menos um valor: customização, implantação ou assinatura.";
-  return { conta, area, dealId, situacao, chance, inicioFaturamento: inicio, notas, linhas };
+  const cobranca = lerCobranca(body.cobranca);
+  if (typeof cobranca === "string") return cobranca;
+  return { conta, area, dealId, situacao, chance, inicioFaturamento: inicio, notas, linhas, cobranca };
 }
 
 /** "Proposta", "Validação"... para mensagens. */
@@ -285,5 +324,8 @@ export function resumoLinha(l: LinhaReceita): string {
 export function resumoContrato(c: EntradaContrato): string {
   const sit = c.situacao === "contratada" ? "contratada" : `prevista, chance ${c.chance}`;
   const [a, m] = c.inicioFaturamento.split("-");
-  return `${sit}; início do faturamento ${m}/${a}; ${c.linhas.map(resumoLinha).join("; ")}`;
+  const cob = c.cobranca ?? COBRANCA_PADRAO;
+  const forma = FORMAS_COBRANCA.find((f) => f.key === cob.formaCobranca)?.label ?? cob.formaCobranca;
+  const extras = [cob.cnpj && `CNPJ ${cob.cnpj}`, cob.emailCobranca && `cobrança em ${cob.emailCobranca}`].filter(Boolean).join(", ");
+  return `${sit}; início do faturamento ${m}/${a}; ${c.linhas.map(resumoLinha).join("; ")}; ${forma}, vence dia ${cob.diaVencimento}${extras ? `; ${extras}` : ""}`;
 }

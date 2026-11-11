@@ -598,6 +598,50 @@ async function migrate(): Promise<void> {
       )
     `;
 
+    // Faturamento (contas a receber), nov/2026. Dados de cobrança no contrato, e uma linha por
+    // fatura emitida. "A emitir" não é gravado: sai do cronograma do contrato. Ao emitir, a
+    // fatura guarda o próprio valor — mexer no contrato depois não muda o que foi faturado.
+    // `contrato_id` SET NULL: a fatura (e o histórico fiscal) sobrevive ao contrato excluído,
+    // por isso cliente e vertical vão copiados nela.
+    await sql`ALTER TABLE contratos ADD COLUMN IF NOT EXISTS cnpj TEXT NOT NULL DEFAULT ''`;
+    await sql`ALTER TABLE contratos ADD COLUMN IF NOT EXISTS email_cobranca TEXT NOT NULL DEFAULT ''`;
+    await sql`ALTER TABLE contratos ADD COLUMN IF NOT EXISTS dia_vencimento INTEGER NOT NULL DEFAULT 10`;
+    await sql`ALTER TABLE contratos ADD COLUMN IF NOT EXISTS forma_cobranca TEXT NOT NULL DEFAULT 'boleto'`;
+    await sql`
+      CREATE TABLE IF NOT EXISTS faturas (
+        id                    SERIAL PRIMARY KEY,
+        ref                   TEXT UNIQUE,
+        contrato_id           INTEGER REFERENCES contratos(id) ON DELETE SET NULL,
+        conta                 TEXT NOT NULL,
+        area                  TEXT NOT NULL REFERENCES areas(id),
+        tipo                  TEXT NOT NULL CHECK (tipo IN ('assinatura', 'implantacao', 'customizacao', 'avulsa')),
+        parcela               TEXT NOT NULL DEFAULT '',
+        competencia           TEXT NOT NULL,
+        descricao             TEXT NOT NULL DEFAULT '',
+        valor_centavos        BIGINT NOT NULL CHECK (valor_centavos > 0),
+        status                TEXT NOT NULL CHECK (status IN ('emitida', 'paga', 'cancelada')),
+        emitida_em            DATE,
+        vencimento            DATE,
+        nf_numero             TEXT NOT NULL DEFAULT '',
+        forma                 TEXT,
+        retencoes_centavos    BIGINT NOT NULL DEFAULT 0 CHECK (retencoes_centavos >= 0),
+        pago_em               DATE,
+        valor_pago_centavos   BIGINT,
+        cancelada_em          DATE,
+        motivo_cancelamento   TEXT NOT NULL DEFAULT '',
+        notas                 TEXT NOT NULL DEFAULT '',
+        criado_em             TIMESTAMPTZ NOT NULL DEFAULT now(),
+        atualizado_em         TIMESTAMPTZ
+      )
+    `;
+    // Uma fatura viva por linha do cronograma: emitir duas vezes a mesma parcela é erro que a
+    // tela não deve conseguir cometer. Cancelada sai da regra (reemissão).
+    await sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS faturas_linha_viva
+      ON faturas (contrato_id, tipo, competencia)
+      WHERE contrato_id IS NOT NULL AND tipo <> 'avulsa' AND status <> 'cancelada'
+    `;
+
     // A Supabase expõe o schema `public` pela API REST (PostgREST), que atende usando os
     // papéis `anon` e `authenticated` — e concede privilégios a eles por padrão em tabelas
     // novas. A chave anon é pública por definição (nasceu para ir em código de navegador),
@@ -624,7 +668,7 @@ async function migrate(): Promise<void> {
             EXECUTE format(
               'REVOKE ALL ON users, user_area_perms, activities, deals, sessions, audit_log, areas, produtos, '
               'oauth_concessoes, oauth_codigos, oauth_tokens, mcp_chamadas, origens, oportunidade_modulos, '
-              'contratos, contrato_receitas FROM %I',
+              'contratos, contrato_receitas, faturas FROM %I',
               papel
             );
             EXECUTE format('REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM %I', papel);

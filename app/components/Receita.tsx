@@ -20,7 +20,7 @@ import { api, type Deal } from "./api";
 import { CampoData, Modal } from "./views";
 import { areaOf, brl, brlExato, hojeISO, porTexto, stageLabel, todasAreas } from "@/lib/domain";
 import {
-  ETAPAS_FINAIS, ROTULO_SITUACAO, TIPOS_RECEITA, contratadaDoMes, lancamentos, mesDe, rotuloMes, serieMensal,
+  ETAPAS_FINAIS, FORMAS_COBRANCA, ROTULO_SITUACAO, TIPOS_RECEITA, contratadaDoMes, lancamentos, mesDe, rotuloMes, serieMensal,
   situacaoEfetiva, somarMeses, totalNoPeriodo,
   type Contrato, type LinhaReceita, type MesForecast, type SituacaoEfetiva, type TipoReceita,
 } from "@/lib/forecast";
@@ -589,6 +589,10 @@ function FormContrato({
   const [chance, setChance] = useState<"alta" | "baixa">(inicial.chance ?? "alta");
   const [inicio, setInicio] = useState(inicial.inicioFaturamento ?? "");
   const [notas, setNotas] = useState(inicial.notas ?? "");
+  const [cnpj, setCnpj] = useState(inicial.cobranca?.cnpj ?? "");
+  const [emailCobranca, setEmailCobranca] = useState(inicial.cobranca?.emailCobranca ?? "");
+  const [diaVencimento, setDiaVencimento] = useState(String(inicial.cobranca?.diaVencimento ?? 10));
+  const [formaCobranca, setFormaCobranca] = useState<string>(inicial.cobranca?.formaCobranca ?? "boleto");
   const [rasc, setRasc] = useState<Record<TipoReceita, Rascunho>>(() => ({
     assinatura: rascunhoDe(inicial.linhas?.find((l) => l.tipo === "assinatura")),
     implantacao: rascunhoDe(inicial.linhas?.find((l) => l.tipo === "implantacao")),
@@ -633,6 +637,7 @@ function FormContrato({
       chance: sitEfetiva === "prevista" ? chance : null,
       inicioFaturamento: inicio,
       notas,
+      cobranca: { cnpj, emailCobranca, diaVencimento: Number(diaVencimento) || 0, formaCobranca },
       linhas: TIPOS_RECEITA.map((t) => ({
         tipo: t.key,
         valorCentavos: paraCentavos(rasc[t.key].valor),
@@ -757,6 +762,25 @@ function FormContrato({
               </Field>
             </div>
           ))}
+        </div>
+
+        {/* Dados de cobrança: o Faturamento usa para sugerir vencimento e forma, e para o e-mail de cobrança. */}
+        <div>
+          <div style={{ ...eyebrow(10, C.dust, "0.14em"), marginBottom: 10 }}>COBRANÇA</div>
+          <div className="rec-form__quatro">
+            <Field label="CNPJ do cliente">
+              <Input value={cnpj} onChange={setCnpj} placeholder="00.000.000/0000-00" size="sm" />
+            </Field>
+            <Field label="E-mail do financeiro">
+              <Input value={emailCobranca} onChange={setEmailCobranca} placeholder="financeiro@cliente.com.br" size="sm" />
+            </Field>
+            <Field label="Vence no dia" hint="1 a 28">
+              <Input value={diaVencimento} onChange={(v) => setDiaVencimento(v.replace(/\D/g, "").slice(0, 2))} size="sm" />
+            </Field>
+            <Field label="Forma de cobrança">
+              <Select value={formaCobranca} onChange={setFormaCobranca} options={FORMAS_COBRANCA.map((f) => ({ value: f.key, label: f.label }))} />
+            </Field>
+          </div>
         </div>
 
         <Field label="Notas">

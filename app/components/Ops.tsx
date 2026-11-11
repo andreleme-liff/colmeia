@@ -33,6 +33,7 @@ import SeletorArea from "./SeletorArea";
 import SeletorResponsaveis from "./SeletorResponsaveis";
 import CampoBusca from "./CampoBusca";
 import Receita from "./Receita";
+import Faturamento from "./Faturamento";
 import Conexoes from "./Conexoes";
 import { EditarPessoa, EditarProduto } from "./EditarCadastro";
 import { api, type State } from "./api";
@@ -992,6 +993,8 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             onAbrirDeal={(ref) => navegar({ view: "comercial", ref })}
           />
         );
+      case "faturamento":
+        return <Faturamento deals={estado.deals} area={areaEfetiva} busca={busca} gatilho={estado.logs[0]?.id} />;
       case "auditoria":
         return <Auditoria
             todas={auditoria.logs}
@@ -1206,7 +1209,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           {/* Os dois filtros do cabeçalho moram juntos: área recorta a vertical, "meus"
               recorta a carteira. Separá-los faria parecer que um é filtro e o outro é modo. */}
           <div className="liff-filtros" style={{ marginLeft: "auto" }}>
-            {["comercial", "operacoes", "cronograma", "auditoria"].includes(view) && (
+            {["comercial", "operacoes", "cronograma", "auditoria", "faturamento"].includes(view) && (
               <CampoBusca valor={busca} onChange={setBusca} />
             )}
             {/* Conexão não pertence a área nenhuma: na tela delas o recorte por área só

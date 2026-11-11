@@ -7,7 +7,7 @@ import { requireAdmin } from "@/lib/perms";
 import { err, json, lerCorpo } from "@/lib/http";
 import { registrar } from "@/lib/log";
 import { lerContrato, resumoContrato } from "@/lib/forecast";
-import { conferir, gravarLinhas, lerContratos } from "@/lib/receita";
+import { conferir, gravarCobranca, gravarLinhas, lerContratos } from "@/lib/receita";
 
 async function idDe(ctxRoute: RouteContext<"/api/receita/[id]">): Promise<number | null> {
   const { id } = await ctxRoute.params;
@@ -36,6 +36,7 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/receita/[
       WHERE id = ${id}
     `;
     await gravarLinhas(tx, id, c);
+    await gravarCobranca(tx, id, c);
     const de = resumoContrato(antes);
     const para = resumoContrato(c);
     if (de !== para || antes.conta !== c.conta || antes.area !== c.area || antes.dealId !== c.dealId || antes.notas !== c.notas) {

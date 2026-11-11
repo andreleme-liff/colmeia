@@ -9,7 +9,7 @@ import { requireAdmin } from "@/lib/perms";
 import { err, json, lerCorpo } from "@/lib/http";
 import { registrar } from "@/lib/log";
 import { lerContrato, resumoContrato } from "@/lib/forecast";
-import { conferir, gravarLinhas, lerContratos } from "@/lib/receita";
+import { conferir, gravarCobranca, gravarLinhas, lerContratos } from "@/lib/receita";
 
 export async function GET() {
   const ctx = await requireAdmin();
@@ -36,6 +36,7 @@ export async function POST(req: Request) {
     const ref = `R-${String(novo.id).padStart(4, "0")}`;
     await tx`UPDATE contratos SET ref = ${ref} WHERE id = ${novo.id}`;
     await gravarLinhas(tx, novo.id, c);
+    await gravarCobranca(tx, novo.id, c);
     await registrar(tx, {
       actorUserId: ctx.user.userId,
       area: c.area,
