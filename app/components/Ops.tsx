@@ -794,6 +794,17 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
   if (!estado || !dados || !cadSet) return <Aviso>carregando…</Aviso>;
 
   const me = estado.me;
+  // Modo "ver como": admin olhando o sistema com outro papel (o servidor responde como ele).
+  const simulando = me.papelReal === "admin" && me.papel !== "admin";
+  const verComo = async (papel: string) => {
+    try {
+      await api.verComo(papel === "admin" ? null : papel);
+      // Recarrega tudo: menus, dados e permissões mudam com o papel.
+      window.location.assign(papel === "admin" ? window.location.pathname : "/");
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Não foi possível trocar o papel.");
+    }
+  };
   // Cadastros (que inclui pessoas e permissões) é configuração do sistema — as rotas já exigem
   // admin, e deixar a tela à vista só oferecia caminhos que terminam em 403. No menu, o que é
   // só de admin fica num grupo à parte, no fim.
@@ -1159,9 +1170,30 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
                 <div style={avatarStyle(32)}>{me.iniciais}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, color: C.ink, fontWeight: 600 }}>{me.nome}</div>
-                  <div style={eyebrow(10, C.faint, "0.1em")}>{me.papel}</div>
+                  <div style={eyebrow(10, simulando ? C.warning : C.faint, "0.1em")}>{simulando ? `vendo como ${me.papel}` : me.papel}</div>
                 </div>
               </div>
+              {/* Só para quem é admin de verdade: olhar o sistema com outro papel, para conferir o
+                  que cada perfil enxerga. O servidor passa a responder como aquele papel. */}
+              {me.papelReal === "admin" && (
+                <label style={{ display: "block", marginTop: 12 }}>
+                  <span style={{ ...eyebrow(10, C.faint, "0.14em"), display: "block", marginBottom: 6 }}>VER COMO</span>
+                  <select
+                    value={simulando ? me.papel : "admin"}
+                    onChange={(e) => void verComo(e.target.value)}
+                    aria-label="Ver o sistema como outro papel"
+                    style={{
+                      width: "100%", background: C.cell, color: C.ink, border: `1px solid ${simulando ? C.warning : C.line}`,
+                      borderRadius: 4, padding: "6px 8px", fontFamily: "inherit", fontSize: 13,
+                    }}
+                  >
+                    <option value="admin">admin (você)</option>
+                    <option value="gestor">gestor</option>
+                    <option value="membro">membro</option>
+                    <option value="leitura">leitura</option>
+                  </select>
+                </label>
+              )}
               <div style={{ marginTop: 14 }}>
                 <Button
                   variant="ghost"
@@ -1329,6 +1361,24 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         </header>
 
         <main className="liff-main">
+          {simulando && (
+            <div
+              role="status"
+              style={{
+                display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 16, padding: "10px 14px",
+                border: `1px solid ${C.warning}`, background: "color-mix(in srgb, var(--liff-warning) 10%, transparent)",
+                fontSize: 13, color: C.ink,
+              }}
+            >
+              <span>
+                Você está vendo o sistema como <strong>{me.papel}</strong>. Os dados, os menus e o que dá para editar são os
+                desse papel; o que você gravar agora vale de verdade e fica no seu nome.
+              </span>
+              <button type="button" className="rec-link" style={{ marginLeft: "auto" }} onClick={() => void verComo("admin")}>
+                voltar a admin
+              </button>
+            </div>
+          )}
           {aviso && (
             <div
               onClick={() => setAviso(null)}

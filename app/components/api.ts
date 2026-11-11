@@ -119,6 +119,8 @@ export type Me = {
   nome: string;
   email: string;
   papel: string;
+  /** O papel verdadeiro. Difere de `papel` só quando um admin está no modo "ver como". */
+  papelReal: string;
   iniciais: string;
   avatarUrl: string | null;
   /**
@@ -233,6 +235,8 @@ export const api = {
     req<{ ok: boolean; ref: string }>(`/api/clientes/${id}/mesclar`, { method: "POST", body: JSON.stringify({ em }) }),
   /** Avisa que a pessoa está usando a tela; o servidor decide se é visita nova (30 min parado). */
   visita: (secao: string) => req<{ ok: boolean; novaVisita: boolean }>("/api/me/visita", { method: "POST", body: JSON.stringify({ secao }) }),
+  /** Admin: passa a ver (e agir) como outro papel; `null` volta ao normal. */
+  verComo: (papel: string | null) => req<{ ok: boolean; verComo: string | null }>("/api/me/ver-como", { method: "POST", body: JSON.stringify({ papel }) }),
   /** Faturamento (só admin). */
   faturas: () => req<{ faturas: import("@/lib/faturamento").Fatura[] }>("/api/faturamento"),
   emitirFatura: (corpo: Record<string, unknown>) =>

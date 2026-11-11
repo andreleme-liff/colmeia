@@ -190,6 +190,8 @@ export async function GET() {
       nome: ctx.user.nome,
       email: ctx.user.email,
       papel: ctx.user.papel,
+      // Admin no modo "ver como": `papel` é o simulado e este é o verdadeiro.
+      papelReal: ctx.user.papelReal ?? ctx.user.papel,
       iniciais: ctx.user.iniciais,
       avatarUrl: ctx.user.avatarUrl,
       preferencias: ctx.user.preferencias,

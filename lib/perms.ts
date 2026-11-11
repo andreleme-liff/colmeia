@@ -5,6 +5,7 @@
 // `edit` na área do registro, sempre a partir da sessão — nunca de algo que o cliente mandou.
 
 import { carregarUsuario, getSessionUser, type SessionUser } from "./auth";
+import { cookies } from "next/headers";
 import { getDb } from "./db";
 import { err } from "./http";
 import type { Nivel } from "./domain";
@@ -78,7 +79,25 @@ async function ctxDe(user: SessionUser): Promise<Ctx> {
 export async function requireCtx(): Promise<Ctx | Response> {
   const user = await getSessionUser();
   if (!user) return err("Não autenticado.", 401);
-  return ctxDe(user);
+  return ctxDe(await comPapelSimulado(user));
+}
+
+/** Cookie do modo "ver como" (ver app/api/me/ver-como). */
+export const COOKIE_VER_COMO = "ver_como";
+/** Papéis que um admin pode simular: todos têm menos acesso que o dele. */
+export const PAPEIS_SIMULAVEIS = ["gestor", "membro", "leitura"] as const;
+
+/**
+ * Modo "ver como": admin com o cookie ligado é tratado, nesta requisição, como se tivesse o
+ * papel escolhido — nas leituras E nas gravações, que é o que torna o teste fiel. Só vale
+ * para quem é admin de verdade e só rebaixa; em qualquer outro caso o cookie é ignorado.
+ * Não passa por aqui quem chega por token do MCP: a simulação é da tela.
+ */
+async function comPapelSimulado(user: SessionUser): Promise<SessionUser> {
+  if (user.papel !== "admin") return user;
+  const pedido = (await cookies()).get(COOKIE_VER_COMO)?.value;
+  const papel = PAPEIS_SIMULAVEIS.find((p) => p === pedido);
+  return papel ? { ...user, papel, papelReal: "admin" } : user;
 }
 
 /**

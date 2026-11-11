@@ -23,6 +23,11 @@ export type SessionUser = {
   preferencias: Record<string, string>;
   /** Se já autorizou leitura de planilhas. O TOKEN em si nunca sai da camada de servidor. */
   temSheets: boolean;
+  /**
+   * Só quando um admin está no modo "ver como": o papel verdadeiro (`admin`), enquanto
+   * `papel` leva o simulado. Ausente em todos os outros casos.
+   */
+  papelReal?: Papel;
 };
 
 export async function createSession(userId: number): Promise<void> {
