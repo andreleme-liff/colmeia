@@ -10,7 +10,7 @@
 
 import {
   BLOCKER_TIPO_KEYS, ESTAGIO_INICIAL, FUNIL, MOTIVO_PERDA_KEYS, STAGE_KEYS, blockerTipoLabel, brlExato,
-  hojeISO, motivoPerdaLabel, stageLabel,
+  hojeISO, motivoPerdaLabel, stageLabel, urlDaProposta,
 } from "../domain.ts";
 import {
   LIMITES, dataOuNula, falha, idDePessoa, isoDoBanco, texto,
@@ -36,6 +36,7 @@ export type OportunidadeNova = {
   contatoOperacional: string;
   dor: string;
   erp: string;
+  propostaUrl: string;
   ultimaInteracao: string | null;
   blocker: string;
   blockerTipo: string | null;
@@ -69,6 +70,7 @@ export type OportunidadeAtual = {
   contato_operacional: string;
   dor: string;
   erp: string;
+  proposta_url: string;
   ultima_interacao: Date | null;
   blocker: string;
   blocker_tipo: string | null;
@@ -171,6 +173,8 @@ export function planejarCriacaoOportunidade(
   if (blockerTipo === "invalido") return falha("Tipo de blocker inválido.");
   const motivoPerda = deLista(body.motivoPerda ?? null, MOTIVO_PERDA_KEYS);
   if (motivoPerda === "invalido") return falha("Motivo da perda inválido.");
+  const propostaUrl = urlDaProposta(body.propostaUrl);
+  if (propostaUrl === null) return falha("Link da proposta inválido. Cole o endereço completo, começando por https://.");
   let blockerDonoId: number | null = null;
   if (body.blockerDonoId != null) {
     const id = idDePessoa(body.blockerDonoId);
@@ -196,6 +200,7 @@ export function planejarCriacaoOportunidade(
     contatoOperacional: texto(body.contatoOperacional, LIMITES.contatoOperacional),
     dor: texto(body.dor, LIMITES.dor),
     erp: texto(body.erp, LIMITES.erp),
+    propostaUrl,
     ultimaInteracao: dataOuNula(body.ultimaInteracao),
     blocker: texto(body.blocker, LIMITES.blocker),
     blockerTipo,
@@ -223,7 +228,7 @@ export type ColunaOportunidade =
   | "situacao" | "situacao_em" | "contato" | "responsavel_texto" | "proximo_passo_em"
   | "ace_aws" | "responsavel_user_id"
   | "origem_id" | "ponte" | "contato_operacional" | "dor" | "erp" | "ultima_interacao"
-  | "blocker" | "blocker_tipo" | "blocker_dono_id" | "motivo_perda" | "motivo_perda_detalhe" | "notas";
+  | "blocker" | "blocker_tipo" | "blocker_dono_id" | "motivo_perda" | "motivo_perda_detalhe" | "notas" | "proposta_url";
 
 export type PlanoOportunidade = {
   ok: true;
@@ -383,6 +388,20 @@ export function planejarAtualizacaoOportunidade(
     // A data da situação anda junto com o texto: é o "19/OUT" do card. Quem atualiza pode dizer
     // a data (a importação diz a da planilha); sem isso, é hoje.
     if (t.coluna === "situacao") sets.situacao_em = valor ? (dataOuNula(body.situacaoEm) ?? hojeISO()) : null;
+  }
+
+  if (body.propostaUrl !== undefined) {
+    const url = urlDaProposta(body.propostaUrl);
+    if (url === null) return falha("Link da proposta inválido. Cole o endereço completo, começando por https://.");
+    if (url !== atual.proposta_url) {
+      mudancas.push({
+        campo: "proposta_url",
+        de: atual.proposta_url || "—",
+        para: url || "—",
+        texto: url ? `Alterou o link da proposta de ${atual.conta}` : `Removeu o link da proposta de ${atual.conta}`,
+      });
+      sets.proposta_url = url;
+    }
   }
 
   // `null` explícito limpa a data — é assim que se tira um item do cronograma sem apagar o

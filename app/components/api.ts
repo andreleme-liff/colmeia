@@ -59,6 +59,7 @@ export type Deal = {
   contatoOperacional: string;
   dor: string;
   erp: string;
+  propostaUrl: string;
   /** Último contato com o cliente — não a última edição do card. */
   ultimaInteracao: string | null;
   blocker: string;
@@ -178,6 +179,7 @@ export type NovaOportunidade = {
   contatoOperacional: string;
   dor: string;
   erp: string;
+  propostaUrl: string;
   ultimaInteracao: string | null;
   blocker: string;
   blockerTipo: string | null;

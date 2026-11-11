@@ -36,7 +36,7 @@ const MAPA: Record<string, string> = {
   origem: "origemId", ponte: "ponte", contato_operacional: "contatoOperacional", dor: "dor", modulos: "modulos",
   erp: "erp", ultima_interacao: "ultimaInteracao", blocker: "blocker", blocker_tipo: "blockerTipo",
   blocker_quem_resolve: "blockerDonoId", motivo_perda: "motivoPerda", motivo_perda_detalhe: "motivoPerdaDetalhe",
-  notas: "notas",
+  notas: "notas", proposta_url: "propostaUrl",
 };
 
 function paraNucleo(args: Record<string, unknown>): Record<string, unknown> {

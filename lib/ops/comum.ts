@@ -138,6 +138,7 @@ export const LIMITES = {
   contatoOperacional: 300,
   dor: 300,
   erp: 100,
+  propostaUrl: 2000,
   blocker: 300,
   motivoPerdaDetalhe: 300,
   notas: 2000,

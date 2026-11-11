@@ -12,7 +12,7 @@
 import type { CSSProperties, DragEvent, ReactNode } from "react";
 import type { Deal } from "./api";
 import {
-  areaOf, blockerTipoLabel, brl, diaMes, etiquetaPrazo, hojeISO, motivoPerdaLabel, prazoDoPasso,
+  areaOf, blockerTipoLabel, brl, diaMes, etiquetaPrazo, hojeISO, hostDaUrl, motivoPerdaLabel, prazoDoPasso,
   stageLabel, vizinhosNoFunil, type TomPrazo,
 } from "@/lib/domain";
 
@@ -51,6 +51,15 @@ export function Chevron({ dir }: { dir: -1 | 1 }) {
   return (
     <svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
       <path d={dir < 0 ? "M15 18l-6-6 6-6" : "M9 18l6-6-6-6"} />
+    </svg>
+  );
+}
+
+function Documento() {
+  return (
+    <svg aria-hidden width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+      <path d="M14 3v5h5M9 13h6M9 17h4" />
     </svg>
   );
 }
@@ -267,6 +276,23 @@ export function CardOportunidade({
           <span className="cop-dono__nome">{nomeDono || "Sem responsável"}</span>
         </div>
         <div className="cop-setas">
+          {d.propostaUrl && (
+            // Abre em outra aba sem abrir o card nem iniciar o arraste. Vale também para quem só lê.
+            <a
+              className="cop-seta cop-proposta"
+              href={d.propostaUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              draggable={false}
+              aria-label={`Abrir a proposta de ${d.conta} em nova aba`}
+              title={`Abrir a proposta · ${hostDaUrl(d.propostaUrl)}`}
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+            >
+              <Documento />
+            </a>
+          )}
           {seta(-1)}
           {seta(1)}
         </div>

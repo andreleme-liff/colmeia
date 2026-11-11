@@ -15,7 +15,7 @@ import ViaConexao from "./ViaConexao";
 import { CardOportunidade } from "./CardOportunidade";
 import { CardAtividade } from "./CardAtividade";
 import {
-  ADMIN_CARDS, BLOCKER_TIPOS, ERP_SUGESTOES, ESTAGIO_INICIAL, MOTIVOS_PERDA, PAPEIS, STAGES, STATUS, CHAVE_SEM_RESPONSAVEL, aplicarBusca, areaOf, prepararBusca, ddmm, porTexto, stamp, statusLabel, todasAreas,
+  ADMIN_CARDS, BLOCKER_TIPOS, ERP_SUGESTOES, ESTAGIO_INICIAL, MOTIVOS_PERDA, PAPEIS, STAGES, STATUS, CHAVE_SEM_RESPONSAVEL, aplicarBusca, areaOf, prepararBusca, ddmm, porTexto, stamp, statusLabel, todasAreas, hostDaUrl, previaDaProposta, urlDaProposta,
 } from "@/lib/domain";
 
 /* =========================================================
@@ -2120,6 +2120,57 @@ export function NovaAtividade({
  * duplicar o formulário significaria dois lugares para manter em sincronia toda vez que a
  * oportunidade ganhar um campo.
  */
+/**
+ * Link da proposta comercial: o campo, o atalho para abrir e, quando o endereço é do Google
+ * (Docs, Slides, Sheets ou arquivo do Drive), a própria proposta dentro do card.
+ * A prévia é servida pelo Google, com a sessão de quem está olhando: quem não tem acesso ao
+ * arquivo vê o pedido de acesso do Google, não a proposta.
+ */
+function CampoProposta({
+  valor, onChange, aberta, onAlternar,
+}: { valor: string; onChange: (v: string) => void; aberta: boolean; onAlternar: () => void }) {
+  const url = urlDaProposta(valor);
+  const previa = url ? previaDaProposta(url) : null;
+  const link = { ...eyebrow(11, C.accent, "0.08em"), textDecoration: "none", cursor: "pointer", background: "none", border: 0, padding: 0 } as const;
+  return (
+    <Field
+      label="Proposta (link)"
+      hint={url === null ? "Endereço inválido: cole o link completo, começando por https://." : "Cole o endereço de onde a proposta está: Drive, Docs, Slides, PDF."}
+    >
+      <Input placeholder="https://docs.google.com/presentation/d/…" value={valor} onChange={onChange} />
+      {url && (
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 14, marginTop: 8 }}>
+          <a href={url} target="_blank" rel="noopener noreferrer" style={link}>
+            ABRIR EM NOVA ABA ↗
+          </a>
+          {previa ? (
+            <button type="button" onClick={onAlternar} aria-expanded={aberta} style={link}>
+              {aberta ? "ESCONDER PRÉVIA" : "VER AQUI"}
+            </button>
+          ) : null}
+          <span style={{ fontSize: 12, color: C.faint }}>{previa ? previa.tipo : hostDaUrl(url)}</span>
+        </div>
+      )}
+      {url && previa && aberta && (
+        <div style={{ marginTop: 10 }}>
+          <iframe
+            className="proposta-previa"
+            src={previa.embed}
+            title="Pré-visualização da proposta"
+            loading="lazy"
+            referrerPolicy="no-referrer"
+            sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+            allowFullScreen
+          />
+          <div style={{ fontSize: 12, color: C.faint, lineHeight: 1.5, marginTop: 6 }}>
+            Só aparece para quem tem acesso ao arquivo no Google. Sem acesso, o Google pede login ou permissão.
+          </div>
+        </div>
+      )}
+    </Field>
+  );
+}
+
 export function FormOportunidade({
   areasEditaveis,
   pessoas,
@@ -2171,6 +2222,8 @@ export function FormOportunidade({
   const [contatoOp, setContatoOp] = useState(inicial?.contatoOperacional ?? "");
   const [dor, setDor] = useState(inicial?.dor ?? "");
   const [erp, setErp] = useState(inicial?.erp ?? "");
+  const [propostaUrl, setPropostaUrl] = useState(inicial?.propostaUrl ?? "");
+  const [verProposta, setVerProposta] = useState(false);
   const [ultimaInteracao, setUltimaInteracao] = useState(inicial?.ultimaInteracao ?? "");
   const [modulos, setModulos] = useState<string[]>(inicial?.modulos ?? []);
   const [blocker, setBlocker] = useState(inicial?.blocker ?? "");
@@ -2211,6 +2264,7 @@ export function FormOportunidade({
       contatoOperacional: contatoOp,
       dor,
       erp,
+      propostaUrl,
       ultimaInteracao: ultimaInteracao || null,
       modulos: modulos.filter((id) => modulosDaArea.some((p) => p.id === id)),
       blocker,
@@ -2356,6 +2410,8 @@ export function FormOportunidade({
           </span>
         </div>
       )}
+
+      <CampoProposta valor={propostaUrl} onChange={setPropostaUrl} aberta={verProposta} onAlternar={() => setVerProposta((v) => !v)} />
 
       </div>
       <div className="cortina-col">

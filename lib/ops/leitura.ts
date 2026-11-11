@@ -71,7 +71,7 @@ type LinhaOportunidade = {
   responsavel_user_id: number | null; responsavel: string | null; responsavel_texto: string;
   proximo_passo: string; proximo_passo_em: Date | null; situacao: string; situacao_em: Date | null; contato: string;
   ace_aws: boolean; atualizado_em: Date | null; criado_em: Date;
-  origem: string | null; ponte: string; contato_operacional: string; dor: string; erp: string;
+  origem: string | null; ponte: string; contato_operacional: string; dor: string; erp: string; proposta_url: string;
   ultima_interacao: Date | null; blocker: string; blocker_tipo: string | null; blocker_dono: string | null;
   motivo_perda: string | null; motivo_perda_detalhe: string; notas: string;
   modulos: string[]; modulos_ids: string[];
@@ -81,7 +81,7 @@ type LinhaOportunidade = {
 const COLUNAS_OPORTUNIDADE = `
   d.ref, d.conta, d.area, d.estagio, d.valor_centavos, d.responsavel_user_id, u.nome AS responsavel,
   d.responsavel_texto, d.proximo_passo, d.proximo_passo_em, d.situacao, d.situacao_em, d.contato, d.ace_aws,
-  d.atualizado_em, d.criado_em, o.label AS origem, d.ponte, d.contato_operacional, d.dor, d.erp,
+  d.atualizado_em, d.criado_em, o.label AS origem, d.ponte, d.contato_operacional, d.dor, d.erp, d.proposta_url,
   d.ultima_interacao, d.blocker, d.blocker_tipo, bd.nome AS blocker_dono, d.motivo_perda,
   d.motivo_perda_detalhe, d.notas,
   COALESCE((SELECT array_agg(p.label ORDER BY p.label) FROM oportunidade_modulos m JOIN produtos p ON p.id = m.produto_id
@@ -119,6 +119,7 @@ function oportunidadeDto(d: LinhaOportunidade, ctx: Ctx, base: string) {
     modulos: d.modulos,
     modulos_ids: d.modulos_ids,
     erp: d.erp,
+    proposta_url: d.proposta_url || null,
     ultima_interacao: iso(d.ultima_interacao),
     status_fup: statusFup(d.estagio, iso(d.proximo_passo_em)),
     blocker: d.blocker || null,

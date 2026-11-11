@@ -1007,3 +1007,69 @@ export function aplicarBusca<T>(lista: T[], busca: Busca | null, campos: (x: T) 
     .sort((a, b) => b.p - a.p)
     .map((r) => r.x);
 }
+
+// ---------- link da proposta comercial ----------
+
+/**
+ * Normaliza o link da proposta. "" = sem link; `null` = inválido.
+ * Só http e https: o valor vira `href` na tela, e um `javascript:` gravado aqui rodaria no
+ * clique de outra pessoa.
+ */
+export function urlDaProposta(bruto: unknown): string | null {
+  if (bruto == null) return "";
+  if (typeof bruto !== "string") return null;
+  const s = bruto.trim();
+  if (!s) return "";
+  if (s.length > 2000 || /\s/.test(s)) return null;
+  // Colar "docs.google.com/..." sem o protocolo é o engano mais comum.
+  const comProtocolo = /^[a-z][a-z0-9+.-]*:/i.test(s) ? s : `https://${s}`;
+  let u: URL;
+  try {
+    u = new URL(comProtocolo);
+  } catch {
+    return null;
+  }
+  if (u.protocol !== "https:" && u.protocol !== "http:") return null;
+  if (!u.hostname.includes(".") || u.username || u.password) return null;
+  return u.toString();
+}
+
+export type PreviaProposta = { tipo: string; embed: string };
+
+/**
+ * Endereço de pré-visualização, só para os serviços que a oferecem num endereço próprio
+ * (Google Docs, Slides, Sheets e arquivo do Drive). A lista é fechada de propósito: o que sai
+ * daqui vira `src` de iframe. Para qualquer outro link devolve `null` e a tela mostra só o link.
+ */
+export function previaDaProposta(url: string): PreviaProposta | null {
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    return null;
+  }
+  if (u.protocol !== "https:") return null;
+  const ID = "([A-Za-z0-9_-]{10,})";
+  if (u.hostname === "docs.google.com") {
+    const m = u.pathname.match(new RegExp(`^/(document|presentation|spreadsheets)/d/${ID}(?:/|$)`));
+    if (!m) return null;
+    const tipo = m[1] === "document" ? "Google Docs" : m[1] === "presentation" ? "Google Slides" : "Google Sheets";
+    return { tipo, embed: `https://docs.google.com/${m[1]}/d/${m[2]}/preview` };
+  }
+  if (u.hostname === "drive.google.com") {
+    const m = u.pathname.match(new RegExp(`^/file/d/${ID}(?:/|$)`));
+    const id = m?.[1] ?? (u.pathname === "/open" ? u.searchParams.get("id") : null);
+    if (!id || !new RegExp(`^${ID}$`).test(id)) return null;
+    return { tipo: "Google Drive", embed: `https://drive.google.com/file/d/${id}/preview` };
+  }
+  return null;
+}
+
+/** "docs.google.com" — o que cabe no card para dizer onde a proposta está. */
+export function hostDaUrl(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+}

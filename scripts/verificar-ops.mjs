@@ -13,7 +13,7 @@
 //     das rotas como estavam antes da refatoração (git) e exige que todas continuem existindo.
 
 import { execSync } from "node:child_process";
-import { ESTAGIO_INICIAL, FUNIL, STAGE_KEYS, estagioEmAberto, formatarRef, refCanonica, tipoDaRef } from "../lib/domain.ts";
+import { ESTAGIO_INICIAL, FUNIL, STAGE_KEYS, estagioEmAberto, formatarRef, previaDaProposta, refCanonica, tipoDaRef, urlDaProposta } from "../lib/domain.ts";
 import { readFileSync } from "node:fs";
 import {
   planejarAtualizacaoAtividade, planejarCriacaoAtividade,
@@ -72,7 +72,7 @@ const OPOR = {
   valor_centavos: "6000000", proximo_passo: "", responsavel_user_id: null, responsavel: null,
   situacao: "", contato: "", responsavel_texto: "Agente 2",
   proximo_passo_em: null, ace_aws: false,
-  origem_id: null, ponte: "", contato_operacional: "", dor: "", erp: "", ultima_interacao: null,
+  origem_id: null, ponte: "", contato_operacional: "", dor: "", erp: "", proposta_url: "", ultima_interacao: null,
   blocker: "", blocker_tipo: null, blocker_dono_id: null, motivo_perda: null, motivo_perda_detalhe: "", notas: "",
   modulos: ["regtrack"],
 };
@@ -107,6 +107,24 @@ checa("origem arquivada não entra numa oportunidade nova",
   erro(planejarCriacaoOportunidade({ conta: "X", area: "tax", origemId: "evento" }, perm, fatos)), "400 Origem inválida.");
 checa("tipo de blocker fora do domínio recusa",
   erro(planejarCriacaoOportunidade({ conta: "X", area: "tax", blockerTipo: "humor" }, perm, fatos)), "400 Tipo de blocker inválido.");
+const LINK_RUIM = "400 Link da proposta inválido. Cole o endereço completo, começando por https://.";
+checa("link da proposta: javascript: recusa",
+  erro(planejarCriacaoOportunidade({ conta: "X", area: "tax", propostaUrl: "javascript:alert(1)" }, perm, fatos)), LINK_RUIM);
+checa("link da proposta: data: recusa", urlDaProposta("data:text/html,<script>1</script>"), null);
+checa("link da proposta: com espaço recusa", urlDaProposta("https://a.com/x y"), null);
+checa("link da proposta: usuário e senha no endereço recusa", urlDaProposta("https://docs.google.com@evil.com/x"), null);
+checa("link da proposta: sem protocolo ganha https", urlDaProposta(" docs.google.com/document/d/1AbCdEfGhIjKl/edit "), "https://docs.google.com/document/d/1AbCdEfGhIjKl/edit");
+checa("link da proposta: vazio é 'sem link'", urlDaProposta("  "), "");
+checa("link da proposta: entra na criação",
+  planejarCriacaoOportunidade({ conta: "X", area: "tax", propostaUrl: "https://drive.google.com/file/d/1AbCdEfGhIjKl/view" }, perm, fatos).linha?.propostaUrl,
+  "https://drive.google.com/file/d/1AbCdEfGhIjKl/view");
+checa("prévia: Slides vira /preview",
+  previaDaProposta("https://docs.google.com/presentation/d/1AbCdEfGhIjKl/edit#slide=id.p")?.embed, "https://docs.google.com/presentation/d/1AbCdEfGhIjKl/preview");
+checa("prévia: arquivo do Drive", previaDaProposta("https://drive.google.com/file/d/1AbCdEfGhIjKl/view?usp=sharing")?.embed, "https://drive.google.com/file/d/1AbCdEfGhIjKl/preview");
+checa("prévia: open?id= do Drive", previaDaProposta("https://drive.google.com/open?id=1AbCdEfGhIjKl")?.embed, "https://drive.google.com/file/d/1AbCdEfGhIjKl/preview");
+checa("prévia: host parecido não vira iframe", previaDaProposta("https://docs.google.com.evil.com/document/d/1AbCdEfGhIjKl/edit"), null);
+checa("prévia: outro site fica só como link", previaDaProposta("https://www.canva.com/design/abc"), null);
+checa("prévia: http não vira iframe", previaDaProposta("http://docs.google.com/document/d/1AbCdEfGhIjKl/edit"), null);
 checa("motivo de perda fora do domínio recusa",
   erro(planejarCriacaoOportunidade({ conta: "X", area: "tax", motivoPerda: "azar" }, perm, fatos)), "400 Motivo da perda inválido.");
 checa("quem resolve o blocker tem de existir",
@@ -186,18 +204,18 @@ checa("chave desconhecida na entrada é ignorada", Object.keys(intruso.sets), ["
 const COLUNAS = new Set(["area", "conta", "estagio", "valor_centavos", "proximo_passo", "situacao", "contato",
   "responsavel_texto", "proximo_passo_em", "ace_aws", "responsavel_user_id",
   "origem_id", "ponte", "contato_operacional", "dor", "erp", "ultima_interacao", "blocker", "blocker_tipo",
-  "blocker_dono_id", "motivo_perda", "motivo_perda_detalhe", "notas", "situacao_em"]);
+  "blocker_dono_id", "motivo_perda", "motivo_perda_detalhe", "notas", "situacao_em", "proposta_url"]);
 const tudo = planejarAtualizacaoOportunidade(OPOR, {
   area: "tech", conta: "B", escopo: "c", estagio: "prospeccao", valorReais: 1, proximoPasso: "p", situacao: "s",
   contato: "k", responsavelTexto: "r", proximoPassoEm: "2026-12-01", produtoId: "observa", pausado: true,
   aceAws: true, responsavelId: 2, origemId: "aws", ponte: "pt", contatoOperacional: "co", dor: "d", erp: "SAP",
   ultimaInteracao: "2026-11-01", blocker: "b", blockerTipo: "preco", blockerDonoId: 1, motivoPerda: "outro",
-  motivoPerdaDetalhe: "md", notas: "n", modulos: ["observa"],
+  motivoPerdaDetalhe: "md", notas: "n", modulos: ["observa"], propostaUrl: "https://docs.google.com/document/d/1AbCdEfGhIjKlMnOp/edit",
 }, perm2, fatos);
 checa("pausado (legado) não vira coluna nenhuma", "pausado" in tudo.sets, false);
 checa("todas as colunas possíveis estão na lista conhecida", Object.keys(tudo.sets).every((k) => COLUNAS.has(k)), true);
 checa("escopo e produto_id (removidos) não voltam", "escopo" in tudo.sets || "produto_id" in tudo.sets, false);
-checa("e são todas as 24 da oportunidade", Object.keys(tudo.sets).length, 24);
+checa("e são todas as 25 da oportunidade", Object.keys(tudo.sets).length, 25);
 checa("mudar a situação grava a data dela", typeof tudo.sets.situacao_em, "string");
 checa("a data dita por quem atualiza vale",
   planejarAtualizacaoOportunidade(OPOR, { situacao: "nova", situacaoEm: "2026-10-19" }, perm, fatos).sets.situacao_em, "2026-10-19");
