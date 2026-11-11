@@ -1265,7 +1265,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
                   setCriando(view === "comercial" ? "oportunidade" : "atividade");
                 }}
               >
-                + {view === "comercial" ? "oportunidade" : "atividade"}
+                + card
               </Button>
             )}
 
