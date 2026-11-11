@@ -4,7 +4,7 @@
 // devolvem eventos. Quem decide o que pode ser alterado é o servidor — `podeEditar` que
 // chega em cada registro é o eco daquela decisão, usado só para desenhar o estado.
 
-import { useState, type CSSProperties, type MouseEvent, type ReactNode, useRef } from "react";
+import { useEffect, useState, type CSSProperties, type MouseEvent, type ReactNode, useRef } from "react";
 import { Button, Field, Input, Select, Switch } from "./ds";
 import { C, GHOST_FIX, MONO, SANS, dot, eyebrow, mesh, statusColor } from "./tokens";
 import { type Activity, type AreaCadastro, type Deal, type LogEntry, type NovaOportunidade, type Origem, type Pessoa } from "./api";
@@ -1590,6 +1590,8 @@ export function Drawer({
             </div>
           </div>
 
+          {/* Com a cortina larga, vertical e módulo / produto lado a lado. */}
+          <div className="cortina-duas" style={{ gap: "0 14px" }}>
           <div>
             <div style={{ ...eyebrow(10, C.faint), marginBottom: 9 }}>VERTICAL</div>
             <select
@@ -1628,6 +1630,8 @@ export function Drawer({
                   </option>
                 ))}
             </select>
+          </div>
+
           </div>
 
           {/* A oportunidade comercial a que esta tarefa serve — o elo entre o pipeline e o
@@ -1791,44 +1795,13 @@ export function WaModal({
   onCopiar: () => void;
   onFechar: () => void;
 }) {
-  const fundo = useFecharNoFundo(onFechar);
   return (
-    <div
-      {...fundo}
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(14,16,20,0.78)",
-        zIndex: 50,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 16,
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: 560,
-          maxWidth: "100%",
-          maxHeight: "82vh",
-          overflow: "auto",
-          background: C.panel,
-          border: `1px solid ${C.line}`,
-        }}
-      >
-        <div style={{ padding: "24px 26px", borderBottom: `1px solid ${C.line}` }}>
-          <div style={eyebrow(10, C.accent)}>LIFF/ REPORT</div>
-          <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: "-0.02em", color: C.ink, marginTop: 6 }}>
-            Resumo de status para WhatsApp
-          </div>
-        </div>
-
-        <div style={{ padding: "16px 26px", borderBottom: `1px solid ${C.line}` }}>
+    <Modal titulo="Resumo de status para WhatsApp" eyebrowTexto="LIFF/ REPORT" onFechar={onFechar} largura={640}>
+        <div>
           <SeletorArea opcoes={tabs} valor={areaAtiva} onChange={onArea} larguraTotal />
         </div>
 
-        <div style={{ padding: "24px 26px" }}>
+        <div>
           <pre
             style={{
               margin: 0,
@@ -1868,8 +1841,7 @@ export function WaModal({
             </span>
           </div>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -1887,49 +1859,44 @@ const campoNativo: CSSProperties = {
   padding: "11px 13px",
 };
 
-export function Modal({ titulo, eyebrowTexto, children, onFechar, largura = 520 }: {
+/**
+ * Cortina: o painel que entra pela direita, ocupando a altura toda. É como os cards de
+ * Operações sempre abriram, e agora vale para todo cadastro e edição do sistema (antes eram
+ * janelas no centro da tela, estreitas e com rolagem curta).
+ *
+ * O cabeçalho fica fixo no topo com o botão de fechar; o conteúdo rola. Fecha com Esc, com o
+ * ×, ou clicando no fundo escurecido.
+ */
+export function Modal({ titulo, eyebrowTexto, children, onFechar, largura = 640 }: {
   titulo: string;
   eyebrowTexto: string;
   children: ReactNode;
   onFechar: () => void;
-  /** Largura máxima; o padrão serve aos formulários de uma coluna. */
+  /** Largura da cortina; no celular ela ocupa a tela toda. */
   largura?: number;
 }) {
   const fundo = useFecharNoFundo(onFechar);
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && onFechar();
+    window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
+  }, [onFechar]);
   return (
-    <div
-      {...fundo}
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(14,16,20,0.78)",
-        zIndex: 50,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 16,
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: largura,
-          maxWidth: "100%",
-          maxHeight: "88vh",
-          overflow: "auto",
-          background: C.panel,
-          border: `1px solid ${C.line}`,
-        }}
-      >
-        <div style={{ padding: "24px 26px", borderBottom: `1px solid ${C.line}` }}>
-          <div style={eyebrow(10, C.accent)}>{eyebrowTexto}</div>
-          <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: "-0.02em", color: C.ink, marginTop: 6 }}>
-            {titulo}
+    <>
+      <div {...fundo} className="cortina-fundo" />
+      <div className="cortina" role="dialog" aria-modal="true" aria-label={titulo} style={{ width: largura }}>
+        <div className="cortina__topo">
+          <div style={{ minWidth: 0 }}>
+            <div style={eyebrow(10, C.accent)}>{eyebrowTexto}</div>
+            <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: "-0.02em", color: C.ink, marginTop: 6 }}>{titulo}</div>
           </div>
+          <button type="button" className="cortina__fechar" onClick={onFechar} aria-label="Fechar">
+            ×
+          </button>
         </div>
-        <div style={{ padding: "24px 26px", display: "flex", flexDirection: "column", gap: 16 }}>{children}</div>
+        <div className="cortina__corpo">{children}</div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -2241,7 +2208,13 @@ export function FormOportunidade({
       titulo={editando ? `Editar ${inicial.conta}` : "Nova oportunidade"}
       eyebrowTexto={editando ? `LIFF/ COMERCIAL · ${inicial.ref}` : "LIFF/ COMERCIAL"}
       onFechar={onFechar}
+      largura={1120}
     >
+      {/* Duas colunas na cortina larga: à esquerda quem é e o que se vende; à direita o
+          andamento. Assim a edição do dia a dia (situação, próximo passo) fica à vista sem
+          rolar por cima dos dados de cadastro. No celular vira uma coluna só. */}
+      <div className="cortina-duas">
+      <div className="cortina-col">
       <Field label="Conta" required>
         <Input placeholder="Razão social" value={conta} onChange={setConta} />
       </Field>
@@ -2360,6 +2333,8 @@ export function FormOportunidade({
         </div>
       )}
 
+      </div>
+      <div className="cortina-col">
       {bloco("4 · ANDAMENTO")}
       <Field label="Situação atual" hint="Só o estado de hoje. O que já foi fica no histórico do card.">
         <textarea
@@ -2486,6 +2461,8 @@ export function FormOportunidade({
         </div>
       )}
 
+      </div>
+      </div>
       {erro && <div style={{ fontFamily: MONO, fontSize: 11, lineHeight: 1.6, color: C.error }}>{erro}</div>}
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginTop: 4, alignItems: "center" }}>
         {/* Excluir fica longe do salvar, e do lado oposto: é a única ação irreversível aqui. */}

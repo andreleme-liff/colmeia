@@ -16,7 +16,7 @@ import { C, GHOST_FIX, MONO, eyebrow } from "./tokens";
 import { STAGES, areaOf, brl, normalizarConta, normalizarTexto, porTexto, statusLabel } from "@/lib/domain";
 import { chaveDeModulo, lerAba, rendeLinhas, type Aba, type LinhaAtividadeImportada } from "@/lib/planilha";
 import type { Activity, Deal, LinhaImport, ProdutoCadastro } from "./api";
-import { useFecharNoFundo } from "./views";
+import { Modal } from "./views";
 
 const COLS_DEAL = "1.4fr 1.3fr 1.1fr 0.9fr 0.8fr 0.6fr";
 const COLS_ATIV = "2.4fr 0.9fr 1.6fr 0.7fr";
@@ -183,47 +183,14 @@ export default function ImportarPlanilha({
     );
   }
 
-  // Selecionar texto na prévia e soltar o mouse fora do painel fechava o modal no meio da
-  // seleção; ver o comentário de `useFecharNoFundo`.
-  const fundo = useFecharNoFundo(onFechar);
 
   const totalLinhas = abasAtivas.reduce((s, a) => s + a.linhas.length, 0);
   const novas = abasAtivas.reduce((s, a) => s + a.linhas.filter((l) => !l.existente).length, 0);
   const atualiza = totalLinhas - novas;
 
   return (
-    <div
-      {...fundo}
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(14,16,20,0.78)",
-        zIndex: 50,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 16,
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: 980,
-          maxWidth: "100%",
-          maxHeight: "90vh",
-          overflow: "auto",
-          background: C.panel,
-          border: `1px solid ${C.line}`,
-        }}
-      >
-        <div style={{ padding: "24px 26px", borderBottom: `1px solid ${C.line}` }}>
-          <div style={eyebrow(10, C.accent)}>LIFF/ IMPORTAÇÃO</div>
-          <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: "-0.02em", color: C.ink, marginTop: 6 }}>
-            Importar planilha
-          </div>
-        </div>
-
-        <div style={{ padding: "24px 26px", display: "flex", flexDirection: "column", gap: 18 }}>
+    <Modal titulo="Importar planilha" eyebrowTexto="LIFF/ IMPORTAÇÃO" onFechar={onFechar} largura={1080}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <Field
               label="Vertical de destino"
@@ -561,7 +528,6 @@ export default function ImportarPlanilha({
             </Button>
           </div>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
