@@ -46,6 +46,11 @@ import {
 } from "@/lib/domain";
 import { caminhoDe, type Rota } from "@/lib/rotas";
 
+/** "Bom dia" das 5h às 11h59, "Boa tarde" até 17h59, "Boa noite" no resto. */
+function saudacaoDaHora(hora: number): string {
+  return hora >= 5 && hora < 12 ? "Bom dia" : hora >= 12 && hora < 18 ? "Boa tarde" : "Boa noite";
+}
+
 const DIAS_CRITICO = 7;
 
 /** Dias inteiros entre hoje e o prazo. Negativo = atrasado, 0 = hoje. */
@@ -381,14 +386,8 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     // Os grandes números e os gráficos do painel são calculados no próprio Painel.tsx.
 
     const painel: PainelDados = {
-      escopoFrase:
-        `${me.nome.split(" ")[0]}, você vê ${areasVisiveis.length} de ${estado.areas.length} ` +
-        `produtos — ${atividades.length} atividades e ${oportunidades.length} oportunidades.`,
-      // O sufixo "(ver)" marca onde a pessoa só lê. É a informação que evita descobrir a
-      // falta de permissão só na hora de tentar salvar.
-      escopoAreas: areasVisiveis
-        .map((a) => a.short + (estado.perms[a.id] === "edit" || estado.isAdmin ? "" : " (ver)"))
-        .join(" · "),
+      // Só a saudação, pela hora do relógio de quem está olhando.
+      saudacao: `${saudacaoDaHora(new Date().getHours())}, ${me.nome.split(" ")[0]}`,
 
       // Atrasadas primeiro, depois por proximidade do prazo. Seis linhas: o painel responde
       // "o que exige atenção agora", e uma lista longa deixaria de responder isso.

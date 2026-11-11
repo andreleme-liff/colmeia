@@ -90,8 +90,7 @@ export default function Painel({
   return (
     <div className="pn">
       <div style={{ display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 15, color: C.dust }}>{dados.escopoFrase}</span>
-        <span style={eyebrow(11, C.faint, "0.1em")}>{dados.escopoAreas}</span>
+        <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-0.01em", color: C.ink }}>{dados.saudacao}</span>
       </div>
 
       {/* ---------- 1 · grandes números ---------- */}

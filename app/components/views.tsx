@@ -42,8 +42,8 @@ export type LinhaFoco = {
   podeAbrir: boolean;
 };
 export type PainelDados = {
-  escopoFrase: string;
-  escopoAreas: string;
+  /** "Boa tarde, André". */
+  saudacao: string;
   focoComercial: LinhaFoco[];
   focoAtividades: LinhaFoco[];
   logs: LogEntry[];
