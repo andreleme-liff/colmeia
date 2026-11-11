@@ -217,6 +217,19 @@ export const api = {
     req<{ ok: boolean; ref: string }>("/api/faturamento", { method: "POST", body: JSON.stringify(corpo) }),
   acaoFatura: (id: number, corpo: Record<string, unknown>) =>
     req<{ ok: boolean }>(`/api/faturamento/${id}`, { method: "PATCH", body: JSON.stringify(corpo) }),
+  /** Funding AWS (só admin). */
+  funding: () =>
+    req<{
+      programas: import("@/lib/funding").Programa[];
+      arquetipos: import("@/lib/funding").Arquetipo[];
+      estimativas: import("@/lib/funding").Estimativa[];
+    }>("/api/funding"),
+  fundingCriar: (tipo: string, corpo: Record<string, unknown>) =>
+    req<{ ok: boolean; id: number | string; ref?: string }>(`/api/funding/${tipo}`, { method: "POST", body: JSON.stringify(corpo) }),
+  fundingAlterar: (tipo: string, id: number | string, corpo: Record<string, unknown>) =>
+    req<{ ok: boolean }>(`/api/funding/${tipo}/${encodeURIComponent(String(id))}`, { method: "PATCH", body: JSON.stringify(corpo) }),
+  fundingExcluir: (tipo: string, id: number | string) =>
+    req<{ ok: boolean }>(`/api/funding/${tipo}/${encodeURIComponent(String(id))}`, { method: "DELETE" }),
   auditoria: () => req<{ limite: number; logs: (LogEntry & { autorId: number | null })[] }>("/api/logs"),
 
   criarAtividade: (dados: NovaAtividade) =>

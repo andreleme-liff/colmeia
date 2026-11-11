@@ -7,6 +7,7 @@ import {
   BLOCKER_TIPO_KEYS, MOTIVO_PERDA_KEYS, ORIGENS_INICIAIS, PAPEIS, PRIORIDADES, STAGE_KEYS, STATUS_KEYS,
   hojeISO, refCanonica, separarDataDaSituacao, slugificar,
 } from "./domain";
+import { ARQUETIPOS_SEMENTE, PROGRAMAS_SEMENTE } from "./funding";
 
 export type Db = ReturnType<typeof postgres>;
 
@@ -634,6 +635,101 @@ async function migrate(): Promise<void> {
         atualizado_em         TIMESTAMPTZ
       )
     `;
+    // Funding AWS (nov/2026, só admin): arquétipos de implantação com as calculadoras oficiais
+    // da AWS, catálogo de programas, e por oportunidade a estimativa de consumo (conta LIFF e
+    // conta do cliente) com as linhas de funding. As sementes entram só quando a tabela nasce,
+    // como as verticais: depois disso o cadastro é de quem administra.
+    const [{ fundingNovo }] = await sql<{ fundingNovo: boolean }[]>`
+      SELECT to_regclass('public.funding_arquetipos') IS NULL AS "fundingNovo"
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS funding_programas (
+        id        TEXT PRIMARY KEY,
+        label     TEXT NOT NULL,
+        forma     TEXT NOT NULL CHECK (forma IN ('credito', 'cash')),
+        descricao TEXT NOT NULL DEFAULT '',
+        ativo     BOOLEAN NOT NULL DEFAULT true,
+        ordem     INTEGER NOT NULL DEFAULT 0
+      )
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS funding_arquetipos (
+        id        SERIAL PRIMARY KEY,
+        nome      TEXT NOT NULL,
+        modelo    TEXT NOT NULL CHECK (modelo IN ('saas_liff', 'dedicado_liff', 'hibrido', 'cliente')),
+        descricao TEXT NOT NULL DEFAULT '',
+        ativo     BOOLEAN NOT NULL DEFAULT true,
+        ordem     INTEGER NOT NULL DEFAULT 0
+      )
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS funding_calculadoras (
+        id                    SERIAL PRIMARY KEY,
+        arquetipo_id          INTEGER NOT NULL REFERENCES funding_arquetipos(id) ON DELETE CASCADE,
+        regiao                TEXT NOT NULL,
+        conta                 TEXT NOT NULL CHECK (conta IN ('liff', 'cliente')),
+        porte                 TEXT NOT NULL DEFAULT '',
+        url                   TEXT NOT NULL DEFAULT '',
+        custo_mensal_centavos BIGINT NOT NULL DEFAULT 0 CHECK (custo_mensal_centavos >= 0),
+        data_preco            DATE,
+        notas                 TEXT NOT NULL DEFAULT ''
+      )
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS funding_estimativas (
+        id                      SERIAL PRIMARY KEY,
+        ref                     TEXT UNIQUE,
+        conta                   TEXT NOT NULL,
+        deal_id                 INTEGER REFERENCES deals(id) ON DELETE SET NULL,
+        arquetipo_id            INTEGER REFERENCES funding_arquetipos(id) ON DELETE SET NULL,
+        regiao                  TEXT NOT NULL,
+        porte                   TEXT NOT NULL DEFAULT '',
+        liff_mensal_centavos    BIGINT NOT NULL DEFAULT 0,
+        cliente_mensal_centavos BIGINT NOT NULL DEFAULT 0,
+        ia_mensal_centavos      BIGINT NOT NULL DEFAULT 0,
+        ia_paga_por             TEXT NOT NULL DEFAULT 'liff' CHECK (ia_paga_por IN ('liff', 'cliente')),
+        inicio                  TEXT,
+        duracao_meses           INTEGER NOT NULL DEFAULT 12,
+        notas                   TEXT NOT NULL DEFAULT '',
+        criado_em               TIMESTAMPTZ NOT NULL DEFAULT now(),
+        atualizado_em           TIMESTAMPTZ
+      )
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS funding_linhas (
+        id             SERIAL PRIMARY KEY,
+        estimativa_id  INTEGER NOT NULL REFERENCES funding_estimativas(id) ON DELETE CASCADE,
+        programa_id    TEXT NOT NULL REFERENCES funding_programas(id),
+        beneficiario   TEXT NOT NULL CHECK (beneficiario IN ('liff', 'cliente')),
+        valor_centavos BIGINT NOT NULL DEFAULT 0 CHECK (valor_centavos >= 0),
+        status         TEXT NOT NULL,
+        aws_id         TEXT NOT NULL DEFAULT '',
+        solicitado_em  DATE,
+        aprovado_em    DATE,
+        expira_em      DATE,
+        notas          TEXT NOT NULL DEFAULT ''
+      )
+    `;
+    if (fundingNovo) {
+      for (const [i, p] of PROGRAMAS_SEMENTE.entries()) {
+        await sql`
+          INSERT INTO funding_programas (id, label, forma, descricao, ordem)
+          VALUES (${p.id}, ${p.label}, ${p.forma}, ${p.descricao}, ${i}) ON CONFLICT (id) DO NOTHING
+        `;
+      }
+      for (const [i, a] of ARQUETIPOS_SEMENTE.entries()) {
+        const [novo] = await sql<{ id: number }[]>`
+          INSERT INTO funding_arquetipos (nome, modelo, descricao, ordem) VALUES (${a.nome}, ${a.modelo}, ${a.descricao}, ${i}) RETURNING id
+        `;
+        for (const c of a.calculadoras) {
+          await sql`
+            INSERT INTO funding_calculadoras (arquetipo_id, regiao, conta, porte, custo_mensal_centavos, data_preco, notas)
+            VALUES (${novo.id}, ${c.regiao}, ${c.conta}, ${c.porte}, ${Math.round(c.usd * 100)}, '2026-10-29', ${c.nota})
+          `;
+        }
+      }
+    }
+
     // Uma fatura viva por linha do cronograma: emitir duas vezes a mesma parcela é erro que a
     // tela não deve conseguir cometer. Cancelada sai da regra (reemissão).
     await sql`
@@ -668,7 +764,8 @@ async function migrate(): Promise<void> {
             EXECUTE format(
               'REVOKE ALL ON users, user_area_perms, activities, deals, sessions, audit_log, areas, produtos, '
               'oauth_concessoes, oauth_codigos, oauth_tokens, mcp_chamadas, origens, oportunidade_modulos, '
-              'contratos, contrato_receitas, faturas FROM %I',
+              'contratos, contrato_receitas, faturas, funding_programas, funding_arquetipos, funding_calculadoras, '
+              'funding_estimativas, funding_linhas FROM %I',
               papel
             );
             EXECUTE format('REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM %I', papel);

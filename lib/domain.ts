@@ -96,6 +96,9 @@ export const NAV = [
   { key: "receita", label: "receita", soAdmin: true },
   // Contas a receber: emissão e baixa das faturas que saem dos contratos da receita.
   { key: "faturamento", label: "faturamento", soAdmin: true },
+  // Funding AWS: consumo previsto por oportunidade (conta LIFF e conta do cliente), arquétipos
+  // de implantação com as calculadoras oficiais e os programas (POC, MAP, Sandbox…).
+  { key: "funding", label: "funding", soAdmin: true },
   { key: "cadastros", label: "cadastros", soAdmin: true },
 ] as const;
 
@@ -107,6 +110,7 @@ export const TITLES: Record<string, string> = {
   cadastros: "Cadastros",
   receita: "Forecast de receita",
   faturamento: "Faturamento · contas a receber",
+  funding: "Funding AWS",
   auditoria: "Auditoria",
   conexoes: "Conexões",
 };

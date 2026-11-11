@@ -34,6 +34,7 @@ import CampoBusca from "./CampoBusca";
 import Receita from "./Receita";
 import Painel from "./Painel";
 import Faturamento from "./Faturamento";
+import Funding from "./Funding";
 import Conexoes from "./Conexoes";
 import { EditarPessoa, EditarProduto } from "./EditarCadastro";
 import { api, type State } from "./api";
@@ -938,6 +939,8 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         );
       case "faturamento":
         return <Faturamento deals={estado.deals} area={areaEfetiva} busca={busca} gatilho={estado.logs[0]?.id} />;
+      case "funding":
+        return <Funding gatilho={estado.logs[0]?.id} />;
       case "auditoria":
         return <Auditoria
             todas={auditoria.logs}

@@ -82,6 +82,13 @@ const DESENHOS: Record<string, ReactNode> = {
       <path d="M12 10v7M14 11.3c-.4-.6-1.1-.9-2-.9-1.2 0-2 .6-2 1.4 0 1.9 4 1 4 2.9 0 .8-.9 1.5-2 1.5-.9 0-1.7-.4-2.1-1" />
     </>
   ),
+  // Funding: nuvem com seta para cima (crédito entrando na conta).
+  funding: (
+    <>
+      <path d="M7 18.5h10a4 4 0 0 0 .6-7.96A5.5 5.5 0 0 0 7.1 9.6 4.5 4.5 0 0 0 7 18.5Z" />
+      <path d="M12 16.5v-6M9.5 13l2.5-2.5 2.5 2.5" />
+    </>
+  ),
   // Cadastros: base de dados.
   cadastros: (
     <>

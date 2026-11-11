@@ -24,11 +24,11 @@ export type Mudanca = {
 
 /**
  * Linhas de auditoria que só a administração vê: cadastros (verticais, origens, módulos /
- * produtos, pessoas e permissões), receita (contratos R-) e faturamento (faturas F-). Casa
+ * produtos, pessoas e permissões), receita (R-), faturamento (F-) e funding (E-, ARQ-, PROG-). Casa
  * pela referência gravada em `entidade`. Efeitos desses cadastros nos cards (ex.: responsável
  * trocado ao excluir uma pessoa) ficam com a referência do card e continuam visíveis.
  */
-export const ENTIDADES_SO_ADMIN = "^(AREA|ORIGEM|PROD|U|R|F)-";
+export const ENTIDADES_SO_ADMIN = "^(AREA|ORIGEM|PROD|U|R|F|E|ARQ|PROG)-";
 
 export async function registrar(sql: Queryable, m: Mudanca): Promise<void> {
   await sql`
