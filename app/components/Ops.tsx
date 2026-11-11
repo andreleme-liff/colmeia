@@ -1027,7 +1027,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         <div className="liff-aside-topo">
           <div className="liff-so-expandida" style={{ minWidth: 0 }}>
             <LiffSig name="go" size={24} tone={markTone(theme)} />
-            <div style={{ ...eyebrow(10, C.faint, "0.18em"), marginTop: 12 }}>GESTÃO INTERNA</div>
+            <div style={{ ...eyebrow(10, C.faint, "0.18em"), marginTop: 12 }}>GESTÃO ORGANIZACIONAL</div>
           </div>
           <button
             type="button"

@@ -16,7 +16,7 @@ export default function LoginScreen({ erro, dominio }: { erro?: string; dominio:
       <div className="liff-login__pitch">
         <LiffSig name="go" size={34} tone={markTone(theme)} />
         <div>
-          <div style={{ ...eyebrow(12, C.accent), marginBottom: 24 }}>GESTÃO INTERNA</div>
+          <div style={{ ...eyebrow(12, C.accent), marginBottom: 24 }}>GESTÃO ORGANIZACIONAL</div>
           <h1
             style={{
               fontSize: 52,
