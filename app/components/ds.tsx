@@ -146,7 +146,7 @@ export function Button({
     whiteSpace: "nowrap",
   };
   const variants: Record<string, CSSProperties> = {
-    solid: { background: accent, color: "var(--liff-obsidiana)", borderColor: accent },
+    solid: { background: accent, color: "var(--liff-app-on-accent, var(--liff-obsidiana))", borderColor: accent },
     outline: { background: "transparent", color: accent, borderColor: accent },
     ghost: { background: "transparent", color: "var(--liff-floral)", borderColor: "var(--liff-charcoal)" },
   };

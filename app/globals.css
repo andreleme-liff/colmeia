@@ -42,6 +42,8 @@
   --liff-app-info-ink:    var(--liff-info);
   /* Texto sobre um preenchimento de estado (pílula de status ativa). */
   --liff-app-on-state: var(--liff-obsidiana);
+  /* Texto sobre o botão cheio (Paprika): escuro no tema escuro, claro no tema claro. */
+  --liff-app-on-accent: var(--liff-obsidiana);
 
   /* Cor de cada vertical. No escuro, o tom Mid do cascata. */
   --liff-app-area-law-firms:     var(--liff-law-firms-mid);
@@ -60,6 +62,7 @@
 }
 
 :root[data-theme="light"] {
+  --liff-app-on-accent: var(--liff-floral);
   /* Superfícies: a célula de conteúdo é o Floral White puro; o canvas recua
      com um véu de Dust, e o passo 2 (hover/selecionado) avança sobre ele. */
   --liff-canvas:       color-mix(in srgb, var(--liff-dust) 24%, var(--liff-floral));
