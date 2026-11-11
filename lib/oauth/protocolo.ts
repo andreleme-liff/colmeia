@@ -295,7 +295,7 @@ export function metadadosRecurso(cfg: Config) {
     authorization_servers: [cfg.issuer],
     scopes_supported: ["leitura", "escrita"],
     bearer_methods_supported: ["header"],
-    resource_name: "LIFF tasks",
+    resource_name: "LIFF go",
   };
 }
 

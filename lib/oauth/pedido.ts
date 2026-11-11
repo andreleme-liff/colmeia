@@ -33,7 +33,7 @@ export async function prepararPedido(q: URLSearchParams): Promise<Preparo> {
   if (!doc) {
     return {
       tipo: "erro",
-      mensagem: "Este aplicativo não está autorizado a se conectar ao LIFF tasks. Peça à administração para incluí-lo.",
+      mensagem: "Este aplicativo não está autorizado a se conectar ao LIFF go. Peça à administração para incluí-lo.",
     };
   }
 

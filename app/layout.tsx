@@ -7,7 +7,7 @@ import "./globals.css";
 // do fonts.gstatic.com derrubava o deploy inteiro.
 
 export const metadata: Metadata = {
-  title: "LIFF tasks — gestão de atividades e pipeline comercial",
+  title: "LIFF go — gestão comercial e operacional",
   description: "Atividade comercial, execução operacional, cadastros e administração da LIFF.",
   robots: { index: false, follow: false },
 };

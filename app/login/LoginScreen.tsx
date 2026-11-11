@@ -4,7 +4,7 @@
 // SSO Google de verdade, restrito ao domínio — a lista some porque quem você é passa a ser
 // definido pelo Google, não por um clique.
 
-import { LiffMark, Button } from "../components/ds";
+import { LiffSig, Button } from "../components/ds";
 import { C, MONO, eyebrow, markTone, useTheme } from "../components/tokens";
 import ThemeToggle from "../components/ThemeToggle";
 
@@ -14,9 +14,9 @@ export default function LoginScreen({ erro, dominio }: { erro?: string; dominio:
   return (
     <div className="liff-login">
       <div className="liff-login__pitch">
-        <LiffMark height={34} tone={markTone(theme)} />
+        <LiffSig name="go" size={34} tone={markTone(theme)} />
         <div>
-          <div style={{ ...eyebrow(12, C.accent), marginBottom: 24 }}>LIFF/ TASKS</div>
+          <div style={{ ...eyebrow(12, C.accent), marginBottom: 24 }}>GESTÃO INTERNA</div>
           <h1
             style={{
               fontSize: 52,

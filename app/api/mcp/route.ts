@@ -88,7 +88,7 @@ export async function POST(req: Request) {
         ok(id, {
           protocolVersion: negociarVersao(params.protocolVersion),
           capabilities: { tools: { listChanged: false } },
-          serverInfo: { name: "liff-tasks", title: "LIFF tasks", version: "1.0.0" },
+          serverInfo: { name: "liff-go", title: "LIFF go", version: "1.0.0" },
           instructions: INSTRUCOES,
         })
       );

@@ -113,7 +113,7 @@ export default function Conexoes({ mcpHabilitado }: { mcpHabilitado: boolean }) 
           {!lista && !erro && <div style={{ padding: 16, fontFamily: MONO, fontSize: 11, color: C.faint }}>carregando…</div>}
           {lista && !lista.length && (
             <div style={{ padding: "22px 16px", fontSize: 14, lineHeight: 1.6, color: C.faint, maxWidth: "52ch" }}>
-              Nenhuma conexão. Quando você autorizar o Claude a acessar o LIFF tasks, ela aparece aqui — com o que pode
+              Nenhuma conexão. Quando você autorizar o Claude a acessar o LIFF go, ela aparece aqui — com o que pode
               fazer, quando foi usada pela última vez e o botão para cortar o acesso.
             </div>
           )}
@@ -190,7 +190,7 @@ export default function Conexoes({ mcpHabilitado }: { mcpHabilitado: boolean }) 
           <div>
             <div style={{ ...eyebrow(10, C.faint, "0.12em"), marginBottom: 6 }}>claude code</div>
             <code style={{ display: "block", fontFamily: MONO, fontSize: 12, color: C.ink, background: C.code, padding: "8px 10px", overflowWrap: "anywhere" }}>
-              claude mcp add --transport http liff-tasks {urlMcp}
+              claude mcp add --transport http liff-go {urlMcp}
             </code>
           </div>
           <div style={{ fontSize: 12, color: C.faint }}>

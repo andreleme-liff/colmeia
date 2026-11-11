@@ -648,7 +648,7 @@ export function descreverFerramentas(escopos: string, admin = false) {
 }
 
 export const INSTRUCOES = [
-  "LIFF tasks: quadro operacional (tarefas, refs T-0000), pipeline comercial (oportunidades, refs C-0000) e cadastro de organizações (refs CLI-0000) da LIFF.",
+  "LIFF go (antes LIFF tasks): quadro operacional (tarefas, refs T-0000), pipeline comercial (oportunidades, refs C-0000) e cadastro de organizações (refs CLI-0000) da LIFF.",
   "Chame `contexto` primeiro: ele diz em nome de quem você age, os produtos que vê e edita, e o vocabulário de status e estágios.",
   "Valores em reais; datas AAAA-MM-DD. Responsável: use o id de `listar_cadastros`.",
   "Tarefa e oportunidade se ligam pelo campo `oportunidade` da tarefa (ex.: C-0104). Ao criar uma tarefa que serve a uma venda, ligue-a.",

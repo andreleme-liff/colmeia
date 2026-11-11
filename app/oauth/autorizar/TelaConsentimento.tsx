@@ -7,7 +7,7 @@
 //    porque qualquer programa local consegue abrir uma porta e se dizer o cliente;
 //  · O QUE a conexão vai poder — ler é a base; gravar é opção explícita, desmarcada.
 
-import { LiffMark, Button } from "../../components/ds";
+import { LiffSig, Button } from "../../components/ds";
 import { C, MONO, eyebrow, markTone, useTheme } from "../../components/tokens";
 
 type Acao = (form: FormData) => Promise<void>;
@@ -45,16 +45,16 @@ export default function TelaConsentimento(props: Props) {
   return (
     <div className="liff-login">
       <div className="liff-login__pitch">
-        <LiffMark height={34} tone={markTone(theme)} />
+        <LiffSig name="go" size={34} tone={markTone(theme)} />
         <div>
-          <div style={{ ...eyebrow(12, C.accent), marginBottom: 24 }}>LIFF/ TASKS · CONEXÃO</div>
+          <div style={{ ...eyebrow(12, C.accent), marginBottom: 24 }}>CONEXÃO</div>
           <h1
             style={{
               fontSize: 46, lineHeight: 1.04, letterSpacing: "-0.035em", fontWeight: 800,
               color: C.ink, margin: "0 0 20px", maxWidth: "16ch", textWrap: "pretty",
             }}
           >
-            {props.modo === "pedido" ? `${props.cliente} quer acessar o LIFF tasks em seu nome.` : "Não foi possível conectar."}
+            {props.modo === "pedido" ? `${props.cliente} quer acessar o LIFF go em seu nome.` : "Não foi possível conectar."}
           </h1>
           <p style={{ fontSize: 16, lineHeight: 1.62, color: C.body, margin: 0, maxWidth: "46ch" }}>
             A conexão age como você: enxerga só os produtos que você enxerga e grava só onde você pode editar. Tudo o que
@@ -143,7 +143,7 @@ export default function TelaConsentimento(props: Props) {
               </div>
 
               <p style={{ fontSize: 12, lineHeight: 1.6, color: C.faint, margin: "0 0 20px" }}>
-                Cada leitura e cada gravação fica registrada. Você revoga a conexão quando quiser em MCP Server, no menu do LIFF tasks.
+                Cada leitura e cada gravação fica registrada. Você revoga a conexão quando quiser em MCP Server, no menu do LIFF go.
               </p>
 
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>

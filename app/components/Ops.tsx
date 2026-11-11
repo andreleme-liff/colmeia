@@ -6,7 +6,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LiffMark, Button } from "./ds";
+import { LiffSig, Button } from "./ds";
 import ThemeToggle from "./ThemeToggle";
 import { IconeLua, IconeMenu, IconeRecolher, IconeSair, IconeSol } from "./IconesMenu";
 import {
@@ -724,7 +724,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
 
     const hojeISO = new Date().toISOString().slice(0, 10);
     L.push(`Alterações registradas hoje: ${estado.logs.filter((l) => l.criadoEm.slice(0, 10) === hojeISO).length}`);
-    L.push(`Reportado por ${estado.me.nome} via LIFF tasks`);
+    L.push(`Reportado por ${estado.me.nome} via LIFF go`);
     return L.join("\n");
   }, [estado, waArea]);
 
@@ -1026,8 +1026,8 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
       <aside className="liff-aside">
         <div className="liff-aside-topo">
           <div className="liff-so-expandida" style={{ minWidth: 0 }}>
-            <LiffMark height={24} tone={markTone(theme)} />
-            <div style={{ ...eyebrow(10, C.accent, "0.18em"), marginTop: 10 }}>GESTÃO INTERNA</div>
+            <LiffSig name="go" size={24} tone={markTone(theme)} />
+            <div style={{ ...eyebrow(10, C.faint, "0.18em"), marginTop: 12 }}>GESTÃO INTERNA</div>
           </div>
           <button
             type="button"
