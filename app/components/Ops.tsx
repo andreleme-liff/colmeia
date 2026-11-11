@@ -6,8 +6,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LiffSig, Button } from "./ds";
-import ThemeToggle from "./ThemeToggle";
+import { LiffSig, Button, Select } from "./ds";
 import { IconeLua, IconeMenu, IconeRecolher, IconeSair, IconeSol } from "./IconesMenu";
 import {
   Auditoria,
@@ -25,7 +24,7 @@ import {
   type ItemCronograma,
   type Semana,
 } from "./views";
-import { C, GHOST_FIX, avatarStyle, eyebrow, markTone, statusColor, useTheme, writeTheme, type Theme } from "./tokens";
+import { C, avatarStyle, eyebrow, markTone, statusColor, useTheme, writeTheme, type Theme } from "./tokens";
 import CoresDasAreas from "./CoresDasAreas";
 import SeletorArea from "./SeletorArea";
 import SeletorResponsaveis from "./SeletorResponsaveis";
@@ -808,10 +807,6 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
   // só de admin fica num grupo à parte, no fim.
   const navComum = NAV.filter((n) => !("soAdmin" in n));
   const navAdmin = estado.isAdmin ? NAV.filter((n) => "soAdmin" in n) : [];
-  const contagens: Record<string, number> = {
-    comercial: dados.oportunidades.length,
-    operacoes: dados.atividades.length,
-  };
   const chips = [{ id: "all", label: "Todas", color: C.dust }, ...dados.areasVisiveis];
   // Só oferece criar nas áreas onde a pessoa realmente escreve.
   const areasEditaveis = dados.areasVisiveis.filter((a) => estado.perms[a.id] === "edit");
@@ -1076,7 +1071,6 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
                 )}
                 {grupo.map((n) => {
                   const on = view === n.key;
-                  const conta = contagens[n.key];
                   return (
                     <a
                       key={n.key}
@@ -1085,7 +1079,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
                       aria-current={on ? "page" : undefined}
                       // Recolhida, o rótulo some: o nome fica no title (e no aria-label, que o
                       // leitor de tela já leria do texto escondido só por CSS).
-                      title={recolhida ? `${n.label}${conta ? ` · ${conta}` : ""}` : undefined}
+                      title={recolhida ? n.label : undefined}
                       onClick={(e) => {
                         if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
                         e.preventDefault();
@@ -1104,9 +1098,6 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
                         <IconeMenu chave={n.key} />
                       </span>
                       <span className="liff-nav-rotulo liff-so-expandida">{n.label}</span>
-                      <span className="liff-so-expandida" style={{ fontSize: 10, color: C.faint, marginLeft: "auto" }}>
-                        {conta ?? ""}
-                      </span>
                     </a>
                   );
                 })}
@@ -1146,53 +1137,57 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           </div>
 
           <div className="liff-so-expandida">
-            <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 18, marginBottom: 18 }}>
-              <div style={{ ...eyebrow(10, C.faint, "0.14em"), marginBottom: 9 }}>FUNDO</div>
-              <ThemeToggle theme={theme} onChange={trocarTemaSalvando} />
-            </div>
-            <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 18 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+            <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 16 }}>
+              {/* Pessoa, tema e sair numa linha só: tema e sair são ícones discretos, como no
+                  menu recolhido. O sol aparece no tema escuro (leva ao claro) e a lua no claro. */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={avatarStyle(32)}>{me.iniciais}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, color: C.ink, fontWeight: 600 }}>{me.nome}</div>
+                  <div style={{ fontSize: 13, color: C.ink, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me.nome}</div>
                   <div style={eyebrow(10, simulando ? C.warning : C.faint, "0.1em")}>{simulando ? `vendo como ${me.papel}` : me.papel}</div>
                 </div>
-              </div>
-              {/* Só para quem é admin de verdade: olhar o sistema com outro papel, para conferir o
-                  que cada perfil enxerga. O servidor passa a responder como aquele papel. */}
-              {me.papelReal === "admin" && (
-                <label style={{ display: "block", marginTop: 12 }}>
-                  <span style={{ ...eyebrow(10, C.faint, "0.14em"), display: "block", marginBottom: 6 }}>VER COMO</span>
-                  <select
-                    value={simulando ? me.papel : "admin"}
-                    onChange={(e) => void verComo(e.target.value)}
-                    aria-label="Ver o sistema como outro papel"
-                    style={{
-                      width: "100%", background: C.cell, color: C.ink, border: `1px solid ${simulando ? C.warning : C.line}`,
-                      borderRadius: 4, padding: "6px 8px", fontFamily: "inherit", fontSize: 13,
-                    }}
-                  >
-                    <option value="admin">admin (você)</option>
-                    <option value="gestor">gestor</option>
-                    <option value="membro">membro</option>
-                    <option value="leitura">leitura</option>
-                  </select>
-                </label>
-              )}
-              <div style={{ marginTop: 14 }}>
-                <Button
-                  variant="ghost"
-                  size="sm"
+                <button
+                  type="button"
+                  className="liff-recolher"
+                  onClick={() => trocarTemaSalvando(theme === "dark" ? "light" : "dark")}
+                  aria-label={theme === "dark" ? "Usar fundo claro" : "Usar fundo escuro"}
+                  title={theme === "dark" ? "Usar fundo claro" : "Usar fundo escuro"}
+                >
+                  {theme === "dark" ? <IconeSol /> : <IconeLua />}
+                </button>
+                <button
+                  type="button"
+                  className="liff-recolher"
                   onClick={() =>
                     void api.sair().then(() => {
                       window.location.href = "/login";
                     })
                   }
-                  style={{ width: "100%", justifyContent: "center", ...GHOST_FIX }}
+                  aria-label="Sair"
+                  title="Sair"
                 >
-                  sair
-                </Button>
+                  <IconeSair />
+                </button>
               </div>
+              {/* Só para quem é admin de verdade: olhar o sistema com outro papel, para conferir o
+                  que cada perfil enxerga. O servidor passa a responder como aquele papel. */}
+              {me.papelReal === "admin" && (
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12 }}>
+                  <span style={{ ...eyebrow(10, C.faint, "0.14em"), whiteSpace: "nowrap" }}>VER COMO</span>
+                  <Select
+                    size="sm"
+                    value={simulando ? me.papel : "admin"}
+                    onChange={(v) => void verComo(v)}
+                    options={[
+                      { value: "admin", label: "admin (você)" },
+                      { value: "gestor", label: "gestor" },
+                      { value: "membro", label: "membro" },
+                      { value: "leitura", label: "leitura" },
+                    ]}
+                    style={{ flex: 1, minWidth: 0 }}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>
