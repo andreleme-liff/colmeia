@@ -625,11 +625,21 @@ textarea::placeholder {
 .cop-proposta { color: var(--liff-accent); text-decoration: none; margin-right: 6px; }
 /* Pré-visualização da proposta no formulário. */
 .proposta-previa { width: 100%; aspect-ratio: 16 / 10; border: 1px solid var(--liff-border); border-radius: 6px; background: var(--liff-surface-2); display: block; }
-.cop--compacto { gap: 10px; padding: 12px 12px 12px 14px; }
-.cop--compacto .cop-cliente { font-size: 16px; }
-.cop--compacto .cop-valor { font-size: 14px; }
-.cop--compacto .cop--compacto .cop-rodape { border-top: 0; padding-top: 0; }
-.cop--compacto .cop-dono__nome { font-size: 13px; }
+/* Compacto de verdade: o objetivo é caber muito card na tela. Sem fio no rodapé, setas menores,
+   e prazo, bloqueio e ACE como ícones ao lado do dono. */
+.cop--compacto { gap: 6px; padding: 9px 10px 8px 12px; }
+.cop--compacto .cop-bloco { gap: 6px; }
+.cop--compacto .cop-cliente { font-size: 15px; }
+.cop--compacto .cop-valor { font-size: 13px; }
+.cop--compacto .cop-pill { height: 20px; padding: 0 8px; font-size: 11px; }
+.cop--compacto .cop-rodape { border-top: 0; padding-top: 0; gap: 6px; }
+.cop--compacto .cop-dono__nome { font-size: 12.5px; }
+.cop--compacto .cop-setas { gap: 2px; }
+.cop--compacto .cop-seta { width: 22px; height: 22px; border-radius: 4px; }
+.cop--compacto .cop-seta svg { width: 14px; height: 14px; }
+.cop--compacto .cop-proposta { margin-right: 2px; }
+.cop-icones { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.cop-icone { display: inline-flex; color: var(--cop-tom-ink, var(--liff-text-faint)); }
 
 /* Densidade do kanban: segmentado de dois botões no topo do Comercial. */
 .liff-densidade { display: inline-flex; border: 1px solid var(--liff-border); }

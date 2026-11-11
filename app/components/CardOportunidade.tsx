@@ -64,6 +64,51 @@ function Documento() {
   );
 }
 
+/** Ícone de estado do card compacto: a cor vem do tom, o texto fica na dica e no leitor de tela. */
+function IconeEstado({ tom, rotulo, children }: { tom: TomPrazo | "info"; rotulo: string; children: ReactNode }) {
+  return (
+    <span className={`cop-icone cop-tag--${tom}`} role="img" aria-label={rotulo} title={rotulo}>
+      {children}
+    </span>
+  );
+}
+
+const TRACO = { width: 16, height: 16, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.9, strokeLinecap: "round", strokeLinejoin: "round" } as const;
+
+/** Prazo: calendário com ✓ (em dia), ! (vence em até 7 dias), × (vencido); pontilhado quando não há data. */
+function Calendario({ tom, semData }: { tom: TomPrazo; semData: boolean }) {
+  return (
+    <svg aria-hidden {...TRACO} strokeDasharray={semData ? "2.5 2.5" : undefined}>
+      <rect x="3.5" y="5" width="17" height="15.5" rx="2" />
+      {!semData && <path d="M8 3v4M16 3v4" />}
+      {!semData && tom === "sucesso" && <path d="M8.5 13.5l2.5 2.5 4.5-5" />}
+      {!semData && tom === "warning" && <path d="M12 10v4M12 17v.01" />}
+      {!semData && tom === "erro" && <path d="M9.5 11l5 5M14.5 11l-5 5" />}
+      {!semData && tom === "neutro" && <path d="M8.5 13.5h7" />}
+    </svg>
+  );
+}
+
+/** Bloqueio: o sinal de proibido. */
+function Bloqueio() {
+  return (
+    <svg aria-hidden {...TRACO}>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M6 6l12 12" />
+    </svg>
+  );
+}
+
+/** ACE (AWS Partner Central): nuvem com o ✓ de registrada. */
+function Nuvem() {
+  return (
+    <svg aria-hidden {...TRACO}>
+      <path d="M7 19h10a4 4 0 0 0 .6-7.96A5.5 5.5 0 0 0 7.1 10.1 4.5 4.5 0 0 0 7 19Z" />
+      <path d="M9.5 14.5l2 2 3.5-3.5" />
+    </svg>
+  );
+}
+
 function Alerta() {
   return (
     <svg aria-hidden width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="cop-tag__icone">
@@ -104,8 +149,9 @@ export function CardOportunidade({
   const visiveis = modulos.slice(0, maxModulos);
   const resto = modulos.slice(maxModulos);
 
-  // No completo o prazo fica ao lado do rótulo PRÓXIMO PASSO; no compacto, na linha de etiquetas.
-  const prazo = lost || !compacto ? null : etiquetaPrazo(d.estagio, d.proximoPassoEm, hoje, true);
+  // No completo o prazo fica ao lado do rótulo PRÓXIMO PASSO; no compacto vira um ícone no rodapé,
+  // com o texto inteiro ("Venceu 23/10 · há 18 dias") na dica e no rótulo acessível.
+  const prazo = lost || !compacto ? null : etiquetaPrazo(d.estagio, d.proximoPassoEm, hoje);
   const prazoPasso = lost || compacto ? null : prazoDoPasso(d.estagio, d.proximoPassoEm, hoje);
   const datado = !!d.proximoPassoEm;
   const temBloqueio = !lost && !!(d.blocker || d.blockerTipo);
@@ -206,17 +252,6 @@ export function CardOportunidade({
           </div>
         )}
 
-        {(prazo || (compacto && (temBloqueio || ace))) && (
-          <div className="cop-tags">
-            {prazo && (
-              <Etiqueta tom={prazo.tom} semPonto title="Prazo do próximo passo">
-                {prazo.texto}
-              </Etiqueta>
-            )}
-            {compacto && etiquetaBloqueio}
-            {compacto && ace}
-          </div>
-        )}
       </div>
 
       {/* ---------- 2 · andamento (só no completo) ---------- */}
@@ -268,6 +303,27 @@ export function CardOportunidade({
       <div className="cop-rodape">
         <div className="cop-dono">
           <span className="cop-dono__nome">{nomeDono || "Sem responsável"}</span>
+          {/* Compacto: prazo, bloqueio e ACE só como ícone. A forma muda junto com a cor
+              (calendário com ✓, ! ou ×), para não depender de enxergar a cor. */}
+          {compacto && (prazo || temBloqueio || d.aceAws) && (
+            <span className="cop-icones">
+              {prazo && (
+                <IconeEstado tom={prazo.tom} rotulo={prazo.tom === "neutro" && !d.proximoPassoEm ? "Sem prazo no próximo passo" : prazo.texto}>
+                  <Calendario tom={prazo.tom} semData={!d.proximoPassoEm} />
+                </IconeEstado>
+              )}
+              {temBloqueio && (
+                <IconeEstado tom="warning" rotulo={["Bloqueio", tipoBloqueio, dicaBloqueio].filter(Boolean).join(" · ")}>
+                  <Bloqueio />
+                </IconeEstado>
+              )}
+              {d.aceAws && (
+                <IconeEstado tom="info" rotulo="ACE criada no AWS Partner Central">
+                  <Nuvem />
+                </IconeEstado>
+              )}
+            </span>
+          )}
         </div>
         <div className="cop-setas">
           {d.propostaUrl && (
