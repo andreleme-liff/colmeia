@@ -352,9 +352,13 @@ body { background: var(--liff-canvas); color: var(--liff-text); }
 .liff-hero { grid-template-columns: repeat(3, 1fr) 1.25fr; }
 /* 78px e não 64: o sinal mais longo é "parada 31d", do foco comercial. Em 64 ele quebrava
    em duas linhas contra um título de uma — desalinhava a régua da lista inteira. */
-.liff-painel-linha { grid-template-columns: 78px 1fr 190px 110px; }
+/* Título e contexto dividem o espaço (o título um pouco mais); a última coluna tem largura
+   fixa para todas as linhas alinharem, e cabe "EM ANDAMENTO · 11/11" numa linha só — antes
+   eram 110px e quebrava. */
+.liff-painel-linha { grid-template-columns: 78px minmax(0, 1.15fr) minmax(0, 1fr) 170px; }
+.liff-painel-linha > *:last-child { white-space: nowrap; }
 .liff-painel-deal { grid-template-columns: 1fr 150px 130px 100px; }
-.liff-painel-log { grid-template-columns: 86px 140px 1fr; }
+.liff-painel-log { grid-template-columns: 86px 200px 1fr; }
 
 /* ---------- grades das seções ---------- */
 .liff-kpis { grid-template-columns: repeat(4, 1fr); }

@@ -81,7 +81,7 @@ export function ListaFoco({
 }) {
   return (
     <>
-      <div style={{ ...eyebrow(10, C.faint, "0.12em"), marginBottom: 4 }}>FOCO DA SEMANA · CLIQUE PARA ABRIR</div>
+      <div style={{ ...eyebrow(10, C.faint, "0.12em"), marginBottom: 4 }}>CLIQUE PARA ABRIR</div>
       {linhas.length === 0 && <div style={{ fontSize: 14, color: C.faint, paddingTop: 14 }}>{vazio}</div>}
       {linhas.map((l) => (
         <div
