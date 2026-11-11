@@ -101,7 +101,7 @@ const CAMPOS_OPORTUNIDADE: Record<string, Prop> = {
     enum: STAGE_KEYS,
     description: `${STAGES.map((s) => `${s.key} = ${s.label}`).join("; ")}. As sete primeiras são o funil, em ordem; on_hold é "não é o momento" e lost é perdida.`,
   },
-  valor_reais: { type: "number", minimum: 0, description: "Valor da proposta em reais (não em centavos)." },
+  valor_reais: { type: "number", minimum: 0, description: "Valor total da proposta nos primeiros 12 meses (assinatura, implantação e customização somadas), em reais (não em centavos)." },
   responsavel_id: { ...RESP, description: "Dono da oportunidade: id da pessoa (ver `listar_cadastros`); null remove." },
   responsavel_texto: { type: "string", maxLength: LIMITES.responsavelTexto, description: "Dono em texto livre, quando não é alguém cadastrado." },
   origem: { type: ["string", "null"], maxLength: 60, description: "Id da origem (ver `listar_cadastros`): Base Fius, AWS, Evento… null limpa." },
