@@ -104,11 +104,11 @@ checa("leitura vem mesmo sem ser pedida", escoposConcedidos({ ...base, pedidos: 
 checa("escopo desconhecido é descartado", lerEscopos("openid leitura admin"), ["leitura"]);
 
 console.log("\n6. resource (RFC 8707)");
-checa("barra final some", canonizarResource("https://tasks.liff.tech/api/mcp/"), "https://tasks.liff.tech/api/mcp");
-checa("host em maiúscula vira minúscula", canonizarResource("https://TASKS.liff.tech/api/mcp"), "https://tasks.liff.tech/api/mcp");
-checa("fragmento é inválido", canonizarResource("https://tasks.liff.tech/api/mcp#x"), null);
-checa("padrão de produção", cfg.resource, "https://tasks.liff.tech/api/mcp");
-checa("issuer é a origem", cfg.issuer, "https://tasks.liff.tech");
+checa("barra final some", canonizarResource("https://go.liff.tech/api/mcp/"), "https://go.liff.tech/api/mcp");
+checa("host em maiúscula vira minúscula", canonizarResource("https://GO.liff.tech/api/mcp"), "https://go.liff.tech/api/mcp");
+checa("fragmento é inválido", canonizarResource("https://go.liff.tech/api/mcp#x"), null);
+checa("padrão de produção", cfg.resource, "https://go.liff.tech/api/mcp");
+checa("issuer é a origem", cfg.issuer, "https://go.liff.tech");
 checa("local configurável", lerConfig({ MCP_URL_CANONICA: "http://localhost:3000/api/mcp" }).issuer, "http://localhost:3000");
 checa("desligado por padrão", lerConfig({}).habilitado, false);
 checa("só '1' liga", lerConfig({ MCP_HABILITADO: "true" }).habilitado, false);
@@ -116,7 +116,7 @@ checa("só '1' liga", lerConfig({ MCP_HABILITADO: "true" }).habilitado, false);
 console.log("\n7. o pedido de autorização");
 const pedido = (extra = {}) => new URLSearchParams({
   response_type: "code", client_id: CLAUDE_CODE_URL, redirect_uri: "http://localhost:3118/callback",
-  code_challenge: CHALLENGE, code_challenge_method: "S256", state: "xyz", resource: "https://tasks.liff.tech/api/mcp",
+  code_challenge: CHALLENGE, code_challenge_method: "S256", state: "xyz", resource: "https://go.liff.tech/api/mcp",
   scope: "leitura escrita offline_access", ...extra,
 });
 const bom = validarPedido(pedido(), doc, cfg);
@@ -127,13 +127,13 @@ checa("redirect ruim → erro NA TELA, nunca redirect", validarPedido(pedido({ r
 const semS256 = validarPedido(pedido({ code_challenge_method: "plain" }), doc, cfg);
 checa("PKCE plain → invalid_request de volta ao cliente", semS256.error, "invalid_request");
 checa("o retorno carrega state e iss (RFC 9207)",
-  ["state", "iss"].map((k) => new URL(semS256.redirect).searchParams.get(k)), ["xyz", "https://tasks.liff.tech"]);
+  ["state", "iss"].map((k) => new URL(semS256.redirect).searchParams.get(k)), ["xyz", "https://go.liff.tech"]);
 checa("response_type=token → unsupported_response_type",
   validarPedido(pedido({ response_type: "token" }), doc, cfg).error, "unsupported_response_type");
 checa("resource de outro servidor → invalid_target",
   validarPedido(pedido({ resource: "https://outro.com/mcp" }), doc, cfg).error, "invalid_target");
 checa("resource com barra final ainda é este servidor",
-  validarPedido(pedido({ resource: "https://tasks.liff.tech/api/mcp/" }), doc, cfg).ok, true);
+  validarPedido(pedido({ resource: "https://go.liff.tech/api/mcp/" }), doc, cfg).ok, true);
 checa("challenge malformado → invalid_request", validarPedido(pedido({ code_challenge: "x" }), doc, cfg).error, "invalid_request");
 const semEscopo = pedido();
 semEscopo.delete("scope");
@@ -154,7 +154,7 @@ checa("CIMD + none: o par que faz o Claude usar o documento",
 checa("PKCE S256 anunciado", meta.code_challenge_methods_supported, ["S256"]);
 checa("offline_access anunciado (o Claude pede refresh por ele)", meta.scopes_supported.includes("offline_access"), true);
 checa("o 401 aponta os metadados com o path do MCP",
-  desafio(cfg).includes('resource_metadata="https://tasks.liff.tech/.well-known/oauth-protected-resource/api/mcp"'), true);
+  desafio(cfg).includes('resource_metadata="https://go.liff.tech/.well-known/oauth-protected-resource/api/mcp"'), true);
 checa("aspas na descrição não quebram o cabeçalho",
   desafio(cfg, { error: "insufficient_scope", descricao: 'precisa de "escrita"' }).includes("precisa de 'escrita'"), true);
 

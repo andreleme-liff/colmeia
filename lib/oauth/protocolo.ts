@@ -24,7 +24,7 @@ export type Config = {
   clientesPermitidos: string[];
 };
 
-export const RESOURCE_PADRAO = "https://tasks.liff.tech/api/mcp";
+export const RESOURCE_PADRAO = "https://go.liff.tech/api/mcp";
 
 export function lerConfig(env: Record<string, string | undefined>): Config {
   const resource = canonizarResource(env.MCP_URL_CANONICA || RESOURCE_PADRAO) ?? RESOURCE_PADRAO;

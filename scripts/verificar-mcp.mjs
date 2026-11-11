@@ -27,7 +27,7 @@ const esquema = (nome) => CATALOGO.find((f) => f.name === nome).inputSchema;
 const valida = (nome, args) => validarArgumentos(esquema(nome), args);
 
 console.log("\n1. cabeçalhos HTTP");
-const PROPRIA = "https://tasks.liff.tech";
+const PROPRIA = "https://go.liff.tech";
 checa("sem Origin passa (é o caso do Claude: servidor ou CLI, não navegador)",
   checarCabecalhos({ origin: null, versao: null }, PROPRIA), null);
 checa("a própria origem passa", checarCabecalhos({ origin: PROPRIA, versao: "2025-11-25" }, PROPRIA), null);

@@ -173,14 +173,14 @@ metadados OAuth respondem 404. Variáveis:
 | Variável | Padrão | Para quê |
 |---|---|---|
 | `MCP_HABILITADO` | — | `1` liga. Qualquer outro valor mantém desligado. |
-| `MCP_URL_CANONICA` | `https://tasks.liff.tech/api/mcp` | O `resource` a que todo token fica preso. Em outro domínio, mude aqui. |
+| `MCP_URL_CANONICA` | `https://go.liff.tech/api/mcp` | O `resource` a que todo token fica preso. Em outro domínio, mude aqui. |
 | `MCP_CLIENTES_PERMITIDOS` | `claude.ai` | Hosts aceitos como dono do documento do cliente (CIMD), separados por vírgula. |
 
 ### Conectar
 
 - **claude.ai / desktop**: Configurações → Conectores → Adicionar conector personalizado →
-  `https://tasks.liff.tech/api/mcp`. Deixe os campos de OAuth em branco.
-- **Claude Code**: `claude mcp add --transport http liff-tasks https://tasks.liff.tech/api/mcp`
+  `https://go.liff.tech/api/mcp`. Deixe os campos de OAuth em branco.
+- **Claude Code**: `claude mcp add --transport http liff-tasks https://go.liff.tech/api/mcp`
   e depois `/mcp` para entrar.
 
 O login é o Google de sempre. A tela de consentimento mostra quem pede, para onde o acesso
@@ -235,7 +235,7 @@ tem isso — é limitação do banco de teste, não do app.
 
 ## Deploy
 
-Destino: **https://tasks.liff.tech**, no **AWS Amplify Hosting**, a partir do GitHub
+Destino: **https://go.liff.tech**, no **AWS Amplify Hosting**, a partir do GitHub
 (`andreleme-liff/liff-ops`, privado — o nome do repositório segue `liff-ops`, só o produto
 mudou de nome). Saindo da Vercel.
 
@@ -280,14 +280,14 @@ alguma página começar a renderizar em partes.
    **WEB_COMPUTE**, não WEB. Em WEB o app carrega a tela e todo `/api` devolve 404.
 2. **Variáveis de ambiente**, no app do Amplify: `DATABASE_URL` (Transaction Pooler, porta
    6543), `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ADMIN_EMAIL`, `SEED_DEMO=0`.
-3. **Domínio**: `tasks.liff.tech` em Amplify → Domain management. Ele emite o certificado e
+3. **Domínio**: `go.liff.tech` em Amplify → Domain management. Ele emite o certificado e
    pede um registro de validação.
 4. **DNS no Cloudflare**: criar o CNAME que o Amplify indicar, com o proxy **desligado**
    (nuvem cinza). Com o proxy laranja a validação do certificado não fecha — é o erro mais
    comum nessa combinação. O proxy pode ser religado depois que o domínio ficar ativo.
 5. **Google Cloud Console**, no mesmo OAuth client: adicionar
-   `https://tasks.liff.tech/api/auth/google/callback` como Authorized redirect URI, e
-   `https://tasks.liff.tech` como Authorized JavaScript origin. O código monta o redirect a
+   `https://go.liff.tech/api/auth/google/callback` como Authorized redirect URI, e
+   `https://go.liff.tech` como Authorized JavaScript origin. O código monta o redirect a
    partir do `origin` do request, então nada muda no app — mas o Google exige a URI exata
    registrada, e sem isso o login devolve `redirect_uri_mismatch`.
 
