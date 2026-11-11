@@ -722,7 +722,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
       (r) => vivo && setAuditoria({ logs: r.logs, limite: r.limite, falha: null }),
       (e: unknown) =>
         vivo &&
-        setAuditoria((a) => ({ ...a, falha: e instanceof Error ? e.message : "Não foi possível carregar a auditoria." }))
+        setAuditoria((a) => ({ ...a, falha: e instanceof Error ? e.message : "Não foi possível carregar o changelog." }))
     );
     return () => {
       vivo = false;
@@ -1152,7 +1152,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             <div style={eyebrow(10, C.faint)}>
               {view === "conexoes"
                 ? "LIFF/ CONEXÕES"
-                : `LIFF/ ${view === "overview" ? "PAINEL" : view.toUpperCase()} · ${rotuloArea.toUpperCase()}`}
+                : `LIFF/ ${view === "overview" ? "PAINEL" : (NAV.find((n) => n.key === view)?.label ?? view).toUpperCase()} · ${rotuloArea.toUpperCase()}`}
             </div>
             <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em", color: C.ink }}>{TITLES[view]}</div>
           </div>
@@ -1335,7 +1335,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           onExcluir={() => {
             if (
               !window.confirm(
-                `Excluir a atividade "${selecionadaObj.titulo}"?\n\nO card e seus campos somem. O histórico de alterações continua na auditoria.`
+                `Excluir a atividade "${selecionadaObj.titulo}"?\n\nO card e seus campos somem. O histórico de alterações continua no changelog.`
               )
             )
               return;
@@ -1378,7 +1378,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           onExcluir={() => {
             if (
               !window.confirm(
-                `Excluir a oportunidade ${dealEmEdicao.conta}?\n\nO card e seus campos somem. O histórico de alterações continua na auditoria.`
+                `Excluir a oportunidade ${dealEmEdicao.conta}?\n\nO card e seus campos somem. O histórico de alterações continua no changelog.`
               )
             )
               return;

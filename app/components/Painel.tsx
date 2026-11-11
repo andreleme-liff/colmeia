@@ -169,7 +169,7 @@ export default function Painel({
         <ListaFoco linhas={dados.focoAtividades} vazio="Nenhuma atividade em atraso, com prazo próximo ou em execução." onAbrir={onAbrirAtividade} />
       </section>
       <section className="pn-painel">
-        <CabecalhoSecao titulo="ALTERAÇÕES RECENTES" acao={{ texto: "auditoria completa →", onClick: () => onIr("auditoria") }} />
+        <CabecalhoSecao titulo="ALTERAÇÕES RECENTES" acao={isAdmin ? { texto: "changelog completo →", onClick: () => onIr("auditoria") } : undefined} />
         {dados.logs.length === 0 && <div style={{ fontSize: 14, color: C.faint }}>Nada registrado ainda.</div>}
         {dados.logs.map((l) => (
           <div key={l.id} className="liff-painel-log" style={{ display: "grid", gap: 20, alignItems: "baseline", padding: "12px 0", borderTop: `1px solid ${C.panel2}` }}>

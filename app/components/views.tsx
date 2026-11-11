@@ -1086,8 +1086,8 @@ export function Cadastros({
               <NovoProduto salvando={salvandoArea} areas={areasEditaveis} onCriar={onCriarProduto} />
             )}
             <div style={{ fontSize: 12, lineHeight: 1.6, color: C.faint }}>
-              Cadastros alimentam os seletores de atividades, oportunidades e permissões. Alterações entram na
-              auditoria.
+              Cadastros alimentam os seletores de atividades, oportunidades e permissões. Alterações entram no
+              changelog.
             </div>
           </div>
         </div>
@@ -1314,7 +1314,7 @@ export function Auditoria({
   autores: readonly string[];
 }) {
   if (falha && !todas) return <Aviso>{falha}</Aviso>;
-  if (!todas) return <div style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>carregando auditoria…</div>;
+  if (!todas) return <div style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>carregando changelog…</div>;
 
   const porAutor = autores.length
     ? todas.filter((l) => autores.includes(l.autorId == null ? CHAVE_SEM_RESPONSAVEL : `u:${l.autorId}`))

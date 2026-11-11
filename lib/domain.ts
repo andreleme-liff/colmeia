@@ -85,7 +85,6 @@ export const NAV = [
   { key: "comercial", label: "comercial" },
   { key: "operacoes", label: "operações" },
   { key: "cronograma", label: "cronograma" },
-  { key: "auditoria", label: "auditoria" },
   // Aplicativos externos (o Claude) que alguém autorizou a agir em seu nome pelo MCP. Para
   // TODOS, não só admin: cada pessoa revoga as próprias conexões — por isso não mora em
   // Cadastros, que é só da administração.
@@ -99,6 +98,9 @@ export const NAV = [
   // Funding AWS: consumo previsto por oportunidade (conta LIFF e conta do cliente), arquétipos
   // de implantação com as calculadoras oficiais e os programas (POC, MAP, Sandbox…).
   { key: "funding", label: "funding", soAdmin: true },
+  // Registro de todas as alterações (a antiga Auditoria). Só admin desde nov/2026; o endereço
+  // continua /auditoria para não quebrar links. O histórico de cada card segue no próprio card.
+  { key: "auditoria", label: "changelog", soAdmin: true },
   { key: "cadastros", label: "cadastros", soAdmin: true },
 ] as const;
 
@@ -111,7 +113,7 @@ export const TITLES: Record<string, string> = {
   receita: "Forecast de receita",
   faturamento: "Faturamento · contas a receber",
   funding: "Funding AWS",
-  auditoria: "Auditoria",
+  auditoria: "Changelog",
   conexoes: "Conexões",
 };
 

@@ -6,13 +6,13 @@
 
 import { ENTIDADES_SO_ADMIN } from "@/lib/log";
 import { getDb } from "@/lib/db";
-import { requireCtx } from "@/lib/perms";
+import { requireAdmin } from "@/lib/perms";
 import { json } from "@/lib/http";
 
 const LIMITE_AUDITORIA = 10_000;
 
 export async function GET() {
-  const ctx = await requireCtx();
+  const ctx = await requireAdmin();
   if (ctx instanceof Response) return ctx;
 
   const sql = await getDb();

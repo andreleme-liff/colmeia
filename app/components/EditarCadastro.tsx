@@ -107,7 +107,7 @@ function SecaoExclusao({
             ))}
           {acao === "excluir" && (
             <div style={{ fontSize: 12, color: C.error, lineHeight: 1.5 }}>
-              As atividades e oportunidades listadas acima serão excluídas. O histórico delas fica na auditoria.
+              As atividades e oportunidades listadas acima serão excluídas. O histórico delas fica no changelog.
             </div>
           )}
         </>

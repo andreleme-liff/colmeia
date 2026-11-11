@@ -658,7 +658,7 @@ function FormContrato({
   };
 
   const excluir = async () => {
-    if (!window.confirm(`Excluir a receita de ${inicial.conta}?\n\nO contrato e o cronograma de parcelas somem. O histórico continua na auditoria.`)) return;
+    if (!window.confirm(`Excluir a receita de ${inicial.conta}?\n\nO contrato e o cronograma de parcelas somem. O histórico continua no changelog.`)) return;
     setSalvando(true);
     try {
       await api.excluirReceita(inicial.id!);
