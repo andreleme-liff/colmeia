@@ -114,6 +114,107 @@ export function ListaFoco({
 }
 
 /* =========================================================
+   Raia do kanban — a coluna, que pode ser recolhida
+   ========================================================= */
+/**
+ * Recolhida, a coluna vira uma faixa estreita com o nome em pé e a contagem. Serve para o que
+ * não se acompanha o tempo todo (Lost, Concluído) e para coluna vazia.
+ *
+ * Continua sendo alvo de arraste: recolher "Lost" não pode tirar a possibilidade de jogar um
+ * card lá. E a contagem fica à vista, para a coluna escondida não esconder que tem coisa.
+ */
+function Raia({
+  chave,
+  label,
+  qtd,
+  meta,
+  recolhida,
+  onAlternar,
+  alvo,
+  setAlvo,
+  onSoltarId,
+  largura,
+  alturaMin,
+  children,
+}: {
+  chave: string;
+  label: string;
+  qtd: number;
+  /** O que vai à direita do título: o total em R$ no comercial, a contagem em operações. */
+  meta: string;
+  recolhida: boolean;
+  onAlternar?: () => void;
+  alvo: string | null;
+  setAlvo: (f: (a: string | null) => string | null) => void;
+  onSoltarId: (id: number) => void;
+  largura: number;
+  alturaMin?: number;
+  children: ReactNode;
+}) {
+  const arraste = {
+    "data-alvo": alvo === chave ? "1" : undefined,
+    onDragOver: (e: React.DragEvent) => {
+      e.preventDefault();
+      if (alvo !== chave) setAlvo(() => chave);
+    },
+    onDragLeave: (e: React.DragEvent) => {
+      // Só limpa ao sair da coluna de verdade: entrar num filho dispara dragleave no pai.
+      if (!e.currentTarget.contains(e.relatedTarget as Node)) setAlvo((a) => (a === chave ? null : a));
+    },
+    onDrop: (e: React.DragEvent) => {
+      e.preventDefault();
+      setAlvo(() => null);
+      const id = Number(e.dataTransfer.getData("text/plain"));
+      if (Number.isInteger(id)) onSoltarId(id);
+    },
+  };
+
+  if (recolhida) {
+    return (
+      <button
+        type="button"
+        className="liff-raia liff-raia--recolhida"
+        {...arraste}
+        onClick={onAlternar}
+        aria-expanded={false}
+        aria-label={`Expandir a coluna ${label} (${qtd} ${qtd === 1 ? "card" : "cards"})`}
+        title={`${label} · ${meta} — clique para expandir`}
+        style={{ minHeight: alturaMin }}
+      >
+        <span style={{ fontFamily: MONO, fontSize: 11, color: qtd ? C.ink : C.ghost }}>{qtd}</span>
+        <span style={{ ...eyebrow(11, C.dust, "0.14em"), writingMode: "vertical-rl", whiteSpace: "nowrap" }}>{label}</span>
+      </button>
+    );
+  }
+
+  return (
+    <div
+      className="liff-raia"
+      {...arraste}
+      style={{ minWidth: largura, flex: 1, padding: 12, display: "flex", flexDirection: "column", gap: 10, minHeight: alturaMin }}
+    >
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "4px 4px 2px" }}>
+        <span style={{ ...eyebrow(11, C.dust, "0.14em"), flex: 1 }}>{label}</span>
+        <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>{meta}</span>
+        {onAlternar && (
+          <button
+            type="button"
+            className="liff-raia-recolher"
+            onClick={onAlternar}
+            aria-expanded
+            aria-label={`Recolher a coluna ${label}`}
+            title="Recolher a coluna"
+          >
+            ⇤
+          </button>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/* =========================================================
    Comercial — pipeline por estágio
    ========================================================= */
 export type ColunaDeal = { key: string; label: string; total: string; cards: Deal[] };
@@ -126,8 +227,12 @@ export function Comercial({
   onMover,
   onSoltar,
   onAbrir,
+  recolhidas,
+  onRecolher,
 }: {
   colunas: ColunaDeal[];
+  recolhidas: string[];
+  onRecolher: (chave: string) => void;
   densidade?: "completo" | "compacto";
   produtos: { id: string; label: string }[];
   pessoas: { id: number; nome: string; iniciais: string }[];
@@ -143,41 +248,21 @@ export function Comercial({
   return (
     <div className="liff-kanban">
       {colunas.map((col) => (
-        <div
+        <Raia
           key={col.key}
-          className="liff-raia"
-          data-alvo={alvo === col.key ? "1" : undefined}
-          onDragOver={(e) => {
-            e.preventDefault();
-            if (alvo !== col.key) setAlvo(col.key);
-          }}
-          onDragLeave={(e) => {
-            // Só limpa ao sair da coluna de verdade: entrar num filho dispara dragleave no pai.
-            if (!e.currentTarget.contains(e.relatedTarget as Node)) setAlvo((a) => (a === col.key ? null : a));
-          }}
-          onDrop={(e) => {
-            e.preventDefault();
-            setAlvo(null);
-            const id = Number(e.dataTransfer.getData("text/plain"));
-            if (!Number.isInteger(id)) return;
-            // Soltar na própria coluna não é alteração; sem isto viraria um PATCH à toa.
-            if (col.cards.some((c) => c.id === id)) return;
-            onSoltar(id, col.key);
-          }}
-          style={{
-            // O card v4 foi desenhado a 320px; abaixo de ~300 o nome do dono e as setas de 44px brigam.
-            minWidth: densidade === "compacto" ? 272 : 300,
-            flex: 1,
-            padding: 12,
-            display: "flex",
-            flexDirection: "column",
-            gap: 10,
-          }}
+          chave={col.key}
+          label={col.label}
+          qtd={col.cards.length}
+          meta={col.total}
+          recolhida={recolhidas.includes(col.key)}
+          onAlternar={() => onRecolher(col.key)}
+          alvo={alvo}
+          setAlvo={setAlvo}
+          // Soltar na própria coluna não é alteração; sem isto viraria um PATCH à toa.
+          onSoltarId={(id) => !col.cards.some((c) => c.id === id) && onSoltar(id, col.key)}
+          // O card v4 foi desenhado a 320px; abaixo de ~300 o nome do dono e as setas de 44px brigam.
+          largura={densidade === "compacto" ? 272 : 300}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "4px 4px 2px" }}>
-            <span style={eyebrow(11, C.dust, "0.14em")}>{col.label}</span>
-            <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>{col.total}</span>
-          </div>
           {col.cards.map((d) => (
             <CardOportunidade
               key={d.id}
@@ -191,7 +276,7 @@ export function Comercial({
               onDragEnd={() => setAlvo(null)}
             />
           ))}
-        </div>
+        </Raia>
       ))}
     </div>
   );
@@ -309,8 +394,12 @@ export function Operacoes({
   produtos,
   onSoltar,
   onAbrir,
+  recolhidas,
+  onRecolher,
 }: {
   colunas: ColunaBoard[];
+  recolhidas: string[];
+  onRecolher: (chave: string) => void;
   produtos: { id: string; label: string }[];
   onSoltar: (id: number, status: string) => void;
   onAbrir: (id: number) => void;
@@ -321,39 +410,20 @@ export function Operacoes({
     <>
       <div className="liff-kanban">
         {colunas.map((col) => (
-          <div
+          <Raia
             key={col.key}
-            className="liff-raia"
-            data-alvo={alvo === col.key ? "1" : undefined}
-            onDragOver={(e) => {
-              e.preventDefault();
-              if (alvo !== col.key) setAlvo(col.key);
-            }}
-            onDragLeave={(e) => {
-              if (!e.currentTarget.contains(e.relatedTarget as Node)) setAlvo((a) => (a === col.key ? null : a));
-            }}
-            onDrop={(e) => {
-              e.preventDefault();
-              setAlvo(null);
-              const id = Number(e.dataTransfer.getData("text/plain"));
-              if (!Number.isInteger(id)) return;
-              if (col.cards.some((c) => c.id === id)) return;
-              onSoltar(id, col.key);
-            }}
-            style={{
-              minWidth: 280,
-              flex: 1,
-              padding: 12,
-              display: "flex",
-              flexDirection: "column",
-              gap: 10,
-              minHeight: 420,
-            }}
+            chave={col.key}
+            label={col.label}
+            qtd={col.cards.length}
+            meta={String(col.cards.length)}
+            recolhida={recolhidas.includes(col.key)}
+            onAlternar={() => onRecolher(col.key)}
+            alvo={alvo}
+            setAlvo={setAlvo}
+            onSoltarId={(id) => !col.cards.some((c) => c.id === id) && onSoltar(id, col.key)}
+            largura={280}
+            alturaMin={420}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "4px 4px 2px" }}>
-              <span style={eyebrow(11, C.dust, "0.14em")}>{col.label}</span>
-              <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>{col.cards.length}</span>
-            </div>
             {col.cards.map((c) => (
               <CardAtividade
                 key={c.id}
@@ -365,7 +435,7 @@ export function Operacoes({
                 onDragEnd={() => setAlvo(null)}
               />
             ))}
-          </div>
+          </Raia>
         ))}
       </div>
       <div style={{ fontFamily: MONO, fontSize: 11, color: C.faint, marginTop: 14, lineHeight: 1.6 }}>

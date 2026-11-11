@@ -1,5 +1,6 @@
 // Preferências da própria pessoa: tema, filtro de área, filtro de responsável e densidade do
-// kanban comercial (card completo ou compacto) e o menu lateral (expandido ou recolhido).
+// kanban comercial (card completo ou compacto), o menu lateral (expandido ou recolhido) e
+// as colunas recolhidas de cada kanban.
 //
 // Guardadas no perfil, e não só no navegador, porque a promessa é "o sistema abre do jeito
 // que você deixou" — inclusive em outra máquina, e inclusive depois de limpar o cache.
@@ -11,9 +12,9 @@
 import { getDb } from "@/lib/db";
 import { requireCtx } from "@/lib/perms";
 import { json, err } from "@/lib/http";
-import { lerSelecaoDeResponsaveis, MAX_RESPONSAVEIS_NA_SELECAO } from "@/lib/domain";
+import { lerSelecaoDeResponsaveis, MAX_RESPONSAVEIS_NA_SELECAO, STAGE_KEYS, STATUS_KEYS } from "@/lib/domain";
 
-type Body = { tema?: string; area?: string; responsaveis?: string; densidade?: string; menu?: string };
+type Body = { tema?: string; area?: string; responsaveis?: string; densidade?: string; menu?: string; recolhidasComercial?: string; recolhidasOperacoes?: string };
 
 const TEMAS = ["dark", "light"];
 const DENSIDADES = ["completo", "compacto"];
@@ -45,6 +46,17 @@ export async function PATCH(req: Request) {
   if (body.menu !== undefined) {
     if (!MENUS.includes(body.menu)) return err("Menu inválido.", 400);
     patch.menu = body.menu;
+  }
+
+  // Colunas recolhidas de cada kanban: as chaves separadas por vírgula, vazio para nenhuma.
+  // Chave fora da lista é recusada, pelo mesmo motivo do filtro de responsável logo abaixo.
+  for (const [campo, validas] of [["recolhidasComercial", STAGE_KEYS], ["recolhidasOperacoes", STATUS_KEYS]] as const) {
+    const v = body[campo];
+    if (v === undefined) continue;
+    if (typeof v !== "string") return err("Colunas inválidas.", 400);
+    const chaves = [...new Set(v.split(",").map((c) => c.trim()).filter(Boolean))];
+    if (chaves.some((c) => !validas.includes(c))) return err("Colunas inválidas.", 400);
+    patch[campo] = chaves.join(",");
   }
 
   if (body.area !== undefined) {

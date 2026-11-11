@@ -40,7 +40,7 @@ import { EditarPessoa, EditarProduto } from "./EditarCadastro";
 import { api, type State } from "./api";
 import type { LinhaAuditoria } from "./views";
 import {
-  NAV, STAGES, STATUS, TITLES, areaOf, brl, daISO, ddmm, diaISO, ehDoResponsavel, estagioEmAberto,
+  NAV, STAGES, STAGE_KEYS, STATUS, STATUS_KEYS, TITLES, areaOf, brl, daISO, ddmm, diaISO, ehDoResponsavel, estagioEmAberto,
   escreverSelecaoDeResponsaveis, fimDaSemana, inicioDaSemana, lerSelecaoDeResponsaveis,
   CHAVE_SEM_RESPONSAVEL, aplicarBusca, opcoesDeResponsavel, porTexto, prepararBusca, rotuloDaSemana, setAreas, stageLabel, statusLabel, todasAreas,
   type RegistroComResponsavel,
@@ -100,6 +100,8 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
   const [area, setArea] = useState("all");
   // Densidade do kanban comercial: card completo (padrão) ou compacto, guardada no perfil.
   const [densidade, setDensidade] = useState<"completo" | "compacto">("completo");
+  // Colunas recolhidas de cada kanban, guardadas no perfil como a densidade.
+  const [recolhidas, setRecolhidas] = useState<{ comercial: string[]; operacoes: string[] }>({ comercial: [], operacoes: [] });
   // Lateral recolhida mostra só os ícones. Só vale na tela larga: abaixo de 860px a lateral é
   // gaveta, sempre aberta por inteiro (o CSS ignora o atributo lá).
   const [recolhida, setRecolhida] = useState(false);
@@ -167,6 +169,12 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
          */
         const { tema, area: areaSalva, responsaveis: respSalvos, densidade: densSalva, menu: menuSalvo } = s.me.preferencias ?? {};
         if (densSalva === "compacto") setDensidade("compacto");
+        // Chave que deixou de existir (estágio renomeado) é descartada na leitura.
+        const ler = (v: string | undefined, validas: readonly string[]) => (v ?? "").split(",").filter((c) => validas.includes(c));
+        setRecolhidas({
+          comercial: ler(s.me.preferencias?.recolhidasComercial, STAGE_KEYS),
+          operacoes: ler(s.me.preferencias?.recolhidasOperacoes, STATUS_KEYS),
+        });
         if (menuSalvo === "recolhido") setRecolhida(true);
         // O leitor descarta chave inválida, então preferência antiga ou corrompida volta
         // como "todos" em vez de virar um filtro que não casa com nada.
@@ -221,9 +229,19 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
   }
 
   /** Guarda a escolha no perfil. Falhar aqui não pode atrapalhar a navegação. */
-  const lembrar = useCallback((patch: { tema?: string; area?: string; responsaveis?: string; densidade?: string; menu?: string }) => {
+  const lembrar = useCallback((patch: Parameters<typeof api.salvarPreferencias>[0]) => {
     void api.salvarPreferencias(patch).catch(() => {});
   }, []);
+
+  const alternarColuna = useCallback(
+    (quadro: "comercial" | "operacoes", chave: string) => {
+      const atual = recolhidas[quadro];
+      const nova = atual.includes(chave) ? atual.filter((c) => c !== chave) : [...atual, chave];
+      setRecolhidas({ ...recolhidas, [quadro]: nova });
+      lembrar(quadro === "comercial" ? { recolhidasComercial: nova.join(",") } : { recolhidasOperacoes: nova.join(",") });
+    },
+    [recolhidas, lembrar]
+  );
 
   const trocarArea = useCallback(
     (id: string) => {
@@ -830,6 +848,8 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         return (
           <Comercial
             colunas={dados.colunasDeal}
+            recolhidas={recolhidas.comercial}
+            onRecolher={(c) => alternarColuna("comercial", c)}
             densidade={densidade}
             produtos={estado.produtos}
             pessoas={estado.pessoas}
@@ -848,6 +868,8 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         return (
           <Operacoes
             colunas={dados.colunasBoard}
+            recolhidas={recolhidas.operacoes}
+            onRecolher={(c) => alternarColuna("operacoes", c)}
             produtos={estado.produtos}
             onSoltar={(id, status) => void acao(() => api.alterarAtividade(id, { status }))}
             onAbrir={(id) => {

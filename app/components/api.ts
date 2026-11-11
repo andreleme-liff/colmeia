@@ -123,7 +123,7 @@ export type Me = {
    * texto para texto, e um tipo misto aqui convidaria a um `=== true` falhando contra
    * "true". `responsaveis` são as chaves do filtro separadas por vírgula; vazio é "todos".
    */
-  preferencias: { tema?: string; area?: string; responsaveis?: string; densidade?: string; menu?: string };
+  preferencias: { tema?: string; area?: string; responsaveis?: string; densidade?: string; menu?: string; recolhidasComercial?: string; recolhidasOperacoes?: string };
 };
 
 export type AreaCadastro = { id: string; label: string; short: string; cor: string; planilhaUrl: string | null };
@@ -350,7 +350,7 @@ export const api = {
       { method: "POST", body: JSON.stringify({ area, linhas }) }
     ),
 
-  salvarPreferencias: (patch: { tema?: string; area?: string; responsaveis?: string; densidade?: string }) =>
+  salvarPreferencias: (patch: { tema?: string; area?: string; responsaveis?: string; densidade?: string; menu?: string; recolhidasComercial?: string; recolhidasOperacoes?: string }) =>
     req<{ ok: boolean }>("/api/me/preferencias", { method: "PATCH", body: JSON.stringify(patch) }),
 
   /** Prévia da planilha do Drive. 428 = falta conectar a conta Google. */
