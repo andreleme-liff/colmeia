@@ -16,6 +16,10 @@ import {
   atualizarContratoMcp, cancelarFaturaMcp, corrigirFaturaMcp, criarContratoMcp, emitirFaturaMcp, estornarPagamentoMcp,
   listarContratos, listarFaturas, registrarPagamentoMcp, resumoReceita, verContrato,
 } from "./financeiro";
+import {
+  atualizarEstimativa, atualizarFunding, criarEstimativa, listarArquetipos, registrarFunding, resumoFunding, salvarCalculadora,
+  verEstimativa,
+} from "./funding";
 
 export type Contexto = { sql: Queryable; ctx: Ctx; acesso: Acesso; base: string };
 export type Saida = { ok: true; dados: Record<string, unknown>; ref?: string } | { ok: false; erro: string };
@@ -83,7 +87,7 @@ const EXECUTORES: Record<NomeFerramenta, Executor> = {
       estagios_oportunidade: STAGES.map((s) => ({ id: s.key, nome: s.label })),
       prioridades: [...PRIORIDADES],
       receita_e_faturamento: c.ctx.isAdmin
-        ? "Disponível (admin): resumo_receita, listar_contratos, ver_contrato, listar_faturas e, com permissão de gravar, contratos e faturas."
+        ? "Disponível (admin): receita, faturamento e funding AWS — resumo_receita, listar_contratos, ver_contrato, listar_faturas, resumo_funding, listar_arquetipos, ver_estimativa e, com permissão de gravar, contratos, faturas, estimativas, funding e calculadoras."
         : "Indisponível: restrito à administração.",
       app: c.base,
     },
@@ -160,6 +164,16 @@ const EXECUTORES: Record<NomeFerramenta, Executor> = {
   corrigir_fatura: corrigirFaturaMcp,
   estornar_pagamento: estornarPagamentoMcp,
   cancelar_fatura: cancelarFaturaMcp,
+
+  // Funding AWS (só admin) — ver `funding.ts`.
+  resumo_funding: resumoFunding,
+  listar_arquetipos: listarArquetipos,
+  ver_estimativa: verEstimativa,
+  criar_estimativa: criarEstimativa,
+  atualizar_estimativa: atualizarEstimativa,
+  registrar_funding: registrarFunding,
+  atualizar_funding: atualizarFunding,
+  salvar_calculadora: salvarCalculadora,
 };
 
 export const FERRAMENTAS: Ferramenta[] = CATALOGO.map((d) => ({ ...d, executar: EXECUTORES[d.name] }));

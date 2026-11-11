@@ -19,7 +19,7 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/funding/[
   if (!a) return err("Registro inválido.", 404);
   const body = await lerCorpo(req);
   const sql = await getDb();
-  const r = await sql.begin((tx) => alterar(tx, ctx.user.userId, a.tipo, a.id, body));
+  const r = await sql.begin((tx) => alterar(tx, { userId: ctx.user.userId, origem: null, concessaoId: null }, a.tipo, a.id, body));
   if ("erro" in r) return err(r.erro, r.status);
   return json(r);
 }
@@ -30,7 +30,7 @@ export async function DELETE(_req: Request, ctxRoute: RouteContext<"/api/funding
   const a = await alvo(ctxRoute);
   if (!a) return err("Registro inválido.", 404);
   const sql = await getDb();
-  const r = await sql.begin((tx) => excluir(tx, ctx.user.userId, a.tipo, a.id));
+  const r = await sql.begin((tx) => excluir(tx, { userId: ctx.user.userId, origem: null, concessaoId: null }, a.tipo, a.id));
   if ("erro" in r) return err(r.erro, r.status);
   return json(r);
 }

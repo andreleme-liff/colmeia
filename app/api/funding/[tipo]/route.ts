@@ -13,7 +13,7 @@ export async function POST(req: Request, ctxRoute: RouteContext<"/api/funding/[t
   if (!(TIPOS as readonly string[]).includes(tipo)) return err("Tipo inválido.", 404);
   const body = await lerCorpo(req);
   const sql = await getDb();
-  const r = await sql.begin((tx) => criar(tx, ctx.user.userId, tipo as Tipo, body));
+  const r = await sql.begin((tx) => criar(tx, { userId: ctx.user.userId, origem: null, concessaoId: null }, tipo as Tipo, body));
   if ("erro" in r) return err(r.erro, r.status);
   return json(r);
 }

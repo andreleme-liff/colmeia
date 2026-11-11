@@ -4,6 +4,7 @@
 
 import type { Queryable } from "./db";
 import { registrar } from "./log";
+import type { Autor } from "./receita";
 import {
   lerArquetipo, lerCalculadora, lerEstimativa, lerLinha, lerPrograma, rotuloConta, rotuloModelo, rotuloRegiao,
   rotuloStatusFunding, usd,
@@ -53,8 +54,9 @@ export type Tipo = (typeof TIPOS)[number];
 type Resultado = { ok: true; id: number | string; ref?: string } | { erro: string; status: number };
 
 /** Cria um registro do tipo pedido. */
-export async function criar(tx: Queryable, userId: number, tipo: Tipo, body: Record<string, unknown> | null): Promise<Resultado> {
-  const log = (entidade: string, texto: string) => registrar(tx, { actorUserId: userId, area: null, entidade, campo: "funding", texto });
+export async function criar(tx: Queryable, autor: Autor, tipo: Tipo, body: Record<string, unknown> | null): Promise<Resultado> {
+  const log = (entidade: string, texto: string) =>
+    registrar(tx, { actorUserId: autor.userId, origem: autor.origem, concessaoId: autor.concessaoId, area: null, entidade, campo: "funding", texto });
   switch (tipo) {
     case "programas": {
       const p = lerPrograma(body);
@@ -117,8 +119,9 @@ export async function criar(tx: Queryable, userId: number, tipo: Tipo, body: Rec
 }
 
 /** Altera um registro (substitui os campos pelos do corpo, já validados). */
-export async function alterar(tx: Queryable, userId: number, tipo: Tipo, id: string, body: Record<string, unknown> | null): Promise<Resultado> {
-  const log = (entidade: string, texto: string) => registrar(tx, { actorUserId: userId, area: null, entidade, campo: "funding", texto });
+export async function alterar(tx: Queryable, autor: Autor, tipo: Tipo, id: string, body: Record<string, unknown> | null): Promise<Resultado> {
+  const log = (entidade: string, texto: string) =>
+    registrar(tx, { actorUserId: autor.userId, origem: autor.origem, concessaoId: autor.concessaoId, area: null, entidade, campo: "funding", texto });
   const n = Number(id);
   switch (tipo) {
     case "programas": {
@@ -182,8 +185,9 @@ export async function alterar(tx: Queryable, userId: number, tipo: Tipo, id: str
 }
 
 /** Exclui. Programa em uso não sai (desative); arquétipo leva as calculadoras e solta as estimativas. */
-export async function excluir(tx: Queryable, userId: number, tipo: Tipo, id: string): Promise<Resultado> {
-  const log = (entidade: string, texto: string) => registrar(tx, { actorUserId: userId, area: null, entidade, campo: "exclusao", texto });
+export async function excluir(tx: Queryable, autor: Autor, tipo: Tipo, id: string): Promise<Resultado> {
+  const log = (entidade: string, texto: string) =>
+    registrar(tx, { actorUserId: autor.userId, origem: autor.origem, concessaoId: autor.concessaoId, area: null, entidade, campo: "exclusao", texto });
   const n = Number(id);
   switch (tipo) {
     case "programas": {
