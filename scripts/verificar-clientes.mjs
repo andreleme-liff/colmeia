@@ -42,7 +42,7 @@ checa("só nome", contatosDoTexto("Roberto Dias", "sponsor").map((c) => [c.nome,
 checa("vazio não gera contato", contatosDoTexto("  ", "sponsor"), []);
 
 console.log("\n4. validação do cadastro");
-checa("sem nome", lerCliente({ nome: " " }), "Informe o nome do cliente.");
+checa("sem nome", lerCliente({ nome: " " }), "Informe o nome da organização.");
 checa("CNPJ inválido", lerCliente({ nome: "X", cnpj: "123" }), "CNPJ inválido. Confira os 14 caracteres e os dígitos verificadores.");
 checa("dia de vencimento fora da faixa", lerCliente({ nome: "X", diaVencimento: 31 }), "Dia de vencimento: de 1 a 28.");
 checa("forma de cobrança inventada", lerCliente({ nome: "X", formaCobranca: "fiado" }), "Forma de cobrança inválida.");

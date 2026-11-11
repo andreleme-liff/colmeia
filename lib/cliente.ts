@@ -133,8 +133,8 @@ export function lerCliente(corpo: unknown): EntradaCliente | string {
   if (!corpo || typeof corpo !== "object" || Array.isArray(corpo)) return "Requisição inválida.";
   const b = corpo as Record<string, unknown>;
   const nome = txt(b.nome, LIMITES_CLIENTE.nome);
-  if (!nome) return "Informe o nome do cliente.";
-  if (!chaveCliente(nome)) return "O nome do cliente precisa ter letras ou números.";
+  if (!nome) return "Informe o nome da organização.";
+  if (!chaveCliente(nome)) return "O nome da organização precisa ter letras ou números.";
 
   const cnpj = cnpjLimpo(b.cnpj);
   if (cnpj === null) return "CNPJ inválido. Confira os 14 caracteres e os dígitos verificadores.";

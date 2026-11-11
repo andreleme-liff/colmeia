@@ -91,9 +91,10 @@ export const NAV = [
   { key: "conexoes", label: "conexões" },
   // Só admin, e por isso no fim do menu, num grupo separado. A antiga "administração" (a
   // matriz de permissões) virou parte de Cadastros → Pessoas; `/admin` redireciona para lá.
-  // Clientes: o cadastro que junta oportunidades (de todos os produtos), contratos, faturas e
+  // Organizações (a chave e o endereço continuam `clientes`; o nome mudou a pedido em
+  // nov/2026, porque o cadastro inclui quem ainda é só prospecção): o cadastro que junta oportunidades (de todos os produtos), contratos, faturas e
   // os dados de cobrança. Só admin por enquanto; a ideia é abrir para todos depois.
-  { key: "clientes", label: "clientes", soAdmin: true },
+  { key: "clientes", label: "organizações", soAdmin: true },
   // Forecast de receita: em construção, por isso só admin. Mostra números da empresa inteira.
   { key: "receita", label: "receita", soAdmin: true },
   // Contas a receber: emissão e baixa das faturas que saem dos contratos da receita.
@@ -113,7 +114,7 @@ export const TITLES: Record<string, string> = {
   operacoes: "Quadro operacional",
   cronograma: "Cronograma",
   cadastros: "Cadastros",
-  clientes: "Clientes",
+  clientes: "Organizações",
   receita: "Forecast de receita",
   faturamento: "Faturamento · contas a receber",
   funding: "Funding AWS",

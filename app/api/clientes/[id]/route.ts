@@ -17,10 +17,10 @@ export async function GET(_req: Request, ctxRoute: RouteContext<"/api/clientes/[
   const ctx = await requireAdmin();
   if (ctx instanceof Response) return ctx;
   const id = await idDe(ctxRoute);
-  if (id == null) return err("Cliente inválido.", 400);
+  if (id == null) return err("Organização inválida.", 400);
   const sql = await getDb();
   const [existe] = await sql<{ id: number }[]>`SELECT id FROM clientes WHERE id = ${id}`;
-  if (!existe) return err("Cliente não encontrado.", 404);
+  if (!existe) return err("Organização não encontrada.", 404);
   return json({ eventos: await historicoDoCliente(sql, id) });
 }
 
@@ -28,7 +28,7 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/clientes/
   const ctx = await requireAdmin();
   if (ctx instanceof Response) return ctx;
   const id = await idDe(ctxRoute);
-  if (id == null) return err("Cliente inválido.", 400);
+  if (id == null) return err("Organização inválida.", 400);
   const e = lerCliente(await lerCorpo(req));
   if (typeof e === "string") return err(e, 400);
 
@@ -42,7 +42,7 @@ export async function DELETE(_req: Request, ctxRoute: RouteContext<"/api/cliente
   const ctx = await requireAdmin();
   if (ctx instanceof Response) return ctx;
   const id = await idDe(ctxRoute);
-  if (id == null) return err("Cliente inválido.", 400);
+  if (id == null) return err("Organização inválida.", 400);
 
   const sql = await getDb();
   const r = await sql.begin((tx) => excluirCliente(tx, { userId: ctx.user.userId, origem: null, concessaoId: null }, id));

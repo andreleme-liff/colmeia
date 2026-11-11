@@ -81,7 +81,7 @@ export default function Clientes({
     let vivo = true;
     Promise.all([api.clientes(), api.receitas(), api.faturas()]).then(
       ([c, r, f]) => vivo && (setDados({ clientes: c.clientes, contratos: r.contratos, faturas: f.faturas }), setFalha(null)),
-      (e: unknown) => vivo && setFalha(e instanceof Error ? e.message : "Não foi possível carregar os clientes.")
+      (e: unknown) => vivo && setFalha(e instanceof Error ? e.message : "Não foi possível carregar as organizações.")
     );
     return () => {
       vivo = false;
@@ -89,7 +89,7 @@ export default function Clientes({
   }, [gatilho, versao]);
 
   if (falha && !dados) return <div style={{ fontSize: 14, color: C.error }}>{falha}</div>;
-  if (!dados) return <div style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>carregando clientes…</div>;
+  if (!dados) return <div style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>carregando organizações…</div>;
 
   const recarregar = () => setVersao((v) => v + 1);
   const dealPorId = new Map(deals.map((d) => [d.id, d]));
@@ -168,7 +168,7 @@ export default function Clientes({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <div className="rec-numeros">
-        <Numero rotulo="CLIENTES" valor={String(naArea.length)} detalhe={area === "all" ? "No cadastro" : `Com oportunidade ou receita em ${areaOf(area).label}`} />
+        <Numero rotulo="ORGANIZAÇÕES" valor={String(naArea.length)} detalhe={area === "all" ? "No cadastro" : `Com oportunidade ou receita em ${areaOf(area).label}`} />
         <Numero
           rotulo="COM OPORTUNIDADE ABERTA"
           valor={String(naArea.filter((v) => v.abertas.length).length)}
@@ -218,7 +218,7 @@ export default function Clientes({
       )}
 
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <div role="group" aria-label="Filtro de clientes" className="liff-densidade">
+        <div role="group" aria-label="Filtro de organizações" className="liff-densidade">
           {FILTROS.map((f) => (
             <button key={f.key} type="button" aria-pressed={filtro === f.key} onClick={() => setFiltro(f.key)}>
               {f.label}
@@ -230,7 +230,7 @@ export default function Clientes({
         </span>
         <span style={{ marginLeft: "auto" }}>
           <Button variant="solid" size="sm" onClick={() => setAberto("novo")}>
-            + cliente
+            + organização
           </Button>
         </span>
       </div>
@@ -238,14 +238,14 @@ export default function Clientes({
       {lista.length === 0 ? (
         <div style={{ fontSize: 13.5, color: C.faint, lineHeight: 1.6 }}>
           {dados.clientes.length === 0
-            ? "Nenhum cliente ainda. Eles nascem sozinhos quando uma oportunidade é criada, ou pelo botão + cliente."
-            : "Nenhum cliente com esse recorte. Ajuste a busca, o produto ou o filtro."}
+            ? "Nenhuma organização ainda. Elas nascem sozinhas quando uma oportunidade é criada, ou pelo botão + organização."
+            : "Nenhuma organização com esse recorte. Ajuste a busca, o produto ou o filtro."}
         </div>
       ) : (
         <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}` }}>
           <div style={{ minWidth: 1040 }}>
             <div style={{ display: "grid", gridTemplateColumns: cols, background: C.canvas, borderBottom: `1px solid ${C.line}` }}>
-              {["CLIENTE", "PRODUTOS", "OPORTUNIDADES", "PIPELINE ABERTO", "CONTRATOS", "ÚLT. INTERAÇÃO", "CNPJ"].map((h, k) => (
+              {["ORGANIZAÇÃO", "PRODUTOS", "OPORTUNIDADES", "PIPELINE ABERTO", "CONTRATOS", "ÚLT. INTERAÇÃO", "CNPJ"].map((h, k) => (
                 <div key={h} style={{ padding: "12px 14px", ...eyebrow(10, C.faint), textAlign: k === 3 ? "right" : "left" }}>
                   {h}
                 </div>
@@ -259,7 +259,7 @@ export default function Clientes({
                 tabIndex={0}
                 onClick={() => setAberto(v.c.id)}
                 onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setAberto(v.c.id))}
-                title="Abrir a ficha do cliente"
+                title="Abrir a ficha da organização"
                 style={{ display: "grid", gridTemplateColumns: cols, background: C.cell, borderBottom: `1px solid ${C.line}`, cursor: "pointer", alignItems: "center" }}
               >
                 <div style={{ padding: "12px 14px", minWidth: 0 }}>
@@ -431,7 +431,7 @@ function Ficha({
   };
 
   const excluir = async () => {
-    if (!c || !window.confirm(`Excluir o cliente ${c.nome}? Não dá para desfazer.`)) return;
+    if (!c || !window.confirm(`Excluir a organização ${c.nome}? Não dá para desfazer.`)) return;
     setSalvando(true);
     try {
       await api.excluirCliente(c.id);
@@ -454,7 +454,7 @@ function Ficha({
   const formulario = (
     <div className="cortina-col">
       {bloco("CADASTRO", true)}
-      <Field label="Nome" required hint="Como a empresa é chamada no dia a dia. É por este nome que as oportunidades encontram o cliente.">
+      <Field label="Nome" required hint="Como a empresa é chamada no dia a dia. É por este nome que as oportunidades encontram a organização.">
         <Input value={nome} onChange={setNome} placeholder="Globe Química" />
       </Field>
       <Field label="Razão social">
@@ -498,7 +498,7 @@ function Ficha({
       </div>
 
       {bloco(`CONTATOS${contatos.length ? ` · ${contatos.length}` : ""}`)}
-      {contatos.length === 0 && <div style={{ fontSize: 12.5, color: C.faint }}>Nenhuma pessoa cadastrada neste cliente.</div>}
+      {contatos.length === 0 && <div style={{ fontSize: 12.5, color: C.faint }}>Nenhuma pessoa cadastrada nesta organização.</div>}
       {contatos.map((k, i) => (
         <div key={i} style={{ display: "grid", gap: 8, padding: 12, border: `1px solid ${C.line}`, borderRadius: 6 }}>
           <div style={duas}>
@@ -539,12 +539,12 @@ function Ficha({
         onChange={(e) => setNotas(e.target.value)}
         rows={3}
         className="rec-notas"
-        placeholder="O que vale para o cliente inteiro: grupo econômico, quem indica, particularidades de compra…"
+        placeholder="O que vale para a organização inteira: grupo econômico, quem indica, particularidades de compra…"
       />
 
       {c && c.outrosNomes.length > 0 && (
         <div style={{ fontSize: 12.5, color: C.faint, lineHeight: 1.5 }}>
-          Também responde por: {c.outrosNomes.join(" · ")}. Oportunidade criada com um desses nomes cai neste cliente.
+          Também responde por: {c.outrosNomes.join(" · ")}. Oportunidade criada com um desses nomes cai nesta organização.
         </div>
       )}
 
@@ -555,13 +555,13 @@ function Ficha({
           fechar
         </Button>
         <Button variant="solid" size="sm" disabled={salvando || !nome.trim()} onClick={() => void salvar()}>
-          {salvando ? "salvando…" : c ? "salvar alterações" : "cadastrar cliente"}
+          {salvando ? "salvando…" : c ? "salvar alterações" : "cadastrar organização"}
         </Button>
       </div>
 
       {c && (
         <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 16, display: "grid", gap: 12 }}>
-          <div style={eyebrow(10, C.dust, "0.14em")}>É O MESMO QUE OUTRO CLIENTE?</div>
+          <div style={eyebrow(10, C.dust, "0.14em")}>É A MESMA QUE OUTRA ORGANIZAÇÃO?</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 12, alignItems: "center" }}>
             <Select
               value={mesclarEm}
@@ -587,7 +587,7 @@ function Ficha({
           {vazio && (
             <div>
               <button type="button" className="rec-link" style={{ color: C.error }} onClick={() => void excluir()} disabled={salvando}>
-                excluir cliente
+                excluir organização
               </button>
             </div>
           )}
@@ -598,7 +598,7 @@ function Ficha({
 
   if (!visao || !c) {
     return (
-      <Modal titulo="Novo cliente" eyebrowTexto="LIFF/ CLIENTES" onFechar={onFechar} largura={640}>
+      <Modal titulo="Nova organização" eyebrowTexto="LIFF/ ORGANIZAÇÕES" onFechar={onFechar} largura={640}>
         {formulario}
       </Modal>
     );
@@ -610,7 +610,7 @@ function Ficha({
   const eventosVisiveis = verTudo ? (eventos ?? []) : (eventos ?? []).slice(0, 12);
 
   return (
-    <Modal titulo={c.nome} eyebrowTexto={`LIFF/ CLIENTES · ${c.ref}`} onFechar={onFechar} largura={1180}>
+    <Modal titulo={c.nome} eyebrowTexto={`LIFF/ ORGANIZAÇÕES · ${c.ref}`} onFechar={onFechar} largura={1180}>
       <div className="cortina-duas">
         {formulario}
 
@@ -618,7 +618,7 @@ function Ficha({
           {bloco(`OPORTUNIDADES E PROPOSTAS · ${visao.deals.length}`, true)}
           {ordenadas.length === 0 ? (
             <div style={{ fontSize: 12.5, color: C.faint, lineHeight: 1.5 }}>
-              Nenhuma oportunidade ligada. Uma oportunidade criada no Comercial com o nome deste cliente entra aqui sozinha.
+              Nenhuma oportunidade ligada. Uma oportunidade criada no Comercial com o nome desta organização entra aqui sozinha.
             </div>
           ) : (
             <div style={{ display: "grid", gap: 2 }}>

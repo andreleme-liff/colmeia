@@ -15,7 +15,7 @@ export async function POST(req: Request, ctxRoute: RouteContext<"/api/clientes/[
   const origem = inteiro(Number(id));
   const corpo = await lerCorpo(req);
   const destino = corpo && typeof corpo === "object" ? inteiro((corpo as Record<string, unknown>).em) : null;
-  if (origem == null || destino == null) return err("Informe os dois clientes.", 400);
+  if (origem == null || destino == null) return err("Informe as duas organizações.", 400);
 
   const sql = await getDb();
   const r = await sql.begin((tx) => mesclarClientes(tx, { userId: ctx.user.userId, origem: null, concessaoId: null }, origem, destino));

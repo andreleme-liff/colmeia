@@ -107,7 +107,7 @@ export async function clienteDaConta(
     campo: "criacao",
     de: null,
     para: nome,
-    texto: `Cadastrou o cliente ${nome} (${ref}) a partir ${origemTexto}`,
+    texto: `Cadastrou a organização ${nome} (${ref}) a partir ${origemTexto}`,
   });
   return novo.id;
 }
@@ -175,7 +175,7 @@ async function removerSeIntocado(tx: Queryable, clienteId: number): Promise<void
     campo: "exclusao",
     de: c.nome,
     para: null,
-    texto: `Removeu o cliente ${c.nome} (${c.ref}): ficou sem oportunidade e nunca tinha sido editado`,
+    texto: `Removeu a organização ${c.nome} (${c.ref}): ficou sem oportunidade e nunca tinha sido editada`,
   });
 }
 
@@ -249,7 +249,7 @@ async function conferirCnpj(tx: Queryable, cnpj: string, idAtual: number | null)
   const [dono] = await tx<{ nome: string; ref: string }[]>`
     SELECT nome, ref FROM clientes WHERE cnpj = ${cnpj} AND (${idAtual}::int IS NULL OR id <> ${idAtual})
   `;
-  return dono ? `Este CNPJ já está no cliente ${dono.nome} (${dono.ref}). Se for o mesmo, mescle os dois.` : null;
+  return dono ? `Este CNPJ já está na organização ${dono.nome} (${dono.ref}). Se for a mesma, mescle as duas.` : null;
 }
 
 export async function criarCliente(tx: Queryable, autor: AutorCliente, e: EntradaCliente): Promise<{ id: number; ref: string } | Falha> {
@@ -257,7 +257,7 @@ export async function criarCliente(tx: Queryable, autor: AutorCliente, e: Entrad
   const [dono] = await tx<{ nome: string; ref: string }[]>`
     SELECT c.nome, c.ref FROM cliente_chaves x JOIN clientes c ON c.id = x.cliente_id WHERE x.chave = ${chave}
   `;
-  if (dono) return { erro: `Já existe um cliente com esse nome: ${dono.nome} (${dono.ref}).`, status: 409 };
+  if (dono) return { erro: `Já existe uma organização com esse nome: ${dono.nome} (${dono.ref}).`, status: 409 };
   const cnpjEmUso = await conferirCnpj(tx, e.cnpj, null);
   if (cnpjEmUso) return { erro: cnpjEmUso, status: 409 };
 
@@ -274,7 +274,7 @@ export async function criarCliente(tx: Queryable, autor: AutorCliente, e: Entrad
   if (e.contatos) await gravarContatos(tx, novo.id, e.contatos);
   await registrar(tx, {
     ...marca(autor), area: null, entidade: ref, campo: "criacao", de: null, para: e.nome,
-    texto: `Cadastrou o cliente ${e.nome} (${ref})`,
+    texto: `Cadastrou a organização ${e.nome} (${ref})`,
   });
   return { id: novo.id, ref };
 }
@@ -294,7 +294,7 @@ export async function atualizarCliente(
   e: EntradaCliente
 ): Promise<{ ref: string; mudancas: number } | Falha> {
   const [existe] = await tx<{ id: number }[]>`SELECT id FROM clientes WHERE id = ${id} FOR UPDATE`;
-  if (!existe) return { erro: "Cliente não encontrado.", status: 404 };
+  if (!existe) return { erro: "Organização não encontrada.", status: 404 };
   const [antes] = await lerClientes(tx, id);
 
   const chave = chaveCliente(e.nome);
@@ -302,7 +302,7 @@ export async function atualizarCliente(
     SELECT x.cliente_id, c.nome, c.ref FROM cliente_chaves x JOIN clientes c ON c.id = x.cliente_id WHERE x.chave = ${chave}
   `;
   if (dono && dono.cliente_id !== id) {
-    return { erro: `Já existe um cliente com esse nome: ${dono.nome} (${dono.ref}). Se for o mesmo, mescle os dois.`, status: 409 };
+    return { erro: `Já existe uma organização com esse nome: ${dono.nome} (${dono.ref}). Se for a mesma, mescle as duas.`, status: 409 };
   }
   const cnpjEmUso = await conferirCnpj(tx, e.cnpj, id);
   if (cnpjEmUso) return { erro: cnpjEmUso, status: 409 };
@@ -329,7 +329,7 @@ export async function atualizarCliente(
     mudancas++;
     await registrar(tx, {
       ...marca(autor), area: null, entidade: antes.ref, campo: String(campo), de: de || "—", para: para || "—",
-      texto: `Alterou ${rotulo} do cliente ${e.nome}`,
+      texto: `Alterou ${rotulo} da organização ${e.nome}`,
     });
   }
   if (e.contatos) {
@@ -342,7 +342,7 @@ export async function atualizarCliente(
         ...marca(autor), area: null, entidade: antes.ref, campo: "contatos",
         de: antes.contatos.map((c) => c.nome).join(", ") || "—",
         para: e.contatos.map((c) => c.nome).join(", ") || "—",
-        texto: `Alterou os contatos do cliente ${e.nome}`,
+        texto: `Alterou os contatos da organização ${e.nome}`,
       });
     }
   }
@@ -357,17 +357,17 @@ export async function excluirCliente(tx: Queryable, autor: AutorCliente, id: num
            (SELECT count(*)::int FROM contratos k WHERE k.cliente_id = c.id) AS contratos
     FROM clientes c WHERE c.id = ${id} FOR UPDATE
   `;
-  if (!c) return { erro: "Cliente não encontrado.", status: 404 };
+  if (!c) return { erro: "Organização não encontrada.", status: 404 };
   if (c.deals || c.contratos) {
     return {
-      erro: `${c.nome} tem ${c.deals} oportunidade(s) e ${c.contratos} receita(s) cadastrada(s). Mescle com outro cliente em vez de excluir.`,
+      erro: `${c.nome} tem ${c.deals} oportunidade(s) e ${c.contratos} receita(s) cadastrada(s). Mescle com outra organização em vez de excluir.`,
       status: 409,
     };
   }
   await tx`DELETE FROM clientes WHERE id = ${id}`;
   await registrar(tx, {
     ...marca(autor), area: null, entidade: c.ref, campo: "exclusao", de: c.nome, para: null,
-    texto: `Excluiu o cliente ${c.nome} (${c.ref})`,
+    texto: `Excluiu a organização ${c.nome} (${c.ref})`,
   });
   return { ok: true };
 }
@@ -383,12 +383,12 @@ export async function mesclarClientes(
   origemId: number,
   destinoId: number
 ): Promise<{ ref: string } | Falha> {
-  if (origemId === destinoId) return { erro: "Escolha dois clientes diferentes.", status: 400 };
+  if (origemId === destinoId) return { erro: "Escolha duas organizações diferentes.", status: 400 };
   // Trava na mesma ordem sempre, para duas mesclas cruzadas não se esperarem para sempre.
   await tx`SELECT id FROM clientes WHERE id IN (${origemId}, ${destinoId}) ORDER BY id FOR UPDATE`;
   const [origem] = await lerClientes(tx, origemId);
   const [destino] = await lerClientes(tx, destinoId);
-  if (!origem || !destino) return { erro: "Cliente não encontrado.", status: 404 };
+  if (!origem || !destino) return { erro: "Organização não encontrada.", status: 404 };
 
   await tx`UPDATE deals SET cliente_id = ${destinoId} WHERE cliente_id = ${origemId}`;
   await tx`UPDATE contratos SET cliente_id = ${destinoId} WHERE cliente_id = ${origemId}`;
@@ -417,7 +417,7 @@ export async function mesclarClientes(
   await tx`DELETE FROM clientes WHERE id = ${origemId}`;
   await registrar(tx, {
     ...marca(autor), area: null, entidade: destino.ref, campo: "mescla", de: `${origem.nome} (${origem.ref})`, para: destino.nome,
-    texto: `Mesclou o cliente ${origem.nome} (${origem.ref}) em ${destino.nome} (${destino.ref})`,
+    texto: `Mesclou a organização ${origem.nome} (${origem.ref}) em ${destino.nome} (${destino.ref})`,
   });
   return { ref: destino.ref };
 }
