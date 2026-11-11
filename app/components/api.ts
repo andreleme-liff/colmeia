@@ -60,6 +60,8 @@ export type Deal = {
   dor: string;
   erp: string;
   propostaUrl: string;
+  /** Cadastro de cliente desta conta (só vem para admin). */
+  clienteId: number | null;
   /** Último contato com o cliente — não a última edição do card. */
   ultimaInteracao: string | null;
   blocker: string;
@@ -213,6 +215,16 @@ export const api = {
   alterarReceita: (id: number, corpo: Record<string, unknown>) =>
     req<{ ok: boolean }>(`/api/receita/${id}`, { method: "PATCH", body: JSON.stringify(corpo) }),
   excluirReceita: (id: number) => req<{ ok: boolean }>(`/api/receita/${id}`, { method: "DELETE" }),
+  /** Clientes (só admin). */
+  clientes: () => req<{ clientes: import("@/lib/clientes-db").ClienteLido[] }>("/api/clientes"),
+  historicoCliente: (id: number) => req<{ eventos: import("@/lib/clientes-db").EventoCliente[] }>(`/api/clientes/${id}`),
+  criarCliente: (corpo: Record<string, unknown>) =>
+    req<{ ok: boolean; id: number; ref: string }>("/api/clientes", { method: "POST", body: JSON.stringify(corpo) }),
+  alterarCliente: (id: number, corpo: Record<string, unknown>) =>
+    req<{ ok: boolean; mudancas: number }>(`/api/clientes/${id}`, { method: "PATCH", body: JSON.stringify(corpo) }),
+  excluirCliente: (id: number) => req<{ ok: boolean }>(`/api/clientes/${id}`, { method: "DELETE" }),
+  mesclarCliente: (id: number, em: number) =>
+    req<{ ok: boolean; ref: string }>(`/api/clientes/${id}/mesclar`, { method: "POST", body: JSON.stringify({ em }) }),
   /** Faturamento (só admin). */
   faturas: () => req<{ faturas: import("@/lib/faturamento").Fatura[] }>("/api/faturamento"),
   emitirFatura: (corpo: Record<string, unknown>) =>

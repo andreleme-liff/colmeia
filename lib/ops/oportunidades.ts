@@ -4,6 +4,7 @@
 // A exclusão NÃO está aqui. Ela continua só na rota HTTP, para a interface; o MCP não exclui
 // nada, e manter a operação fora do núcleo compartilhado é o que garante isso.
 
+import { vincularOportunidade } from "../clientes-db";
 import type { Queryable } from "../db";
 import { registrar } from "../log";
 import { formatarRef } from "../domain";
@@ -39,6 +40,8 @@ export async function criarOportunidade(
     RETURNING id
   `;
   await gravarModulos(tx, nova.id, l.modulos);
+  // Toda oportunidade nasce ligada a um cliente: o que já existe com esse nome, ou um novo.
+  await vincularOportunidade(tx, nova.id, autor);
 
   await registrar(tx, {
     ...plano.auditoria,
@@ -125,5 +128,7 @@ export async function atualizarOportunidade(
   if (ehFalha(plano)) return plano;
 
   await aplicar(tx, dealId, atual.ref, plano, autor);
+  // Nome da conta trocado: a oportunidade vai para o cliente do nome novo.
+  if (plano.sets.conta !== undefined) await vincularOportunidade(tx, dealId, autor);
   return { ok: true, ref: atual.ref, mudancas: plano.mudancas.length };
 }

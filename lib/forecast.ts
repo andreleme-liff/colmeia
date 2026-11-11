@@ -76,6 +76,8 @@ export type Contrato = {
   conta: string;
   area: string;
   dealId: number | null;
+  /** Cadastro de cliente a que o contrato pertence (lib/clientes-db.ts). */
+  clienteId?: number | null;
   situacao: Situacao;
   chance: Chance | null;
   /** "YYYY-MM-DD"; o cálculo usa o mês. */

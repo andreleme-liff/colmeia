@@ -35,6 +35,7 @@ import Receita from "./Receita";
 import Painel from "./Painel";
 import Faturamento from "./Faturamento";
 import Funding from "./Funding";
+import Clientes from "./Clientes";
 import Conexoes from "./Conexoes";
 import { EditarPessoa, EditarProduto } from "./EditarCadastro";
 import { api, type State } from "./api";
@@ -963,6 +964,16 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             onAbrirDeal={(ref) => navegar({ view: "comercial", ref })}
           />
         );
+      case "clientes":
+        return (
+          <Clientes
+            deals={estado.deals}
+            area={areaEfetiva}
+            busca={busca}
+            gatilho={estado.logs[0]?.id}
+            onAbrirDeal={(ref) => navegar({ view: "comercial", ref })}
+          />
+        );
       case "faturamento":
         return <Faturamento deals={estado.deals} area={areaEfetiva} busca={busca} gatilho={estado.logs[0]?.id} />;
       case "funding":
@@ -1186,7 +1197,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           {/* Os dois filtros do cabeçalho moram juntos: área recorta o produto, "meus"
               recorta a carteira. Separá-los faria parecer que um é filtro e o outro é modo. */}
           <div className="liff-filtros" style={{ marginLeft: "auto" }}>
-            {["comercial", "operacoes", "cronograma", "auditoria", "faturamento"].includes(view) && (
+            {["comercial", "operacoes", "cronograma", "auditoria", "faturamento", "clientes"].includes(view) && (
               <CampoBusca valor={busca} onChange={setBusca} />
             )}
             {/* Conexão não pertence a área nenhuma: na tela delas o recorte por área só

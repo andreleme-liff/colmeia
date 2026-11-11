@@ -4,6 +4,7 @@
 
 import type { Queryable } from "./db";
 import { registrar } from "./log";
+import { vincularContrato } from "./clientes-db";
 import { resumoContrato, type Contrato, type EntradaContrato } from "./forecast";
 
 /** Quem grava: a pessoa, e se foi pela interface (origem null) ou por uma conexão MCP. */
@@ -11,7 +12,7 @@ export type Autor = { userId: number; origem: "mcp" | null; concessaoId: number 
 const marca = (a: Autor) => ({ actorUserId: a.userId, origem: a.origem, concessaoId: a.concessaoId });
 
 type Linha = {
-  id: number; ref: string; deal_id: number | null; conta: string; area: string; situacao: "contratada" | "prevista";
+  id: number; ref: string; deal_id: number | null; cliente_id: number | null; conta: string; area: string; situacao: "contratada" | "prevista";
   chance: "alta" | "baixa" | null; inicio_faturamento: Date; notas: string;
   cnpj: string; email_cobranca: string; dia_vencimento: number; forma_cobranca: string;
   linhas: { tipo: string; valor_centavos: string; parcelas: number; inicio_mes: number; duracao_meses: number | null }[];
@@ -19,7 +20,7 @@ type Linha = {
 
 export async function lerContratos(sql: Queryable): Promise<Contrato[]> {
   const rows = await sql<Linha[]>`
-    SELECT c.id, c.ref, c.deal_id, c.conta, c.area, c.situacao, c.chance, c.inicio_faturamento, c.notas,
+    SELECT c.id, c.ref, c.deal_id, c.cliente_id, c.conta, c.area, c.situacao, c.chance, c.inicio_faturamento, c.notas,
            c.cnpj, c.email_cobranca, c.dia_vencimento, c.forma_cobranca,
            COALESCE((SELECT json_agg(json_build_object('tipo', r.tipo, 'valor_centavos', r.valor_centavos, 'parcelas', r.parcelas,
                                                       'inicio_mes', r.inicio_mes, 'duracao_meses', r.duracao_meses))
@@ -33,6 +34,7 @@ export async function lerContratos(sql: Queryable): Promise<Contrato[]> {
     conta: r.conta,
     area: r.area,
     dealId: r.deal_id,
+    clienteId: r.cliente_id,
     situacao: r.situacao,
     chance: r.chance,
     inicioFaturamento: r.inicio_faturamento.toISOString().slice(0, 10),
@@ -100,6 +102,7 @@ export async function criarContrato(tx: Queryable, autor: Autor, c: EntradaContr
   await tx`UPDATE contratos SET ref = ${ref} WHERE id = ${novo.id}`;
   await gravarLinhas(tx, novo.id, c);
   await gravarCobranca(tx, novo.id, c);
+  await vincularContrato(tx, novo.id, autor);
   await registrar(tx, {
     ...marca(autor),
     area: c.area,
@@ -131,6 +134,7 @@ export async function atualizarContrato(
   `;
   await gravarLinhas(tx, id, c);
   await gravarCobranca(tx, id, c);
+  await vincularContrato(tx, id, autor);
   const de = resumoContrato(antes);
   const para = resumoContrato(c);
   if (de !== para || antes.conta !== c.conta || antes.area !== c.area || antes.dealId !== c.dealId || antes.notas !== c.notas) {

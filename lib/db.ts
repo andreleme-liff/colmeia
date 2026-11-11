@@ -8,6 +8,7 @@ import {
   hojeISO, refCanonica, separarDataDaSituacao, slugificar,
 } from "./domain";
 import { ARQUETIPOS_SEMENTE, PROGRAMAS_SEMENTE } from "./funding";
+import { ligarPendentes } from "./clientes-db";
 
 export type Db = ReturnType<typeof postgres>;
 
@@ -637,6 +638,58 @@ async function migrate(): Promise<void> {
         atualizado_em         TIMESTAMPTZ
       )
     `;
+    // Clientes (nov/2026, só admin por enquanto). O sistema nasceu pelas oportunidades, cada
+    // uma com o nome da conta em texto; o cliente junta as oportunidades de produtos
+    // diferentes, os contratos e as faturas, e guarda o que não é de uma venda só (CNPJ,
+    // cobrança, pessoas). `cliente_chaves` são os nomes normalizados que caem em cada
+    // cadastro: é por ela que a deduplicação acontece. Ver lib/clientes-db.ts.
+    await sql`
+      CREATE TABLE IF NOT EXISTS clientes (
+        id                  SERIAL PRIMARY KEY,
+        ref                 TEXT UNIQUE,
+        nome                TEXT NOT NULL,
+        razao_social        TEXT NOT NULL DEFAULT '',
+        cnpj                TEXT NOT NULL DEFAULT '',
+        inscricao_municipal TEXT NOT NULL DEFAULT '',
+        site                TEXT NOT NULL DEFAULT '',
+        segmento            TEXT NOT NULL DEFAULT '',
+        endereco            TEXT NOT NULL DEFAULT '',
+        email_cobranca      TEXT NOT NULL DEFAULT '',
+        dia_vencimento      INTEGER CHECK (dia_vencimento IS NULL OR dia_vencimento BETWEEN 1 AND 28),
+        forma_cobranca      TEXT,
+        notas               TEXT NOT NULL DEFAULT '',
+        criado_em           TIMESTAMPTZ NOT NULL DEFAULT now(),
+        atualizado_em       TIMESTAMPTZ
+      )
+    `;
+    await sql`CREATE UNIQUE INDEX IF NOT EXISTS clientes_cnpj_unico ON clientes (cnpj) WHERE cnpj <> ''`;
+    await sql`
+      CREATE TABLE IF NOT EXISTS cliente_chaves (
+        chave      TEXT PRIMARY KEY,
+        cliente_id INTEGER NOT NULL REFERENCES clientes(id) ON DELETE CASCADE,
+        nome       TEXT NOT NULL,
+        principal  BOOLEAN NOT NULL DEFAULT false
+      )
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS cliente_chaves_cliente ON cliente_chaves (cliente_id)`;
+    await sql`
+      CREATE TABLE IF NOT EXISTS cliente_contatos (
+        id         SERIAL PRIMARY KEY,
+        cliente_id INTEGER NOT NULL REFERENCES clientes(id) ON DELETE CASCADE,
+        nome       TEXT NOT NULL,
+        cargo      TEXT NOT NULL DEFAULT '',
+        email      TEXT NOT NULL DEFAULT '',
+        telefone   TEXT NOT NULL DEFAULT '',
+        papel      TEXT NOT NULL DEFAULT 'outro',
+        notas      TEXT NOT NULL DEFAULT '',
+        ordem      INTEGER NOT NULL DEFAULT 0
+      )
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS cliente_contatos_cliente ON cliente_contatos (cliente_id)`;
+    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS cliente_id INTEGER REFERENCES clientes(id) ON DELETE SET NULL`;
+    await sql`ALTER TABLE contratos ADD COLUMN IF NOT EXISTS cliente_id INTEGER REFERENCES clientes(id) ON DELETE SET NULL`;
+    await sql`CREATE INDEX IF NOT EXISTS deals_cliente ON deals (cliente_id)`;
+
     // Funding AWS (nov/2026, só admin): arquétipos de implantação com as calculadoras oficiais
     // da AWS, catálogo de programas, e por oportunidade a estimativa de consumo (conta LIFF e
     // conta do cliente) com as linhas de funding. As sementes entram só quando a tabela nasce,
@@ -792,7 +845,7 @@ async function migrate(): Promise<void> {
               'REVOKE ALL ON users, user_area_perms, activities, deals, sessions, audit_log, areas, produtos, '
               'oauth_concessoes, oauth_codigos, oauth_tokens, mcp_chamadas, origens, oportunidade_modulos, '
               'contratos, contrato_receitas, faturas, funding_programas, funding_arquetipos, funding_calculadoras, '
-              'funding_estimativas, funding_linhas, funding_pastas FROM %I',
+              'funding_estimativas, funding_linhas, funding_pastas, clientes, cliente_chaves, cliente_contatos FROM %I',
               papel
             );
             EXECUTE format('REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM %I', papel);
@@ -805,6 +858,10 @@ async function migrate(): Promise<void> {
 
     // Depois do seed: base nova também nasce no formato C-/T-, pelo mesmo caminho.
     await converterReferencias(sql);
+
+    // Por último, com as oportunidades (inclusive as do seed) já no lugar: extrai os clientes
+    // do que ainda não tem cadastro. Só toca o que está sem vínculo.
+    await ligarPendentes(sql);
   });
 }
 
