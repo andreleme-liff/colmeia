@@ -1195,7 +1195,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           <div style={{ minWidth: 200 }}>
             <div style={eyebrow(10, C.faint)}>
               {view === "conexoes"
-                ? "LIFF/ CONEXÕES"
+                ? "LIFF/ MCP SERVER"
                 : `LIFF/ ${view === "overview" ? "PAINEL" : (NAV.find((n) => n.key === view)?.label ?? view).toUpperCase()} · ${rotuloArea.toUpperCase()}`}
             </div>
             <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em", color: C.ink }}>{TITLES[view]}</div>

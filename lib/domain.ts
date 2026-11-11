@@ -94,7 +94,7 @@ export const NAV = [
   // Aplicativos externos (o Claude) que alguém autorizou a agir em seu nome pelo MCP. Para
   // TODOS, não só admin: cada pessoa revoga as próprias conexões — por isso não mora em
   // Cadastros, que é só da administração.
-  { key: "conexoes", label: "conexões" },
+  { key: "conexoes", label: "mcp server" },
   // Só admin, e por isso no fim do menu, num grupo separado. A antiga "administração" (a
   // matriz de permissões) virou parte de Cadastros → Pessoas; `/admin` redireciona para lá.
   // Contas a receber: emissão e baixa das faturas que saem dos contratos da receita.
@@ -119,7 +119,7 @@ export const TITLES: Record<string, string> = {
   faturamento: "Faturamento · contas a receber",
   funding: "Funding AWS",
   auditoria: "Changelog",
-  conexoes: "Conexões",
+  conexoes: "MCP Server",
 };
 
 export const ADMIN_CARDS = [

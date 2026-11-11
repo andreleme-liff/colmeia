@@ -143,7 +143,7 @@ export default function TelaConsentimento(props: Props) {
               </div>
 
               <p style={{ fontSize: 12, lineHeight: 1.6, color: C.faint, margin: "0 0 20px" }}>
-                Cada leitura e cada gravação fica registrada. Você revoga a conexão quando quiser em Conexões, no menu do LIFF tasks.
+                Cada leitura e cada gravação fica registrada. Você revoga a conexão quando quiser em MCP Server, no menu do LIFF tasks.
               </p>
 
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
