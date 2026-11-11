@@ -73,38 +73,48 @@ function IconeEstado({ tom, rotulo, children }: { tom: TomPrazo | "info"; rotulo
   );
 }
 
-const TRACO = { width: 16, height: 16, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.9, strokeLinecap: "round", strokeLinejoin: "round" } as const;
+// Ícones do compacto: PINTADOS com a cor do estado, e o sinal por cima na cor de contraste
+// (`--cop-glifo`). Preenchido lê melhor que contorno num ícone de 17px.
+const BASE = { width: 17, height: 17, viewBox: "0 0 24 24" } as const;
+const GLIFO = { fill: "none", stroke: "var(--cop-glifo, #fff)", strokeWidth: 2.4, strokeLinecap: "round", strokeLinejoin: "round" } as const;
 
-/** Prazo: calendário com ✓ (em dia), ! (vence em até 7 dias), × (vencido); pontilhado quando não há data. */
+/** Prazo: calendário com ✓ (em dia), ! (vence em até 7 dias), × (vencido); só o contorno pontilhado quando não há data. */
 function Calendario({ tom, semData }: { tom: TomPrazo; semData: boolean }) {
+  if (semData) {
+    return (
+      <svg aria-hidden {...BASE} fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeDasharray="2.5 2.5">
+        <rect x="3.5" y="5" width="17" height="15.5" rx="2.5" />
+      </svg>
+    );
+  }
   return (
-    <svg aria-hidden {...TRACO} strokeDasharray={semData ? "2.5 2.5" : undefined}>
-      <rect x="3.5" y="5" width="17" height="15.5" rx="2" />
-      {!semData && <path d="M8 3v4M16 3v4" />}
-      {!semData && tom === "sucesso" && <path d="M8.5 13.5l2.5 2.5 4.5-5" />}
-      {!semData && tom === "warning" && <path d="M12 10v4M12 17v.01" />}
-      {!semData && tom === "erro" && <path d="M9.5 11l5 5M14.5 11l-5 5" />}
-      {!semData && tom === "neutro" && <path d="M8.5 13.5h7" />}
+    <svg aria-hidden {...BASE}>
+      <path d="M8 2.5v4M16 2.5v4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      <rect x="2.5" y="4.5" width="19" height="17" rx="3" fill="currentColor" />
+      {tom === "sucesso" && <path d="M8 13.5l2.8 2.8L16 11" {...GLIFO} />}
+      {tom === "warning" && <path d="M12 9.5v4.5M12 17.5v.01" {...GLIFO} />}
+      {tom === "erro" && <path d="M9 10.5l6 6M15 10.5l-6 6" {...GLIFO} />}
+      {tom === "neutro" && <path d="M8 13.5h8" {...GLIFO} />}
     </svg>
   );
 }
 
-/** Bloqueio: o sinal de proibido. */
-function Bloqueio() {
+/** Bloqueio: o mesmo triângulo com exclamação do card completo, pintado. */
+function AlertaCheio() {
   return (
-    <svg aria-hidden {...TRACO}>
-      <circle cx="12" cy="12" r="8.5" />
-      <path d="M6 6l12 12" />
+    <svg aria-hidden {...BASE}>
+      <path d="M10.3 3.9 1.8 18.2A2 2 0 0 0 3.5 21h17a2 2 0 0 0 1.7-2.8L13.7 3.9a2 2 0 0 0-3.4 0Z" fill="currentColor" />
+      <path d="M12 9.5v4M12 17v.01" {...GLIFO} />
     </svg>
   );
 }
 
-/** ACE (AWS Partner Central): nuvem com o ✓ de registrada. */
+/** ACE (AWS Partner Central): nuvem pintada com o ✓ de registrada. */
 function Nuvem() {
   return (
-    <svg aria-hidden {...TRACO}>
-      <path d="M7 19h10a4 4 0 0 0 .6-7.96A5.5 5.5 0 0 0 7.1 10.1 4.5 4.5 0 0 0 7 19Z" />
-      <path d="M9.5 14.5l2 2 3.5-3.5" />
+    <svg aria-hidden {...BASE}>
+      <path d="M7 19.5h10a4.5 4.5 0 0 0 .7-8.95A6 6 0 0 0 6.6 9.7 5 5 0 0 0 7 19.5Z" fill="currentColor" />
+      <path d="M9.3 14.2l2 2 3.6-3.6" {...GLIFO} />
     </svg>
   );
 }
@@ -163,6 +173,8 @@ export function CardOportunidade({
       {tipoBloqueio || "Bloqueio"}
     </Etiqueta>
   ) : null;
+
+  const temIcones = compacto && !!(prazo || temBloqueio || d.aceAws);
 
   const pessoa = d.responsavelId ? pessoas.find((p) => p.id === d.responsavelId) : undefined;
   const nomeDono = pessoa?.nome ?? (d.responsavelTexto || "");
@@ -237,16 +249,41 @@ export function CardOportunidade({
           <p className="cop-valor">{valorCurto(d.valorCentavos)}</p>
         </div>
 
-        {modulos.length > 0 && (
-          <div className="cop-modulos" aria-label="Módulos da proposta">
-            {visiveis.map((m) => (
-              <span key={m} className="cop-pill">
-                {m}
-              </span>
-            ))}
-            {resto.length > 0 && (
-              <span className="cop-pill cop-pill--mais" title={resto.join(", ")}>
-                +{resto.length}
+        {(modulos.length > 0 || temIcones) && (
+          <div className="cop-linha-modulos">
+            {modulos.length > 0 && (
+              <div className="cop-modulos" aria-label="Módulos da proposta">
+                {visiveis.map((m) => (
+                  <span key={m} className="cop-pill">
+                    {m}
+                  </span>
+                ))}
+                {resto.length > 0 && (
+                  <span className="cop-pill cop-pill--mais" title={resto.join(", ")}>
+                    +{resto.length}
+                  </span>
+                )}
+              </div>
+            )}
+            {/* Compacto: prazo, bloqueio e ACE só como ícone, na linha dos módulos. A forma muda
+                junto com a cor (calendário com ✓, ! ou ×), para não depender de enxergar a cor. */}
+            {temIcones && (
+              <span className="cop-icones">
+                {prazo && (
+                  <IconeEstado tom={prazo.tom} rotulo={prazo.tom === "neutro" && !d.proximoPassoEm ? "Sem prazo no próximo passo" : prazo.texto}>
+                    <Calendario tom={prazo.tom} semData={!d.proximoPassoEm} />
+                  </IconeEstado>
+                )}
+                {temBloqueio && (
+                  <IconeEstado tom="warning" rotulo={["Bloqueio", tipoBloqueio, dicaBloqueio].filter(Boolean).join(" · ")}>
+                    <AlertaCheio />
+                  </IconeEstado>
+                )}
+                {d.aceAws && (
+                  <IconeEstado tom="info" rotulo="ACE criada no AWS Partner Central">
+                    <Nuvem />
+                  </IconeEstado>
+                )}
               </span>
             )}
           </div>
@@ -303,27 +340,6 @@ export function CardOportunidade({
       <div className="cop-rodape">
         <div className="cop-dono">
           <span className="cop-dono__nome">{nomeDono || "Sem responsável"}</span>
-          {/* Compacto: prazo, bloqueio e ACE só como ícone. A forma muda junto com a cor
-              (calendário com ✓, ! ou ×), para não depender de enxergar a cor. */}
-          {compacto && (prazo || temBloqueio || d.aceAws) && (
-            <span className="cop-icones">
-              {prazo && (
-                <IconeEstado tom={prazo.tom} rotulo={prazo.tom === "neutro" && !d.proximoPassoEm ? "Sem prazo no próximo passo" : prazo.texto}>
-                  <Calendario tom={prazo.tom} semData={!d.proximoPassoEm} />
-                </IconeEstado>
-              )}
-              {temBloqueio && (
-                <IconeEstado tom="warning" rotulo={["Bloqueio", tipoBloqueio, dicaBloqueio].filter(Boolean).join(" · ")}>
-                  <Bloqueio />
-                </IconeEstado>
-              )}
-              {d.aceAws && (
-                <IconeEstado tom="info" rotulo="ACE criada no AWS Partner Central">
-                  <Nuvem />
-                </IconeEstado>
-              )}
-            </span>
-          )}
         </div>
         <div className="cop-setas">
           {d.propostaUrl && (

@@ -639,7 +639,12 @@ textarea::placeholder {
 .cop--compacto .cop-seta svg { width: 14px; height: 14px; }
 .cop--compacto .cop-proposta { margin-right: 2px; }
 .cop-icones { display: inline-flex; align-items: center; gap: 6px; flex: none; }
-.cop-icone { display: inline-flex; color: var(--cop-tom-ink, var(--liff-text-faint)); }
+.cop-icones { margin-left: auto; }
+.cop-icone { display: inline-flex; color: var(--cop-tom, var(--liff-text-faint)); --cop-glifo: var(--liff-surface-cell, #fff); }
+/* Amarelo é claro demais para sinal branco: a exclamação vai escura. */
+.cop-icone.cop-tag--warning { --cop-glifo: #2a2110; }
+.cop-linha-modulos { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.cop-linha-modulos .cop-modulos { min-width: 0; }
 
 /* Densidade do kanban: segmentado de dois botões no topo do Comercial. */
 .liff-densidade { display: inline-flex; border: 1px solid var(--liff-border); }
