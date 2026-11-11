@@ -4,7 +4,7 @@
 // devolvem eventos. Quem decide o que pode ser alterado é o servidor — `podeEditar` que
 // chega em cada registro é o eco daquela decisão, usado só para desenhar o estado.
 
-import { useEffect, useState, type CSSProperties, type MouseEvent, type ReactNode, useRef } from "react";
+import { useEffect, useState, type CSSProperties, type MouseEvent, type ReactNode, type RefObject, useRef } from "react";
 import { Button, Field, Input, Select, Switch } from "./ds";
 import { C, GHOST_FIX, MONO, SANS, dot, eyebrow, mesh, statusColor } from "./tokens";
 import { type Activity, type AreaCadastro, type Deal, type LogEntry, type NovaOportunidade, type Origem, type Pessoa } from "./api";
@@ -402,7 +402,7 @@ export function Atividades({
             borderBottom: `1px solid ${C.line}`,
           }}
         >
-          {["ATIVIDADE", "VERTICAL", "RESPONSÁVEL", "PRAZO", "STATUS"].map((h) => (
+          {["ATIVIDADE", "PRODUTO", "RESPONSÁVEL", "PRAZO", "STATUS"].map((h) => (
             <div key={h} style={{ padding: "12px 16px", ...eyebrow(10, C.faint) }}>
               {h}
             </div>
@@ -470,12 +470,16 @@ export const CAD_TABS = [
 
 const TITULO_NOVO: Record<string, string> = {
   pessoas: "NOVA PESSOA",
-  produtos: "NOVO MÓDULO / PRODUTO",
-  areas: "NOVA VERTICAL",
+  produtos: "NOVO MÓDULO",
+  areas: "NOVO PRODUTO",
   origens: "NOVA ORIGEM",
 };
 
-export type LinhaCad = { key: string; a: string; b: string; c: string; abrir?: () => void };
+export type LinhaCad = {
+  key: string; a: string; b: string; c: string; abrir?: () => void;
+  /** Só na aba de módulos: o produto dono, a situação e o uso, para agrupar e contar. */
+  grupo?: string; arquivado?: boolean; qtd?: number;
+};
 export type CadSet = { head: string[]; rows: LinhaCad[]; ph: string };
 
 /**
@@ -681,7 +685,7 @@ function TabelaAreas({
           borderBottom: `1px solid ${C.line}`,
         }}
       >
-        {["VERTICAL", "COR", "PLANILHA", "ATIVIDADES", ""].map((h, i) => (
+        {["PRODUTO", "COR", "PLANILHA", "ATIVIDADES", ""].map((h, i) => (
           <div key={i} style={{ padding: "12px 16px", ...eyebrow(10, C.faint) }}>
             {h}
           </div>
@@ -908,13 +912,19 @@ function NovoProduto({
   salvando,
   areas,
   onCriar,
+  area,
+  setArea,
+  focoRef,
 }: {
   salvando: boolean;
   areas: { id: string; label: string }[];
   onCriar: (d: { label: string; area: string }) => void;
+  /** O produto vem de fora: o "+ módulo" de cada grupo da lista já deixa ele escolhido. */
+  area: string;
+  setArea: (v: string) => void;
+  focoRef: RefObject<HTMLDivElement | null>;
 }) {
   const [label, setLabel] = useState("");
-  const [area, setArea] = useState("");
 
   if (!areas.length) {
     return (
@@ -926,9 +936,11 @@ function NovoProduto({
 
   return (
     <>
-      <Field label="Nome do módulo" required>
-        <Input placeholder="Regtrack Farma" value={label} onChange={setLabel} />
-      </Field>
+      <div ref={focoRef}>
+        <Field label="Nome do módulo" required>
+          <Input placeholder="Regtrack Farma" value={label} onChange={setLabel} />
+        </Field>
+      </div>
       <Field label="Produto" required hint="O formulário de oportunidade só oferece os módulos do produto escolhido.">
         <Select options={opcoesArea(areas)} value={area} onChange={setArea} />
       </Field>
@@ -945,6 +957,102 @@ function NovoProduto({
         {salvando ? "cadastrando…" : "cadastrar módulo"}
       </Button>
     </>
+  );
+}
+
+/** Aba "módulos": um bloco por produto, com a cor dele. A lista corrida obrigava a ler a
+ *  coluna "produto" linha a linha para saber o que pertence a quê. */
+function TabelaModulos({
+  linhas,
+  areas,
+  onNovo,
+}: {
+  linhas: LinhaCad[];
+  areas: { id: string; label: string }[];
+  /** Ausente para quem não cadastra. */
+  onNovo?: (area: string) => void;
+}) {
+  const [verArquivados, setVerArquivados] = useState(false);
+  const arquivados = linhas.filter((l) => l.arquivado).length;
+  // Produto que a pessoa não enxerga mais, mas que ainda tem módulo, não some da tela.
+  const orfaos = [...new Set(linhas.map((l) => l.grupo ?? ""))].filter((g) => !areas.some((a) => a.id === g));
+  const grupos = [...areas, ...orfaos.map((id) => ({ id, label: areaOf(id).label }))];
+
+  return (
+    <div style={{ minWidth: 480 }}>
+      <div
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+          padding: "12px 16px", background: C.canvas, borderBottom: `1px solid ${C.line}`,
+        }}
+      >
+        <span style={eyebrow(10, C.faint)}>
+          {linhas.length - arquivados} {linhas.length - arquivados === 1 ? "MÓDULO ATIVO" : "MÓDULOS ATIVOS"} · {areas.length}{" "}
+          {areas.length === 1 ? "PRODUTO" : "PRODUTOS"}
+        </span>
+        {arquivados > 0 && (
+          <span
+            onClick={() => setVerArquivados((v) => !v)}
+            style={{ ...eyebrow(10, C.dust, "0.1em"), cursor: "pointer" }}
+          >
+            {verArquivados ? "ocultar" : "mostrar"} {arquivados} {arquivados === 1 ? "arquivado" : "arquivados"}
+          </span>
+        )}
+      </div>
+      {grupos.map((g) => {
+        const cor = `var(--liff-app-area-${g.id}, var(--liff-text-faint))`;
+        const todos = linhas.filter((l) => l.grupo === g.id);
+        const visiveis = todos.filter((l) => verArquivados || !l.arquivado);
+        const ativos = todos.filter((l) => !l.arquivado).length;
+        return (
+          <div key={g.id} style={{ borderBottom: `1px solid ${C.line}` }}>
+            <div
+              style={{
+                display: "flex", alignItems: "center", gap: 10, padding: "11px 16px 11px 13px",
+                borderLeft: `3px solid ${cor}`,
+                background: `color-mix(in srgb, ${cor} 9%, transparent)`,
+              }}
+            >
+              <span style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>LIFF {g.label}</span>
+              <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint, flex: 1 }}>
+                {ativos === 0 ? "nenhum módulo" : ativos === 1 ? "1 módulo" : `${ativos} módulos`}
+              </span>
+              {onNovo && (
+                <span
+                  onClick={() => onNovo(g.id)}
+                  title={`Cadastrar um módulo em LIFF ${g.label}`}
+                  style={{ ...eyebrow(10, C.dust, "0.1em"), cursor: "pointer" }}
+                >
+                  + módulo
+                </span>
+              )}
+            </div>
+            {visiveis.map((r) => (
+              <div
+                key={r.key}
+                className={r.abrir ? "liff-hover-row" : undefined}
+                onClick={r.abrir}
+                title={r.abrir ? "Abrir para editar" : undefined}
+                style={{
+                  display: "flex", alignItems: "center", gap: 10, padding: "11px 16px 11px 13px",
+                  borderLeft: `3px solid color-mix(in srgb, ${cor} 35%, transparent)`,
+                  borderTop: `1px solid ${C.line}`,
+                  cursor: r.abrir ? "pointer" : undefined,
+                  opacity: r.arquivado ? 0.55 : 1,
+                }}
+              >
+                <span style={{ ...dot(cor), width: 7, height: 7, flex: "none" }} />
+                <span style={{ fontSize: 14, color: C.ink, flex: 1, minWidth: 0 }}>{r.a}</span>
+                {r.arquivado && <span style={eyebrow(9, C.faint, "0.1em")}>arquivado</span>}
+                <span style={{ fontFamily: MONO, fontSize: 11, color: r.qtd ? C.body : C.ghost, width: 96, textAlign: "right" }}>
+                  {r.c}
+                </span>
+              </div>
+            ))}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -995,6 +1103,8 @@ export function Cadastros({
   onCriarProduto: (d: { label: string; area: string }) => void;
   onCriarOrigem: (d: { label: string }) => void;
 }) {
+  const [areaNovoModulo, setAreaNovoModulo] = useState("");
+  const focoNovoModulo = useRef<HTMLDivElement | null>(null);
   return (
     <>
       <div style={mesh({ display: "flex", gap: 1, width: "fit-content", marginBottom: 22, flexWrap: "wrap" })}>
@@ -1027,6 +1137,20 @@ export function Cadastros({
             />
           ) : tab === "areas" ? (
             <TabelaAreas areas={areas} contagem={contagemPorArea} podeEditar={podeEditarAreas} onCor={onCorArea} onExcluir={onExcluirArea} onNome={onNomeArea} />
+          ) : tab === "produtos" ? (
+            <TabelaModulos
+              linhas={set.rows}
+              areas={areas}
+              onNovo={
+                podeEditarAreas
+                  ? (id) => {
+                      setAreaNovoModulo(id);
+                      focoNovoModulo.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+                      focoNovoModulo.current?.querySelector("input")?.focus({ preventScroll: true });
+                    }
+                  : undefined
+              }
+            />
           ) : (
           <div style={{ minWidth: 480 }}>
             <div
@@ -1083,7 +1207,7 @@ export function Cadastros({
             ) : tab === "origens" ? (
               <NovaOrigem salvando={salvandoArea} onCriar={onCriarOrigem} />
             ) : (
-              <NovoProduto salvando={salvandoArea} areas={areasEditaveis} onCriar={onCriarProduto} />
+              <NovoProduto salvando={salvandoArea} areas={areasEditaveis} onCriar={onCriarProduto} area={areaNovoModulo} setArea={setAreaNovoModulo} focoRef={focoNovoModulo} />
             )}
             <div style={{ fontSize: 12, lineHeight: 1.6, color: C.faint }}>
               Cadastros alimentam os seletores de atividades, oportunidades e permissões. Alterações entram no
@@ -1341,7 +1465,7 @@ export function Auditoria({
             borderBottom: `1px solid ${C.line}`,
           }}
         >
-          {["QUANDO", "QUEM", "VERTICAL", "O QUE MUDOU"].map((h) => (
+          {["QUANDO", "QUEM", "PRODUTO", "O QUE MUDOU"].map((h) => (
             <div key={h} style={{ padding: "12px 16px", ...eyebrow(10, C.faint) }}>
               {h}
             </div>
@@ -1593,7 +1717,7 @@ export function Drawer({
           {/* Com a cortina larga, produto e módulo lado a lado. */}
           <div className="cortina-duas" style={{ gap: "0 14px" }}>
           <div>
-            <div style={{ ...eyebrow(10, C.faint), marginBottom: 9 }}>VERTICAL</div>
+            <div style={{ ...eyebrow(10, C.faint), marginBottom: 9 }}>PRODUTO</div>
             <select
               value={act.area}
               onChange={(e) => onArea(e.target.value)}
@@ -1612,7 +1736,7 @@ export function Drawer({
           </div>
 
           <div>
-            <div style={{ ...eyebrow(10, C.faint), marginBottom: 9 }}>MÓDULO / PRODUTO</div>
+            <div style={{ ...eyebrow(10, C.faint), marginBottom: 9 }}>MÓDULO</div>
             <select
               value={act.produtoId ?? ""}
               onChange={(e) => onProduto(e.target.value || null)}

@@ -508,7 +508,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     }
     if (cadTab === "areas") {
       return {
-        head: ["VERTICAL", "SIGLA", "ATIVIDADES"],
+        head: ["PRODUTO", "SIGLA", "ATIVIDADES"],
         rows: todasAreas().filter((a) => estado.areasVisiveis.includes(a.id)).map((a) => ({
           key: a.id,
           a: "LIFF " + a.label,
@@ -519,12 +519,15 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
       };
     }
     return {
-      head: ["MÓDULO / PRODUTO", "VERTICAL", "OPORTUNIDADES"],
+      head: ["MÓDULO", "PRODUTO", "OPORTUNIDADES"],
       rows: estado.produtos.map((p) => ({
         key: p.id,
-        a: p.label + (p.ativo ? "" : " (arquivado)"),
+        a: p.label,
         b: areaOf(p.area).label,
+        grupo: p.area,
+        arquivado: !p.ativo,
         // Na oportunidade o produto virou "módulo de interesse" — uma pode ter vários.
+        qtd: estado.deals.filter((d) => d.modulos.includes(p.id)).length,
         c: estado.deals.filter((d) => d.modulos.includes(p.id)).length + " no pipeline",
         abrir: estado.isAdmin ? () => setCadEditando({ tipo: "produto", id: p.id }) : undefined,
       })),

@@ -134,7 +134,7 @@ export default function Painel({
           )}
         </section>
         <section className="pn-painel">
-          <CabecalhoSecao titulo="PIPELINE ABERTO POR VERTICAL" />
+          <CabecalhoSecao titulo="PIPELINE ABERTO POR PRODUTO" />
           <Barras
             itens={porVertical.map((v) => ({ chave: v.id, rotulo: v.label, valor: v.valor, texto: `${brl(v.valor)} · ${v.qtd}`, cor: v.cor }))}
             vazio="Nada em aberto no recorte."

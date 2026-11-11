@@ -154,7 +154,7 @@ export function EditarProduto({
       grupos: [
         { titulo: "ATIVIDADES", itens: u.atividades.map((a) => ({ ref: a.ref, texto: a.titulo })) },
         {
-          titulo: "OPORTUNIDADES (MÓDULO / PRODUTO)",
+          titulo: "OPORTUNIDADES (MÓDULO)",
           itens: u.oportunidades.map((o) => ({ ref: o.ref, texto: o.conta + (o.modulos > 1 ? ` (+${o.modulos - 1} módulo)` : "") })),
         },
       ],
@@ -163,7 +163,7 @@ export function EditarProduto({
   });
 
   return (
-    <Modal titulo={produto.label} eyebrowTexto="LIFF/ CADASTROS · MÓDULO / PRODUTO" onFechar={onFechar}>
+    <Modal titulo={produto.label} eyebrowTexto="LIFF/ CADASTROS · MÓDULO" onFechar={onFechar}>
       <Field label="Nome do módulo" required>
         <Input value={label} onChange={setLabel} />
       </Field>
@@ -193,7 +193,7 @@ export function EditarProduto({
         {salvando ? "salvando…" : "salvar"}
       </Button>
 
-      <Divisor titulo="EXCLUIR MÓDULO / PRODUTO" />
+      <Divisor titulo="EXCLUIR MÓDULO" />
       <SecaoExclusao
         nome={`o módulo ${produto.label}`}
         carregar={carregar}

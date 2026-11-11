@@ -499,7 +499,7 @@ function TabelaContratos({
     <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}` }}>
       <div style={{ minWidth: 980 }}>
         <div style={{ display: "grid", gridTemplateColumns: cols, background: C.canvas, borderBottom: `1px solid ${C.line}` }}>
-          {["CLIENTE", "VERTICAL", "SITUAÇÃO", "INÍCIO", "ASSINATURA / MÊS", "IMPLANTAÇÃO", "CUSTOMIZAÇÃO", `TOTAL · ${horizonte} MESES`].map((h, k) => (
+          {["CLIENTE", "PRODUTO", "SITUAÇÃO", "INÍCIO", "ASSINATURA / MÊS", "IMPLANTAÇÃO", "CUSTOMIZAÇÃO", `TOTAL · ${horizonte} MESES`].map((h, k) => (
             <div key={h} style={{ padding: "12px 14px", ...eyebrow(10, C.faint), textAlign: k >= 4 ? "right" : "left" }}>
               {h}
             </div>
