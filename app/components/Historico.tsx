@@ -26,7 +26,7 @@ type Entrada = {
 /** Nome técnico do campo → como a pessoa chama aquilo na tela. */
 const ROTULO: Record<string, string> = {
   titulo: "título",
-  area: "vertical",
+  area: "produto",
   status: "status",
   prioridade: "prioridade",
   responsavel: "responsável",

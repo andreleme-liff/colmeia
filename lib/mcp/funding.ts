@@ -101,7 +101,7 @@ export async function listarArquetipos(c: Contexto, a: Record<string, unknown> =
       pastas: pastasFiltradas.map((p) => ({
         id: p.id,
         nome: p.nome,
-        produto: p.produtoId ? d.produtos.find((x) => x.id === p.produtoId)?.label ?? p.produtoId : null,
+        modulo: p.produtoId ? d.produtos.find((x) => x.id === p.produtoId)?.label ?? p.produtoId : null,
         descricao: p.descricao || null,
         arquetipos: d.arquetipos.filter((x) => x.pastaId === p.id).length,
       })),

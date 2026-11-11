@@ -53,7 +53,7 @@ export async function DELETE(_req: Request, ctxRoute: RouteContext<"/api/activit
     if (!linhas.length) return { ok: false as const, erro: "Atividade não encontrada.", status: 404 };
     const alvo = linhas[0];
     if (!ctx.podeVer(alvo.area)) return { ok: false as const, erro: "Atividade não encontrada.", status: 404 };
-    if (!ctx.podeEditar(alvo.area)) return { ok: false as const, erro: "Sem permissão de edição nesta vertical.", status: 403 };
+    if (!ctx.podeEditar(alvo.area)) return { ok: false as const, erro: "Sem permissão de edição neste produto.", status: 403 };
 
     await excluirAtividade(tx, { id: activityId, ...alvo }, ctx.user.userId);
     return { ok: true as const };

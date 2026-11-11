@@ -5,12 +5,12 @@
 // De cima para baixo:
 //  1. grandes números — comercial (pipeline aberto, fase final, ganho) e operação (abertas,
 //     em atraso, próximos 7 dias);
-//  2. gráficos — funil comercial por etapa, pipeline aberto por vertical, atividades por
+//  2. gráficos — funil comercial por etapa, pipeline aberto por produto, atividades por
 //     status e por prazo;
 //  3. só admin — receita dos próximos 12 meses (contratada + provável) e faturamento do mês;
 //  4. foco da semana do comercial e da operação, e as alterações recentes (como antes).
 //
-// Tudo respeita os filtros do cabeçalho (vertical e "Quem"): as listas que chegam aqui já vêm
+// Tudo respeita os filtros do cabeçalho (produto e "Quem"): as listas que chegam aqui já vêm
 // recortadas. Receita e faturamento são da empresa inteira e só aparecem para admin.
 
 import { useEffect, useState } from "react";
@@ -41,7 +41,7 @@ export default function Painel({
   onIr,
 }: {
   dados: PainelDados;
-  /** Já recortadas por vertical e "Quem". */
+  /** Já recortadas por produto e "Quem". */
   atividades: Activity[];
   oportunidades: Deal[];
   /** Todas as visíveis, sem recorte: a situação da receita depende do estágio do card. */

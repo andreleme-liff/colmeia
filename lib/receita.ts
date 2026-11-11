@@ -53,10 +53,10 @@ export async function lerContratos(sql: Queryable): Promise<Contrato[]> {
   }));
 }
 
-/** Confere vertical e card antes de gravar. Devolve a mensagem de erro, ou null. */
+/** Confere produto e card antes de gravar. Devolve a mensagem de erro, ou null. */
 export async function conferir(tx: Queryable, c: EntradaContrato, idAtual: number | null): Promise<string | null> {
   const [area] = await tx<{ id: string }[]>`SELECT id FROM areas WHERE id = ${c.area}`;
-  if (!area) return "Vertical inválida.";
+  if (!area) return "Produto inválido.";
   if (c.dealId != null) {
     const [deal] = await tx<{ id: number }[]>`SELECT id FROM deals WHERE id = ${c.dealId}`;
     if (!deal) return "Oportunidade não encontrada.";

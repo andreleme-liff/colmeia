@@ -138,7 +138,7 @@ export async function GET() {
     { id: number; nome: string; email: string; papel: string; iniciais: string; ativo: boolean }[]
   >`SELECT id, nome, email, papel, iniciais, ativo FROM users WHERE excluido_em IS NULL ORDER BY id ASC`;
 
-  // Cadastro das verticais: rótulo, sigla e cor. Vai inteiro para o cliente, que transforma
+  // Cadastro dos produtos: rótulo, sigla e cor. Vai inteiro para o cliente, que transforma
   // a cor em variável CSS.
   const areasCadastro = await sql<
     { id: string; label: string; short: string; cor: string; planilha_url: string | null }[]
@@ -220,7 +220,7 @@ export async function GET() {
       proximoPassoEm: a.proximo_passo_em ? a.proximo_passo_em.toISOString().slice(0, 10) : null,
       podeEditar: ctx.podeEditar(a.area),
       // A oportunidade ligada, só se quem olha enxerga a área dela. Tarefa de Operações
-      // ligada a uma venda de outra vertical mostra que HÁ vínculo, sem abrir a carteira alheia.
+      // ligada a uma venda de outro produto mostra que HÁ vínculo, sem abrir a carteira alheia.
       ...(a.oportunidade_id && a.op_area && ctx.podeVer(a.op_area)
         ? { oportunidadeId: a.oportunidade_id, oportunidadeRef: a.op_ref, oportunidadeConta: a.op_conta, oportunidadeOculta: false }
         : { oportunidadeId: null, oportunidadeRef: null, oportunidadeConta: null, oportunidadeOculta: !!a.oportunidade_id }),

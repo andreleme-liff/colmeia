@@ -701,7 +701,7 @@ function FormContrato({
           <Field label="Cliente" required>
             <Input value={conta} onChange={setConta} placeholder="Nome do cliente" />
           </Field>
-          <Field label="Vertical" required>
+          <Field label="Produto" required>
             <Select
               value={area}
               onChange={setArea}

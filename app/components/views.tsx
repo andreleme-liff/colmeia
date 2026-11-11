@@ -32,7 +32,7 @@ export type LinhaFoco = {
   sinal: string;
   sinalCor: string;
   titulo: string;
-  /** Quadradinho da vertical, à esquerda do título. Só no comercial. */
+  /** Quadradinho do produto, à esquerda do título. Só no comercial. */
   cor?: string;
   contexto: string;
   meta: string;
@@ -88,7 +88,7 @@ export function ListaFoco({
           key={l.ref}
           className={l.podeAbrir ? "liff-hover-row liff-painel-linha" : "liff-painel-linha"}
           onClick={() => l.podeAbrir && onAbrir(l.ref)}
-          title={l.podeAbrir ? "Abrir" : "Somente leitura nesta vertical"}
+          title={l.podeAbrir ? "Abrir" : "Somente leitura neste produto"}
           style={{
             display: "grid",
             gap: 20,
@@ -217,7 +217,7 @@ export type Semana = { chave: string; rotulo: string; titulo: string; total: num
  * Cronograma. Uma linha do tempo por semana, e dentro dela um bloco por área.
  *
  * Oportunidade e atividade aparecem juntas de propósito: quem planeja a semana de uma
- * vertical não separa "o que é venda" de "o que é execução" — separa por quando acontece. O
+ * produto não separa "o que é venda" de "o que é execução" — separa por quando acontece. O
  * tipo vira um rótulo na linha, não uma tela diferente.
  */
 export function Cronograma({
@@ -262,7 +262,7 @@ export function Cronograma({
                   key={i.ref}
                   className={i.podeAbrir ? "liff-hover-row liff-cronograma-linha" : "liff-cronograma-linha"}
                   onClick={() => i.podeAbrir && onAbrir(i.ref, i.tipo)}
-                  title={i.podeAbrir ? "Abrir" : "Somente leitura nesta vertical"}
+                  title={i.podeAbrir ? "Abrir" : "Somente leitura neste produto"}
                   style={{
                     display: "grid",
                     gap: 20,
@@ -370,7 +370,7 @@ export function Operacoes({
       </div>
       <div style={{ fontFamily: MONO, fontSize: 11, color: C.faint, marginTop: 14, lineHeight: 1.6 }}>
         Arraste os cards entre as colunas, ou use as setas — o movimento é gravado no log com autor e horário.
-        Cards de verticais sem permissão de edição não se movem.
+        Cards de produtos sem permissão de edição não se movem.
       </div>
     </>
   );
@@ -462,8 +462,8 @@ export function Atividades({
 // lugar delas — com estágio, valor e histórico, que a tabela não mostrava.
 export const CAD_TABS = [
   { key: "pessoas", label: "pessoas" },
-  { key: "produtos", label: "módulos / produtos" },
-  { key: "areas", label: "verticais" },
+  { key: "areas", label: "produtos" },
+  { key: "produtos", label: "módulos" },
   // De onde vêm as oportunidades (Base Fius, AWS, Evento…) — o select do card comercial.
   { key: "origens", label: "origens" },
 ] as const;
@@ -654,7 +654,7 @@ function TextoLongoEditavel({
 // tabela inteira); assim a largura é a do cabeçalho e o texto longo é cortado com reticências.
 const COLS_AREA = "minmax(0, 1.5fr) minmax(0, 0.9fr) minmax(0, 1.2fr) minmax(0, 0.8fr) 44px";
 
-/** Aba "áreas": a cor de cada vertical é configuração, e muda como todo mundo vê o quadro —
+/** Aba "áreas": a cor de cada produto é configuração, e muda como todo mundo vê o quadro —
  *  por isso só admin edita. O `input type=color` devolve HEX, que é o que o servidor aceita. */
 function TabelaAreas({
   areas,
@@ -699,7 +699,7 @@ function TabelaAreas({
                 <TextoEditavel
                   valor={a.label}
                   onSalvar={(v) => onNome(a.id, { label: v })}
-                  titulo="Clique para renomear a vertical"
+                  titulo="Clique para renomear o produto"
                   estilo={{ fontSize: 14, color: C.ink, flex: 1, minWidth: 0 }}
                 />
                 <TextoEditavel
@@ -722,7 +722,7 @@ function TabelaAreas({
               value={a.cor}
               disabled={!podeEditar}
               onChange={(e) => onCor(a.id, e.target.value)}
-              title={podeEditar ? "Escolher a cor desta vertical" : "Só a administração altera a cor"}
+              title={podeEditar ? "Escolher a cor deste produto" : "Só a administração altera a cor"}
               style={{
                 width: 34,
                 height: 26,
@@ -735,7 +735,7 @@ function TabelaAreas({
             />
             <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint, textTransform: "uppercase" }}>{a.cor}</span>
           </div>
-          {/* Endereço da planilha do Drive de onde esta vertical sincroniza. Guardamos só o
+          {/* Endereço da planilha do Drive de onde este produto sincroniza. Guardamos só o
               id canônico; colar a URL inteira, com /edit e #gid, funciona. */}
           <div style={{ padding: "9px 16px", minWidth: 0 }}>
             {podeEditar ? (
@@ -774,13 +774,13 @@ function TabelaAreas({
       <div style={{ padding: "14px 16px", fontSize: 12, lineHeight: 1.6, color: C.faint }}>
         A cor pinta chip, card, barra e tabela em toda a interface. No tema claro ela é escurecida
         automaticamente para manter contraste sobre o fundo Floral White.
-        {podeEditar && " Uma vertical só pode ser excluída quando não tem mais atividade nem oportunidade."}
+        {podeEditar && " Um produto só pode ser excluído quando não tem mais atividade nem oportunidade."}
       </div>
     </div>
   );
 }
 
-/** Cadastro de uma vertical nova. O id sai do nome (vira variável CSS), então o formulário
+/** Cadastro de um produto novo. O id sai do nome (vira variável CSS), então o formulário
  *  pede só nome, sigla e cor. */
 function NovaArea({ salvando, onCriar }: { salvando: boolean; onCriar: (d: { label: string; short: string; cor: string }) => void }) {
   const [label, setLabel] = useState("");
@@ -789,7 +789,7 @@ function NovaArea({ salvando, onCriar }: { salvando: boolean; onCriar: (d: { lab
 
   return (
     <>
-      <Field label="Nome da vertical" required>
+      <Field label="Nome do produto" required>
         <Input placeholder="Seguros" value={label} onChange={setLabel} />
       </Field>
       <Field label="Sigla" hint="Até 8 caracteres. Aparece nos cards do quadro.">
@@ -825,7 +825,7 @@ function NovaArea({ salvando, onCriar }: { salvando: boolean; onCriar: (d: { lab
           setShort("");
         }}
       >
-        {salvando ? "criando…" : "cadastrar vertical"}
+        {salvando ? "criando…" : "cadastrar produto"}
       </Button>
     </>
   );
@@ -856,7 +856,7 @@ function NovaPessoa({
       <Field label="E-mail" required hint={`Precisa ser @${dominio} — é o domínio aceito no login.`}>
         <Input placeholder={`larissa@${dominio}`} value={email} onChange={setEmail} />
       </Field>
-      <Field label="Papel" hint="O papel é o teto; o acesso por vertical se define depois, abrindo a linha da pessoa na lista.">
+      <Field label="Papel" hint="O papel é o teto; o acesso por produto se define depois, abrindo a linha da pessoa na lista.">
         <Select options={[...PAPEIS]} value={papel} onChange={setPapel} />
       </Field>
       <Button
@@ -880,7 +880,7 @@ function NovaPessoa({
   );
 }
 
-/** Produto é o que se vende dentro de uma vertical. Sempre nasce preso a uma área. */
+/** Módulo é o que se vende dentro de um produto. Sempre nasce preso a uma área. */
 function NovaOrigem({ salvando, onCriar }: { salvando: boolean; onCriar: (d: { label: string }) => void }) {
   const [label, setLabel] = useState("");
   return (
@@ -919,17 +919,17 @@ function NovoProduto({
   if (!areas.length) {
     return (
       <div style={{ fontSize: 13, lineHeight: 1.6, color: C.faint }}>
-        Cadastre uma vertical antes: todo módulo / produto pertence a uma.
+        Cadastre um produto antes: todo módulo pertence a um.
       </div>
     );
   }
 
   return (
     <>
-      <Field label="Nome do módulo / produto" required>
+      <Field label="Nome do módulo" required>
         <Input placeholder="Regtrack Farma" value={label} onChange={setLabel} />
       </Field>
-      <Field label="Vertical" required hint="O formulário de oportunidade só oferece os módulos / produtos da vertical escolhida.">
+      <Field label="Produto" required hint="O formulário de oportunidade só oferece os módulos do produto escolhido.">
         <Select options={opcoesArea(areas)} value={area} onChange={setArea} />
       </Field>
       <Button
@@ -942,7 +942,7 @@ function NovoProduto({
           setLabel("");
         }}
       >
-        {salvando ? "cadastrando…" : "cadastrar módulo / produto"}
+        {salvando ? "cadastrando…" : "cadastrar módulo"}
       </Button>
     </>
   );
@@ -1070,8 +1070,8 @@ export function Cadastros({
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {/* Um formulário por aba, e não um genérico com Nome/Área/Observação: pessoa e
                 produto não pedem os mesmos campos, e o formulário único não conseguia
-                enviar nenhum dos dois. Verticais e produtos são configuração do sistema —
-                só admin cadastra, como já valia para a cor da vertical. */}
+                enviar nenhum dos dois. Produtos e módulos são configuração do sistema —
+                só admin cadastra, como já valia para a cor do produto. */}
             {!podeEditarAreas ? (
               <div style={{ fontSize: 13, lineHeight: 1.6, color: C.faint }}>
                 Só a administração faz cadastros. Peça a quem administra o sistema.
@@ -1212,7 +1212,7 @@ function PermissoesPorPessoa({
                 </div>
               </div>
               <div style={{ ...eyebrow(10, C.faint, "0.1em"), whiteSpace: "nowrap" }}>
-                {u.papel === "admin" ? "todas as verticais" : `${edita} editar · ${ve} ver`}
+                {u.papel === "admin" ? "todos os produtos" : `${edita} editar · ${ve} ver`}
               </div>
               {onEditar && (
                 // O clique no botão não pode também abrir/fechar as permissões da linha.
@@ -1590,7 +1590,7 @@ export function Drawer({
             </div>
           </div>
 
-          {/* Com a cortina larga, vertical e módulo / produto lado a lado. */}
+          {/* Com a cortina larga, produto e módulo lado a lado. */}
           <div className="cortina-duas" style={{ gap: "0 14px" }}>
           <div>
             <div style={{ ...eyebrow(10, C.faint), marginBottom: 9 }}>VERTICAL</div>
@@ -1635,7 +1635,7 @@ export function Drawer({
           </div>
 
           {/* A oportunidade comercial a que esta tarefa serve — o elo entre o pipeline e o
-              quadro. Qualquer oportunidade que a pessoa enxergue, de qualquer vertical: a tarefa
+              quadro. Qualquer oportunidade que a pessoa enxergue, de qualquer produto: a tarefa
               de implantação em Tax costuma servir a uma venda fechada em Corporate. */}
           <div>
             <div style={{ ...eyebrow(10, C.faint), marginBottom: 9 }}>OPORTUNIDADE</div>
@@ -1643,7 +1643,7 @@ export function Drawer({
               // Ligada a uma oportunidade de área que esta pessoa não vê: mostrar que o vínculo
               // existe, sem o nome da conta — e sem oferecer um seletor que o desfaria às cegas.
               <div style={{ fontSize: 13, color: C.faint, lineHeight: 1.5 }}>
-                Ligada a uma oportunidade de uma vertical que você não acessa.
+                Ligada a uma oportunidade de um produto que você não acessa.
               </div>
             ) : (
               <select
@@ -1741,7 +1741,7 @@ export function Drawer({
 
           <div style={{ fontFamily: MONO, fontSize: 11, lineHeight: 1.6, color: editavel ? C.faint : C.warning }}>
             {editavel
-              ? "Você tem permissão de edição nesta vertical. Toda alteração é registrada no log."
+              ? "Você tem permissão de edição neste produto. Toda alteração é registrada no log."
               : `Somente leitura — seu perfil não tem permissão de edição em ${a.label}.`}
           </div>
           {/* Excluir fica sozinho, embaixo e em vermelho: é a única ação irreversível aqui. */}
@@ -1907,7 +1907,7 @@ export function Modal({ titulo, eyebrowTexto, children, onFechar, largura = 640 
  * algo diferente do que o registro realmente é.
  *
  * Sem `atual` — ou seja, na criação — a lista abre com uma opção vazia, e o botão de salvar
- * fica desabilitado até alguém escolher. Não é firula: com a primeira vertical
+ * fica desabilitado até alguém escolher. Não é firula: com a primeiro produto
  * pré-selecionada, quem não reparava no campo cadastrava na área errada sem perceber.
  */
 export function opcoesArea(editaveis: { id: string; label: string }[], atual?: string) {
@@ -1918,7 +1918,7 @@ export function opcoesArea(editaveis: { id: string; label: string }[], atual?: s
   // A área injetada acima entraria fora de ordem; reordenar aqui mantém a promessa
   // alfabética que vale para o resto dos seletores.
   lista.sort((a, b) => porTexto(a.label, b.label));
-  return atual ? lista : [{ value: "", label: "— escolha a vertical —" }, ...lista];
+  return atual ? lista : [{ value: "", label: "— escolha o produto —" }, ...lista];
 }
 
 export type OpcaoPessoa = { id: number; nome: string };
@@ -1953,7 +1953,7 @@ export function NovaAtividade({
 }) {
   const [titulo, setTitulo] = useState("");
   // Em branco de propósito. Com a primeira área pré-selecionada, quem não olhava o campo
-  // cadastrava na vertical errada sem perceber — aconteceu com 40 atividades de uma vez.
+  // cadastrava no produto errado sem perceber — aconteceu com 40 atividades de uma vez.
   const [area, setArea] = useState("");
   const [status, setStatus] = useState("backlog");
   const [prioridade, setPrioridade] = useState("media");
@@ -1964,7 +1964,7 @@ export function NovaAtividade({
   const [produtoId, setProdutoId] = useState("");
   const [proximoEm, setProximoEm] = useState("");
 
-  // Produto pertence a uma vertical; trocar a área invalida a escolha anterior.
+  // Módulo pertence a um produto; trocar a área invalida a escolha anterior.
   const produtosDaArea = produtos.filter((p) => p.area === area && p.ativo);
 
   const enviar = () =>
@@ -1987,7 +1987,7 @@ export function NovaAtividade({
         <Input placeholder="O que precisa ser feito" value={titulo} onChange={setTitulo} />
       </Field>
 
-      <Field label="Vertical" required hint="Escolha antes de salvar — não há vertical pré-selecionada.">
+      <Field label="Produto" required hint="Escolha antes de salvar — não há produto pré-selecionado.">
         <Select
           options={opcoesArea(areasEditaveis)}
           value={area}
@@ -2001,13 +2001,13 @@ export function NovaAtividade({
       </Field>
 
       <Field
-        label="Módulo / Produto"
+        label="Módulo"
         hint={
           !area
-            ? "Escolha a vertical primeiro."
+            ? "Escolha o produto primeiro."
             : produtosDaArea.length
               ? "O que está sendo implantado. Opcional."
-              : "Nenhum módulo / produto cadastrado nesta vertical — cadastre em Cadastros → módulos / produtos."
+              : "Nenhum módulo cadastrado neste produto — cadastre em Cadastros → módulos."
         }
       >
         <Select
@@ -2220,13 +2220,13 @@ export function FormOportunidade({
       </Field>
 
       <div style={duas}>
-        <Field label="Vertical" required hint={editando ? undefined : "Escolha antes de salvar."}>
+        <Field label="Produto" required hint={editando ? undefined : "Escolha antes de salvar."}>
           <Select
             options={opcoesArea(areasEditaveis, inicial?.area)}
             value={area}
             onChange={(v) => {
               setArea(v);
-              // Os módulos pertencem à vertical anterior; o servidor recusaria sem explicar.
+              // Os módulos pertencem ao produto anterior; o servidor recusaria sem explicar.
               setModulos([]);
             }}
           />
@@ -2273,7 +2273,7 @@ export function FormOportunidade({
       <Field label="Dor principal">
         <Input placeholder="Conferir a apuração" value={dor} onChange={setDor} />
       </Field>
-      <Field label="Módulos / Produtos de interesse" hint={area ? undefined : "Escolha a vertical para ver os módulos / produtos."}>
+      <Field label="Módulos de interesse" hint={area ? undefined : "Escolha o produto para ver os módulos."}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {modulosDaArea.length ? (
             modulosDaArea.map((p) => {
@@ -2300,7 +2300,7 @@ export function FormOportunidade({
             })
           ) : (
             <span style={{ fontSize: 12, color: C.faint }}>
-              {area ? "Nenhum módulo / produto cadastrado nesta vertical (Cadastros → módulos / produtos)." : "—"}
+              {area ? "Nenhum módulo cadastrado neste produto (Cadastros → módulos)." : "—"}
             </span>
           )}
         </div>
@@ -2414,7 +2414,7 @@ export function FormOportunidade({
       </Field>
 
       {/* O lado operacional desta venda: as tarefas ligadas a ela. Só as que a pessoa
-          enxerga — tarefa de vertical sem acesso não aparece, como em todo o sistema. */}
+          enxerga — tarefa de produto sem acesso não aparece, como em todo o sistema. */}
       {editando && (
         <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 18 }}>
           <div style={{ ...eyebrow(11, C.dust), marginBottom: 12 }}>TAREFAS LIGADAS</div>

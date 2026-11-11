@@ -80,7 +80,7 @@ export async function emitirFatura(
       if (!conta) return { erro: "Informe o cliente." };
       const area = typeof body.area === "string" ? body.area : "";
       const [a] = await tx<{ id: string }[]>`SELECT id FROM areas WHERE id = ${area}`;
-      if (!a) return { erro: "Escolha a vertical." };
+      if (!a) return { erro: "Escolha o produto." };
       const descricao = typeof body.descricao === "string" ? body.descricao.trim().slice(0, 300) : "";
       if (!descricao) return { erro: "Descreva o que está sendo faturado." };
       linha = { contratoId: null, conta, area, tipo: "avulsa", parcela: "", descricao, valorPadrao: null };

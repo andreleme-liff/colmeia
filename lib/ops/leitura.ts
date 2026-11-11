@@ -40,8 +40,8 @@ function atividadeDto(a: LinhaAtividade, ctx: Ctx, base: string) {
   return {
     ref: a.ref,
     titulo: a.titulo,
-    area: a.area,
-    area_nome: ctx.labelArea(a.area),
+    produto: a.area,
+    produto_nome: ctx.labelArea(a.area),
     status: a.status,
     status_nome: statusLabel(a.status),
     prioridade: a.prioridade,
@@ -51,7 +51,7 @@ function atividadeDto(a: LinhaAtividade, ctx: Ctx, base: string) {
     situacao: a.situacao,
     proximo_passo: a.proximo_passo,
     proximo_passo_em: iso(a.proximo_passo_em),
-    produto_id: a.produto_id,
+    modulo_id: a.produto_id,
     atualizado_em: (a.atualizado_em ?? a.criado_em).toISOString(),
     // A oportunidade ligada, só se quem pergunta enxerga a área dela; senão, só o fato de
     // que há vínculo — a mesma regra da tela.
@@ -59,7 +59,7 @@ function atividadeDto(a: LinhaAtividade, ctx: Ctx, base: string) {
       a.oportunidade_id && a.op_area && ctx.podeVer(a.op_area)
         ? { ref: a.op_ref, conta: a.op_conta, url: base + caminhoDe({ view: "comercial", ref: a.op_ref ?? undefined }) }
         : a.oportunidade_id
-          ? "ligada a uma oportunidade de vertical sem acesso"
+          ? "ligada a uma oportunidade de produto sem acesso"
           : null,
     pode_editar: ctx.podeEditar(a.area),
     url: base + caminhoDe({ view: "operacoes", ref: a.ref }),
@@ -98,8 +98,8 @@ function oportunidadeDto(d: LinhaOportunidade, ctx: Ctx, base: string) {
   return {
     ref: d.ref,
     conta: d.conta,
-    area: d.area,
-    area_nome: ctx.labelArea(d.area),
+    produto: d.area,
+    produto_nome: ctx.labelArea(d.area),
     estagio: d.estagio,
     estagio_nome: stageLabel(d.estagio),
     valor_reais: Number(d.valor_centavos) / 100,
@@ -245,7 +245,7 @@ export async function verRegistro(sql: Queryable, ctx: Ctx, refBruta: string, ba
         ...oportunidadeDto(d, ctx, base),
         tarefas: tarefas.map((t) => ({
           ref: t.ref, titulo: t.titulo, status: t.status, status_nome: statusLabel(t.status),
-          area: t.area, responsavel: t.responsavel, prazo: iso(t.prazo),
+          produto: t.area, responsavel: t.responsavel, prazo: iso(t.prazo),
           url: base + caminhoDe({ view: "operacoes", ref: t.ref }),
         })),
       };
@@ -275,7 +275,7 @@ export async function verRegistro(sql: Queryable, ctx: Ctx, refBruta: string, ba
       em: h.criado_em.toISOString(),
       autor: h.autor ?? "sistema",
       via: h.origem === "mcp" ? h.cliente ?? "conexão externa" : "interface",
-      campo: h.campo,
+      campo: h.campo === "area" ? "produto" : h.campo === "produto" ? "modulo" : h.campo,
       de: h.valor_anterior,
       para: h.valor_novo,
       texto: h.texto,
@@ -296,8 +296,8 @@ export async function listarCadastros(sql: Queryable, ctx: Ctx) {
     sql<{ id: string; label: string; ativo: boolean }[]>`SELECT id, label, ativo FROM origens ORDER BY ordem, label`,
   ]);
   return {
-    areas: visiveis.map((a) => ({ id: a, nome: ctx.labelArea(a), nivel: ctx.podeEditar(a) ? "editar" : "ver" })),
-    produtos: [...produtos],
+    produtos: visiveis.map((a) => ({ id: a, nome: ctx.labelArea(a), nivel: ctx.podeEditar(a) ? "editar" : "ver" })),
+    modulos: produtos.map((p) => ({ id: p.id, nome: p.label, produto: p.area, ativo: p.ativo })),
     origens: [...origens],
     pessoas: [...pessoas],
   };

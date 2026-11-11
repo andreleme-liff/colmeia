@@ -59,7 +59,7 @@ export function CardAtividade({
         className="cop-seta"
         disabled={desabilitado}
         aria-label={rotulo}
-        title={!editavel ? "Sem permissão de edição nesta vertical" : rotulo}
+        title={!editavel ? "Sem permissão de edição neste produto" : rotulo}
         draggable={false}
         // O card inteiro é clicável e arrastável: o botão não pode abrir o card nem iniciar o arraste.
         onClick={(e) => {
@@ -80,12 +80,12 @@ export function CardAtividade({
     <article
       className="cop cop--ativo"
       style={corArea}
-      aria-label={`Atividade ${c.titulo} · vertical ${area.label}`}
+      aria-label={`Atividade ${c.titulo} · produto ${area.label}`}
       draggable={editavel}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onClick={onAbrir}
-      title={`${area.label} · ${editavel ? "Arraste para mover de status, ou clique para abrir" : "Somente leitura nesta vertical"}`}
+      title={`${area.label} · ${editavel ? "Arraste para mover de status, ou clique para abrir" : "Somente leitura neste produto"}`}
     >
       {/* ---------- 1 · identificação ---------- */}
       <div className="cop-bloco">

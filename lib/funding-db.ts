@@ -67,7 +67,7 @@ type Resultado = { ok: true; id: number | string; ref?: string } | { erro: strin
 async function conferirPasta(tx: Queryable, p: { produtoId: string | null }): Promise<string | null> {
   if (!p.produtoId) return null;
   const [prod] = await tx<{ id: string }[]>`SELECT id FROM produtos WHERE id = ${p.produtoId}`;
-  return prod ? null : "Módulo / Produto não encontrado.";
+  return prod ? null : "Módulo não encontrado.";
 }
 async function nomeDaPasta(tx: Queryable, id: number | null): Promise<string | null | false> {
   if (id == null) return null;

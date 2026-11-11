@@ -194,7 +194,7 @@ export default function Conexoes({ mcpHabilitado }: { mcpHabilitado: boolean }) 
             </code>
           </div>
           <div style={{ fontSize: 12, color: C.faint }}>
-            O login é o mesmo Google de sempre. A conexão vê só as verticais que você vê e grava só onde você edita — nunca
+            O login é o mesmo Google de sempre. A conexão vê só os produtos que você vê e grava só onde você edita — nunca
             exclui nada. Cada gravação aparece no histórico do registro marcada com o nome do aplicativo.
           </div>
         </div>

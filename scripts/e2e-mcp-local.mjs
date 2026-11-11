@@ -169,9 +169,9 @@ checa("com escrita, nove ferramentas", (await rpc(A, "tools/list")).corpo.result
 const ctxt = (await tool(A, "contexto")).structuredContent;
 checa("age em nome de Rafael", ctxt.pessoa.nome, "Rafael Nunes");
 checa("áreas e níveis de Rafael",
-  ctxt.areas.map((a) => `${a.id}:${a.nivel}`).sort(), ["corporate:ver", "labs:editar", "law-firms:ver", "tax:editar"]);
+  ctxt.produtos.map((a) => `${a.id}:${a.nivel}`).sort(), ["corporate:ver", "labs:editar", "law-firms:ver", "tax:editar"]);
 const lista = (await tool(A, "listar_oportunidades", { limite: 200 })).structuredContent;
-checa("só oportunidades de áreas que ele vê", lista.itens.every((d) => ["law-firms", "corporate", "tax", "labs"].includes(d.area)), true);
+checa("só oportunidades de áreas que ele vê", lista.itens.every((d) => ["law-firms", "corporate", "tax", "labs"].includes(d.produto)), true);
 const [{ n: totalVisivel }] = await sql`SELECT count(*)::int n FROM deals WHERE area IN ('law-firms','corporate','tax','labs')`;
 checa("e todas elas", lista.total, totalVisivel);
 const invisivel = await sql`SELECT ref FROM deals WHERE area IN ('public-sector','social') LIMIT 1`;
@@ -179,16 +179,16 @@ if (invisivel.length) {
   const v = await tool(A, "ver_registro", { ref: invisivel[0].ref });
   checa("registro de área invisível: 'não encontrado'", [v.isError, v.content[0].text], [true, "Registro não encontrado."]);
 }
-const inv = await tool(A, "criar_oportunidade", { conta: "X", area: "tax", tipo: "y" });
+const inv = await tool(A, "criar_oportunidade", { conta: "X", produto: "tax", tipo: "y" });
 checa("campo inventado → erro legível para o modelo", [inv.isError, inv.content[0].text], [true, "Argumentos inválidos: campo desconhecido: tipo."]);
 
 console.log("\n5. gravação, idempotência e rastro");
 const chave = `e2e-${randomBytes(6).toString("hex")}`;
-const c1 = await tool(A, "criar_oportunidade", { conta: "E2E Bebidas", area: "tax", valor_reais: 1500.5, estagio: "qualificacao", chave_idempotencia: chave });
+const c1 = await tool(A, "criar_oportunidade", { conta: "E2E Bebidas", produto: "tax", valor_reais: 1500.5, estagio: "qualificado", chave_idempotencia: chave });
 checa("cria na área que edita", [c1.isError, c1.structuredContent?.criado], [false, true]);
 const ref = c1.structuredContent.ref;
 checa("o link aponta para o card no app", c1.structuredContent.url, `${BASE}/comercial/${ref}`);
-const c2 = await tool(A, "criar_oportunidade", { conta: "E2E Bebidas", area: "tax", valor_reais: 1500.5, chave_idempotencia: chave });
+const c2 = await tool(A, "criar_oportunidade", { conta: "E2E Bebidas", produto: "tax", valor_reais: 1500.5, chave_idempotencia: chave });
 checa("repetir com a mesma chave devolve o mesmo, sem duplicar", [c2.structuredContent?.repetida, c2.structuredContent?.ref], [true, ref]);
 checa("existe UMA oportunidade com essa conta", (await sql`SELECT count(*)::int n FROM deals WHERE conta = 'E2E Bebidas'`)[0].n, 1);
 const [deal] = await sql`SELECT id, valor_centavos, estagio FROM deals WHERE ref = ${ref}`;
@@ -198,7 +198,7 @@ checa("auditoria: origem mcp, a concessão e a pessoa", [aud.origem, aud.concess
 const [cham] = await sql`SELECT ok, escrita, ref, chave_idempotencia FROM mcp_chamadas WHERE concessao_id = ${conc.id} AND ferramenta = 'criar_oportunidade' AND ok`;
 checa("a chamada registrada, com a ref e a chave", [cham.ok, cham.escrita, cham.ref, cham.chave_idempotencia], [true, true, ref, chave]);
 
-const semPerm = await tool(A, "criar_oportunidade", { conta: "E2E Proibida", area: "law-firms" });
+const semPerm = await tool(A, "criar_oportunidade", { conta: "E2E Proibida", produto: "law-firms" });
 checa("área só-leitura: recusa com a mensagem da interface", semPerm.content[0].text.startsWith("Sem permissão de edição em"), true);
 checa("…e nada foi criado", (await sql`SELECT count(*)::int n FROM deals WHERE conta = 'E2E Proibida'`)[0].n, 0);
 checa("…mas a tentativa ficou registrada", (await sql`SELECT count(*)::int n FROM mcp_chamadas WHERE concessao_id = ${conc.id} AND NOT ok AND ferramenta = 'criar_oportunidade'`)[0].n >= 1, true);
@@ -206,13 +206,13 @@ checa("…mas a tentativa ficou registrada", (await sql`SELECT count(*)::int n F
 // O caso que motivou o núcleo: um campo válido e um inválido na mesma alteração.
 const misto = await tool(A, "atualizar_oportunidade", { ref, estagio: "proposta", conta: "" });
 checa("alteração com um campo inválido é recusada", misto.isError, true);
-checa("…e o campo válido NÃO foi gravado (tudo ou nada)", (await sql`SELECT estagio FROM deals WHERE ref = ${ref}`)[0].estagio, "qualificacao");
+checa("…e o campo válido NÃO foi gravado (tudo ou nada)", (await sql`SELECT estagio FROM deals WHERE ref = ${ref}`)[0].estagio, "qualificado");
 checa("…sem linha de auditoria órfã", (await sql`SELECT count(*)::int n FROM audit_log WHERE entidade = ${ref}`)[0].n, 1);
 const at = await tool(A, "atualizar_oportunidade", { ref, estagio: "proposta", proximo_passo: "Enviar proposta" });
 checa("alteração válida", [at.isError, at.structuredContent?.campos_alterados], [false, 2]);
 const hist = (await tool(A, "ver_registro", { ref })).structuredContent.historico;
 checa("histórico mostra 'via Claude Code'", hist.every((h) => h.via === "Claude Code"), true);
-checa("…com o par anterior/novo", hist.find((h) => h.campo === "estagio")?.de, "qualificacao");
+checa("…com o par anterior/novo", hist.find((h) => h.campo === "estagio")?.de, "qualificado");
 
 console.log("\n6. a interface usa o mesmo núcleo (rota HTTP)");
 const patch = (corpo) => fetch(`${BASE}/api/deals/${deal.id}`, { method: "PATCH", headers: { "content-type": "application/json", cookie: cookieRafael }, body: JSON.stringify(corpo) });
@@ -245,7 +245,7 @@ checa("reativado → volta", (await rpc(A2, "tools/list")).status, 200);
 console.log("\n9. permissão tirada na administração vale na próxima chamada");
 await sql`UPDATE user_area_perms SET nivel = 'view' WHERE user_id = ${RAFAEL} AND area = 'tax'`;
 const semTax = await tool(A2, "atualizar_oportunidade", { ref, proximo_passo: "outro" });
-checa("tax virou só-leitura → recusa, com o mesmo token", semTax.content[0].text, "Sem permissão de edição nesta área.");
+checa("tax virou só-leitura → recusa, com o mesmo token", semTax.content[0].text, "Sem permissão de edição neste produto.");
 await sql`UPDATE user_area_perms SET nivel = 'edit' WHERE user_id = ${RAFAEL} AND area = 'tax'`;
 
 console.log("\n10. limite por minuto");
@@ -272,7 +272,7 @@ const r2 = await autorizar("ROUND2", "leitura escrita offline_access");
 const t2 = await token({ grant_type: "authorization_code", code: r2.volta.code, code_verifier: r2.verifier, redirect_uri: r2.redirectUri });
 checa("sem marcar Gravar, só leitura", t2.corpo.scope, "leitura offline_access");
 checa("só leitura não vê ferramenta de gravação", (await rpc(t2.corpo.access_token, "tools/list")).corpo.result.tools.length, 5);
-const forcada = await tool(t2.corpo.access_token, "criar_atividade", { titulo: "x", area: "tax" });
+const forcada = await tool(t2.corpo.access_token, "criar_atividade", { titulo: "x", produto: "tax" });
 checa("chamar gravação mesmo assim → recusa por escopo", forcada.content[0].text.startsWith("Esta conexão só tem permissão de leitura"), true);
 const reuso = await token({ grant_type: "authorization_code", code: r2.volta.code, code_verifier: r2.verifier, redirect_uri: r2.redirectUri });
 checa("código reapresentado → invalid_grant", reuso.corpo.error, "invalid_grant");

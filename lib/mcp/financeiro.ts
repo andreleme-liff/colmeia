@@ -48,7 +48,7 @@ function contratoParaSaida(
   return {
     ref: c.ref,
     cliente: c.conta,
-    vertical: c.area,
+    produto: c.area,
     situacao: efetiva,
     situacao_rotulo: ROTULO_SITUACAO[efetiva],
     situacao_cadastrada: c.situacao,
@@ -74,7 +74,7 @@ function faturaParaSaida(f: Fatura, hoje: string, refContrato: string | null, ba
   return {
     ref: f.ref,
     cliente: f.conta,
-    vertical: f.area,
+    produto: f.area,
     contrato: refContrato,
     tipo: f.tipo,
     o_que: f.tipo === "avulsa" ? f.descricao : `${rotuloTipoFatura(f.tipo)} ${f.parcela}`.trim(),
@@ -146,7 +146,7 @@ export async function resumoReceita(c: Contexto, a: Record<string, unknown>): Pr
     ok: true,
     dados: {
       periodo: { de, ate, meses: horizonte },
-      vertical: area ?? "todas",
+      produto: area ?? "todos",
       totais_reais: {
         contratada: reais(serie.reduce((t, m) => t + contratadaDoMes(m), 0)),
         contratada_assinatura: reais(serie.reduce((t, m) => t + m.assinatura, 0)),
@@ -255,7 +255,7 @@ export async function listarFaturas(c: Contexto, a: Record<string, unknown>): Pr
               status: "a_emitir",
               status_rotulo: ROTULO_STATUS.a_emitir,
               cliente: i.conta,
-              vertical: i.area,
+              produto: i.area,
               contrato: i.contratoRef,
               tipo: i.tipo,
               o_que: `${rotuloTipoFatura(i.tipo)} ${i.parcela}`,

@@ -6,7 +6,7 @@
 //  · ESTIMATIVAS — por oportunidade: consumo previsto na conta da LIFF, na do cliente e de IA,
 //    e as linhas de funding (programa, quem recebe, valor, status, ID na AWS). No topo, o
 //    consumo somado e quanto dele o funding garantido cobre.
-//  · ARQUÉTIPOS — em pastas, uma por Módulo / Produto (ex.: LIFF Tax Reform): os modelos de
+//  · ARQUÉTIPOS — em pastas, uma por Módulo (ex.: LIFF Tax Reform): os modelos de
 //    implantação (SaaS LIFF, dedicado, híbrido, 100% cliente) com as calculadoras oficiais da
 //    AWS de cada um, por região, porte e conta que paga.
 //  · PROGRAMAS — o catálogo de programas de funding (POC Credits, POC Cash, MAP…).
@@ -623,7 +623,7 @@ function Arquetipos({
     ...dados.pastas.map((p) => ({ chave: String(p.id), pasta: p, lista: dados.arquetipos.filter((a) => a.pastaId === p.id) })),
     ...(semPasta.length ? [{ chave: "sem", pasta: null, lista: semPasta }] : []),
   ];
-  if (!grupos.length) return <div style={{ fontSize: 14, color: C.faint }}>Nenhuma pasta ainda. Crie uma por Módulo / Produto com “+ pasta”.</div>;
+  if (!grupos.length) return <div style={{ fontSize: 14, color: C.faint }}>Nenhuma pasta ainda. Crie uma por Módulo com “+ pasta”.</div>;
 
   const paineis = (lista: Arquetipo[]) => (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -744,7 +744,7 @@ function FormArquetipo({
   };
   return (
     <Modal titulo={a ? a.nome : "Novo arquétipo"} eyebrowTexto="LIFF/ FUNDING · ARQUÉTIPO" onFechar={onFechar} largura={640}>
-      <Field label="Pasta" hint="O Módulo / Produto a que este arquétipo pertence.">
+      <Field label="Pasta" hint="O Módulo a que este arquétipo pertence.">
         <Select value={pastaId} onChange={setPastaId} options={[{ value: "", label: "— sem pasta —" }, ...pastas.map((p) => ({ value: String(p.id), label: p.nome }))]} />
       </Field>
       <Field label="Nome" required>
@@ -889,7 +889,7 @@ function FormPasta({
   };
   return (
     <Modal titulo={p ? p.nome : "Nova pasta de arquétipos"} eyebrowTexto="LIFF/ FUNDING · PASTA" onFechar={onFechar} largura={560}>
-      <Field label="Módulo / Produto" hint="Opcional. Liga a pasta a um item do cadastro.">
+      <Field label="Módulo" hint="Opcional. Liga a pasta a um item do cadastro.">
         <Select value={produtoId} onChange={escolherProduto} options={[{ value: "", label: "— nenhum —" }, ...produtos.map((x) => ({ value: x.id, label: x.label }))]} />
       </Field>
       <Field label="Nome" required>

@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   }
 
   const area = String(body.area ?? "");
-  if (!ctx.areasExistentes.includes(area)) return err("Vertical inválida.", 400);
+  if (!ctx.areasExistentes.includes(area)) return err("Produto inválido.", 400);
   if (!ctx.podeEditar(area)) return err(`Sem permissão de edição em ${ctx.labelArea(area)}.`, 403);
 
   const linhas = Array.isArray(body.linhas) ? body.linhas : [];

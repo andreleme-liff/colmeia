@@ -77,16 +77,16 @@ const OPOR = {
   modulos: ["regtrack"],
 };
 
-console.log("\n1. criação: permissão vem antes de tudo o que depende da vertical");
-checa("vertical só-leitura recusa com 403",
+console.log("\n1. criação: permissão vem antes de tudo o que depende do produto");
+checa("produto só-leitura recusa com 403",
   erro(planejarCriacaoAtividade({ titulo: "X", area: "tech" }, perm, fatos)), "403 Sem permissão de edição em LIFF.tech.");
-checa("vertical invisível também recusa (403, a vertical existe no cadastro)",
+checa("produto invisível também recusa (403, o produto existe no cadastro)",
   erro(planejarCriacaoOportunidade({ conta: "X", area: "jur" }, perm, fatos)), "403 Sem permissão de edição em Jurídico.");
-checa("vertical inexistente é 400, não 403",
-  erro(planejarCriacaoAtividade({ titulo: "X", area: "nada" }, perm, fatos)), "400 Vertical inválida.");
-checa("vertical não-string não passa por existente",
-  erro(planejarCriacaoAtividade({ titulo: "X", area: ["tax"] }, perm, fatos)), "400 Vertical inválida.");
-checa("título vazio vem antes da vertical (ordem antiga)",
+checa("produto inexistente é 400, não 403",
+  erro(planejarCriacaoAtividade({ titulo: "X", area: "nada" }, perm, fatos)), "400 Produto inválido.");
+checa("produto não-string não passa por existente",
+  erro(planejarCriacaoAtividade({ titulo: "X", area: ["tax"] }, perm, fatos)), "400 Produto inválido.");
+checa("título vazio vem antes do produto (ordem antiga)",
   erro(planejarCriacaoAtividade({ titulo: "  ", area: "tech" }, perm, fatos)), "400 A atividade precisa de um título.");
 checa("criação válida",
   planejarCriacaoAtividade({ titulo: " Revisar NCM ", area: "tax" }, perm, fatos).linha?.titulo, "Revisar NCM");
@@ -95,9 +95,9 @@ checa("defaults de status e prioridade",
   "backlog/media");
 
 console.log("\n2. criação: referências a outras tabelas");
-checa("módulo de outra vertical recusa",
+checa("módulo de outro produto recusa",
   erro(planejarCriacaoOportunidade({ conta: "X", area: "tax", modulos: ["observa"] }, perm, fatos)),
-  "400 Módulo / produto inválido para esta vertical: observa.");
+  "400 Módulo inválido para este produto: observa.");
 checa("módulos sem duplicata e em ordem",
   planejarCriacaoOportunidade({ conta: "X", area: "tax", modulos: ["regtrack", "genius", "regtrack"] }, perm, fatos).linha?.modulos,
   ["genius", "regtrack"]);
@@ -132,26 +132,26 @@ checa("auditoria da criação", planejarCriacaoOportunidade({ conta: "JBS", area
   `Criou a oportunidade JBS (${(6000000 / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}) em LIFF Tax`);
 
 console.log("\n3. alteração: a permissão é a do registro no banco");
-checa("registro em vertical invisível é 404 (não confirma que existe)",
+checa("registro em produto invisível é 404 (não confirma que existe)",
   erro(planejarAtualizacaoAtividade({ ...ATIV, area: "jur" }, { titulo: "Y" }, perm, fatos)), "404 Atividade não encontrada.");
-checa("registro em vertical só-leitura é 403",
-  erro(planejarAtualizacaoOportunidade({ ...OPOR, area: "tech" }, { conta: "Y" }, perm, fatos)), "403 Sem permissão de edição nesta vertical.");
-checa("mover para vertical sem edição recusa",
+checa("registro em produto só-leitura é 403",
+  erro(planejarAtualizacaoOportunidade({ ...OPOR, area: "tech" }, { conta: "Y" }, perm, fatos)), "403 Sem permissão de edição neste produto.");
+checa("mover para produto sem edição recusa",
   erro(planejarAtualizacaoAtividade(ATIV, { area: "tech" }, perm, fatos)), "403 Sem permissão de edição em LIFF.tech.");
-checa("mover tirando de vertical alheia recusa (registro em Tech, quem age só edita Tax)",
-  erro(planejarAtualizacaoOportunidade({ ...OPOR, area: "tech" }, { area: "tax" }, perm, fatos)), "403 Sem permissão de edição nesta vertical.");
+checa("mover tirando de produto alheio recusa (registro em Tech, quem age só edita Tax)",
+  erro(planejarAtualizacaoOportunidade({ ...OPOR, area: "tech" }, { area: "tax" }, perm, fatos)), "403 Sem permissão de edição neste produto.");
 const movida = planejarAtualizacaoAtividade(ATIV, { area: "tech" }, perm2, fatos);
 checa("mover com edição nas duas pontas passa", movida.areaFinal, "tech");
-checa("o produto da vertical antiga cai junto, com registro",
+checa("o módulo do produto antigo cai junto, com registro",
   movida.mudancas.map((m) => m.campo), ["area", "produto"]);
-checa("e o produto vai para nulo", movida.sets.produto_id, null);
+checa("e o módulo vai para nulo", movida.sets.produto_id, null);
 checa("a seta não pula etapa e ignora o resto do corpo",
   planejarMovimento(OPOR, 1, perm).sets, { estagio: "proposta" });
 checa("seta no fim do funil não muda nada",
   planejarMovimento({ ...OPOR, estagio: "ganho" }, 1, perm).mudancas.length, 0);
 checa("direção arbitrária recusa", erro(planejarMovimento(OPOR, 3, perm)), "400 Direção inválida.");
 checa("seta também respeita a permissão do registro",
-  erro(planejarMovimento({ ...OPOR, area: "tech" }, 1, perm)), "403 Sem permissão de edição nesta vertical.");
+  erro(planejarMovimento({ ...OPOR, area: "tech" }, 1, perm)), "403 Sem permissão de edição neste produto.");
 
 console.log("\n4. alteração: tudo ou nada");
 // O caso que motivou o núcleo: título válido + status inválido. A rota antiga já tinha gravado
@@ -205,7 +205,7 @@ checa("situação igual não mexe na data",
   "situacao_em" in planejarAtualizacaoOportunidade(OPOR, { situacao: "" }, perm, fatos).sets, false);
 checa("criar com situação data hoje", typeof planejarCriacaoOportunidade({ conta: "X", area: "tax", situacao: "s" }, perm, fatos).linha.situacaoEm, "string");
 checa("criar sem situação: sem data", planejarCriacaoOportunidade({ conta: "X", area: "tax" }, perm, fatos).linha.situacaoEm, null);
-checa("módulos da vertical nova", tudo.modulos, ["observa"]);
+checa("módulos do produto novo", tudo.modulos, ["observa"]);
 
 console.log("\n6. as mensagens de erro são as mesmas de antes da refatoração");
 // Extrai todo `err("...")` das rotas como estavam no commit anterior à extração do núcleo e
@@ -221,12 +221,12 @@ for (const rota of ROTAS) {
   for (const m of fonte.matchAll(/err\(\s*["`]([^"`]+?)(?:\$\{|["`])/g)) antigas.add(m[1]);
 }
 checa("achou as mensagens antigas (sanidade do extrator)", antigas.size >= 14, true);
-// Renomeações de vocabulário feitas de propósito (nov/2026: "área" virou "vertical", e
-// "produto" virou "módulo / produto"). O resto tem de continuar idêntico.
+// Renomeações de vocabulário feitas de propósito (nov/2026: "área" virou "produto", e
+// "produto" virou "módulo"). O resto tem de continuar idêntico.
 const RENOMEADAS = {
-  "Área inválida.": "Vertical inválida.",
-  "Sem permissão de edição nesta área.": "Sem permissão de edição nesta vertical.",
-  "Produto inválido para esta área.": "Módulo / produto inválido para esta vertical.",
+  "Área inválida.": "Produto inválido.",
+  "Sem permissão de edição nesta área.": "Sem permissão de edição neste produto.",
+  "Produto inválido para esta área.": "Módulo inválido para este produto.",
 };
 for (const msg of [...antigas].sort()) {
   const hoje = RENOMEADAS[msg] ?? msg;
@@ -241,10 +241,10 @@ checa("a criação conta no histórico a que venda serve",
 checa("liga pela referência (o que o Claude manda)",
   planejarCriacaoAtividade({ titulo: "X", area: "tax", oportunidade: "c-120" }, perm, fatos).linha?.oportunidadeId, 20);
 checa("liga pela referência antiga", planejarCriacaoAtividade({ titulo: "X", area: "tax", oportunidade: "D-121" }, perm, fatos).linha?.oportunidadeId, 21);
-checa("oportunidade de outra vertical que a pessoa vê: vale (a venda e a tarefa nem sempre são da mesma vertical)",
+checa("oportunidade de outro produto que a pessoa vê: vale (a venda e a tarefa nem sempre são do mesmo produto)",
   planejarCriacaoAtividade({ titulo: "X", area: "tax", oportunidade: 21 }, perm, fatos).ok, true);
 // Não enxergar responde igual a não existir: confirmar a referência vazaria a carteira alheia.
-checa("oportunidade de vertical invisível: 'não encontrada'",
+checa("oportunidade de produto invisível: 'não encontrada'",
   erro(planejarCriacaoAtividade({ titulo: "X", area: "tax", oportunidade: "C-0122" }, perm, fatos)), "400 Oportunidade não encontrada.");
 checa("…igual à que não existe",
   erro(planejarCriacaoAtividade({ titulo: "X", area: "tax", oportunidade: "C-9999" }, perm, fatos)), "400 Oportunidade não encontrada.");
@@ -266,12 +266,12 @@ checa("…e nenhum texto do histórico cita a conta escondida", troca.mudancas.s
 // O caso que vazou no teste de ponta a ponta: quem LIGA enxerga a venda de outra área, mas
 // quem LÊ o histórico da tarefa pode não enxergar. A linha mora na área da tarefa.
 const cruzada = planejarAtualizacaoAtividade(ATIV, { oportunidade: 21 }, perm, fatos);
-checa("venda de outra vertical: o histórico da tarefa guarda só a referência", cruzada.mudancas?.[0].para, "C-0121");
+checa("venda de outro produto: o histórico da tarefa guarda só a referência", cruzada.mudancas?.[0].para, "C-0121");
 checa("…sem o nome da conta em texto nenhum", cruzada.mudancas.some((m) => `${m.texto}${m.de}${m.para}`.includes("Natura")), false);
 const criadaCruzada = planejarCriacaoAtividade({ titulo: "Y", area: "tax", oportunidade: 21 }, perm, fatos);
 checa("…nem na criação", criadaCruzada.auditoria.texto.includes("Natura"), false);
 // A área FINAL decide: mover a tarefa para a área da venda junto com o vínculo libera a conta.
-checa("tarefa movida para a vertical da venda no mesmo passo: a conta pode aparecer",
+checa("tarefa movida para o produto da venda no mesmo passo: a conta pode aparecer",
   planejarAtualizacaoAtividade(ATIV, { area: "tech", oportunidade: 21 }, perm2, fatos).mudancas.find((m) => m.campo === "oportunidade")?.para, "C-0121 · Natura");
 
 console.log("\n8. referências C-0000 (comercial) e T-0000 (tarefa)");

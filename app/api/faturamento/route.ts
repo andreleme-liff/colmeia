@@ -2,7 +2,7 @@
 //
 // Emitir uma linha do cronograma: o servidor confere que o contrato é CONTRATADO (inclusive o
 // previsto cujo card foi para Ganho) e que a parcela existe naquela competência, e usa o valor
-// do cronograma se o corpo não trouxer outro. Fatura avulsa: cliente, vertical e valor livres.
+// do cronograma se o corpo não trouxer outro. Fatura avulsa: cliente, produto e valor livres.
 // Toda gravação entra na auditoria, na mesma transação.
 
 import { getDb } from "@/lib/db";

@@ -35,7 +35,7 @@ const caixa = { border: `1px solid ${C.line}`, background: C.panel2, padding: "1
 const rotulo = (cor: string = C.faint) => ({ ...eyebrow(10, cor, "0.14em"), marginBottom: 6 });
 
 function lista(areas: string[]): string {
-  if (!areas.length) return "nenhuma vertical";
+  if (!areas.length) return "nenhum produto";
   return areas.length > 1 ? `${areas.slice(0, -1).join(", ")} e ${areas[areas.length - 1]}` : areas[0];
 }
 
@@ -57,7 +57,7 @@ export default function TelaConsentimento(props: Props) {
             {props.modo === "pedido" ? `${props.cliente} quer acessar o LIFF tasks em seu nome.` : "Não foi possível conectar."}
           </h1>
           <p style={{ fontSize: 16, lineHeight: 1.62, color: C.body, margin: 0, maxWidth: "46ch" }}>
-            A conexão age como você: enxerga só as verticais que você enxerga e grava só onde você pode editar. Tudo o que
+            A conexão age como você: enxerga só os produtos que você enxerga e grava só onde você pode editar. Tudo o que
             ela fizer fica no histórico, marcado com o nome do aplicativo.
           </p>
         </div>

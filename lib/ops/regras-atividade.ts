@@ -54,7 +54,7 @@ export function planejarCriacaoAtividade(
   if (titulo.length > LIMITES.titulo) return falha("Título longo demais.");
 
   const area = typeof body.area === "string" ? body.area : "";
-  if (!perm.areasExistentes.includes(area)) return falha("Vertical inválida.");
+  if (!perm.areasExistentes.includes(area)) return falha("Produto inválido.");
   if (!perm.podeEditar(area)) return falha(`Sem permissão de edição em ${perm.labelArea(area)}.`, 403);
 
   const status = body.status ?? "backlog";
@@ -65,12 +65,12 @@ export function planejarCriacaoAtividade(
     return falha("Prioridade inválida.");
   }
 
-  // Produto pertence a uma vertical; aceitar um de outra área criaria uma classificação que
+  // Módulo pertence a um produto; aceitar um de outra área criaria uma classificação que
   // a tela de cadastros nunca mostraria junto.
   let produtoId: string | null = null;
   if (body.produtoId) {
     produtoId = produtoNaArea(fatos, body.produtoId, area);
-    if (!produtoId) return falha("Módulo / produto inválido para esta vertical.");
+    if (!produtoId) return falha("Módulo inválido para este produto.");
   }
 
   let responsavelId: number | null = null;
@@ -139,7 +139,7 @@ export function planejarAtualizacaoAtividade(
 ): Falha | PlanoAtualizacao {
   // 404 e não 403: quem não enxerga a área não deve nem saber que o registro existe.
   if (!perm.podeVer(atual.area)) return falha("Atividade não encontrada.", 404);
-  if (!perm.podeEditar(atual.area)) return falha("Sem permissão de edição nesta vertical.", 403);
+  if (!perm.podeEditar(atual.area)) return falha("Sem permissão de edição neste produto.", 403);
 
   const sets: PlanoAtualizacao["sets"] = {};
   const mudancas: Mudanca[] = [];
@@ -149,7 +149,7 @@ export function planejarAtualizacaoAtividade(
   // destino deixaria tirar trabalho de uma área alheia.
   if (body.area !== undefined && body.area !== atual.area) {
     const destino = typeof body.area === "string" ? body.area : "";
-    if (!perm.areasExistentes.includes(destino)) return falha("Vertical inválida.");
+    if (!perm.areasExistentes.includes(destino)) return falha("Produto inválido.");
     if (!perm.podeEditar(destino)) return falha(`Sem permissão de edição em ${perm.labelArea(destino)}.`, 403);
     mudancas.push({
       campo: "area",
@@ -269,23 +269,23 @@ export function planejarAtualizacaoAtividade(
   const areaFinal = (sets.area as string | undefined) ?? atual.area;
 
   /**
-   * Produto e área andam juntos: o produto pertence a uma vertical.
+   * Módulo e produto andam juntos: o módulo pertence a um produto.
    *  · Produto informado — tem de existir na área FINAL, que pode ter mudado agora mesmo.
    *  · Produto NÃO informado, mas a área mudou — o produto antigo pode ter ficado órfão; cai,
-   *    com registro, senão o card ficaria classificado com produto de outra vertical.
+   *    com registro, senão o card ficaria classificado com módulo de outro produto.
    */
   if (body.produtoId !== undefined) {
     let novo: string | null = null;
     if (body.produtoId) {
       novo = produtoNaArea(fatos, body.produtoId, areaFinal);
-      if (!novo) return falha("Módulo / produto inválido para esta vertical.");
+      if (!novo) return falha("Módulo inválido para este produto.");
     }
     if (novo !== atual.produto_id) {
       mudancas.push({
         campo: "produto",
         de: atual.produto_id ?? "—",
         para: novo ?? "—",
-        texto: `Alterou o módulo / produto de "${atual.titulo}"`,
+        texto: `Alterou o módulo de "${atual.titulo}"`,
       });
       sets.produto_id = novo;
     }
@@ -294,7 +294,7 @@ export function planejarAtualizacaoAtividade(
       campo: "produto",
       de: atual.produto_id,
       para: "—",
-      texto: `Removeu o módulo / produto de "${atual.titulo}" — não pertence a ${perm.labelArea(areaFinal)}`,
+      texto: `Removeu o módulo de "${atual.titulo}" — não pertence a ${perm.labelArea(areaFinal)}`,
     });
     sets.produto_id = null;
   }

@@ -45,9 +45,9 @@ const OPORTUNIDADE: Prop = {
   pattern: "^[CcDd]-\\d+$",
   description: "Oportunidade comercial a que a tarefa serve, ex.: C-0104. null desliga. Precisa ser uma que esta conexão enxerga.",
 };
-const AREA: Prop = { type: "string", maxLength: 60, description: "Id da vertical (ver `listar_cadastros`)." };
+const PRODUTO: Prop = { type: "string", maxLength: 60, description: "Id do produto (ver `listar_cadastros`)." };
 const RESP: Prop = { type: ["integer", "null"], minimum: 1, description: "Id da pessoa responsável (ver `listar_cadastros`); null remove." };
-const PRODUTO: Prop = { type: ["string", "null"], maxLength: 80, description: "Id do módulo / produto; precisa ser da mesma vertical. null remove." };
+const MODULO: Prop = { type: ["string", "null"], maxLength: 80, description: "Id do módulo; precisa ser do mesmo produto. null remove." };
 const LIMITE_LISTA: Prop = { type: "integer", minimum: 1, maximum: 200, description: "Máximo de itens (padrão 50)." };
 const BUSCA: Prop = { type: "string", maxLength: 100, description: "Texto contido no título/conta, situação, próximo passo ou contato." };
 const CHAVE: Prop = {
@@ -67,7 +67,7 @@ const objeto = (properties: Record<string, Prop>, required: string[] = []): Esqu
 
 const CAMPOS_ATIVIDADE: Record<string, Prop> = {
   titulo: { type: "string", minLength: 1, maxLength: LIMITES.titulo },
-  area: AREA,
+  produto: PRODUTO,
   status: { type: "string", enum: STATUS_KEYS, description: STATUS.map((s) => `${s.key} = ${s.label}`).join("; ") },
   prioridade: { type: "string", enum: PRIORIDADES },
   prazo: DATA,
@@ -75,13 +75,13 @@ const CAMPOS_ATIVIDADE: Record<string, Prop> = {
   situacao: { type: "string", maxLength: LIMITES.situacao, description: "Onde a atividade está, em texto livre." },
   proximo_passo: { type: "string", maxLength: LIMITES.proximoPassoAtividade },
   proximo_passo_em: DATA,
-  produto_id: PRODUTO,
+  modulo_id: MODULO,
   oportunidade: OPORTUNIDADE,
 };
 
 const CAMPOS_OPORTUNIDADE: Record<string, Prop> = {
   conta: { type: "string", minLength: 1, maxLength: LIMITES.conta, description: "Nome do cliente/conta." },
-  area: AREA,
+  produto: PRODUTO,
   estagio: {
     type: "string",
     enum: STAGE_KEYS,
@@ -99,7 +99,7 @@ const CAMPOS_OPORTUNIDADE: Record<string, Prop> = {
     type: "array",
     items: { type: "string", maxLength: 80 },
     maxItems: LIMITES.modulos,
-    description: "Módulos / produtos de interesse: ids dos módulos / produtos da vertical (ver `listar_cadastros`). Substitui a lista inteira; [] limpa.",
+    description: "Módulos de interesse: ids dos módulos do produto (ver `listar_cadastros`). Substitui a lista inteira; [] limpa.",
   },
   erp: { type: "string", maxLength: LIMITES.erp, description: "ERP do cliente, ex.: SAP ECC, SAP S/4HANA, TOTVS Protheus." },
   situacao: { type: "string", maxLength: LIMITES.situacao, description: "Só a situação de hoje; o histórico guarda as anteriores." },
@@ -126,7 +126,7 @@ const HORIZONTE: Prop = { type: "integer", minimum: 1, maximum: 36, description:
 
 const CAMPOS_CONTRATO: Record<string, Prop> = {
   conta: { type: "string", minLength: 1, maxLength: LIMITES_RECEITA.conta, description: "Nome do cliente." },
-  area: AREA,
+  produto: PRODUTO,
   oportunidade: {
     type: ["string", "null"],
     pattern: "^[CcDd]-\\d+$",
@@ -220,15 +220,15 @@ export const CATALOGO = [
     name: "contexto",
     title: "Quem sou e o que posso",
     description:
-      "Mostra em nome de quem esta conexão age, as verticais que ela vê e edita, os escopos concedidos e o vocabulário do sistema (status, estágios, prioridades). Chame primeiro.",
+      "Mostra em nome de quem esta conexão age, os produtos que ela vê e edita, os escopos concedidos e o vocabulário do sistema (status, estágios, prioridades). Chame primeiro.",
     escrita: false,
     inputSchema: objeto({}),
     annotations: LEITURA,
   },
   {
     name: "listar_cadastros",
-    title: "Verticais, módulos / produtos e pessoas",
-    description: "Verticais visíveis (com nível), módulos / produtos dessas verticais (os de interesse das oportunidades), origens e pessoas cadastradas (id e nome, para atribuir dono e quem resolve blocker).",
+    title: "Produtos, módulos e pessoas",
+    description: "Produtos visíveis (com nível), módulos desses produtos (os de interesse das oportunidades), origens e pessoas cadastradas (id e nome, para atribuir dono e quem resolve blocker).",
     escrita: false,
     inputSchema: objeto({}),
     annotations: LEITURA,
@@ -237,10 +237,10 @@ export const CATALOGO = [
     name: "listar_atividades",
     title: "Listar atividades",
     description:
-      "Tarefas do quadro operacional nas verticais visíveis, com filtros. Com `oportunidade`, só as ligadas àquela venda — é como responder \"o que falta na operação para a conta X\". Devolve também o total encontrado.",
+      "Tarefas do quadro operacional nos produtos visíveis, com filtros. Com `oportunidade`, só as ligadas àquela venda — é como responder \"o que falta na operação para a conta X\". Devolve também o total encontrado.",
     escrita: false,
     inputSchema: objeto({
-      area: AREA,
+      produto: PRODUTO,
       status: { type: "string", enum: STATUS_KEYS },
       oportunidade: { type: "string", pattern: "^[CcDd]-\\d+$", description: "Só tarefas ligadas a esta oportunidade, ex.: C-0104." },
       responsavel_id: { type: "integer", minimum: 1 },
@@ -253,10 +253,10 @@ export const CATALOGO = [
     name: "listar_oportunidades",
     title: "Listar oportunidades",
     description:
-      "Oportunidades do pipeline comercial nas verticais visíveis, com filtros. O filtro de responsável também reconhece o nome escrito em texto livre.",
+      "Oportunidades do pipeline comercial nos produtos visíveis, com filtros. O filtro de responsável também reconhece o nome escrito em texto livre.",
     escrita: false,
     inputSchema: objeto({
-      area: AREA,
+      produto: PRODUTO,
       estagio: { type: "string", enum: STAGE_KEYS },
       responsavel_id: { type: "integer", minimum: 1 },
       busca: BUSCA,
@@ -276,16 +276,16 @@ export const CATALOGO = [
   {
     name: "criar_atividade",
     title: "Criar atividade",
-    description: `Cria uma atividade no quadro operacional. Exige nível 'editar' na vertical. Status padrão backlog (${statusLabel("backlog")}), prioridade padrão media.`,
+    description: `Cria uma atividade no quadro operacional. Exige nível 'editar' no produto. Status padrão backlog (${statusLabel("backlog")}), prioridade padrão media.`,
     escrita: true,
-    inputSchema: objeto({ ...CAMPOS_ATIVIDADE, chave_idempotencia: CHAVE }, ["titulo", "area"]),
+    inputSchema: objeto({ ...CAMPOS_ATIVIDADE, chave_idempotencia: CHAVE }, ["titulo", "produto"]),
     annotations: CRIACAO,
   },
   {
     name: "atualizar_atividade",
     title: "Atualizar atividade",
     description:
-      "Altera só os campos enviados de uma atividade. Mudar de vertical exige 'editar' nas duas verticais. Cada campo alterado fica no histórico com o valor anterior.",
+      "Altera só os campos enviados de uma atividade. Mudar de produto exige 'editar' nos dois produtos. Cada campo alterado fica no histórico com o valor anterior.",
     escrita: true,
     inputSchema: objeto({ ref: REF_A, ...CAMPOS_ATIVIDADE }, ["ref"]),
     annotations: ATUALIZACAO,
@@ -293,16 +293,16 @@ export const CATALOGO = [
   {
     name: "criar_oportunidade",
     title: "Criar oportunidade",
-    description: `Cria uma oportunidade no pipeline comercial. Exige nível 'editar' na vertical. Estágio padrão ${ESTAGIO_INICIAL} (${stageLabel(ESTAGIO_INICIAL)}).`,
+    description: `Cria uma oportunidade no pipeline comercial. Exige nível 'editar' no produto. Estágio padrão ${ESTAGIO_INICIAL} (${stageLabel(ESTAGIO_INICIAL)}).`,
     escrita: true,
-    inputSchema: objeto({ ...CAMPOS_OPORTUNIDADE, chave_idempotencia: CHAVE }, ["conta", "area"]),
+    inputSchema: objeto({ ...CAMPOS_OPORTUNIDADE, chave_idempotencia: CHAVE }, ["conta", "produto"]),
     annotations: CRIACAO,
   },
   {
     name: "atualizar_oportunidade",
     title: "Atualizar oportunidade",
     description:
-      "Altera só os campos enviados de uma oportunidade (estágio, valor, próximo passo…). Mudar de vertical exige 'editar' nas duas. Cada campo alterado fica no histórico com o valor anterior.",
+      "Altera só os campos enviados de uma oportunidade (estágio, valor, próximo passo…). Mudar de produto exige 'editar' nos dois. Cada campo alterado fica no histórico com o valor anterior.",
     escrita: true,
     inputSchema: objeto({ ref: REF_D, ...CAMPOS_OPORTUNIDADE }, ["ref"]),
     annotations: ATUALIZACAO,
@@ -315,7 +315,7 @@ export const CATALOGO = [
       "Receita mês a mês num horizonte: contratada (por tipo: assinatura, implantação, customização), provável e possível, mais a assinatura do mês atual (MRR) e as pendências (cards ganhos sem receita, cards nas etapas finais fora do forecast, previsões cujo card saiu das etapas finais). Só admin.",
     escrita: false,
     soAdmin: true,
-    inputSchema: objeto({ horizonte_meses: HORIZONTE, area: AREA }),
+    inputSchema: objeto({ horizonte_meses: HORIZONTE, produto: PRODUTO }),
     annotations: LEITURA,
   },
   {
@@ -326,7 +326,7 @@ export const CATALOGO = [
     escrita: false,
     soAdmin: true,
     inputSchema: objeto({
-      area: AREA,
+      produto: PRODUTO,
       situacao: { type: "string", enum: ["contratada", "provavel", "possivel", "fora"] },
       busca: { type: "string", maxLength: 100, description: "Texto contido no nome do cliente." },
       horizonte_meses: HORIZONTE,
@@ -352,7 +352,7 @@ export const CATALOGO = [
     inputSchema: objeto({
       competencia: MES,
       status: { type: "string", enum: ["a_emitir", "emitida", "vencida", "paga", "cancelada", "em_aberto"] },
-      area: AREA,
+      produto: PRODUTO,
       busca: { type: "string", maxLength: 100, description: "Cliente, ref da fatura ou número da NF." },
       limite: LIMITE_LISTA,
     }),
@@ -365,7 +365,7 @@ export const CATALOGO = [
       "Cadastra a receita de um cliente: início do faturamento, linhas (customização e implantação em parcelas, assinatura mensal), situação e cobrança. Ligue ao card do pipeline com `oportunidade` quando houver. Só admin.",
     escrita: true,
     soAdmin: true,
-    inputSchema: objeto({ ...CAMPOS_CONTRATO, chave_idempotencia: CHAVE }, ["conta", "area", "situacao", "inicio_faturamento", "linhas"]),
+    inputSchema: objeto({ ...CAMPOS_CONTRATO, chave_idempotencia: CHAVE }, ["conta", "produto", "situacao", "inicio_faturamento", "linhas"]),
     annotations: CRIACAO,
   },
   {
@@ -382,7 +382,7 @@ export const CATALOGO = [
     name: "emitir_fatura",
     title: "Emitir fatura",
     description:
-      "Registra a emissão de uma fatura. De contrato: `contrato` + `tipo` + `competencia` (a linha precisa estar A EMITIR em `listar_faturas`; só receita contratada é faturada). Avulsa: `avulsa` com cliente, vertical e descrição, e `valor_reais`. Não emite a nota fiscal nem envia nada ao cliente: registra o que foi emitido. Só admin.",
+      "Registra a emissão de uma fatura. De contrato: `contrato` + `tipo` + `competencia` (a linha precisa estar A EMITIR em `listar_faturas`; só receita contratada é faturada). Avulsa: `avulsa` com cliente, produto e descrição, e `valor_reais`. Não emite a nota fiscal nem envia nada ao cliente: registra o que foi emitido. Só admin.",
     escrita: true,
     soAdmin: true,
     inputSchema: objeto(
@@ -393,11 +393,11 @@ export const CATALOGO = [
         avulsa: {
           type: "object",
           additionalProperties: false,
-          required: ["conta", "area", "descricao"],
+          required: ["conta", "produto", "descricao"],
           description: "Fatura fora de contrato.",
           properties: {
             conta: { type: "string", minLength: 1, maxLength: 200 },
-            area: AREA,
+            produto: PRODUTO,
             descricao: { type: "string", minLength: 1, maxLength: 300, description: "O que está sendo faturado." },
           },
         },
@@ -463,7 +463,7 @@ export const CATALOGO = [
     name: "listar_arquetipos",
     title: "Arquétipos, calculadoras AWS e programas",
     description:
-      "Os arquétipos de implantação (SaaS 100% LIFF, dedicado, híbrido, 100% no cliente), organizados em pastas — uma por Módulo / Produto (ex.: LIFF Tax Reform) —, com as calculadoras oficiais da AWS de cada um — região, conta que paga, porte, custo mensal e link — e o catálogo de programas de funding. Só admin.",
+      "Os arquétipos de implantação (SaaS 100% LIFF, dedicado, híbrido, 100% no cliente), organizados em pastas — uma por Módulo (ex.: LIFF Tax Reform) —, com as calculadoras oficiais da AWS de cada um — região, conta que paga, porte, custo mensal e link — e o catálogo de programas de funding. Só admin.",
     escrita: false,
     soAdmin: true,
     inputSchema: objeto({ pasta: { type: "string", maxLength: 120, description: "Filtra pelo nome da pasta (trecho, sem diferenciar maiúsculas), ex.: \"Tax Reform\"." } }),
@@ -553,7 +553,7 @@ export function descreverFerramentas(escopos: string, admin = false) {
 
 export const INSTRUCOES = [
   "LIFF tasks: quadro operacional (tarefas, refs T-0000) e pipeline comercial (oportunidades, refs C-0000) da LIFF.",
-  "Chame `contexto` primeiro: ele diz em nome de quem você age, as verticais que vê e edita, e o vocabulário de status e estágios.",
+  "Chame `contexto` primeiro: ele diz em nome de quem você age, os produtos que vê e edita, e o vocabulário de status e estágios.",
   "Valores em reais; datas AAAA-MM-DD. Responsável: use o id de `listar_cadastros`.",
   "Tarefa e oportunidade se ligam pelo campo `oportunidade` da tarefa (ex.: C-0104). Ao criar uma tarefa que serve a uma venda, ligue-a.",
   "Grave só quando a pessoa pedir. Toda gravação fica no histórico do registro, com o nome desta conexão, e nada pode ser excluído por aqui.",

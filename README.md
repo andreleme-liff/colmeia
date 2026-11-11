@@ -130,7 +130,7 @@ cores da marca — nenhum HEX novo entra no sistema.
 Três pontos que não eram simples inversão de fundo: Charcoal fazia dois papéis (hairline e
 texto apagado) e precisou virar dois tokens; as cores de estado não contrastam sobre Floral
 White e ganharam variante de texto escurecida por mistura com Obsidiana; e os tons Mid das
-verticais somem no branco, então cada área sobe para o Core (Labs usa o Dark, porque seu Core
+produtos somem no branco, então cada área sobe para o Core (Labs usa o Dark, porque seu Core
 é um teal luminoso que também não segura).
 
 ## Design system

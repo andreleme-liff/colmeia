@@ -85,7 +85,7 @@ const inList = (vals: readonly string[]) => vals.map((v) => `'${v}'`).join(",");
 const MIGRATION_LOCK = 811020261;
 
 /**
- * Semente do cadastro de áreas. São os valores da cascata de cada vertical no design system
+ * Semente do cadastro de áreas. São os valores da cascata de cada produto no design system
  * — o tom Mid, exceto Labs, cujo Core é o que segura sobre os dois fundos. Ficam aqui como
  * HEX porque a partir da primeira subida viram DADO editável, não mais token de código: o
  * cliente os transforma em variáveis CSS, e o tema claro deriva a variante escurecida.
@@ -118,7 +118,7 @@ async function migrate(): Promise<void> {
   await rawSql().begin(async (sql) => {
     await sql`SELECT pg_advisory_xact_lock(${MIGRATION_LOCK})`;
 
-    // Cadastro das verticais. Vem primeiro porque as demais tabelas apontam para ela: o
+    // Cadastro dos produtos. Vem primeiro porque as demais tabelas apontam para ela: o
     // conjunto de áreas é aberto, e quem garante que um registro não aponte para área
     // inexistente é a chave estrangeira, não uma lista fixa no código.
     //
@@ -148,7 +148,7 @@ async function migrate(): Promise<void> {
       }
     }
 
-    // Produto é o que se vende dentro de uma vertical — "Regtrack Farma" dentro de
+    // Módulo é o que se vende dentro de um produto — "Regtrack Farma" dentro de
     // Regulatório. Vale para oportunidade E para atividade: o mesmo produto classifica a
     // venda e o trabalho de implantação que vem depois dela.
     await sql`
@@ -172,7 +172,7 @@ async function migrate(): Promise<void> {
       google_sub  TEXT,
       avatar_url  TEXT,
       -- Escolhas da pessoa que devem sobreviver ao logout e valer em qualquer máquina:
-      -- tema e filtro de vertical. JSONB para não precisar de migração a cada preferência
+      -- tema e filtro de produto. JSONB para não precisar de migração a cada preferência
       -- nova; quem valida as chaves é a rota, que ignora o que não conhece.
       preferencias JSONB NOT NULL DEFAULT '{}'::jsonb,
       -- Refresh token do Google, concedido SÓ por quem clicou em sincronizar planilha — o
@@ -272,7 +272,7 @@ async function migrate(): Promise<void> {
     `);
 
       // Bases criadas antes de o conjunto de áreas virar aberto têm CHECK com a lista fixa
-    // das seis verticais — o que impediria cadastrar a sétima. Aqui o CHECK sai e a chave
+    // dos seis produtos — o que impediria cadastrar o sétimo. Aqui o CHECK sai e a chave
     // estrangeira entra. Em base nova os DROPs não encontram nada e os IFs não disparam.
     await sql.unsafe(`
       DO $$
@@ -288,7 +288,7 @@ async function migrate(): Promise<void> {
             FOREIGN KEY (area) REFERENCES areas(id) ON DELETE CASCADE;
         END IF;
 
-        -- Sem CASCADE de propósito: excluir uma vertical que ainda tem atividade ou
+        -- Sem CASCADE de propósito: excluir um produto que ainda tem atividade ou
         -- oportunidade deve falhar, não apagar o trabalho junto.
         IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'activities_area_fkey') THEN
           ALTER TABLE activities ADD CONSTRAINT activities_area_fkey FOREIGN KEY (area) REFERENCES areas(id);
@@ -314,8 +314,8 @@ async function migrate(): Promise<void> {
     // depois" — que é justamente o que se pergunta olhando um card.
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS preferencias JSONB NOT NULL DEFAULT '{}'::jsonb`;
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS google_refresh_token TEXT`;
-    // Planilha do Drive de onde a vertical sincroniza. Fica na área e não numa configuração
-    // global porque cada vertical tem a sua, e o botão só aparece onde há uma.
+    // Planilha do Drive de onde o produto sincroniza. Fica na área e não numa configuração
+    // global porque cada produto tem a sua, e o botão só aparece onde há uma.
     await sql`ALTER TABLE areas ADD COLUMN IF NOT EXISTS planilha_url TEXT`;
     await sql`ALTER TABLE activities ADD COLUMN IF NOT EXISTS situacao TEXT NOT NULL DEFAULT ''`;
     await sql`ALTER TABLE activities ADD COLUMN IF NOT EXISTS proximo_passo TEXT NOT NULL DEFAULT ''`;
@@ -603,7 +603,7 @@ async function migrate(): Promise<void> {
     // fatura emitida. "A emitir" não é gravado: sai do cronograma do contrato. Ao emitir, a
     // fatura guarda o próprio valor — mexer no contrato depois não muda o que foi faturado.
     // `contrato_id` SET NULL: a fatura (e o histórico fiscal) sobrevive ao contrato excluído,
-    // por isso cliente e vertical vão copiados nela.
+    // por isso cliente e produto vão copiados nela.
     await sql`ALTER TABLE contratos ADD COLUMN IF NOT EXISTS cnpj TEXT NOT NULL DEFAULT ''`;
     await sql`ALTER TABLE contratos ADD COLUMN IF NOT EXISTS email_cobranca TEXT NOT NULL DEFAULT ''`;
     await sql`ALTER TABLE contratos ADD COLUMN IF NOT EXISTS dia_vencimento INTEGER NOT NULL DEFAULT 10`;
@@ -638,7 +638,7 @@ async function migrate(): Promise<void> {
     // Funding AWS (nov/2026, só admin): arquétipos de implantação com as calculadoras oficiais
     // da AWS, catálogo de programas, e por oportunidade a estimativa de consumo (conta LIFF e
     // conta do cliente) com as linhas de funding. As sementes entram só quando a tabela nasce,
-    // como as verticais: depois disso o cadastro é de quem administra.
+    // como os produtos: depois disso o cadastro é de quem administra.
     const [{ fundingNovo }] = await sql<{ fundingNovo: boolean }[]>`
       SELECT to_regclass('public.funding_arquetipos') IS NULL AS "fundingNovo"
     `;
@@ -730,7 +730,7 @@ async function migrate(): Promise<void> {
       }
     }
 
-    // Pastas de arquétipos (nov/2026): um conjunto de arquétipos por Módulo / Produto. Na
+    // Pastas de arquétipos (nov/2026): um conjunto de arquétipos por Módulo. Na
     // criação da tabela, os arquétipos que já existem (todos do LIFF Tax Reform) vão para uma
     // pasta com esse nome. Depois disso as pastas são de quem administra: apagar não volta.
     const [{ pastasNovas }] = await sql<{ pastasNovas: boolean }[]>`

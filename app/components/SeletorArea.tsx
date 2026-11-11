@@ -1,6 +1,6 @@
 "use client";
 
-// Filtro de área. O sistema nasceu com seis verticais e os chips lado a lado eram a leitura
+// Filtro de área. O sistema nasceu com seis produtos e os chips lado a lado eram a leitura
 // certa: você vê todas as cores de uma vez. Com o conjunto aberto isso deixa de escalar —
 // doze chips viram três linhas de cabeçalho e param de comunicar.
 //

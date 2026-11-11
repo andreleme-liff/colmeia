@@ -1,4 +1,4 @@
-// Cadastro da vertical: cor e rótulos. Restrito a admin — é configuração do sistema, não
+// Cadastro do produto: cor e rótulos. Restrito a admin — é configuração do sistema, não
 // dado operacional, e muda como todo mundo enxerga o quadro.
 
 import { getDb } from "@/lib/db";
@@ -30,7 +30,7 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/areas/[id
   const atuais = await sql<{ label: string; short: string; cor: string; planilha_url: string | null }[]>`
     SELECT label, short, cor, planilha_url FROM areas WHERE id = ${id}
   `;
-  if (!atuais.length) return err("Vertical não encontrada.", 404);
+  if (!atuais.length) return err("Produto não encontrado.", 404);
   const atual = atuais[0];
 
   const mudancas: { campo: string; de: string; para: string; texto: string }[] = [];
@@ -53,7 +53,7 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/areas/[id
       campo: "label",
       de: atual.label,
       para: label,
-      texto: `Renomeou a vertical ${atual.label} para ${label}`,
+      texto: `Renomeou o produto ${atual.label} para ${label}`,
     });
     await sql`UPDATE areas SET label = ${label} WHERE id = ${id}`;
   }
@@ -107,7 +107,7 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/areas/[id
 }
 
 /**
- * Exclusão. Recusa se a vertical ainda tem atividade ou oportunidade — a chave estrangeira
+ * Exclusão. Recusa se o produto ainda tem atividade ou oportunidade — a chave estrangeira
  * já barraria, mas aqui a mensagem diz quantos registros seguram, que é o que a pessoa
  * precisa saber para decidir.
  *
@@ -123,7 +123,7 @@ export async function DELETE(_req: Request, ctxRoute: RouteContext<"/api/areas/[
   const sql = await getDb();
 
   const alvos = await sql<{ label: string }[]>`SELECT label FROM areas WHERE id = ${id}`;
-  if (!alvos.length) return err("Vertical não encontrada.", 404);
+  if (!alvos.length) return err("Produto não encontrado.", 404);
 
   const [{ atividades, oportunidades, contratos }] = await sql<{ atividades: number; oportunidades: number; contratos: number }[]>`
     SELECT
@@ -152,7 +152,7 @@ export async function DELETE(_req: Request, ctxRoute: RouteContext<"/api/areas/[
     campo: "exclusao",
     de: alvos[0].label,
     para: null,
-    texto: `Excluiu a vertical ${alvos[0].label}${perms > 0 ? ` e ${perms} permissão(ões) nela` : ""}`,
+    texto: `Excluiu o produto ${alvos[0].label}${perms > 0 ? ` e ${perms} permissão(ões) nele` : ""}`,
   });
 
   return json({ ok: true });

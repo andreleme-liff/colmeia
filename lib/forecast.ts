@@ -263,7 +263,7 @@ export function lerContrato(body: Record<string, unknown> | null): EntradaContra
   const conta = typeof body.conta === "string" ? body.conta.trim().slice(0, LIMITES_RECEITA.conta) : "";
   if (!conta) return "Informe o cliente.";
   const area = typeof body.area === "string" ? body.area : "";
-  if (!area) return "Escolha a vertical.";
+  if (!area) return "Escolha o produto.";
   const dealId = body.dealId == null || body.dealId === "" ? null : inteiro(body.dealId, 1, 2_000_000_000);
   if (body.dealId != null && body.dealId !== "" && dealId == null) return "Oportunidade inválida.";
   const situacao = body.situacao;

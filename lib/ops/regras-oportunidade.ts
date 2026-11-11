@@ -111,16 +111,16 @@ function origemValida(v: unknown, fatos: Fatos, atual: string | null): string | 
 /**
  * Módulos de interesse: produtos da área, sem repetição. Devolve a lista em ordem estável ou
  * a mensagem de erro. Produto de outra área é recusado pelo mesmo motivo de antes: o card
- * ficaria classificado com algo que aquela vertical não vende.
+ * ficaria classificado com algo que aquele produto não vende.
  */
 function modulosValidos(v: unknown, fatos: Fatos, area: string): string[] | string {
   if (v === null) return [];
-  if (!Array.isArray(v)) return "Módulos / produtos inválidos.";
+  if (!Array.isArray(v)) return "Módulos inválidos.";
   const ids = [...new Set(v)];
-  if (ids.length > LIMITES.modulos) return `No máximo ${LIMITES.modulos} módulos / produtos.`;
+  if (ids.length > LIMITES.modulos) return `No máximo ${LIMITES.modulos} módulos.`;
   for (const id of ids) {
     if (typeof id !== "string" || !fatos.produtos.some((p) => p.id === id && p.area === area)) {
-      return `Módulo / produto inválido para esta vertical: ${String(id).slice(0, 40)}.`;
+      return `Módulo inválido para este produto: ${String(id).slice(0, 40)}.`;
     }
   }
   return (ids as string[]).sort();
@@ -140,7 +140,7 @@ export function planejarCriacaoOportunidade(
   if (conta.length > LIMITES.conta) return falha("Nome de conta longo demais.");
 
   const area = typeof body.area === "string" ? body.area : "";
-  if (!perm.areasExistentes.includes(area)) return falha("Vertical inválida.");
+  if (!perm.areasExistentes.includes(area)) return falha("Produto inválido.");
   if (!perm.podeEditar(area)) return falha(`Sem permissão de edição em ${perm.labelArea(area)}.`, 403);
 
   const estagio = body.estagio ?? ESTAGIO_INICIAL;
@@ -237,7 +237,7 @@ export type PlanoOportunidade = {
 function precondicao(atual: OportunidadeAtual, perm: Permissoes): Falha | null {
   // 404 e não 403: quem não enxerga a área não deve nem saber que o registro existe.
   if (!perm.podeVer(atual.area)) return falha("Oportunidade não encontrada.", 404);
-  if (!perm.podeEditar(atual.area)) return falha("Sem permissão de edição nesta vertical.", 403);
+  if (!perm.podeEditar(atual.area)) return falha("Sem permissão de edição neste produto.", 403);
   return null;
 }
 
@@ -292,7 +292,7 @@ export function planejarAtualizacaoOportunidade(
   // Trocar de área exige permissão nas duas pontas: tirar da origem e colocar no destino.
   if (body.area !== undefined && body.area !== atual.area) {
     const destino = typeof body.area === "string" ? body.area : "";
-    if (!perm.areasExistentes.includes(destino)) return falha("Vertical inválida.");
+    if (!perm.areasExistentes.includes(destino)) return falha("Produto inválido.");
     if (!perm.podeEditar(destino)) return falha(`Sem permissão de edição em ${perm.labelArea(destino)}.`, 403);
     mudancas.push({
       campo: "area",
@@ -414,7 +414,7 @@ export function planejarAtualizacaoOportunidade(
   }
 
   // Módulos de interesse, contra a área FINAL — que pode ter mudado nesta mesma requisição.
-  // Mudar SÓ a área derruba os módulos que não são da vertical nova, com registro.
+  // Mudar SÓ a área derruba os módulos que não são do produto novo, com registro.
   let modulos: string[] | undefined;
   const atuais = [...atual.modulos].sort();
   if (body.modulos !== undefined) {
@@ -430,7 +430,7 @@ export function planejarAtualizacaoOportunidade(
       campo: "modulos",
       de: listaDeModulos(fatos, atuais),
       para: listaDeModulos(fatos, modulos),
-      texto: `Alterou os módulos / produtos de interesse de ${atual.conta}`,
+      texto: `Alterou os módulos de interesse de ${atual.conta}`,
     });
   }
 

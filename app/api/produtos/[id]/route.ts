@@ -27,24 +27,24 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/produtos/
   const atuais = await sql<{ label: string; area: string; ativo: boolean }[]>`
     SELECT label, area, ativo FROM produtos WHERE id = ${id}
   `;
-  if (!atuais.length) return err("Módulo / produto não encontrado.", 404);
+  if (!atuais.length) return err("Módulo não encontrado.", 404);
   const atual = atuais[0];
 
   const mudancas: { campo: string; de: string; para: string; texto: string }[] = [];
 
   if (body.label !== undefined && body.label.trim() && body.label.trim() !== atual.label) {
     const label = body.label.trim().slice(0, 80);
-    mudancas.push({ campo: "label", de: atual.label, para: label, texto: `Renomeou o módulo / produto ${atual.label} para ${label}` });
+    mudancas.push({ campo: "label", de: atual.label, para: label, texto: `Renomeou o módulo ${atual.label} para ${label}` });
     await sql`UPDATE produtos SET label = ${label} WHERE id = ${id}`;
   }
 
   if (body.area !== undefined && body.area !== atual.area) {
-    if (!ctx.areasExistentes.includes(body.area)) return err("Vertical inválida.", 400);
+    if (!ctx.areasExistentes.includes(body.area)) return err("Produto inválido.", 400);
     mudancas.push({
       campo: "area",
       de: atual.area,
       para: body.area,
-      texto: `Moveu o módulo / produto ${atual.label} de ${ctx.labelArea(atual.area)} para ${ctx.labelArea(body.area)}`,
+      texto: `Moveu o módulo ${atual.label} de ${ctx.labelArea(atual.area)} para ${ctx.labelArea(body.area)}`,
     });
     await sql`UPDATE produtos SET area = ${body.area} WHERE id = ${id}`;
   }
@@ -54,7 +54,7 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/produtos/
       campo: "ativo",
       de: String(atual.ativo),
       para: String(body.ativo),
-      texto: `${body.ativo ? "Reativou" : "Arquivou"} o módulo / produto ${atual.label}`,
+      texto: `${body.ativo ? "Reativou" : "Arquivou"} o módulo ${atual.label}`,
     });
     await sql`UPDATE produtos SET ativo = ${body.ativo} WHERE id = ${id}`;
   }
@@ -95,9 +95,9 @@ export async function DELETE(req: Request, ctxRoute: RouteContext<"/api/produtos
 
   const r = await sql.begin(async (tx) => {
     const alvos = await tx<{ label: string; area: string }[]>`SELECT label, area FROM produtos WHERE id = ${id} FOR UPDATE`;
-    if (!alvos.length) return falha("Módulo / produto não encontrado.", 404);
+    if (!alvos.length) return falha("Módulo não encontrado.", 404);
     const alvo = alvos[0];
-    const motivo = `ao excluir o módulo / produto ${alvo.label}`;
+    const motivo = `ao excluir o módulo ${alvo.label}`;
 
     const atividades = await tx<{ id: number; ref: string; titulo: string; area: string }[]>`
       SELECT id, ref, titulo, area FROM activities WHERE produto_id = ${id} FOR UPDATE
@@ -115,14 +115,14 @@ export async function DELETE(req: Request, ctxRoute: RouteContext<"/api/produtos
     if (ligados && destino?.acao === "migrar") {
       const para = String(destino.para);
       const novos = await tx<{ label: string; area: string }[]>`SELECT label, area FROM produtos WHERE id = ${para}`;
-      if (!novos.length || para === id) return falha("Módulo / produto de destino inválido.", 400);
-      if (novos[0].area !== alvo.area) return falha("O módulo / produto de destino precisa ser da mesma vertical.", 400);
+      if (!novos.length || para === id) return falha("Módulo de destino inválido.", 400);
+      if (novos[0].area !== alvo.area) return falha("O módulo de destino precisa ser do mesmo produto.", 400);
       const novo = novos[0];
       for (const a of atividades) {
         await tx`UPDATE activities SET produto_id = ${para}, atualizado_em = now() WHERE id = ${a.id}`;
         await registrar(tx, {
           actorUserId: autor, area: a.area, entidade: a.ref, campo: "produto", de: alvo.label, para: novo.label,
-          texto: `Módulo / produto de "${a.titulo}" passou de ${alvo.label} para ${novo.label} ${motivo}`,
+          texto: `Módulo de "${a.titulo}" passou de ${alvo.label} para ${novo.label} ${motivo}`,
         });
       }
       for (const o of oportunidades) {
@@ -132,7 +132,7 @@ export async function DELETE(req: Request, ctxRoute: RouteContext<"/api/produtos
         await tx`UPDATE deals SET atualizado_em = now() WHERE id = ${o.id}`;
         await registrar(tx, {
           actorUserId: autor, area: o.area, entidade: o.ref, campo: "modulos", de: alvo.label, para: novo.label,
-          texto: `Módulo / produto de ${o.conta} passou de ${alvo.label} para ${novo.label} ${motivo}`,
+          texto: `Módulo de ${o.conta} passou de ${alvo.label} para ${novo.label} ${motivo}`,
         });
       }
       // Campo legado (produto único da oportunidade, fora da interface): acompanha a troca.
@@ -144,13 +144,13 @@ export async function DELETE(req: Request, ctxRoute: RouteContext<"/api/produtos
       for (const a of atividades) {
         await registrar(tx, {
           actorUserId: autor, area: a.area, entidade: a.ref, campo: "produto", de: alvo.label, para: "—",
-          texto: `"${a.titulo}" ficou sem módulo / produto ${motivo}`,
+          texto: `"${a.titulo}" ficou sem módulo ${motivo}`,
         });
       }
       for (const o of oportunidades) {
         await registrar(tx, {
           actorUserId: autor, area: o.area, entidade: o.ref, campo: "modulos", de: alvo.label, para: "—",
-          texto: `${o.conta} perdeu o módulo / produto ${alvo.label} ${motivo}`,
+          texto: `${o.conta} perdeu o módulo ${alvo.label} ${motivo}`,
         });
       }
     }
@@ -163,7 +163,7 @@ export async function DELETE(req: Request, ctxRoute: RouteContext<"/api/produtos
       destino?.acao === "excluir" ? `; ${ligados} registro(s) excluídos junto` : `; ${ligados} registro(s) desvinculados`;
     await registrar(tx, {
       actorUserId: autor, area: alvo.area, entidade: `PROD-${id}`, campo: "exclusao", de: alvo.label, para: null,
-      texto: `Excluiu o módulo / produto ${alvo.label}${resumo}`,
+      texto: `Excluiu o módulo ${alvo.label}${resumo}`,
     });
     return { ok: true as const, ligados };
   });

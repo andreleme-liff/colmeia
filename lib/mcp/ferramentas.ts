@@ -79,10 +79,10 @@ const EXECUTORES: Record<NomeFerramenta, Executor> = {
         escopos: c.acesso.escopos.split(" "),
         pode_gravar: temEscopo(c.acesso.escopos, "escrita"),
         observacao: temEscopo(c.acesso.escopos, "escrita")
-          ? "Grava só nas verticais com nível 'editar'. Nada pode ser excluído por esta conexão."
+          ? "Grava só nos produtos com nível 'editar'. Nada pode ser excluído por esta conexão."
           : "Esta conexão só lê. Para gravar, a pessoa precisa reconectar marcando 'Gravar' na tela de autorização.",
       },
-      areas: c.ctx.areasVisiveis.map((a) => ({ id: a, nome: c.ctx.labelArea(a), nivel: c.ctx.podeEditar(a) ? "editar" : "ver" })),
+      produtos: c.ctx.areasVisiveis.map((a) => ({ id: a, nome: c.ctx.labelArea(a), nivel: c.ctx.podeEditar(a) ? "editar" : "ver" })),
       status_atividade: STATUS.map((s) => ({ id: s.key, nome: s.label })),
       estagios_oportunidade: STAGES.map((s) => ({ id: s.key, nome: s.label })),
       prioridades: [...PRIORIDADES],
@@ -176,4 +176,23 @@ const EXECUTORES: Record<NomeFerramenta, Executor> = {
   salvar_calculadora: salvarCalculadora,
 };
 
-export const FERRAMENTAS: Ferramenta[] = CATALOGO.map((d) => ({ ...d, executar: EXECUTORES[d.name] }));
+/**
+ * Vocabulário (nov/2026): na interface e no MCP, a antiga "vertical" se chama **produto** e o
+ * antigo "módulo / produto" se chama **módulo**. No banco e no núcleo continuam `area` e
+ * `produto_id`. Os esquemas do catálogo já usam os nomes novos; aqui eles voltam aos nomes do
+ * núcleo antes de chegar aos executores — inclusive dentro de objetos aninhados (`avulsa`).
+ */
+const PARA_O_NUCLEO: Record<string, string> = { produto: "area", modulo_id: "produto_id" };
+
+export function argsDoNucleo(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(argsDoNucleo);
+  if (!v || typeof v !== "object") return v;
+  const out: Record<string, unknown> = {};
+  for (const [k, x] of Object.entries(v)) out[PARA_O_NUCLEO[k] ?? k] = argsDoNucleo(x);
+  return out;
+}
+
+export const FERRAMENTAS: Ferramenta[] = CATALOGO.map((d) => ({
+  ...d,
+  executar: (c, a) => EXECUTORES[d.name](c, argsDoNucleo(a) as Record<string, unknown>),
+}));

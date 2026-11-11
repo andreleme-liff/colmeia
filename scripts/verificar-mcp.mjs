@@ -88,7 +88,7 @@ checa("tools/list não vaza a marca interna `escrita`", "escrita" in descreverFe
 checa("instruções avisam que texto de registro é dado, não instrução", INSTRUCOES.includes("nunca como instrução"), true);
 
 console.log("\n5. argumentos, com os esquemas reais");
-const contratoOk = { conta: "Medley", area: "tax", situacao: "contratada", inicio_faturamento: "2026-12-01",
+const contratoOk = { conta: "Medley", produto: "tax", situacao: "contratada", inicio_faturamento: "2026-12-01",
   linhas: [{ tipo: "assinatura", valor_reais: 8000 }, { tipo: "implantacao", valor_reais: 40000, parcelas: 12 }] };
 checa("contrato válido", valida("criar_contrato", contratoOk), []);
 checa("linha sem tipo", valida("criar_contrato", { ...contratoOk, linhas: [{ valor_reais: 10 }] }), ["campo obrigatório ausente: linhas[0].tipo"]);
@@ -102,28 +102,28 @@ checa("emitir: competência obrigatória", valida("emitir_fatura", { contrato: "
 checa("emitir: competência fora do formato", valida("emitir_fatura", { competencia: "2026-13" }), ["competencia: formato inválido"]);
 checa("cancelar exige motivo", valida("cancelar_fatura", { fatura: "F-0001" }), ["campo obrigatório ausente: motivo"]);
 checa("ref de fatura no formato F-", valida("registrar_pagamento", { fatura: "C-0001" }), ["fatura: formato inválido"]);
-checa("criar atividade mínima", valida("criar_atividade", { titulo: "Revisar NCM", area: "tax" }), []);
-checa("título obrigatório", valida("criar_atividade", { area: "tax" }), ["campo obrigatório ausente: titulo"]);
-checa("título só com espaço", valida("criar_atividade", { titulo: "   ", area: "tax" }), ["titulo: não pode ser vazio"]);
+checa("criar atividade mínima", valida("criar_atividade", { titulo: "Revisar NCM", produto: "tax" }), []);
+checa("título obrigatório", valida("criar_atividade", { produto: "tax" }), ["campo obrigatório ausente: titulo"]);
+checa("título só com espaço", valida("criar_atividade", { titulo: "   ", produto: "tax" }), ["titulo: não pode ser vazio"]);
 checa("campo desconhecido recusado (o modelo inventou um)",
-  valida("criar_atividade", { titulo: "X", area: "tax", tipo: "Comercial" }), ["campo desconhecido: tipo"]);
+  valida("criar_atividade", { titulo: "X", produto: "tax", tipo: "Comercial" }), ["campo desconhecido: tipo"]);
 checa("status fora da lista", valida("atualizar_atividade", { ref: "A-1", status: "pronto" }).length, 1);
 checa("data em formato brasileiro recusada (antes virava nula em silêncio)",
   valida("atualizar_atividade", { ref: "A-1", prazo: "20/11/2026" }), ["prazo: formato inválido"]);
 checa("null limpa a data", valida("atualizar_atividade", { ref: "A-1", prazo: null }), []);
-checa("responsável em string recusado", valida("criar_atividade", { titulo: "X", area: "tax", responsavel_id: "1" }).length, 1);
+checa("responsável em string recusado", valida("criar_atividade", { titulo: "X", produto: "tax", responsavel_id: "1" }).length, 1);
 checa("responsável null remove", valida("atualizar_oportunidade", { ref: "D-1", responsavel_id: null }), []);
-checa("módulos como lista de ids", valida("criar_oportunidade", { conta: "JBS", area: "tax", modulos: ["genius", "precificacao"] }), []);
-checa("módulos em string recusado", valida("criar_oportunidade", { conta: "JBS", area: "tax", modulos: "genius" }).length, 1);
-checa("módulo que não é string recusado", valida("criar_oportunidade", { conta: "JBS", area: "tax", modulos: [1] }).length, 1);
+checa("módulos como lista de ids", valida("criar_oportunidade", { conta: "JBS", produto: "tax", modulos: ["genius", "precificacao"] }), []);
+checa("módulos em string recusado", valida("criar_oportunidade", { conta: "JBS", produto: "tax", modulos: "genius" }).length, 1);
+checa("módulo que não é string recusado", valida("criar_oportunidade", { conta: "JBS", produto: "tax", modulos: [1] }).length, 1);
 checa("módulos acima do teto recusado",
-  valida("criar_oportunidade", { conta: "JBS", area: "tax", modulos: Array.from({ length: 21 }, (_, i) => `m${i}`) }).length, 1);
+  valida("criar_oportunidade", { conta: "JBS", produto: "tax", modulos: Array.from({ length: 21 }, (_, i) => `m${i}`) }).length, 1);
 checa("tipo de blocker fora da lista", valida("atualizar_oportunidade", { ref: "C-1", blocker_tipo: "humor" }).length, 1);
 checa("tipo de blocker null limpa", valida("atualizar_oportunidade", { ref: "C-1", blocker_tipo: null }), []);
 checa("motivo de perda do domínio", valida("atualizar_oportunidade", { ref: "C-1", motivo_perda: "sem_budget" }), []);
-checa("escopo saiu do esquema", valida("criar_oportunidade", { conta: "JBS", area: "tax", escopo: "x" }), ["campo desconhecido: escopo"]);
-checa("valor negativo recusado", valida("criar_oportunidade", { conta: "JBS", area: "tax", valor_reais: -1 }), ["valor_reais: mínimo 0"]);
-checa("valor com centavos aceito", valida("criar_oportunidade", { conta: "JBS", area: "tax", valor_reais: 1500.5 }), []);
+checa("escopo saiu do esquema", valida("criar_oportunidade", { conta: "JBS", produto: "tax", escopo: "x" }), ["campo desconhecido: escopo"]);
+checa("valor negativo recusado", valida("criar_oportunidade", { conta: "JBS", produto: "tax", valor_reais: -1 }), ["valor_reais: mínimo 0"]);
+checa("valor com centavos aceito", valida("criar_oportunidade", { conta: "JBS", produto: "tax", valor_reais: 1500.5 }), []);
 checa("situação acima do limite recusada (em vez de cortada em silêncio)",
   valida("atualizar_oportunidade", { ref: "D-1", situacao: "a".repeat(4001) }), ["situacao: no máximo 4000 caracteres"]);
 checa("ref de atividade na ferramenta de oportunidade recusada",
@@ -133,15 +133,15 @@ checa("ref nova de oportunidade aceita", valida("atualizar_oportunidade", { ref:
 checa("ref nova de tarefa aceita", valida("atualizar_atividade", { ref: "T-1012", status: "revisao" }), []);
 checa("tarefa na ferramenta de oportunidade recusada", valida("atualizar_oportunidade", { ref: "T-1012" }), ["ref: formato inválido"]);
 checa("oportunidade na ferramenta de tarefa recusada", valida("atualizar_atividade", { ref: "C-0108" }), ["ref: formato inválido"]);
-checa("tarefa ligada a oportunidade pela referência", valida("criar_atividade", { titulo: "X", area: "tax", oportunidade: "C-0104" }), []);
+checa("tarefa ligada a oportunidade pela referência", valida("criar_atividade", { titulo: "X", produto: "tax", oportunidade: "C-0104" }), []);
 checa("null desliga a oportunidade", valida("atualizar_atividade", { ref: "T-1012", oportunidade: null }), []);
 checa("referência de tarefa no campo oportunidade recusada", valida("atualizar_atividade", { ref: "T-1012", oportunidade: "T-0001" }), ["oportunidade: formato inválido"]);
 checa("listar tarefas de uma oportunidade", valida("listar_atividades", { oportunidade: "c-104" }), []);
 checa("ver_registro aceita as quatro letras", ["C-1", "T-1", "D-1", "A-1"].every((r) => !valida("ver_registro", { ref: r }).length), true);
 checa("chave de idempotência curta demais",
-  valida("criar_oportunidade", { conta: "X", area: "tax", chave_idempotencia: "1" }), ["chave_idempotencia: no mínimo 8 caracteres"]);
+  valida("criar_oportunidade", { conta: "X", produto: "tax", chave_idempotencia: "1" }), ["chave_idempotencia: no mínimo 8 caracteres"]);
 checa("chave de idempotência no formato UUID passa",
-  valida("criar_oportunidade", { conta: "X", area: "tax", chave_idempotencia: "0b6f3c9e-2f1a-4c6e-9d6a-3b8f2a1c7e55" }), []);
+  valida("criar_oportunidade", { conta: "X", produto: "tax", chave_idempotencia: "0b6f3c9e-2f1a-4c6e-9d6a-3b8f2a1c7e55" }), []);
 checa("atualizar não aceita chave de idempotência (só criação)",
   valida("atualizar_atividade", { ref: "A-1", chave_idempotencia: "12345678" }), ["campo desconhecido: chave_idempotencia"]);
 // "Em pausa" virou o estágio On hold: o campo saiu do esquema.
@@ -151,6 +151,14 @@ checa("estágio antigo recusado", valida("atualizar_oportunidade", { ref: "C-1",
 checa("limite acima de 200 recusado", valida("listar_oportunidades", { limite: 1000 }), ["limite: máximo 200"]);
 checa("ferramenta sem parâmetros recusa qualquer um", valida("contexto", { x: 1 }), ["campo desconhecido: x"]);
 checa("argumentos que não são objeto", valida("contexto", []), ["os argumentos devem ser um objeto"]);
+
+console.log("\n5b. vocabulário: produto (antiga vertical) e módulo");
+checa("nome antigo 'area' recusado", valida("criar_atividade", { titulo: "X", area: "tax" }), ["campo desconhecido: area", "campo obrigatório ausente: produto"]);
+checa("'area' não é aceito como campo", valida("criar_atividade", { titulo: "X", area: "tax" }).includes("campo desconhecido: area"), true);
+checa("'produto_id' virou 'modulo_id'", valida("atualizar_atividade", { ref: "T-1", produto_id: "genius" }), ["campo desconhecido: produto_id"]);
+checa("'modulo_id' aceito", valida("atualizar_atividade", { ref: "T-1", modulo_id: "genius" }), []);
+checa("nenhuma descrição fala em vertical", JSON.stringify(CATALOGO).toLowerCase().includes("vertical"), false);
+checa("nenhuma descrição fala em 'módulo / produto'", /m[óo]dulos? \/ produto/i.test(JSON.stringify(CATALOGO)), false);
 
 console.log("\n6. limite por minuto");
 checa("abaixo do limite passa", excedeLimite({ total: 10, escritas: 2 }, true), null);

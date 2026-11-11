@@ -63,7 +63,7 @@ try {
   const areas = (e) => [...new Set(e.activities.map((a) => a.area))].sort();
 
   console.log("\n1. RECORTE NA LEITURA — cada um só recebe as áreas que pode ver\n");
-  // Contra o banco, não contra um número fixo: o conjunto de verticais é aberto.
+  // Contra o banco, não contra um número fixo: o conjunto de produtos é aberto.
   const [{ c: totalAreas }] = await sql`SELECT COUNT(*)::int AS c FROM areas`;
   const comAtividade = await sql`SELECT DISTINCT area FROM activities`;
   checa(
@@ -500,7 +500,7 @@ try {
     body: JSON.stringify({ label: "[teste] Tributário", short: "TRIB" }),
   });
   const n1json = await n1.json();
-  checa(`admin renomeia a vertical → 200 com 2 mudanças`, n1.status === 200 && n1json.mudancas === 2, JSON.stringify(n1json));
+  checa(`admin renomeia o produto → 200 com 2 mudanças`, n1.status === 200 && n1json.mudancas === 2, JSON.stringify(n1json));
 
   const n2 = await req(marina.token, "/api/areas/tax", {
     method: "PATCH",

@@ -16,7 +16,7 @@ export type Activity = {
   /** Onde a atividade está agora. O que já foi vive no audit_log. */
   situacao: string;
   proximoPasso: string;
-  /** Produto classificado, da mesma vertical da atividade. */
+  /** Módulo classificado, do mesmo produto da atividade. */
   produtoId: string | null;
   /** Quando o próximo passo acontece. Nulo = sem data; o cronograma assume o fim da semana. */
   proximoPassoEm: string | null;

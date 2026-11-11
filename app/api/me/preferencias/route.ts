@@ -48,11 +48,11 @@ export async function PATCH(req: Request) {
   }
 
   if (body.area !== undefined) {
-    // "all" é o filtro "todas as áreas" e não corresponde a nenhuma vertical. Qualquer outro
+    // "all" é o filtro "todas as áreas" e não corresponde a nenhum produto. Qualquer outro
     // valor precisa ser uma área que esta pessoa enxerga — senão a preferência guardaria um
     // filtro que na próxima sessão não mostraria nada e pareceria dado sumido.
     if (body.area !== "all" && !ctx.areasVisiveis.includes(body.area)) {
-      return err("Vertical inválida.", 400);
+      return err("Produto inválido.", 400);
     }
     patch.area = body.area;
   }

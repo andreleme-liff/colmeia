@@ -268,7 +268,7 @@ const dataBR = (iso: string | null) => (iso ? iso.split("-").reverse().join("/")
 /** CSV do mês para a contabilidade (separador ";", decimal com vírgula — abre direto no Excel). */
 export function csvDoMes(itens: ItemDoMes[], rotuloArea: (id: string) => string): string {
   const cab = [
-    "Competência", "Cliente", "Vertical", "Contrato", "Tipo", "Parcela", "Status", "Valor bruto", "Retenções",
+    "Competência", "Cliente", "Produto", "Contrato", "Tipo", "Parcela", "Status", "Valor bruto", "Retenções",
     "Valor líquido", "NF", "Emissão", "Vencimento", "Forma", "Pago em", "Valor pago",
   ];
   const linhas = itens.map((i) => {

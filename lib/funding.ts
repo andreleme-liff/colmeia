@@ -1,7 +1,7 @@
 // Funding AWS: regras puras, sem banco.
 //
 // Três cadastros e um controle:
-//  · PASTA — agrupa os arquétipos de um Módulo / Produto (ex.: LIFF Tax Reform).
+//  · PASTA — agrupa os arquétipos de um Módulo (ex.: LIFF Tax Reform).
 //  · ARQUÉTIPO — como o produto roda para um tipo de cliente: SaaS 100% na LIFF, dedicado,
 //    híbrido (control plane na LIFF, data plane no cliente) ou 100% no cliente. Cada um tem as
 //    suas CALCULADORAS oficiais da AWS (Pricing Calculator), por região, porte e conta que paga
@@ -153,7 +153,7 @@ export type Arquetipo = {
   ativo: boolean;
   calculadoras: Calculadora[];
 };
-/** Pasta de arquétipos: um conjunto por Módulo / Produto (ex.: LIFF Tax Reform). */
+/** Pasta de arquétipos: um conjunto por Módulo (ex.: LIFF Tax Reform). */
 export type Pasta = { id: number; nome: string; produtoId: string | null; descricao: string };
 export type LinhaFunding = {
   id: number;

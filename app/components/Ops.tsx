@@ -117,7 +117,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     buscaGuardada = v;
     setBuscaEstado(v);
   }, []);
-  // Filtro de responsável, paralelo ao de área: um recorta a vertical, o outro recorta a
+  // Filtro de responsável, paralelo ao de área: um recorta o produto, o outro recorta a
   // carteira. Combinam — "só os meus" dentro de Tax é uma pergunta legítima.
   const [responsaveis, setResponsaveis] = useState<string[]>([]);
   const [cadTab, setCadTab] = useState<string>(rotaInicial.tab ?? "pessoas");
@@ -343,7 +343,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     const painel: PainelDados = {
       escopoFrase:
         `${me.nome.split(" ")[0]}, você vê ${areasVisiveis.length} de ${estado.areas.length} ` +
-        `verticais — ${atividades.length} atividades e ${oportunidades.length} oportunidades.`,
+        `produtos — ${atividades.length} atividades e ${oportunidades.length} oportunidades.`,
       // O sufixo "(ver)" marca onde a pessoa só lê. É a informação que evita descobrir a
       // falta de permissão só na hora de tentar salvar.
       escopoAreas: areasVisiveis
@@ -515,7 +515,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           b: a.short,
           c: estado.activities.filter((x) => x.area === a.id).length + " ativas",
         })),
-        ph: "Nome da vertical",
+        ph: "Nome do produto",
       };
     }
     return {
@@ -528,7 +528,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         c: estado.deals.filter((d) => d.modulos.includes(p.id)).length + " no pipeline",
         abrir: estado.isAdmin ? () => setCadEditando({ tipo: "produto", id: p.id }) : undefined,
       })),
-      ph: "Nome do módulo / produto",
+      ph: "Nome do módulo",
     };
   }, [estado, cadTab, acao]);
 
@@ -729,7 +729,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     };
   }, [view, ultimoLog]);
 
-  /** Quem fez as alterações, no recorte de vertical: as opções do filtro Quem na Auditoria. */
+  /** Quem fez as alterações, no recorte de produto: as opções do filtro Quem na Auditoria. */
   const opcoesAutores = useMemo(() => {
     const acc = new Map<string, { chave: string; label: string; qtd: number; cadastrada: boolean }>();
     for (const l of auditoria.logs ?? []) {
@@ -790,7 +790,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
       setSalvando(false);
     }
   };
-  const rotuloArea = areaEfetiva === "all" ? "todas as verticais" : areaOf(areaEfetiva).label;
+  const rotuloArea = areaEfetiva === "all" ? "todos os produtos" : areaOf(areaEfetiva).label;
   /**
    * O card aberto é DERIVADO da URL, não guardado em estado. Assim não há o que sincronizar:
    * voltar fecha o drawer, recarregar reabre no mesmo card, e o endereço na barra é sempre o
@@ -921,7 +921,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             }}
             onExcluirArea={(id, label) => {
               // Exclusão é irreversível e some com as permissões concedidas naquela área.
-              if (!window.confirm(`Excluir a vertical ${label}? As permissões nela também caem.`)) return;
+              if (!window.confirm(`Excluir o produto ${label}? As permissões nele também caem.`)) return;
               void acao(() => api.excluirArea(id));
             }}
           />
@@ -1157,7 +1157,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em", color: C.ink }}>{TITLES[view]}</div>
           </div>
 
-          {/* Os dois filtros do cabeçalho moram juntos: área recorta a vertical, "meus"
+          {/* Os dois filtros do cabeçalho moram juntos: área recorta o produto, "meus"
               recorta a carteira. Separá-los faria parecer que um é filtro e o outro é modo. */}
           <div className="liff-filtros" style={{ marginLeft: "auto" }}>
             {["comercial", "operacoes", "cronograma", "auditoria", "faturamento"].includes(view) && (
@@ -1211,7 +1211,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             )}
 
             {/* Criar aparece onde a coisa vive: atividade no quadro operacional,
-                oportunidade no pipeline. Desabilita quando não há vertical com permissão de
+                oportunidade no pipeline. Desabilita quando não há produto com permissão de
                 edição — o servidor recusaria de todo jeito. */}
             {["operacoes", "comercial"].includes(view) && (
               <Button
@@ -1219,7 +1219,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
                 size="sm"
                 disabled={areasEditaveis.length === 0}
                 title={
-                  areasEditaveis.length === 0 ? "Você não tem permissão de edição em nenhuma vertical" : undefined
+                  areasEditaveis.length === 0 ? "Você não tem permissão de edição em nenhum produto" : undefined
                 }
                 onClick={() => {
                   setErroForm(null);
@@ -1290,7 +1290,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
                 lineHeight: 1.6,
               }}
             >
-              Não encontrei {refAberta}. O registro pode ter sido excluído, ou estar numa vertical
+              Não encontrei {refAberta}. O registro pode ter sido excluído, ou estar num produto
               fora do seu acesso.
             </div>
           )}

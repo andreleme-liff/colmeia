@@ -1,7 +1,7 @@
 "use client";
 
 // Transforma o cadastro de áreas nas variáveis CSS que o resto da interface já consome
-// (`--liff-app-area-<id>`). Fazendo assim, mudar a cor de uma vertical no cadastro repinta
+// (`--liff-app-area-<id>`). Fazendo assim, mudar a cor de um produto no cadastro repinta
 // tudo — chip, card, barra, tabela, auditoria — sem que nenhum componente saiba disso.
 //
 // E é o que preserva o comportamento de tema: no claro a cor escolhida é escurecida por

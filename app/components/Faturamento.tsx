@@ -525,7 +525,7 @@ function FormEmissao({
               <Field label="Cliente" required>
                 <Input value={conta} onChange={setConta} placeholder="Nome do cliente" />
               </Field>
-              <Field label="Vertical" required>
+              <Field label="Produto" required>
                 <Select
                   value={area}
                   onChange={setArea}
@@ -691,7 +691,7 @@ function Detalhe({
         <div className="fat-detalhe">
           {linha("O que", f.tipo === "avulsa" ? f.descricao || "Avulsa" : `${rotuloTipoFatura(f.tipo)} ${f.parcela}`)}
           {linha("Competência", rotuloMes(f.competencia))}
-          {linha("Vertical", areaOf(f.area).label)}
+          {linha("Produto", areaOf(f.area).label)}
           {contrato && linha("Contrato", `${contrato.ref}${contrato.cobranca.cnpj ? ` · CNPJ ${contrato.cobranca.cnpj}` : ""}`)}
           {linha("Valor bruto", brlExato(f.valorCentavos))}
           {f.retencoesCentavos > 0 && linha("Retenções", brlExato(f.retencoesCentavos))}

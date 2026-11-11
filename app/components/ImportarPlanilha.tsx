@@ -43,7 +43,7 @@ export default function ImportarPlanilha({
   onFechar,
 }: {
   areasEditaveis: { id: string; label: string }[];
-  /** Verticais que têm planilha do Drive configurada — só nelas o botão de sincronizar faz sentido. */
+  /** Produtos que têm planilha do Drive configurada — só nelas o botão de sincronizar faz sentido. */
   areasComPlanilha: Set<string>;
   sheetsConectado: boolean;
   produtos: ProdutoCadastro[];
@@ -58,7 +58,7 @@ export default function ImportarPlanilha({
   onCriarProduto: (label: string, area: string) => Promise<void>;
   onFechar: () => void;
 }) {
-  // Em branco: importar 40 linhas na vertical errada é o erro mais caro desta tela, e a
+  // Em branco: importar 40 linhas no produto errado é o erro mais caro desta tela, e a
   // área pré-selecionada era exatamente o que o deixava passar despercebido.
   const [area, setArea] = useState("");
   const [abas, setAbas] = useState<Aba[] | null>(null);
@@ -193,13 +193,13 @@ export default function ImportarPlanilha({
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <Field
-              label="Vertical de destino"
+              label="Produto de destino"
               required
-              hint="Todas as linhas entram nesta vertical. Escolha antes de abrir o arquivo."
+              hint="Todas as linhas entram neste produto. Escolha antes de abrir o arquivo."
             >
               <Select
                 options={[
-                  { value: "", label: "— escolha a vertical —" },
+                  { value: "", label: "— escolha o produto —" },
                   ...areasEditaveis.map((a) => ({ value: a.id, label: a.label })),
                 ]}
                 value={area}
@@ -217,7 +217,7 @@ export default function ImportarPlanilha({
                 type="file"
                 accept=".xlsx,.xls,.csv"
                 // Sem área não dá para ler: a prévia marca "já existe" comparando com o que
-                // há NAQUELA vertical, e sem ela a marcação sairia toda errada.
+                // há NAQUELE produto, e sem ela a marcação sairia toda errada.
                 disabled={!area}
                 onChange={(e) => e.target.files?.[0] && void lerArquivo(e.target.files[0])}
                 style={{
@@ -234,7 +234,7 @@ export default function ImportarPlanilha({
           </div>
 
           {/* Sincronizar aparece só onde há planilha configurada — sem isso o botão
-              prometeria algo que a vertical não tem. */}
+              prometeria algo que o produto não tem. */}
           {area && areasComPlanilha.has(area) && (
             <div
               style={{
@@ -352,7 +352,7 @@ export default function ImportarPlanilha({
                   }}
                 >
                   <div style={{ fontSize: 13, lineHeight: 1.6, color: C.body }}>
-                    A planilha traz {modulosFaltando.length === 1 ? "um módulo / produto que ainda não está cadastrado" : "módulos / produtos que ainda não estão cadastrados"}{" "}
+                    A planilha traz {modulosFaltando.length === 1 ? "um módulo que ainda não está cadastrado" : "módulos que ainda não estão cadastrados"}{" "}
                     em {areaOf(area).label}. Sem cadastrar, {modulosFaltando.length === 1 ? "ele será ignorado" : "eles serão ignorados"} nos
                     cards.
                   </div>

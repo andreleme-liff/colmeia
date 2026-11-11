@@ -17,7 +17,7 @@ export async function GET(req: Request) {
   if (ctx instanceof Response) return ctx;
 
   const area = new URL(req.url).searchParams.get("area") ?? "";
-  if (!ctx.areasExistentes.includes(area)) return err("Vertical inválida.", 400);
+  if (!ctx.areasExistentes.includes(area)) return err("Produto inválido.", 400);
   // Prévia de importação é passo de escrita, ainda que não grave: quem só lê a área não tem
   // o que fazer com ela, e a rota de importação recusaria em seguida.
   if (!ctx.podeEditar(area)) return err(`Sem permissão de edição em ${ctx.labelArea(area)}.`, 403);
@@ -29,7 +29,7 @@ export async function GET(req: Request) {
   const planilhaId = idDaPlanilha(linhaArea?.planilha_url ?? "");
   if (!planilhaId) {
     return err(
-      `${ctx.labelArea(area)} não tem planilha configurada. Cadastre o endereço em Cadastros → verticais.`,
+      `${ctx.labelArea(area)} não tem planilha configurada. Cadastre o endereço em Cadastros → produtos.`,
       409
     );
   }

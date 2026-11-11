@@ -55,7 +55,7 @@ export async function POST(req: Request) {
   }
 
   const area = String(body.area ?? "");
-  if (!ctx.areasExistentes.includes(area)) return err("Vertical inválida.", 400);
+  if (!ctx.areasExistentes.includes(area)) return err("Produto inválido.", 400);
   if (!ctx.podeEditar(area)) return err(`Sem permissão de edição em ${ctx.labelArea(area)}.`, 403);
 
   const linhas = Array.isArray(body.linhas) ? body.linhas : [];
@@ -103,7 +103,7 @@ export async function POST(req: Request) {
       if (id) {
         if (!modulos.includes(id)) modulos.push(id);
       } else {
-        avisos.push({ linha: n, aviso: `${conta}: módulo / produto "${nome}" não cadastrado em ${ctx.labelArea(area)}` });
+        avisos.push({ linha: n, aviso: `${conta}: módulo "${nome}" não cadastrado em ${ctx.labelArea(area)}` });
       }
     }
 
