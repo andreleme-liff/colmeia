@@ -463,10 +463,10 @@ export const CATALOGO = [
     name: "listar_arquetipos",
     title: "Arquétipos, calculadoras AWS e programas",
     description:
-      "Os arquétipos de implantação (SaaS 100% LIFF, dedicado, híbrido, 100% no cliente) com as calculadoras oficiais da AWS de cada um — região, conta que paga, porte, custo mensal e link — e o catálogo de programas de funding. Só admin.",
+      "Os arquétipos de implantação (SaaS 100% LIFF, dedicado, híbrido, 100% no cliente), organizados em pastas — uma por Módulo / Produto (ex.: LIFF Tax Reform) —, com as calculadoras oficiais da AWS de cada um — região, conta que paga, porte, custo mensal e link — e o catálogo de programas de funding. Só admin.",
     escrita: false,
     soAdmin: true,
-    inputSchema: objeto({}),
+    inputSchema: objeto({ pasta: { type: "string", maxLength: 120, description: "Filtra pelo nome da pasta (trecho, sem diferenciar maiúsculas), ex.: \"Tax Reform\"." } }),
     annotations: LEITURA,
   },
   {

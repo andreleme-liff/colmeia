@@ -1,6 +1,7 @@
 // Funding AWS: regras puras, sem banco.
 //
 // Três cadastros e um controle:
+//  · PASTA — agrupa os arquétipos de um Módulo / Produto (ex.: LIFF Tax Reform).
 //  · ARQUÉTIPO — como o produto roda para um tipo de cliente: SaaS 100% na LIFF, dedicado,
 //    híbrido (control plane na LIFF, data plane no cliente) ou 100% no cliente. Cada um tem as
 //    suas CALCULADORAS oficiais da AWS (Pricing Calculator), por região, porte e conta que paga
@@ -143,7 +144,17 @@ export type Calculadora = {
   dataPreco: string | null;
   notas: string;
 };
-export type Arquetipo = { id: number; nome: string; modelo: ModeloOperacao; descricao: string; ativo: boolean; calculadoras: Calculadora[] };
+export type Arquetipo = {
+  id: number;
+  pastaId: number | null;
+  nome: string;
+  modelo: ModeloOperacao;
+  descricao: string;
+  ativo: boolean;
+  calculadoras: Calculadora[];
+};
+/** Pasta de arquétipos: um conjunto por Módulo / Produto (ex.: LIFF Tax Reform). */
+export type Pasta = { id: number; nome: string; produtoId: string | null; descricao: string };
 export type LinhaFunding = {
   id: number;
   estimativaId: number;
@@ -223,13 +234,24 @@ const data = (v: unknown): string | null | "invalida" =>
   v == null || v === "" ? null : typeof v === "string" && DATA.test(v) && !Number.isNaN(Date.parse(v + "T00:00:00Z")) ? v : "invalida";
 const MES = /^\d{4}-(0[1-9]|1[0-2])$/;
 
-export type EntradaArquetipo = { nome: string; modelo: ModeloOperacao; descricao: string; ativo: boolean };
+export type EntradaPasta = Omit<Pasta, "id">;
+export function lerPasta(b: Record<string, unknown> | null): EntradaPasta | string {
+  if (!b) return "Requisição inválida.";
+  const nome = texto(b.nome, 120);
+  if (!nome) return "Dê um nome à pasta.";
+  const produtoId = texto(b.produtoId, 80) || null;
+  return { nome, produtoId, descricao: texto(b.descricao, 2000) };
+}
+
+export type EntradaArquetipo = { pastaId: number | null; nome: string; modelo: ModeloOperacao; descricao: string; ativo: boolean };
 export function lerArquetipo(b: Record<string, unknown> | null): EntradaArquetipo | string {
   if (!b) return "Requisição inválida.";
   const nome = texto(b.nome, 120);
   if (!nome) return "Dê um nome ao arquétipo.";
   if (typeof b.modelo !== "string" || !MODELO_KEYS.includes(b.modelo)) return "Escolha o modelo de operação.";
-  return { nome, modelo: b.modelo as ModeloOperacao, descricao: texto(b.descricao, 2000), ativo: b.ativo !== false };
+  const pastaId = b.pastaId == null || b.pastaId === "" ? null : Number(b.pastaId);
+  if (pastaId != null && (!Number.isInteger(pastaId) || pastaId <= 0)) return "Pasta inválida.";
+  return { pastaId, nome, modelo: b.modelo as ModeloOperacao, descricao: texto(b.descricao, 2000), ativo: b.ativo !== false };
 }
 
 export type EntradaCalculadora = Omit<Calculadora, "id">;

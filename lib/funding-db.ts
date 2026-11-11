@@ -1,24 +1,30 @@
-// Funding AWS no banco: leitura e gravação dos cinco cadastros. As regras moram em
+// Funding AWS no banco: leitura e gravação dos seis cadastros. As regras moram em
 // `funding.ts`. Toda gravação deixa linha de auditoria, só visível para admin
-// (referências PROG-, ARQ- e E-, ver ENTIDADES_SO_ADMIN em log.ts).
+// (referências PROG-, PASTA-, ARQ- e E-, ver ENTIDADES_SO_ADMIN em log.ts).
 
 import type { Queryable } from "./db";
 import { registrar } from "./log";
 import type { Autor } from "./receita";
 import {
-  lerArquetipo, lerCalculadora, lerEstimativa, lerLinha, lerPrograma, rotuloConta, rotuloModelo, rotuloRegiao,
+  lerArquetipo, lerCalculadora, lerEstimativa, lerLinha, lerPasta, lerPrograma, rotuloConta, rotuloModelo, rotuloRegiao,
   rotuloStatusFunding, usd,
-  type Arquetipo, type Calculadora, type Estimativa, type LinhaFunding, type Programa,
+  type Arquetipo, type Calculadora, type Estimativa, type LinhaFunding, type Pasta, type Programa,
 } from "./funding";
 
 const dia = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
 
-export async function lerFunding(sql: Queryable): Promise<{ programas: Programa[]; arquetipos: Arquetipo[]; estimativas: Estimativa[] }> {
-  const [programas, arqs, calcs, ests, linhas] = await Promise.all([
+export type Produto = { id: string; label: string; area: string };
+export type DadosFunding = { pastas: Pasta[]; produtos: Produto[]; programas: Programa[]; arquetipos: Arquetipo[]; estimativas: Estimativa[] };
+
+export async function lerFunding(sql: Queryable): Promise<DadosFunding> {
+  const [pastas, produtos, programas, arqs, calcs, ests, linhas] = await Promise.all([
+    sql<{ id: number; nome: string; produto_id: string | null; descricao: string }[]>`
+      SELECT id, nome, produto_id, descricao FROM funding_pastas ORDER BY ordem, nome`,
+    sql<Produto[]>`SELECT id, label, area FROM produtos WHERE ativo ORDER BY area, ordem, label`,
     sql<{ id: string; label: string; forma: string; descricao: string; ativo: boolean }[]>`
       SELECT id, label, forma, descricao, ativo FROM funding_programas ORDER BY ordem, label`,
-    sql<{ id: number; nome: string; modelo: Arquetipo["modelo"]; descricao: string; ativo: boolean }[]>`
-      SELECT id, nome, modelo, descricao, ativo FROM funding_arquetipos ORDER BY ordem, id`,
+    sql<{ id: number; pasta_id: number | null; nome: string; modelo: Arquetipo["modelo"]; descricao: string; ativo: boolean }[]>`
+      SELECT id, pasta_id, nome, modelo, descricao, ativo FROM funding_arquetipos ORDER BY ordem, id`,
     sql<{ id: number; arquetipo_id: number; regiao: string; conta: "liff" | "cliente"; porte: string; url: string; custo_mensal_centavos: string; data_preco: Date | null; notas: string }[]>`
       SELECT * FROM funding_calculadoras ORDER BY regiao, conta DESC, id`,
     sql<{ id: number; ref: string; conta: string; deal_id: number | null; arquetipo_id: number | null; regiao: string; porte: string;
@@ -38,8 +44,13 @@ export async function lerFunding(sql: Queryable): Promise<{ programas: Programa[
     status: l.status, awsId: l.aws_id, solicitadoEm: dia(l.solicitado_em), aprovadoEm: dia(l.aprovado_em), expiraEm: dia(l.expira_em), notas: l.notas,
   }));
   return {
+    pastas: pastas.map((p) => ({ id: p.id, nome: p.nome, produtoId: p.produto_id, descricao: p.descricao })),
+    produtos: produtos.map((p) => ({ ...p })),
     programas: programas.map((p) => ({ ...p })),
-    arquetipos: arqs.map((a) => ({ ...a, calculadoras: calculadoras.filter((c) => c.arquetipoId === a.id) })),
+    arquetipos: arqs.map((a) => ({
+      id: a.id, pastaId: a.pasta_id, nome: a.nome, modelo: a.modelo, descricao: a.descricao, ativo: a.ativo,
+      calculadoras: calculadoras.filter((c) => c.arquetipoId === a.id),
+    })),
     estimativas: ests.map((e) => ({
       id: e.id, ref: e.ref, conta: e.conta, dealId: e.deal_id, arquetipoId: e.arquetipo_id, regiao: e.regiao, porte: e.porte,
       liffMensalCentavos: Number(e.liff_mensal_centavos), clienteMensalCentavos: Number(e.cliente_mensal_centavos),
@@ -49,15 +60,37 @@ export async function lerFunding(sql: Queryable): Promise<{ programas: Programa[
   };
 }
 
-export const TIPOS = ["programas", "arquetipos", "calculadoras", "estimativas", "linhas"] as const;
+export const TIPOS = ["pastas", "programas", "arquetipos", "calculadoras", "estimativas", "linhas"] as const;
 export type Tipo = (typeof TIPOS)[number];
 type Resultado = { ok: true; id: number | string; ref?: string } | { erro: string; status: number };
+
+async function conferirPasta(tx: Queryable, p: { produtoId: string | null }): Promise<string | null> {
+  if (!p.produtoId) return null;
+  const [prod] = await tx<{ id: string }[]>`SELECT id FROM produtos WHERE id = ${p.produtoId}`;
+  return prod ? null : "Módulo / Produto não encontrado.";
+}
+async function nomeDaPasta(tx: Queryable, id: number | null): Promise<string | null | false> {
+  if (id == null) return null;
+  const [p] = await tx<{ nome: string }[]>`SELECT nome FROM funding_pastas WHERE id = ${id}`;
+  return p ? p.nome : false;
+}
 
 /** Cria um registro do tipo pedido. */
 export async function criar(tx: Queryable, autor: Autor, tipo: Tipo, body: Record<string, unknown> | null): Promise<Resultado> {
   const log = (entidade: string, texto: string) =>
     registrar(tx, { actorUserId: autor.userId, origem: autor.origem, concessaoId: autor.concessaoId, area: null, entidade, campo: "funding", texto });
   switch (tipo) {
+    case "pastas": {
+      const p = lerPasta(body);
+      if (typeof p === "string") return { erro: p, status: 400 };
+      const ruim = await conferirPasta(tx, p);
+      if (ruim) return { erro: ruim, status: 400 };
+      const [{ ordem }] = await tx<{ ordem: number }[]>`SELECT COALESCE(MAX(ordem), -1) + 1 AS ordem FROM funding_pastas`;
+      const [n] = await tx<{ id: number }[]>`
+        INSERT INTO funding_pastas (nome, produto_id, descricao, ordem) VALUES (${p.nome}, ${p.produtoId}, ${p.descricao}, ${ordem}) RETURNING id`;
+      await log(`PASTA-${n.id}`, `Criou a pasta de arquétipos ${p.nome}`);
+      return { ok: true, id: n.id };
+    }
     case "programas": {
       const p = lerPrograma(body);
       if (typeof p === "string") return { erro: p, status: 400 };
@@ -71,10 +104,13 @@ export async function criar(tx: Queryable, autor: Autor, tipo: Tipo, body: Recor
     case "arquetipos": {
       const a = lerArquetipo(body);
       if (typeof a === "string") return { erro: a, status: 400 };
+      const pasta = await nomeDaPasta(tx, a.pastaId);
+      if (pasta === false) return { erro: "Pasta não encontrada.", status: 400 };
       const [{ ordem }] = await tx<{ ordem: number }[]>`SELECT COALESCE(MAX(ordem), -1) + 1 AS ordem FROM funding_arquetipos`;
       const [n] = await tx<{ id: number }[]>`
-        INSERT INTO funding_arquetipos (nome, modelo, descricao, ativo, ordem) VALUES (${a.nome}, ${a.modelo}, ${a.descricao}, ${a.ativo}, ${ordem}) RETURNING id`;
-      await log(`ARQ-${n.id}`, `Cadastrou o arquétipo ${a.nome} (${rotuloModelo(a.modelo)})`);
+        INSERT INTO funding_arquetipos (pasta_id, nome, modelo, descricao, ativo, ordem)
+        VALUES (${a.pastaId}, ${a.nome}, ${a.modelo}, ${a.descricao}, ${a.ativo}, ${ordem}) RETURNING id`;
+      await log(`ARQ-${n.id}`, `Cadastrou o arquétipo ${a.nome} (${rotuloModelo(a.modelo)})${pasta ? ` na pasta ${pasta}` : ""}`);
       return { ok: true, id: n.id };
     }
     case "calculadoras": {
@@ -124,6 +160,16 @@ export async function alterar(tx: Queryable, autor: Autor, tipo: Tipo, id: strin
     registrar(tx, { actorUserId: autor.userId, origem: autor.origem, concessaoId: autor.concessaoId, area: null, entidade, campo: "funding", texto });
   const n = Number(id);
   switch (tipo) {
+    case "pastas": {
+      const p = lerPasta(body);
+      if (typeof p === "string") return { erro: p, status: 400 };
+      const ruim = await conferirPasta(tx, p);
+      if (ruim) return { erro: ruim, status: 400 };
+      const r = await tx`UPDATE funding_pastas SET nome = ${p.nome}, produto_id = ${p.produtoId}, descricao = ${p.descricao} WHERE id = ${n}`;
+      if (!r.count) return { erro: "Pasta não encontrada.", status: 404 };
+      await log(`PASTA-${n}`, `Alterou a pasta de arquétipos ${p.nome}`);
+      return { ok: true, id: n };
+    }
     case "programas": {
       const p = lerPrograma(body, id);
       if (typeof p === "string") return { erro: p, status: 400 };
@@ -135,9 +181,13 @@ export async function alterar(tx: Queryable, autor: Autor, tipo: Tipo, id: strin
     case "arquetipos": {
       const a = lerArquetipo(body);
       if (typeof a === "string") return { erro: a, status: 400 };
-      const r = await tx`UPDATE funding_arquetipos SET nome = ${a.nome}, modelo = ${a.modelo}, descricao = ${a.descricao}, ativo = ${a.ativo} WHERE id = ${n}`;
+      const pasta = await nomeDaPasta(tx, a.pastaId);
+      if (pasta === false) return { erro: "Pasta não encontrada.", status: 400 };
+      const r = await tx`
+        UPDATE funding_arquetipos SET pasta_id = ${a.pastaId}, nome = ${a.nome}, modelo = ${a.modelo}, descricao = ${a.descricao}, ativo = ${a.ativo}
+        WHERE id = ${n}`;
       if (!r.count) return { erro: "Arquétipo não encontrado.", status: 404 };
-      await log(`ARQ-${n}`, `Alterou o arquétipo ${a.nome} (${rotuloModelo(a.modelo)})${a.ativo ? "" : ", inativo"}`);
+      await log(`ARQ-${n}`, `Alterou o arquétipo ${a.nome} (${rotuloModelo(a.modelo)})${pasta ? `, pasta ${pasta}` : ", sem pasta"}${a.ativo ? "" : ", inativo"}`);
       return { ok: true, id: n };
     }
     case "calculadoras": {
@@ -184,12 +234,20 @@ export async function alterar(tx: Queryable, autor: Autor, tipo: Tipo, id: strin
   }
 }
 
-/** Exclui. Programa em uso não sai (desative); arquétipo leva as calculadoras e solta as estimativas. */
+/** Exclui. Pasta com arquétipos não sai; programa em uso não sai (desative); arquétipo leva as calculadoras e solta as estimativas. */
 export async function excluir(tx: Queryable, autor: Autor, tipo: Tipo, id: string): Promise<Resultado> {
   const log = (entidade: string, texto: string) =>
     registrar(tx, { actorUserId: autor.userId, origem: autor.origem, concessaoId: autor.concessaoId, area: null, entidade, campo: "exclusao", texto });
   const n = Number(id);
   switch (tipo) {
+    case "pastas": {
+      const [{ usos }] = await tx<{ usos: number }[]>`SELECT count(*)::int AS usos FROM funding_arquetipos WHERE pasta_id = ${n}`;
+      if (usos) return { erro: `A pasta tem ${usos} arquétipo(s). Mova ou exclua os arquétipos antes.`, status: 409 };
+      const [p] = await tx<{ nome: string }[]>`DELETE FROM funding_pastas WHERE id = ${n} RETURNING nome`;
+      if (!p) return { erro: "Pasta não encontrada.", status: 404 };
+      await log(`PASTA-${n}`, `Excluiu a pasta de arquétipos ${p.nome}`);
+      return { ok: true, id: n };
+    }
     case "programas": {
       const [{ usos }] = await tx<{ usos: number }[]>`SELECT count(*)::int AS usos FROM funding_linhas WHERE programa_id = ${id}`;
       if (usos) return { erro: `O programa está em ${usos} linha(s) de funding. Desative em vez de excluir.`, status: 409 };

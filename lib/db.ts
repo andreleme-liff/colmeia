@@ -730,6 +730,31 @@ async function migrate(): Promise<void> {
       }
     }
 
+    // Pastas de arquétipos (nov/2026): um conjunto de arquétipos por Módulo / Produto. Na
+    // criação da tabela, os arquétipos que já existem (todos do LIFF Tax Reform) vão para uma
+    // pasta com esse nome. Depois disso as pastas são de quem administra: apagar não volta.
+    const [{ pastasNovas }] = await sql<{ pastasNovas: boolean }[]>`
+      SELECT to_regclass('public.funding_pastas') IS NULL AS "pastasNovas"
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS funding_pastas (
+        id         SERIAL PRIMARY KEY,
+        nome       TEXT NOT NULL,
+        produto_id TEXT REFERENCES produtos(id) ON DELETE SET NULL,
+        descricao  TEXT NOT NULL DEFAULT '',
+        ordem      INTEGER NOT NULL DEFAULT 0
+      )
+    `;
+    await sql`ALTER TABLE funding_arquetipos ADD COLUMN IF NOT EXISTS pasta_id INTEGER REFERENCES funding_pastas(id) ON DELETE SET NULL`;
+    if (pastasNovas) {
+      const [pasta] = await sql<{ id: number }[]>`
+        INSERT INTO funding_pastas (nome, descricao, ordem)
+        VALUES ('LIFF Tax Reform', 'Arquétipos do documento "Estimativa de custo AWS · Liff Tax" (porte M, 29/10/2026).', 0)
+        RETURNING id
+      `;
+      await sql`UPDATE funding_arquetipos SET pasta_id = ${pasta.id} WHERE pasta_id IS NULL`;
+    }
+
     // Uma fatura viva por linha do cronograma: emitir duas vezes a mesma parcela é erro que a
     // tela não deve conseguir cometer. Cancelada sai da regra (reemissão).
     await sql`
@@ -765,7 +790,7 @@ async function migrate(): Promise<void> {
               'REVOKE ALL ON users, user_area_perms, activities, deals, sessions, audit_log, areas, produtos, '
               'oauth_concessoes, oauth_codigos, oauth_tokens, mcp_chamadas, origens, oportunidade_modulos, '
               'contratos, contrato_receitas, faturas, funding_programas, funding_arquetipos, funding_calculadoras, '
-              'funding_estimativas, funding_linhas FROM %I',
+              'funding_estimativas, funding_linhas, funding_pastas FROM %I',
               papel
             );
             EXECUTE format('REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM %I', papel);

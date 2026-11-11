@@ -28,7 +28,7 @@ export type Mudanca = {
  * pela referência gravada em `entidade`. Efeitos desses cadastros nos cards (ex.: responsável
  * trocado ao excluir uma pessoa) ficam com a referência do card e continuam visíveis.
  */
-export const ENTIDADES_SO_ADMIN = "^(AREA|ORIGEM|PROD|U|R|F|E|ARQ|PROG)-";
+export const ENTIDADES_SO_ADMIN = "^(AREA|ORIGEM|PROD|U|R|F|E|ARQ|PROG|PASTA)-";
 
 export async function registrar(sql: Queryable, m: Mudanca): Promise<void> {
   await sql`

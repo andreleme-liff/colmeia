@@ -220,6 +220,8 @@ export const api = {
   /** Funding AWS (só admin). */
   funding: () =>
     req<{
+      pastas: import("@/lib/funding").Pasta[];
+      produtos: { id: string; label: string; area: string }[];
       programas: import("@/lib/funding").Programa[];
       arquetipos: import("@/lib/funding").Arquetipo[];
       estimativas: import("@/lib/funding").Estimativa[];

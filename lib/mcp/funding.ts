@@ -87,14 +87,27 @@ export async function resumoFunding(c: Contexto, a: Record<string, unknown>): Pr
   };
 }
 
-export async function listarArquetipos(c: Contexto): Promise<Saida> {
+export async function listarArquetipos(c: Contexto, a: Record<string, unknown> = {}): Promise<Saida> {
   if (!c.ctx.isAdmin) return negado;
   const d = await lerFunding(c.sql);
+  const pastaDe = (id: number | null) => d.pastas.find((p) => p.id === id) ?? null;
+  const filtro = typeof a.pasta === "string" ? a.pasta.trim().toLowerCase() : "";
+  const pastasFiltradas = filtro ? d.pastas.filter((p) => p.nome.toLowerCase().includes(filtro)) : d.pastas;
+  if (filtro && !pastasFiltradas.length) return { ok: false, erro: `Nenhuma pasta com “${a.pasta}”. Pastas: ${d.pastas.map((p) => p.nome).join(", ") || "nenhuma"}.` };
+  const arqs = filtro ? d.arquetipos.filter((x) => pastasFiltradas.some((p) => p.id === x.pastaId)) : d.arquetipos;
   return {
     ok: true,
     dados: {
-      arquetipos: d.arquetipos.map((a) => ({
+      pastas: pastasFiltradas.map((p) => ({
+        id: p.id,
+        nome: p.nome,
+        produto: p.produtoId ? d.produtos.find((x) => x.id === p.produtoId)?.label ?? p.produtoId : null,
+        descricao: p.descricao || null,
+        arquetipos: d.arquetipos.filter((x) => x.pastaId === p.id).length,
+      })),
+      arquetipos: arqs.map((a) => ({
         id: a.id,
+        pasta: pastaDe(a.pastaId)?.nome ?? null,
         nome: a.nome,
         modelo: a.modelo,
         modelo_rotulo: rotuloModelo(a.modelo),

@@ -1,7 +1,7 @@
 // Funding AWS: consumo por conta, funding garantido, cobertura, sugestão da calculadora,
 // validações. Sem banco. `node scripts/verificar-funding.mjs`
 import {
-  ARQUETIPOS_SEMENTE, cobertura, consumo, funding, lerCalculadora, lerEstimativa, lerLinha, lerPrograma, sugestaoDaCalculadora,
+  ARQUETIPOS_SEMENTE, cobertura, consumo, funding, lerArquetipo, lerCalculadora, lerEstimativa, lerLinha, lerPasta, lerPrograma, sugestaoDaCalculadora,
 } from "../lib/funding.ts";
 
 let ok = 0, falhas = 0;
@@ -41,6 +41,11 @@ checa("calculadora ok", typeof lerCalculadora({ arquetipoId: 1, regiao: "us-east
 checa("estimativa sem cliente", lerEstimativa({ regiao: "us-east-1", liffMensalCentavos: 0, clienteMensalCentavos: 0, iaPagaPor: "liff" }), "Informe o cliente / oportunidade.");
 checa("estimativa com início inválido", lerEstimativa({ conta: "X", regiao: "us-east-1", liffMensalCentavos: 0, clienteMensalCentavos: 0, iaPagaPor: "liff", inicio: "12/2026" }), "Início inválido (AAAA-MM).");
 checa("linha com status inventado", lerLinha({ estimativaId: 1, programaId: "map-migrate", beneficiario: "liff", valorCentavos: 1, status: "talvez" }), "Status inválido.");
+checa("pasta sem nome", lerPasta({ nome: "  " }), "Dê um nome à pasta.");
+checa("pasta ok, produto opcional", lerPasta({ nome: "LIFF Tax Reform", produtoId: "" }), { nome: "LIFF Tax Reform", produtoId: null, descricao: "" });
+checa("arquétipo sem pasta", lerArquetipo({ nome: "A", modelo: "hibrido" }).pastaId, null);
+checa("arquétipo na pasta 3", lerArquetipo({ nome: "A", modelo: "hibrido", pastaId: "3" }).pastaId, 3);
+checa("arquétipo com pasta inválida", lerArquetipo({ nome: "A", modelo: "hibrido", pastaId: "x" }), "Pasta inválida.");
 checa("programa ganha id do nome", lerPrograma({ label: "MAP · Migrate 2.0", forma: "credito" }).id, "map-migrate-2-0");
 
 console.log(`\n${ok} passaram, ${falhas} falharam`);

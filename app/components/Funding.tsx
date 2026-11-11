@@ -6,8 +6,9 @@
 //  · ESTIMATIVAS — por oportunidade: consumo previsto na conta da LIFF, na do cliente e de IA,
 //    e as linhas de funding (programa, quem recebe, valor, status, ID na AWS). No topo, o
 //    consumo somado e quanto dele o funding garantido cobre.
-//  · ARQUÉTIPOS — os modelos de implantação (SaaS LIFF, dedicado, híbrido, 100% cliente) com
-//    as calculadoras oficiais da AWS de cada um, por região, porte e conta que paga.
+//  · ARQUÉTIPOS — em pastas, uma por Módulo / Produto (ex.: LIFF Tax Reform): os modelos de
+//    implantação (SaaS LIFF, dedicado, híbrido, 100% cliente) com as calculadoras oficiais da
+//    AWS de cada um, por região, porte e conta que paga.
 //  · PROGRAMAS — o catálogo de programas de funding (POC Credits, POC Cash, MAP…).
 //
 // Regras em `lib/funding.ts`. A ligação da estimativa com o card do comercial existe no banco
@@ -21,14 +22,16 @@ import { Modal } from "./views";
 import {
   CONTAS, FORMAS_FUNDING, MODELOS_OPERACAO, PORTES, REGIOES, STATUS_FUNDING, cobertura, consumo, funding, rotuloConta,
   rotuloModelo, rotuloRegiao, rotuloStatusFunding, sugestaoDaCalculadora, usd, usdCurto,
-  type Arquetipo, type Calculadora, type Estimativa, type LinhaFunding, type Programa,
+  type Arquetipo, type Calculadora, type Estimativa, type LinhaFunding, type Pasta, type Programa,
 } from "@/lib/funding";
 
-type Dados = { programas: Programa[]; arquetipos: Arquetipo[]; estimativas: Estimativa[] };
+type Produto = { id: string; label: string; area: string };
+type Dados = { pastas: Pasta[]; produtos: Produto[]; programas: Programa[]; arquetipos: Arquetipo[]; estimativas: Estimativa[] };
 type Aba = "estimativas" | "arquetipos" | "programas";
 type Abrir =
   | { tipo: "estimativa"; id: number | null }
-  | { tipo: "arquetipo"; id: number | null }
+  | { tipo: "arquetipo"; id: number | null; pastaId?: number | null }
+  | { tipo: "pasta"; id: number | null }
   | { tipo: "calculadora"; arquetipoId: number; calc: Calculadora | null }
   | { tipo: "programa"; programa: Programa | null };
 
@@ -80,9 +83,14 @@ export default function Funding({ gatilho }: { gatilho: number | undefined }) {
             </Button>
           )}
           {aba === "arquetipos" && (
-            <Button variant="solid" size="sm" onClick={() => setAbrir({ tipo: "arquetipo", id: null })}>
-              + arquétipo
-            </Button>
+            <span style={{ display: "flex", gap: 10 }}>
+              <Button variant="ghost" size="sm" onClick={() => setAbrir({ tipo: "pasta", id: null })} style={GHOST_FIX}>
+                + pasta
+              </Button>
+              <Button variant="solid" size="sm" onClick={() => setAbrir({ tipo: "arquetipo", id: null })}>
+                + arquétipo
+              </Button>
+            </span>
           )}
           {aba === "programas" && (
             <Button variant="solid" size="sm" onClick={() => setAbrir({ tipo: "programa", programa: null })}>
@@ -95,7 +103,9 @@ export default function Funding({ gatilho }: { gatilho: number | undefined }) {
       {aba === "estimativas" && <Estimativas dados={dados} arqPorId={arqPorId} onAbrir={(id) => setAbrir({ tipo: "estimativa", id })} />}
       {aba === "arquetipos" && (
         <Arquetipos
-          arquetipos={dados.arquetipos}
+          dados={dados}
+          onPasta={(id) => setAbrir({ tipo: "pasta", id })}
+          onNovoNaPasta={(pastaId) => setAbrir({ tipo: "arquetipo", id: null, pastaId })}
           onEditar={(id) => setAbrir({ tipo: "arquetipo", id })}
           onCalc={(arquetipoId, calc) => setAbrir({ tipo: "calculadora", arquetipoId, calc })}
         />
@@ -118,6 +128,20 @@ export default function Funding({ gatilho }: { gatilho: number | undefined }) {
       {abrir?.tipo === "arquetipo" && (
         <FormArquetipo
           arquetipo={abrir.id != null ? arqPorId.get(abrir.id) ?? null : null}
+          pastas={dados.pastas}
+          pastaInicial={abrir.pastaId ?? (dados.pastas.length === 1 ? dados.pastas[0].id : null)}
+          onFechar={() => setAbrir(null)}
+          onMudou={() => {
+            setAbrir(null);
+            recarregar();
+          }}
+        />
+      )}
+      {abrir?.tipo === "pasta" && (
+        <FormPasta
+          pasta={abrir.id != null ? dados.pastas.find((p) => p.id === abrir.id) ?? null : null}
+          produtos={dados.produtos}
+          qtd={abrir.id != null ? dados.arquetipos.filter((a) => a.pastaId === abrir.id).length : 0}
           onFechar={() => setAbrir(null)}
           onMudou={() => {
             setAbrir(null);
@@ -297,7 +321,7 @@ function FormEstimativa({
             <Input value={conta} onChange={setConta} placeholder="Ex.: Medley" />
           </Field>
           <Field label="Arquétipo" hint={arq ? `${rotuloModelo(arq.modelo)} · ${arq.descricao}` : "Como o produto vai rodar para este cliente."}>
-            <Select value={arquetipoId} onChange={setArquetipoId} options={[{ value: "", label: "— escolha —" }, ...dados.arquetipos.filter((a) => a.ativo || String(a.id) === arquetipoId).map((a) => ({ value: String(a.id), label: a.nome }))]} />
+            <Select value={arquetipoId} onChange={setArquetipoId} options={[{ value: "", label: "— escolha —" }, ...dados.arquetipos.filter((a) => a.ativo || String(a.id) === arquetipoId).map((a) => ({ value: String(a.id), label: rotuloArquetipo(a, dados.pastas) }))]} />
           </Field>
           <div className="rec-form__duas">
             <Field label="Região">
@@ -555,18 +579,55 @@ function FormLinha({
 
 /* ============================== arquétipos ============================== */
 
+/** "LIFF Tax Reform · 1 · Compartilhado" quando há pasta. */
+export function rotuloArquetipo(a: Arquetipo, pastas: Pasta[]): string {
+  const p = pastas.find((x) => x.id === a.pastaId);
+  return p ? `${p.nome} · ${a.nome}` : a.nome;
+}
+
+function IconePasta({ aberta }: { aberta: boolean }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" style={{ flex: "none" }}>
+      {aberta ? (
+        <path d="M1.5 4.5v8h11l2-5.5H4l-2 5.5M1.5 4.5V3h4l1.5 1.5H12v2.5" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+      ) : (
+        <path d="M1.5 3h4L7 4.5h7.5v8.5h-13z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+      )}
+    </svg>
+  );
+}
+
 function Arquetipos({
-  arquetipos,
+  dados,
+  onPasta,
+  onNovoNaPasta,
   onEditar,
   onCalc,
 }: {
-  arquetipos: Arquetipo[];
+  dados: Dados;
+  onPasta: (id: number) => void;
+  onNovoNaPasta: (pastaId: number | null) => void;
   onEditar: (id: number) => void;
   onCalc: (arquetipoId: number, calc: Calculadora | null) => void;
 }) {
-  return (
+  const [fechadas, setFechadas] = useState<Set<string>>(new Set());
+  const alternar = (k: string) =>
+    setFechadas((f) => {
+      const n = new Set(f);
+      if (n.has(k)) n.delete(k);
+      else n.add(k);
+      return n;
+    });
+  const semPasta = dados.arquetipos.filter((a) => a.pastaId == null || !dados.pastas.some((p) => p.id === a.pastaId));
+  const grupos: { chave: string; pasta: Pasta | null; lista: Arquetipo[] }[] = [
+    ...dados.pastas.map((p) => ({ chave: String(p.id), pasta: p, lista: dados.arquetipos.filter((a) => a.pastaId === p.id) })),
+    ...(semPasta.length ? [{ chave: "sem", pasta: null, lista: semPasta }] : []),
+  ];
+  if (!grupos.length) return <div style={{ fontSize: 14, color: C.faint }}>Nenhuma pasta ainda. Crie uma por Módulo / Produto com “+ pasta”.</div>;
+
+  const paineis = (lista: Arquetipo[]) => (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {arquetipos.map((a) => (
+      {lista.map((a) => (
         <section key={a.id} className="pn-painel" style={a.ativo ? undefined : { opacity: 0.6 }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", marginBottom: 12 }}>
             <div style={{ minWidth: 0 }}>
@@ -614,15 +675,64 @@ function Arquetipos({
       ))}
     </div>
   );
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+      {grupos.map(({ chave, pasta, lista }) => {
+        const aberta = !fechadas.has(chave);
+        const produto = pasta?.produtoId ? dados.produtos.find((p) => p.id === pasta.produtoId) : undefined;
+        return (
+          <section key={chave} className="fd-pasta">
+            <div className="fd-pasta__topo">
+              <button type="button" className="fd-pasta__nome" aria-expanded={aberta} onClick={() => alternar(chave)}>
+                <span aria-hidden="true" className="fd-pasta__seta">{aberta ? "▾" : "▸"}</span>
+                <IconePasta aberta={aberta} />
+                <span>{pasta ? pasta.nome : "Sem pasta"}</span>
+              </button>
+              {produto && <span className="cop-tag cop-tag--neutro">{produto.label}</span>}
+              <span className="fat-meta">
+                {lista.length} {lista.length === 1 ? "arquétipo" : "arquétipos"}
+              </span>
+              <span style={{ marginLeft: "auto", display: "flex", gap: 14 }}>
+                <button type="button" className="rec-link" onClick={() => onNovoNaPasta(pasta?.id ?? null)}>
+                  + arquétipo
+                </button>
+                {pasta && (
+                  <button type="button" className="rec-link" onClick={() => onPasta(pasta.id)}>
+                    editar pasta
+                  </button>
+                )}
+              </span>
+            </div>
+            {pasta?.descricao && aberta && <div className="fd-pasta__desc">{pasta.descricao}</div>}
+            {aberta && (lista.length ? paineis(lista) : <div style={{ fontSize: 13, color: C.faint, padding: "4px 0 0 26px" }}>Pasta vazia.</div>)}
+          </section>
+        );
+      })}
+    </div>
+  );
 }
 
-function FormArquetipo({ arquetipo: a, onFechar, onMudou }: { arquetipo: Arquetipo | null; onFechar: () => void; onMudou: () => void }) {
+function FormArquetipo({
+  arquetipo: a,
+  pastas,
+  pastaInicial,
+  onFechar,
+  onMudou,
+}: {
+  arquetipo: Arquetipo | null;
+  pastas: Pasta[];
+  pastaInicial: number | null;
+  onFechar: () => void;
+  onMudou: () => void;
+}) {
+  const [pastaId, setPastaId] = useState(a ? (a.pastaId != null ? String(a.pastaId) : "") : pastaInicial != null ? String(pastaInicial) : "");
   const [nome, setNome] = useState(a?.nome ?? "");
   const [modelo, setModelo] = useState<string>(a?.modelo ?? "saas_liff");
   const [descricao, setDescricao] = useState(a?.descricao ?? "");
   const [ativo, setAtivo] = useState(a?.ativo ?? true);
   const [erro, setErro] = useState<string | null>(null);
-  const corpo = { nome, modelo, descricao, ativo };
+  const corpo = { pastaId: pastaId || null, nome, modelo, descricao, ativo };
   const fazer = async (f: () => Promise<unknown>) => {
     setErro(null);
     try {
@@ -634,6 +744,9 @@ function FormArquetipo({ arquetipo: a, onFechar, onMudou }: { arquetipo: Arqueti
   };
   return (
     <Modal titulo={a ? a.nome : "Novo arquétipo"} eyebrowTexto="LIFF/ FUNDING · ARQUÉTIPO" onFechar={onFechar} largura={640}>
+      <Field label="Pasta" hint="O Módulo / Produto a que este arquétipo pertence.">
+        <Select value={pastaId} onChange={setPastaId} options={[{ value: "", label: "— sem pasta —" }, ...pastas.map((p) => ({ value: String(p.id), label: p.nome }))]} />
+      </Field>
       <Field label="Nome" required>
         <Input value={nome} onChange={setNome} placeholder="Ex.: 3 · No ambiente do cliente (célula)" />
       </Field>
@@ -734,6 +847,75 @@ function FormCalculadora({ arquetipo: a, calc: c, onFechar, onMudou }: { arqueti
             cancelar
           </Button>
           <Button variant="solid" size="sm" onClick={() => void fazer(() => (c ? api.fundingAlterar("calculadoras", c.id, corpo) : api.fundingCriar("calculadoras", corpo)))}>
+            salvar
+          </Button>
+        </span>
+      </div>
+    </Modal>
+  );
+}
+
+function FormPasta({
+  pasta: p,
+  produtos,
+  qtd,
+  onFechar,
+  onMudou,
+}: {
+  pasta: Pasta | null;
+  produtos: Produto[];
+  qtd: number;
+  onFechar: () => void;
+  onMudou: () => void;
+}) {
+  const [nome, setNome] = useState(p?.nome ?? "");
+  const [produtoId, setProdutoId] = useState(p?.produtoId ?? "");
+  const [descricao, setDescricao] = useState(p?.descricao ?? "");
+  const [erro, setErro] = useState<string | null>(null);
+  const corpo = { nome, produtoId: produtoId || null, descricao };
+  const fazer = async (f: () => Promise<unknown>) => {
+    setErro(null);
+    try {
+      await f();
+      onMudou();
+    } catch (x) {
+      setErro(x instanceof Error ? x.message : "Não foi possível salvar.");
+    }
+  };
+  const escolherProduto = (v: string) => {
+    setProdutoId(v);
+    const prod = produtos.find((x) => x.id === v);
+    if (prod && !nome.trim()) setNome(prod.label);
+  };
+  return (
+    <Modal titulo={p ? p.nome : "Nova pasta de arquétipos"} eyebrowTexto="LIFF/ FUNDING · PASTA" onFechar={onFechar} largura={560}>
+      <Field label="Módulo / Produto" hint="Opcional. Liga a pasta a um item do cadastro.">
+        <Select value={produtoId} onChange={escolherProduto} options={[{ value: "", label: "— nenhum —" }, ...produtos.map((x) => ({ value: x.id, label: x.label }))]} />
+      </Field>
+      <Field label="Nome" required>
+        <Input value={nome} onChange={setNome} placeholder="Ex.: LIFF Tax Reform" />
+      </Field>
+      <Field label="Descrição">
+        <textarea value={descricao} onChange={(x) => setDescricao(x.target.value)} rows={3} className="rec-notas" placeholder="De onde vêm os números, versão do documento de custos…" />
+      </Field>
+      {erro && <div style={{ fontFamily: MONO, fontSize: 11, color: C.error }}>{erro}</div>}
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
+        {p ? (
+          qtd ? (
+            <span className="fat-meta">Para excluir, mova ou exclua os {qtd} arquétipo(s) da pasta.</span>
+          ) : (
+            <button type="button" className="rec-link" style={{ color: C.error }} onClick={() => window.confirm(`Excluir a pasta ${p.nome}?`) && void fazer(() => api.fundingExcluir("pastas", p.id))}>
+              excluir pasta
+            </button>
+          )
+        ) : (
+          <span />
+        )}
+        <span style={{ display: "flex", gap: 10 }}>
+          <Button variant="ghost" size="sm" onClick={onFechar} style={GHOST_FIX}>
+            cancelar
+          </Button>
+          <Button variant="solid" size="sm" disabled={!nome.trim()} onClick={() => void fazer(() => (p ? api.fundingAlterar("pastas", p.id, corpo) : api.fundingCriar("pastas", corpo)))}>
             salvar
           </Button>
         </span>
