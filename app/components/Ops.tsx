@@ -51,6 +51,9 @@ function saudacaoDaHora(hora: number): string {
   return hora >= 5 && hora < 12 ? "Bom dia" : hora >= 12 && hora < 18 ? "Boa tarde" : "Boa noite";
 }
 
+/** Etapas que o resumo de status reporta quando a pessoa ainda não escolheu: tudo menos Prospecção e Lost. */
+const ETAPAS_DO_RESUMO_PADRAO: string[] = STAGE_KEYS.filter((k) => k !== "prospeccao" && k !== "lost");
+
 const DIAS_CRITICO = 7;
 
 /** Dias inteiros entre hoje e o prazo. Negativo = atrasado, 0 = hoje. */
@@ -131,6 +134,9 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
   const [cadEditando, setCadEditando] = useState<{ tipo: "produto"; id: string } | { tipo: "pessoa"; id: number } | null>(null);
   const [waAberto, setWaAberto] = useState(false);
   const [waArea, setWaArea] = useState("all");
+  // Etapas do funil que entram no resumo. O padrão deixa de fora Prospecção (ainda não houve
+  // conversa) e Lost; a escolha fica no perfil, como as outras preferências.
+  const [waEtapas, setWaEtapas] = useState<string[]>(ETAPAS_DO_RESUMO_PADRAO);
   const [copiado, setCopiado] = useState(false);
   const [criando, setCriando] = useState<null | "atividade" | "oportunidade">(null);
   /** Gaveta da navegação. Só tem efeito abaixo de 860px — no desktop a lateral é fixa. */
@@ -179,6 +185,8 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           operacoes: ler(s.me.preferencias?.recolhidasOperacoes, STATUS_KEYS),
         });
         if (menuSalvo === "recolhido") setRecolhida(true);
+        // Só troca o padrão se a pessoa já escolheu alguma vez (a chave existe, mesmo vazia).
+        if (s.me.preferencias?.resumoEtapas !== undefined) setWaEtapas(ler(s.me.preferencias.resumoEtapas, STAGE_KEYS));
         // O leitor descarta chave inválida, então preferência antiga ou corrompida volta
         // como "todos" em vez de virar um filtro que não casa com nada.
         const resp = lerSelecaoDeResponsaveis(respSalvos);
@@ -706,21 +714,34 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
       L.push("");
     }
 
-    if (deals.length) {
-      const abertos = deals.filter((x) => estagioEmAberto(x.estagio));
+    // Só as etapas escolhidas no próprio resumo. Prospecção, por exemplo, costuma ficar de fora.
+    const reportados = deals.filter((x) => waEtapas.includes(x.estagio));
+    if (reportados.length) {
+      const abertos = reportados.filter((x) => estagioEmAberto(x.estagio));
+      const todasAbertas = STAGE_KEYS.filter((k) => estagioEmAberto(k));
+      const fora = todasAbertas.filter((k) => !waEtapas.includes(k));
+      // Sem nenhuma de fora é o pipeline aberto inteiro; só sem Prospecção é o que está em
+      // negociação; qualquer outro recorte diz as etapas, para o número não enganar.
+      const recorte =
+        fora.length === 0
+          ? "Pipeline aberto"
+          : fora.length === 1 && fora[0] === "prospeccao"
+            ? "Pipeline em negociação"
+            : `Pipeline (${todasAbertas.filter((k) => waEtapas.includes(k)).map(stageLabel).join(", ")})`;
       L.push("*Comercial*");
-      L.push(
-        `- Pipeline aberto: ${brl(abertos.reduce((s, x) => s + x.valorCentavos, 0))} em ${abertos.length} oportunidades`
-      );
-      const ganhos = deals.filter((x) => x.estagio === "ganho");
+      if (abertos.length) {
+        L.push(`- ${recorte}: ${brl(abertos.reduce((s, x) => s + x.valorCentavos, 0))} em ${abertos.length} oportunidades`);
+      }
+      const ganhos = reportados.filter((x) => x.estagio === "ganho");
       if (ganhos.length) L.push(`- Ganhos no período: ${ganhos.map((g) => g.conta).join(", ")}`);
       // On hold saiu do pipeline aberto, mas não pode sumir do resumo: foi decisão de esperar,
       // e quem lê precisa saber o que está esperando.
-      const emEspera = deals.filter((x) => x.estagio === "on_hold");
+      const emEspera = reportados.filter((x) => x.estagio === "on_hold");
       if (emEspera.length) L.push(`- On hold: ${emEspera.map((x) => x.conta).join(", ")}`);
+      const perdidas = reportados.filter((x) => x.estagio === "lost");
+      if (perdidas.length) L.push(`- Lost: ${perdidas.map((x) => x.conta).join(", ")}`);
 
-      // Todas as oportunidades abertas, do fim do funil para o começo. Antes eram três, de
-      // um trecho do funil — quem lia o resumo não tinha como saber que o resto existia.
+      // As oportunidades abertas das etapas escolhidas, do fim do funil para o começo.
       // Desempate por valor: dentro do mesmo estágio, primeiro o que pesa mais.
       const posicao = (k: string) => STAGES.findIndex((s) => s.key === k);
       [...abertos]
@@ -746,7 +767,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     L.push(`Alterações registradas hoje: ${estado.logs.filter((l) => l.criadoEm.slice(0, 10) === hojeISO).length}`);
     L.push(`Reportado por ${estado.me.nome} via LIFF go`);
     return L.join("\n");
-  }, [estado, waArea]);
+  }, [estado, waArea, waEtapas]);
 
   // Tela só de admin aberta por quem não é (link colado, estado antigo): volta para o início,
   // em vez de mostrar o título da tela sobre o conteúdo de outra.
@@ -1491,6 +1512,13 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         <WaModal
           tabs={[{ id: "all", label: "Geral", color: C.dust }, ...dados.areasVisiveis.map((a) => ({ id: a.id, label: a.label, color: a.color }))]}
           areaAtiva={waArea}
+          etapas={waEtapas}
+          onEtapa={(k) => {
+            const nova = waEtapas.includes(k) ? waEtapas.filter((x) => x !== k) : STAGE_KEYS.filter((x) => x === k || waEtapas.includes(x));
+            setWaEtapas(nova);
+            setCopiado(false);
+            lembrar({ resumoEtapas: nova.join(",") });
+          }}
           texto={waTexto}
           copiado={copiado}
           onArea={(id) => {

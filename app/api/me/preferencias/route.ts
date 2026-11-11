@@ -14,7 +14,7 @@ import { requireCtx } from "@/lib/perms";
 import { json, err } from "@/lib/http";
 import { lerSelecaoDeResponsaveis, MAX_RESPONSAVEIS_NA_SELECAO, STAGE_KEYS, STATUS_KEYS } from "@/lib/domain";
 
-type Body = { tema?: string; area?: string; responsaveis?: string; densidade?: string; menu?: string; recolhidasComercial?: string; recolhidasOperacoes?: string };
+type Body = { tema?: string; area?: string; responsaveis?: string; densidade?: string; menu?: string; recolhidasComercial?: string; recolhidasOperacoes?: string; resumoEtapas?: string };
 
 const TEMAS = ["dark", "light"];
 const DENSIDADES = ["completo", "compacto"];
@@ -50,7 +50,8 @@ export async function PATCH(req: Request) {
 
   // Colunas recolhidas de cada kanban: as chaves separadas por vírgula, vazio para nenhuma.
   // Chave fora da lista é recusada, pelo mesmo motivo do filtro de responsável logo abaixo.
-  for (const [campo, validas] of [["recolhidasComercial", STAGE_KEYS], ["recolhidasOperacoes", STATUS_KEYS]] as const) {
+  // `resumoEtapas` segue o mesmo formato: as etapas do funil que entram no resumo de status.
+  for (const [campo, validas] of [["recolhidasComercial", STAGE_KEYS], ["recolhidasOperacoes", STATUS_KEYS], ["resumoEtapas", STAGE_KEYS]] as const) {
     const v = body[campo];
     if (v === undefined) continue;
     if (typeof v !== "string") return err("Colunas inválidas.", 400);

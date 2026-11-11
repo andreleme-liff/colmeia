@@ -1782,6 +1782,8 @@ export function Drawer({
 export function WaModal({
   tabs,
   areaAtiva,
+  etapas,
+  onEtapa,
   texto,
   copiado,
   onArea,
@@ -1790,6 +1792,9 @@ export function WaModal({
 }: {
   tabs: OpcaoArea[];
   areaAtiva: string;
+  /** Etapas do funil que entram no resumo. */
+  etapas: string[];
+  onEtapa: (chave: string) => void;
   texto: string;
   copiado: boolean;
   onArea: (id: string) => void;
@@ -1800,6 +1805,35 @@ export function WaModal({
     <Modal titulo="Resumo de status" eyebrowTexto="LIFF/ REPORT" onFechar={onFechar} largura={640}>
         <div>
           <SeletorArea opcoes={tabs} valor={areaAtiva} onChange={onArea} larguraTotal />
+        </div>
+
+        {/* Quais etapas do funil o resumo reporta. Fica guardado: da próxima vez abre igual. */}
+        <div>
+          <div style={{ ...eyebrow(10, C.faint, "0.14em"), marginBottom: 8 }}>ETAPAS NO RESUMO</div>
+          <div role="group" aria-label="Etapas do funil no resumo" style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {STAGES.map((e) => {
+              const on = etapas.includes(e.key);
+              return (
+                <button
+                  key={e.key}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => onEtapa(e.key)}
+                  style={{
+                    ...eyebrow(11, on ? C.ink : C.faint, "0.06em"),
+                    textTransform: "none",
+                    padding: "6px 10px",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                    border: `1px solid ${on ? C.accent : C.line}`,
+                    background: on ? "color-mix(in srgb, var(--liff-accent) 12%, transparent)" : "transparent",
+                  }}
+                >
+                  {e.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div>
