@@ -490,7 +490,10 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
       })(),
 
 
-      logs: logs.slice(0, 8),
+      // Na home, só o que mexeu num card do kanban comercial (C-) ou operacional (T-); as
+      // formas antigas D- e A- contam. Cadastros, organizações, receita e o resto ficam no
+      // changelog completo.
+      logs: logs.filter((l) => /^[CTDA]-\d+$/.test(l.entidade)).slice(0, 8),
     };
 
     const colunasDeal = STAGES.map((s) => {
