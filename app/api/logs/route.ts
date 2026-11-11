@@ -4,6 +4,7 @@
 //
 // A regra de visibilidade é a mesma do estado: linha sem área (sistema) ou de área visível.
 
+import { ENTIDADES_SO_ADMIN } from "@/lib/log";
 import { getDb } from "@/lib/db";
 import { requireCtx } from "@/lib/perms";
 import { json } from "@/lib/http";
@@ -23,7 +24,8 @@ export async function GET() {
     FROM audit_log l
     LEFT JOIN users u ON u.id = l.actor_user_id
     LEFT JOIN oauth_concessoes k ON k.id = l.concessao_id
-    WHERE l.area IS NULL OR l.area = ANY(${ctx.areasVisiveis})
+    WHERE (l.area IS NULL OR l.area = ANY(${ctx.areasVisiveis}))
+      AND (${ctx.isAdmin} OR l.entidade !~ ${ENTIDADES_SO_ADMIN})
     ORDER BY l.criado_em DESC, l.id DESC
     LIMIT ${LIMITE_AUDITORIA}
   `;

@@ -22,6 +22,14 @@ export type Mudanca = {
   concessaoId?: number | null;
 };
 
+/**
+ * Linhas de auditoria que só a administração vê: cadastros (verticais, origens, módulos /
+ * produtos, pessoas e permissões), receita (contratos R-) e faturamento (faturas F-). Casa
+ * pela referência gravada em `entidade`. Efeitos desses cadastros nos cards (ex.: responsável
+ * trocado ao excluir uma pessoa) ficam com a referência do card e continuam visíveis.
+ */
+export const ENTIDADES_SO_ADMIN = "^(AREA|ORIGEM|PROD|U|R|F)-";
+
 export async function registrar(sql: Queryable, m: Mudanca): Promise<void> {
   await sql`
     INSERT INTO audit_log (actor_user_id, area, entidade, campo, valor_anterior, valor_novo, texto, origem, concessao_id)

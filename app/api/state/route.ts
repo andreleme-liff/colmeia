@@ -1,6 +1,7 @@
 // Estado completo já recortado pela permissão do usuário.
 // O front recebe só o que pode ver — a filtragem acontece no SQL, não no navegador.
 
+import { ENTIDADES_SO_ADMIN } from "@/lib/log";
 import { getDb } from "@/lib/db";
 import { requireCtx } from "@/lib/perms";
 import { json } from "@/lib/http";
@@ -124,7 +125,8 @@ export async function GET() {
       FROM audit_log l
       LEFT JOIN users u ON u.id = l.actor_user_id
       LEFT JOIN oauth_concessoes k ON k.id = l.concessao_id
-      WHERE l.area IS NULL OR l.area = ANY(${areas})
+      WHERE (l.area IS NULL OR l.area = ANY(${areas}))
+        AND (${ctx.isAdmin} OR l.entidade !~ ${ENTIDADES_SO_ADMIN})
       ORDER BY l.criado_em DESC, l.id DESC
       LIMIT 200
     `,
