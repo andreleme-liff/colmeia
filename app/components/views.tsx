@@ -7,9 +7,10 @@
 import { useEffect, useState, type CSSProperties, type MouseEvent, type ReactNode, type RefObject, useRef } from "react";
 import { Button, Field, Input, Select, Switch } from "./ds";
 import { C, GHOST_FIX, MONO, SANS, dot, eyebrow, mesh, statusColor } from "./tokens";
-import { type Activity, type AreaCadastro, type Deal, type LogEntry, type NovaOportunidade, type Origem, type Pessoa } from "./api";
+import { type Activity, type AreaCadastro, type Deal, type LogEntry, type NovaOportunidade, type OrganizacaoResumo, type Origem, type Pessoa } from "./api";
 import SeletorArea, { type OpcaoArea } from "./SeletorArea";
 import Historico from "./Historico";
+import { chaveCliente } from "@/lib/cliente";
 import Permissoes from "./Permissoes";
 import ViaConexao from "./ViaConexao";
 import { CardOportunidade } from "./CardOportunidade";
@@ -2184,12 +2185,15 @@ export function FormOportunidade({
   tarefas = [],
   onAbrirTarefa,
   origens = [],
+  organizacoes = [],
 }: {
   areasEditaveis: { id: string; label: string }[];
   pessoas: OpcaoPessoa[];
   /** Produtos da área — na oportunidade, são os módulos de interesse. */
   produtos: { id: string; label: string; area: string; ativo: boolean }[];
   origens?: Origem[];
+  /** Cadastro de organizações que a pessoa enxerga. */
+  organizacoes?: OrganizacaoResumo[];
   salvando: boolean;
   erro: string | null;
   /** Ausente = criação. */
@@ -2204,6 +2208,9 @@ export function FormOportunidade({
 }) {
   const editando = !!inicial;
   const [conta, setConta] = useState(inicial?.conta ?? "");
+  // Casa pelo nome normalizado: "GLOBE QUIMICA S.A" acha "Globe Química".
+  const chaveDigitada = chaveCliente(conta);
+  const orgEscolhida = chaveDigitada ? organizacoes.find((o) => o.chaves.includes(chaveDigitada)) : undefined;
   // Na edição vem a área do registro; na criação, em branco — ver NovaAtividade.
   const [area, setArea] = useState(inicial?.area ?? "");
   const [estagio, setEstagio] = useState<string>(inicial?.estagio ?? ESTAGIO_INICIAL);
@@ -2248,7 +2255,8 @@ export function FormOportunidade({
 
   const enviar = () =>
     onSalvar({
-      conta,
+      conta: orgEscolhida?.nome ?? conta,
+      clienteId: orgEscolhida?.id ?? null,
       area,
       estagio,
       valorReais: Number(valor.replace(/\./g, "").replace(",", ".")) || 0,
@@ -2293,8 +2301,32 @@ export function FormOportunidade({
           rolar por cima dos dados de cadastro. No celular vira uma coluna só. */}
       <div className="cortina-duas">
       <div className="cortina-col">
-      <Field label="Conta" required>
-        <Input placeholder="Razão social" value={conta} onChange={setConta} />
+      {/* A conta é uma organização do cadastro: escolhe-se uma que existe, ou digita-se um nome
+          novo e ela é cadastrada ao salvar. O nome mostrado no card é sempre o do cadastro. */}
+      <Field
+        label="Organização"
+        required
+        hint={
+          orgEscolhida
+            ? `Do cadastro: ${orgEscolhida.nome} (${orgEscolhida.ref}).${orgEscolhida.nome !== conta.trim() ? " O card vai mostrar esse nome." : ""}`
+            : conta.trim()
+              ? "Não está no cadastro: será criada uma organização nova ao salvar."
+              : "Escolha uma organização do cadastro ou digite o nome de uma nova."
+        }
+      >
+        <input
+          list="liff-organizacoes"
+          value={conta}
+          onChange={(e) => setConta(e.target.value)}
+          placeholder="Nome da organização"
+          autoComplete="off"
+          style={campoNativo}
+        />
+        <datalist id="liff-organizacoes">
+          {organizacoes.map((o) => (
+            <option key={o.id} value={o.nome} />
+          ))}
+        </datalist>
       </Field>
 
       <div style={duas}>

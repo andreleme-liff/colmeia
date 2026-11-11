@@ -972,6 +972,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             busca={busca}
             gatilho={estado.logs[0]?.id}
             isAdmin={estado.isAdmin}
+            podeCriar={estado.isAdmin || areasEditaveis.length > 0}
             onAbrirDeal={(ref) => navegar({ view: "comercial", ref })}
           />
         );
@@ -1397,6 +1398,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
       {criando === "oportunidade" && (
         <FormOportunidade
           origens={estado.origens}
+          organizacoes={estado.organizacoes}
           areasEditaveis={areasEditaveis}
           pessoas={pessoasAtivas}
           produtos={estado.produtos}
@@ -1410,6 +1412,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
       {dealEmEdicao && (
         <FormOportunidade
           origens={estado.origens}
+          organizacoes={estado.organizacoes}
           inicial={dealEmEdicao}
           tarefas={estado.activities.filter((a) => a.oportunidadeId === dealEmEdicao.id)}
           onAbrirTarefa={(ref) => navegar({ view: "operacoes", ref })}

@@ -149,7 +149,11 @@ export type State = {
   deals: Deal[];
   logs: LogEntry[];
   pessoas: Pessoa[];
+  /** Cadastro de organizações visível: a oportunidade escolhe a conta daqui. */
+  organizacoes: OrganizacaoResumo[];
 };
+
+export type OrganizacaoResumo = { id: number; ref: string; nome: string; chaves: string[] };
 
 export type NovaAtividade = {
   titulo: string;
@@ -166,6 +170,8 @@ export type NovaAtividade = {
 
 export type NovaOportunidade = {
   conta: string;
+  /** Organização do cadastro; `null` = nome novo, o servidor cadastra. */
+  clienteId?: number | null;
   area: string;
   estagio: string;
   valorReais: number;

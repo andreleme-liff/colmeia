@@ -37,8 +37,8 @@ export type ClienteLido = Cliente & {
 };
 
 /**
- * `areas`: quando vem (quem não é admin), só as organizações com ao menos uma oportunidade
- * num desses produtos. É a mesma regra do resto do sistema: o que a pessoa não enxerga não existe.
+ * `areas`: quando vem (quem não é admin), as organizações com ao menos uma oportunidade num
+ * desses produtos, mais as que não têm oportunidade nenhuma. É a mesma regra do resto do sistema: o que a pessoa não enxerga não existe.
  */
 export async function lerClientes(sql: Queryable, id?: number, areas?: string[]): Promise<ClienteLido[]> {
   const rows = await sql<Linha[]>`
@@ -54,7 +54,9 @@ export async function lerClientes(sql: Queryable, id?: number, areas?: string[])
     FROM clientes c
     WHERE (${id ?? null}::int IS NULL OR c.id = ${id ?? null})
       AND (${areas ?? null}::text[] IS NULL
-           OR EXISTS (SELECT 1 FROM deals d WHERE d.cliente_id = c.id AND d.area = ANY(${areas ?? []}::text[])))
+           OR EXISTS (SELECT 1 FROM deals d WHERE d.cliente_id = c.id AND d.area = ANY(${areas ?? []}::text[]))
+           -- Organização sem oportunidade nenhuma não é de produto nenhum: todos enxergam.
+           OR NOT EXISTS (SELECT 1 FROM deals d WHERE d.cliente_id = c.id))
     ORDER BY lower(c.nome) ASC, c.id ASC
   `;
   return rows.map((r) => ({
@@ -146,14 +148,23 @@ async function semearContatos(tx: Queryable, clienteId: number, novos: Contato[]
  * para o cliente os contatos escritos no card. Chamada na criação, na troca de nome e na
  * carga inicial.
  */
-export async function vincularOportunidade(tx: Queryable, dealId: number, autor: AutorCliente): Promise<number | null> {
+export async function vincularOportunidade(
+  tx: Queryable,
+  dealId: number,
+  autor: AutorCliente,
+  /** Organização escolhida no cadastro. Sem ela, vale a do nome escrito na oportunidade. */
+  escolhida?: number
+): Promise<number | null> {
   const [d] = await tx<{ ref: string; conta: string; contato: string; contato_operacional: string; cliente_id: number | null }[]>`
     SELECT ref, conta, contato, contato_operacional, cliente_id FROM deals WHERE id = ${dealId}
   `;
   if (!d) return null;
-  const clienteId = await clienteDaConta(tx, d.conta, autor, `da oportunidade ${d.ref}`);
+  const clienteId = escolhida ?? (await clienteDaConta(tx, d.conta, autor, `da oportunidade ${d.ref}`));
   if (clienteId !== d.cliente_id) await tx`UPDATE deals SET cliente_id = ${clienteId} WHERE id = ${dealId}`;
   if (clienteId != null) {
+    // O nome é dado mestre da organização: a oportunidade mostra o do cadastro, não a grafia
+    // que alguém digitou. `conta` continua existindo como cópia, para busca, relatório e MCP.
+    await tx`UPDATE deals d SET conta = c.nome FROM clientes c WHERE d.id = ${dealId} AND c.id = ${clienteId} AND d.conta <> c.nome`;
     await semearContatos(tx, clienteId, [
       ...contatosDoTexto(d.contato, "sponsor"),
       ...contatosDoTexto(d.contato_operacional, "operacional"),
@@ -237,6 +248,22 @@ export async function ligarPendentes(sql: Queryable): Promise<void> {
   for (const d of deals) await vincularOportunidade(sql, d.id, SISTEMA);
   const contratos = await sql<{ id: number }[]>`SELECT id FROM contratos WHERE cliente_id IS NULL ORDER BY id`;
   for (const k of contratos) await vincularContrato(sql, k.id, SISTEMA);
+  await propagarNome(sql, null);
+}
+
+/**
+ * Leva o nome do cadastro para as oportunidades e receitas ligadas a ele (todas, ou as de uma
+ * organização). Fatura não muda: é registro fiscal do que foi emitido com aquele nome.
+ */
+async function propagarNome(tx: Queryable, clienteId: number | null): Promise<void> {
+  await tx`
+    UPDATE deals d SET conta = c.nome FROM clientes c
+    WHERE d.cliente_id = c.id AND d.conta <> c.nome AND (${clienteId}::int IS NULL OR c.id = ${clienteId})
+  `;
+  await tx`
+    UPDATE contratos k SET conta = c.nome FROM clientes c
+    WHERE k.cliente_id = c.id AND k.conta <> c.nome AND (${clienteId}::int IS NULL OR c.id = ${clienteId})
+  `;
 }
 
 // ---------- gravação ----------
@@ -330,6 +357,8 @@ export async function atualizarCliente(
     INSERT INTO cliente_chaves (chave, cliente_id, nome, principal) VALUES (${chave}, ${id}, ${e.nome}, true)
     ON CONFLICT (chave) DO UPDATE SET principal = true, nome = EXCLUDED.nome
   `;
+
+  await propagarNome(tx, id);
 
   let mudancas = 0;
   for (const [campo, rotulo] of ROTULOS) {
@@ -425,6 +454,7 @@ export async function mesclarClientes(
     WHERE id = ${destinoId}
   `;
   await tx`DELETE FROM clientes WHERE id = ${origemId}`;
+  await propagarNome(tx, destinoId);
   await registrar(tx, {
     ...marca(autor), area: null, entidade: destino.ref, campo: "mescla", de: `${origem.nome} (${origem.ref})`, para: destino.nome,
     texto: `Mesclou a organização ${origem.nome} (${origem.ref}) em ${destino.nome} (${destino.ref})`,

@@ -21,6 +21,9 @@ export async function criarOportunidade(
   body: Record<string, unknown>,
   autor: Autor
 ): Promise<Falha | { ok: true; id: number; ref: string }> {
+  const org = await organizacaoEscolhida(tx, body);
+  if (org && "erro" in org) return org;
+  if (org) body = { ...body, conta: org.nome };
   const plano = planejarCriacaoOportunidade(body, perm, await carregarFatos(tx));
   if (ehFalha(plano)) return plano;
   const l = plano.linha;
@@ -40,8 +43,9 @@ export async function criarOportunidade(
     RETURNING id
   `;
   await gravarModulos(tx, nova.id, l.modulos);
-  // Toda oportunidade nasce ligada a um cliente: o que já existe com esse nome, ou um novo.
-  await vincularOportunidade(tx, nova.id, autor);
+  // Toda oportunidade referencia uma organização do cadastro: a escolhida, ou (importação, MCP,
+  // nome novo digitado) a que responde por aquele nome, criada se for a primeira.
+  await vincularOportunidade(tx, nova.id, autor, org?.id);
 
   await registrar(tx, {
     ...plano.auditoria,
@@ -53,6 +57,21 @@ export async function criarOportunidade(
   });
 
   return { ok: true, id: nova.id, ref };
+}
+
+/**
+ * `clienteId` no corpo = organização escolhida no cadastro. Devolve a organização, uma falha
+ * se o id não existe, ou `null` quando o corpo não escolhe nenhuma (vale o nome em `conta`).
+ */
+async function organizacaoEscolhida(
+  tx: Queryable,
+  body: Record<string, unknown>
+): Promise<{ id: number; nome: string } | Falha | null> {
+  const v = body.clienteId;
+  if (v == null) return null;
+  if (typeof v !== "number" || !Number.isInteger(v) || v <= 0) return { ok: false, erro: "Organização inválida.", status: 400 };
+  const [org] = await tx<{ id: number; nome: string }[]>`SELECT id, nome FROM clientes WHERE id = ${v}`;
+  return org ?? { ok: false, erro: "Organização não encontrada no cadastro.", status: 400 };
 }
 
 /** Troca a lista inteira de módulos da oportunidade. Dentro da transação de quem chama. */
@@ -121,6 +140,10 @@ export async function atualizarOportunidade(
   const atual = await lerAtual(tx, dealId);
   if (!atual) return { ok: false, erro: "Oportunidade não encontrada.", status: 404 };
 
+  const org = body.direcao !== undefined ? null : await organizacaoEscolhida(tx, body);
+  if (org && "erro" in org) return org;
+  if (org) body = { ...body, conta: org.nome };
+
   const plano =
     body.direcao !== undefined
       ? planejarMovimento(atual, body.direcao, perm)
@@ -128,7 +151,7 @@ export async function atualizarOportunidade(
   if (ehFalha(plano)) return plano;
 
   await aplicar(tx, dealId, atual.ref, plano, autor);
-  // Nome da conta trocado: a oportunidade vai para o cliente do nome novo.
-  if (plano.sets.conta !== undefined) await vincularOportunidade(tx, dealId, autor);
+  // Organização trocada (escolhida no cadastro, ou pelo nome): a oportunidade muda de dono.
+  if (org || plano.sets.conta !== undefined) await vincularOportunidade(tx, dealId, autor, org?.id);
   return { ok: true, ref: atual.ref, mudancas: plano.mudancas.length };
 }

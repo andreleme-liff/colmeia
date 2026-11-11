@@ -43,7 +43,10 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/clientes/
     if (!atual) return err("Organização não encontrada.", 404);
     const [edita] = ctx.areasEditaveis.length
       ? await sql<{ id: number }[]>`
-          SELECT id FROM deals WHERE cliente_id = ${id} AND area = ANY(${ctx.areasEditaveis}::text[]) LIMIT 1
+          SELECT c.id FROM clientes c
+          WHERE c.id = ${id}
+            AND (EXISTS (SELECT 1 FROM deals d WHERE d.cliente_id = c.id AND d.area = ANY(${ctx.areasEditaveis}::text[]))
+                 OR NOT EXISTS (SELECT 1 FROM deals d WHERE d.cliente_id = c.id))
         `
       : [];
     if (!edita) return err("Sem permissão de edição nesta organização.", 403);

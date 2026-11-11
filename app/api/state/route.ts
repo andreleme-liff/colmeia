@@ -1,6 +1,7 @@
 // Estado completo já recortado pela permissão do usuário.
 // O front recebe só o que pode ver — a filtragem acontece no SQL, não no navegador.
 
+import { lerClientes } from "@/lib/clientes-db";
 import { ENTIDADES_SO_ADMIN } from "@/lib/log";
 import { getDb } from "@/lib/db";
 import { requireCtx } from "@/lib/perms";
@@ -204,6 +205,11 @@ export async function GET() {
     mcpHabilitado: lerConfig(process.env).habilitado,
     // Cadastro de origens: todas (as inativas também, para o card mostrar a que já estava).
     origens: [...origens],
+    // Cadastro de organizações que a pessoa enxerga: é de onde o formulário da oportunidade
+    // escolhe a conta. `chaves` são os nomes (normalizados) que caem em cada uma.
+    organizacoes: (await lerClientes(sql, undefined, ctx.isAdmin ? undefined : ctx.areasVisiveis)).map((c) => ({
+      id: c.id, ref: c.ref, nome: c.nome, chaves: c.chaves,
+    })),
     activities: atividades.map((a) => ({
       id: a.id,
       ref: a.ref,

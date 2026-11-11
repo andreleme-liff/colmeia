@@ -1,8 +1,9 @@
 "use client";
 
 // Organizações (ex-Clientes): a visão centrada na organização. Para todos, com o recorte por
-// produto feito no servidor; receita, faturas, cobrança, cadastro manual, mescla e exclusão só
-// aparecem para a administração.
+// produto feito no servidor; receita, faturas, cobrança, mescla e exclusão só aparecem para a
+// administração. A organização é o dado mestre: existe sem oportunidade, e a oportunidade é que
+// aponta para ela (o nome do card vem daqui).
 //
 // De cima para baixo:
 //  1. números — quantos clientes, quantos em negociação (organizações distintas, sem prospecção), com contrato (receita
@@ -72,6 +73,7 @@ export default function Clientes({
   busca,
   gatilho,
   isAdmin,
+  podeCriar,
   onAbrirDeal,
 }: {
   deals: Deal[];
@@ -80,6 +82,8 @@ export default function Clientes({
   gatilho: number | undefined;
   /** Admin vê também receita, faturas e cobrança, e pode cadastrar, mesclar e excluir. */
   isAdmin: boolean;
+  /** Cadastra organização quem edita algum produto (ou é admin). */
+  podeCriar: boolean;
   onAbrirDeal: (ref: string) => void;
 }) {
   const [dados, setDados] = useState<{ clientes: ClienteLido[]; contratos: Contrato[]; faturas: Fatura[] } | null>(null);
@@ -257,7 +261,7 @@ export default function Clientes({
         <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>
           {lista.length} de {naArea.length}
         </span>
-        {isAdmin && (
+        {podeCriar && (
           <span style={{ marginLeft: "auto" }}>
             <Button variant="solid" size="sm" onClick={() => setAberto("novo")}>
               + organização
@@ -269,7 +273,7 @@ export default function Clientes({
       {lista.length === 0 ? (
         <div style={{ fontSize: 13.5, color: C.faint, lineHeight: 1.6 }}>
           {dados.clientes.length === 0
-            ? "Nenhuma organização ainda. Elas nascem sozinhas quando uma oportunidade é criada, ou pelo cadastro da administração."
+            ? "Nenhuma organização ainda. Elas nascem sozinhas quando uma oportunidade é criada, ou pelo botão + organização."
             : "Nenhuma organização com esse recorte. Ajuste a busca, o produto ou o filtro."}
         </div>
       ) : (
@@ -661,7 +665,7 @@ function Ficha({
           {bloco(`OPORTUNIDADES E PROPOSTAS · ${visao.deals.length}`, true)}
           {ordenadas.length === 0 ? (
             <div style={{ fontSize: 12.5, color: C.faint, lineHeight: 1.5 }}>
-              Nenhuma oportunidade ligada. Uma oportunidade criada no Comercial com o nome desta organização entra aqui sozinha.
+              Nenhuma oportunidade ainda. Ao criar uma no Comercial, escolha esta organização no campo Organização.
             </div>
           ) : (
             <div style={{ display: "grid", gap: 2 }}>
