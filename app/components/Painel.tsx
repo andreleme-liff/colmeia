@@ -123,7 +123,7 @@ export default function Painel({
         <section className="pn-painel">
           <CabecalhoSecao titulo="FUNIL COMERCIAL" acao={{ texto: "pipeline →", onClick: () => onIr("comercial") }} />
           <Barras
-            itens={funil.map((f) => ({ chave: f.key, rotulo: f.label, valor: f.valor, texto: `${brl(f.valor)} · ${f.qtd}`, cor: f.key === "ganho" ? "var(--liff-success)" : "var(--liff-accent)" }))}
+            itens={funil.map((f) => ({ chave: f.key, rotulo: f.label, valor: f.valor, texto: brl(f.valor), qtd: f.qtd, cor: f.key === "ganho" ? "var(--liff-success)" : "var(--liff-accent)" }))}
             vazio="Nenhuma oportunidade no recorte."
           />
           {foraDoFunil.length > 0 && (
@@ -136,7 +136,7 @@ export default function Painel({
         <section className="pn-painel">
           <CabecalhoSecao titulo="PIPELINE ABERTO POR PRODUTO" />
           <Barras
-            itens={porVertical.map((v) => ({ chave: v.id, rotulo: v.label, valor: v.valor, texto: `${brl(v.valor)} · ${v.qtd}`, cor: v.cor }))}
+            itens={porVertical.map((v) => ({ chave: v.id, rotulo: v.label, valor: v.valor, texto: brl(v.valor), qtd: v.qtd, cor: v.cor }))}
             vazio="Nada em aberto no recorte."
           />
         </section>
@@ -214,7 +214,8 @@ function Kpi({
 }
 
 /** Barras horizontais com rótulo e valor escritos: uma série, sem legenda. */
-function Barras({ itens, vazio }: { itens: { chave: string; rotulo: string; valor: number; texto: string; cor: string }[]; vazio: string }) {
+/** `qtd`, quando vem, vira uma segunda coluna de números, alinhada entre as linhas. */
+function Barras({ itens, vazio }: { itens: { chave: string; rotulo: string; valor: number; texto: string; qtd?: number; cor: string }[]; vazio: string }) {
   const max = Math.max(0, ...itens.map((i) => i.valor));
   if (!itens.length || max === 0) return <div style={{ fontSize: 13, color: C.faint }}>{vazio}</div>;
   return (
@@ -225,7 +226,18 @@ function Barras({ itens, vazio }: { itens: { chave: string; rotulo: string; valo
           <span className="pn-barra__trilho">
             {i.valor > 0 && <span className="pn-barra__valor" style={{ width: `${(i.valor / max) * 100}%`, background: i.cor }} />}
           </span>
-          <span className="pn-barra__texto">{i.texto}</span>
+          {i.qtd === undefined ? (
+            <span className="pn-barra__texto">{i.texto}</span>
+          ) : (
+            // Duas colunas de verdade: o valor numa, a quantidade na outra, cada uma com a sua
+            // largura — os números ficam um embaixo do outro mesmo sem linha de grade.
+            <span className="pn-barra__texto pn-barra__texto--duas">
+              <span style={{ color: i.valor > 0 ? undefined : "var(--liff-text-faint)" }}>{i.texto}</span>
+              <span style={{ color: i.qtd > 0 ? undefined : "var(--liff-text-faint)" }} title={`${i.qtd} ${i.qtd === 1 ? "oportunidade" : "oportunidades"}`}>
+                {i.qtd}
+              </span>
+            </span>
+          )}
         </div>
       ))}
     </div>

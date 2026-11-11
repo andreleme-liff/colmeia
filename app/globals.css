@@ -172,6 +172,9 @@ body { background: var(--liff-canvas); color: var(--liff-text); }
 .pn-barra__trilho { height: 14px; background: color-mix(in srgb, var(--liff-text) 6%, transparent); border-radius: 0 4px 4px 0; overflow: hidden; }
 .pn-barra__valor { display: block; height: 100%; min-width: 2px; border-radius: 0 4px 4px 0; }
 .pn-barra__texto { font-family: var(--liff-font-mono); font-size: 12px; color: var(--liff-text); text-align: right; white-space: nowrap; }
+/* Valor e quantidade em colunas fixas: 4 casas para a quantidade, o resto para o valor. */
+.pn-barra__texto--duas { display: grid; grid-template-columns: minmax(0, 1fr) 4ch; column-gap: 14px; font-variant-numeric: tabular-nums; }
+.pn-barra__texto--duas > span { text-align: right; }
 .pn-empilhada { display: flex; gap: 2px; height: 22px; margin: 6px 0 16px; }
 .pn-empilhada span { flex-basis: 0; min-width: 3px; }
 .pn-empilhada span:first-child { border-radius: 4px 0 0 4px; }
