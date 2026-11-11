@@ -206,12 +206,6 @@ export function CardOportunidade({
           </div>
         )}
 
-        {compacto && d.proximoPasso && !lost && (
-          <p className="cop-proximo-curto">
-            <span className="cop-rotulo">PRÓXIMO →</span> {d.proximoPasso}
-          </p>
-        )}
-
         {(prazo || (compacto && (temBloqueio || ace))) && (
           <div className="cop-tags">
             {prazo && (
