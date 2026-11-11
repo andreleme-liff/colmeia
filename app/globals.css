@@ -421,6 +421,8 @@ body { background: var(--liff-canvas); color: var(--liff-text); }
 .cortina-duas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 32px; align-items: start; }
 .cortina-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 @media (max-width: 900px) { .cortina-duas { grid-template-columns: 1fr; gap: 16px; } }
+/* Em uma coluna só (celular), o bloco que abria a coluna da direita passa a vir depois de outro: volta o fio. */
+@media (max-width: 900px) { .cortina-bloco-topo { border-top: 1px solid var(--liff-border); padding-top: 16px; margin-top: 2px; } }
 @media (prefers-reduced-motion: reduce) { .cortina, .cortina-fundo, .liff-drawer { animation: none; } }
 
 /* ---------- drawer ---------- */

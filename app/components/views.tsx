@@ -2294,8 +2294,9 @@ export function FormOportunidade({
     });
 
   const opcoesPessoa = [{ value: "", label: "—" }, ...pessoas.map((p) => ({ value: String(p.id), label: p.nome }))];
-  const bloco = (titulo: string) => (
-    <div style={{ ...eyebrow(10, C.dust, "0.14em"), borderTop: `1px solid ${C.line}`, paddingTop: 16, marginTop: 2 }}>{titulo}</div>
+  // `primeiro`: o bloco que abre uma coluna não leva o fio de cima — não há o que separar.
+  const bloco = (titulo: string, primeiro = false) => (
+    <div className={primeiro ? "cortina-bloco-topo" : undefined} style={{ ...eyebrow(10, C.dust, "0.14em"), ...(primeiro ? {} : { borderTop: `1px solid ${C.line}`, paddingTop: 16, marginTop: 2 }) }}>{titulo}</div>
   );
   const duas = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 } as const;
 
@@ -2457,7 +2458,7 @@ export function FormOportunidade({
 
       </div>
       <div className="cortina-col">
-      {bloco("4 · ANDAMENTO")}
+      {bloco("4 · ANDAMENTO", true)}
       <Field label="Situação atual" hint="Só o estado de hoje. O que já foi fica no histórico do card.">
         <textarea
           rows={3}
