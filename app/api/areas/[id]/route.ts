@@ -5,10 +5,9 @@ import { getDb } from "@/lib/db";
 import { requireAdmin } from "@/lib/perms";
 import { json, err } from "@/lib/http";
 import { registrar } from "@/lib/log";
-import { idDaPlanilha } from "@/lib/google-sheets";
 
 
-type Body = { cor?: string; label?: string; short?: string; planilhaUrl?: string | null };
+type Body = { cor?: string; label?: string; short?: string };
 
 /** Só HEX de 6 dígitos: é o que o input de cor produz e o que vira variável CSS sem escape. */
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
@@ -27,8 +26,8 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/areas/[id
   }
 
   const sql = await getDb();
-  const atuais = await sql<{ label: string; short: string; cor: string; planilha_url: string | null }[]>`
-    SELECT label, short, cor, planilha_url FROM areas WHERE id = ${id}
+  const atuais = await sql<{ label: string; short: string; cor: string }[]>`
+    SELECT label, short, cor FROM areas WHERE id = ${id}
   `;
   if (!atuais.length) return err("Produto não encontrado.", 404);
   const atual = atuais[0];
@@ -69,27 +68,6 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/areas/[id
     await sql`UPDATE areas SET short = ${short} WHERE id = ${id}`;
   }
 
-  if (body.planilhaUrl !== undefined) {
-    const bruto = String(body.planilhaUrl ?? "").trim();
-    const planilhaId = bruto ? idDaPlanilha(bruto) : null;
-    if (bruto && !planilhaId) {
-      return err("Endereço de planilha não reconhecido. Cole a URL do Google Sheets.", 400);
-    }
-    // Guarda a forma canônica, não a URL colada: ela vem com /edit, #gid e às vezes
-    // parâmetros de sessão. O que importa para ler é o id, e só ele é estável.
-    const nova = planilhaId ? `https://docs.google.com/spreadsheets/d/${planilhaId}` : null;
-    if (nova !== atual.planilha_url) {
-      mudancas.push({
-        campo: "planilha",
-        de: atual.planilha_url ?? "—",
-        para: nova ?? "—",
-        texto: nova
-          ? `Definiu a planilha de sincronização de ${atual.label}`
-          : `Removeu a planilha de sincronização de ${atual.label}`,
-      });
-      await sql`UPDATE areas SET planilha_url = ${nova} WHERE id = ${id}`;
-    }
-  }
 
   for (const m of mudancas) {
     await registrar(sql, {

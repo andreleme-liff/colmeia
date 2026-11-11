@@ -726,9 +726,8 @@ function TextoLongoEditavel({
   );
 }
 
-// `minmax(0, …)`: sem isso a coluna cresce até caber o conteúdo (um link de planilha empurrava a
-// tabela inteira); assim a largura é a do cabeçalho e o texto longo é cortado com reticências.
-const COLS_AREA = "minmax(0, 1.5fr) minmax(0, 0.9fr) minmax(0, 1.2fr) minmax(0, 0.8fr) 44px";
+// `minmax(0, …)`: sem isso a coluna cresce até caber o conteúdo; assim a largura é a do cabeçalho e o texto longo é cortado com reticências.
+const COLS_AREA = "minmax(0, 1.5fr) minmax(0, 0.9fr) minmax(0, 0.8fr) 44px";
 
 /** Aba "áreas": a cor de cada produto é configuração, e muda como todo mundo vê o quadro —
  *  por isso só admin edita. O `input type=color` devolve HEX, que é o que o servidor aceita. */
@@ -745,10 +744,10 @@ function TabelaAreas({
   podeEditar: boolean;
   onCor: (id: string, cor: string) => void;
   onExcluir: (id: string, label: string) => void;
-  onNome: (id: string, patch: { label?: string; short?: string; planilhaUrl?: string | null }) => void;
+  onNome: (id: string, patch: { label?: string; short?: string }) => void;
 }) {
   return (
-    <div style={{ minWidth: 620 }}>
+    <div style={{ minWidth: 520 }}>
       <div
         style={{
           display: "grid",
@@ -757,7 +756,7 @@ function TabelaAreas({
           borderBottom: `1px solid ${C.line}`,
         }}
       >
-        {["PRODUTO", "COR", "PLANILHA", "ATIVIDADES", ""].map((h, i) => (
+        {["PRODUTO", "COR", "ATIVIDADES", ""].map((h, i) => (
           <div key={i} style={{ padding: "12px 16px", ...eyebrow(10, C.faint) }}>
             {h}
           </div>
@@ -810,25 +809,6 @@ function TabelaAreas({
               }}
             />
             <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint, textTransform: "uppercase" }}>{a.cor}</span>
-          </div>
-          {/* Endereço da planilha do Drive de onde este produto sincroniza. Guardamos só o
-              id canônico; colar a URL inteira, com /edit e #gid, funciona. */}
-          <div style={{ padding: "9px 16px", minWidth: 0 }}>
-            {podeEditar ? (
-              <TextoEditavel
-                valor={a.planilhaUrl ?? "—"}
-                onSalvar={(v) => onNome(a.id, { planilhaUrl: v === "—" ? null : v })}
-                titulo={a.planilhaUrl ? `${a.planilhaUrl}\n\nClique para trocar o endereço` : "Clique para colar o endereço da planilha do Google"}
-                estilo={{
-                  fontFamily: MONO, fontSize: 11, color: a.planilhaUrl ? C.info : C.ghost, display: "block",
-                  width: "100%", boxSizing: "border-box",
-                }}
-              />
-            ) : (
-              <span style={{ fontFamily: MONO, fontSize: 11, color: a.planilhaUrl ? C.info : C.ghost }}>
-                {a.planilhaUrl ? "configurada" : "—"}
-              </span>
-            )}
           </div>
           <div style={{ padding: "13px 16px", fontFamily: MONO, fontSize: 11, color: C.faint }}>
             {contagem(a.id)} ativas
@@ -1817,7 +1797,7 @@ export function WaModal({
   onFechar: () => void;
 }) {
   return (
-    <Modal titulo="Resumo de status para WhatsApp" eyebrowTexto="LIFF/ REPORT" onFechar={onFechar} largura={640}>
+    <Modal titulo="Resumo de status" eyebrowTexto="LIFF/ REPORT" onFechar={onFechar} largura={640}>
         <div>
           <SeletorArea opcoes={tabs} valor={areaAtiva} onChange={onArea} larguraTotal />
         </div>

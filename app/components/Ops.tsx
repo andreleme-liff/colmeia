@@ -27,7 +27,6 @@ import {
 } from "./views";
 import { C, GHOST_FIX, avatarStyle, eyebrow, markTone, statusColor, useTheme, writeTheme, type Theme } from "./tokens";
 import CoresDasAreas from "./CoresDasAreas";
-import ImportarPlanilha from "./ImportarPlanilha";
 import SeletorArea from "./SeletorArea";
 import SeletorResponsaveis from "./SeletorResponsaveis";
 import CampoBusca from "./CampoBusca";
@@ -130,7 +129,6 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
   const [waArea, setWaArea] = useState("all");
   const [copiado, setCopiado] = useState(false);
   const [criando, setCriando] = useState<null | "atividade" | "oportunidade">(null);
-  const [importando, setImportando] = useState(false);
   /** Gaveta da navegação. Só tem efeito abaixo de 860px — no desktop a lateral é fixa. */
   const [menuAberto, setMenuAberto] = useState(false);
   const [salvando, setSalvando] = useState(false);
@@ -819,19 +817,6 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
   const areasEditaveis = dados.areasVisiveis.filter((a) => estado.perms[a.id] === "edit");
   const pessoasAtivas = estado.pessoas.filter((p) => p.ativo).map((p) => ({ id: p.id, nome: p.nome }));
 
-  /** Cria mantendo o modal aberto — o cadastro de produto acontece dentro da importação. */
-  const criarSemFechar = async (fn: () => Promise<unknown>) => {
-    setSalvando(true);
-    setErroForm(null);
-    try {
-      await fn();
-      await carregar();
-    } catch (e) {
-      setErroForm(e instanceof Error ? e.message : "Não foi possível criar.");
-    } finally {
-      setSalvando(false);
-    }
-  };
 
   /** Cria e, dando certo, fecha o modal. O erro fica no próprio formulário. */
   const criar = async (fn: () => Promise<unknown>) => {
@@ -1330,22 +1315,6 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
               </Button>
             )}
 
-            {/* Também no quadro operacional: a importação passou a ler abas de to-dos, e
-                seria estranho ter de ir ao pipeline para trazer atividades. */}
-            {["comercial", "operacoes"].includes(view) && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={areasEditaveis.length === 0}
-                onClick={() => {
-                  setErroForm(null);
-                  setImportando(true);
-                }}
-              >
-                importar planilha
-              </Button>
-            )}
-
             <Button
               variant="solid"
               size="sm"
@@ -1355,7 +1324,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
                 setWaAberto(true);
               }}
             >
-              resumo p/ whatsapp
+              resumo
             </Button>
           </div>
         </header>
@@ -1523,60 +1492,6 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         />
       )}
 
-      {importando && (
-        <ImportarPlanilha
-          areasEditaveis={areasEditaveis}
-          produtos={estado.produtos}
-          deals={estado.deals}
-          atividades={estado.activities}
-          areasComPlanilha={new Set(estado.areas.filter((a) => a.planilhaUrl).map((a) => a.id))}
-          sheetsConectado={estado.sheetsConectado}
-          salvando={salvando}
-          erro={erroForm}
-          onFechar={() => setImportando(false)}
-          onCriarProduto={async (label, areaProduto) => {
-            await criarSemFechar(() => api.criarProduto({ label, area: areaProduto }));
-          }}
-          onImportar={(areaDestino, { deals: linhasDeal, atividades: linhasAtiv }) => {
-            setSalvando(true);
-            setErroForm(null);
-            // Sequencial, e acumulando o que já entrou: se a segunda chamada falhar, a
-            // primeira já gravou, e a mensagem de erro precisa dizer isso — senão a pessoa
-            // reimporta tudo achando que nada passou.
-            const feito: string[] = [];
-            void (async () => {
-              try {
-                if (linhasDeal.length) {
-                  const r = await api.importarOportunidades(areaDestino, linhasDeal);
-                  feito.push(
-                    `${r.criadas} oportunidade(s) criada(s), ${r.atualizadas} atualizada(s)` +
-                      (r.ignoradas.length
-                        ? `, ${r.ignoradas.length} ignorada(s) (${r.ignoradas.slice(0, 3).map((x) => x.motivo).join("; ")}${r.ignoradas.length > 3 ? "…" : ""})`
-                        : "") +
-                      (r.avisos?.length ? `, ${r.avisos.length} aviso(s): ${r.avisos.slice(0, 3).map((x) => x.aviso).join("; ")}${r.avisos.length > 3 ? "…" : ""}` : "")
-                  );
-                }
-                if (linhasAtiv.length) {
-                  const r = await api.importarAtividades(areaDestino, linhasAtiv);
-                  feito.push(
-                    `${r.criadas} atividade(s) criada(s), ${r.atualizadas} atualizada(s)` +
-                      (r.ignoradas.length ? `, ${r.ignoradas.length} ignorada(s)` : "")
-                  );
-                }
-                await carregar();
-                setImportando(false);
-                setAviso(`Importação concluída: ${feito.join(" · ")}.`);
-              } catch (e) {
-                const msg = e instanceof Error ? e.message : "Falha na importação.";
-                await carregar();
-                setErroForm(feito.length ? `${msg} Antes disso já entraram: ${feito.join(" · ")}.` : msg);
-              } finally {
-                setSalvando(false);
-              }
-            })();
-          }}
-        />
-      )}
 
       {waAberto && (
         <WaModal

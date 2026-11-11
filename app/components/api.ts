@@ -1,7 +1,6 @@
 // Cliente da API. Todo erro chega como { error } e vira Error com a mensagem em pt-BR;
 // 401 devolve a pessoa para o login.
 
-import type { LinhaImportada } from "@/lib/planilha";
 
 export type Activity = {
   id: number;
@@ -80,16 +79,6 @@ export type Origem = { id: string; label: string; ativo: boolean };
 
 export type ProdutoCadastro = { id: string; label: string; area: string; ativo: boolean };
 
-/** Uma oportunidade da planilha como vai para o servidor — ver `LinhaImportada`. */
-export type LinhaImport = LinhaImportada;
-
-export type LinhaImportAtividade = {
-  titulo: string;
-  status: string;
-  situacao: string;
-  proximoPasso: string;
-};
-
 export type LogEntry = {
   id: number;
   criadoEm: string;
@@ -131,7 +120,7 @@ export type Me = {
   preferencias: { tema?: string; area?: string; responsaveis?: string; densidade?: string; menu?: string; recolhidasComercial?: string; recolhidasOperacoes?: string };
 };
 
-export type AreaCadastro = { id: string; label: string; short: string; cor: string; planilhaUrl: string | null };
+export type AreaCadastro = { id: string; label: string; short: string; cor: string };
 
 export type State = {
   me: Me;
@@ -143,8 +132,6 @@ export type State = {
   isAdmin: boolean;
   /** Domínio aceito no login — vem do servidor, alimenta o cadastro de pessoa. */
   dominioLogin: string;
-  /** Se esta pessoa já autorizou a leitura de planilhas do Drive. */
-  sheetsConectado: boolean;
   /** Se o servidor MCP está ligado (MCP_HABILITADO=1) neste ambiente. */
   mcpHabilitado: boolean;
   activities: Activity[];
@@ -266,7 +253,7 @@ export const api = {
   criarOportunidade: (dados: NovaOportunidade) =>
     req<{ ok: boolean; ref: string }>("/api/deals", { method: "POST", body: JSON.stringify(dados) }),
 
-  alterarArea: (id: string, patch: { cor?: string; label?: string; short?: string; planilhaUrl?: string | null }) =>
+  alterarArea: (id: string, patch: { cor?: string; label?: string; short?: string }) =>
     req<{ ok: boolean }>(`/api/areas/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
 
   criarArea: (dados: { label: string; short: string; cor: string }) =>
@@ -363,32 +350,8 @@ export const api = {
       body: destino ? JSON.stringify(destino) : undefined,
     }),
 
-  importarOportunidades: (area: string, linhas: LinhaImport[]) =>
-    req<{
-      ok: boolean;
-      criadas: number;
-      atualizadas: number;
-      ignoradas: { linha: number; motivo: string }[];
-      avisos: { linha: number; aviso: string }[];
-    }>(
-      "/api/import/deals",
-      { method: "POST", body: JSON.stringify({ area, linhas }) }
-    ),
-
-  importarAtividades: (area: string, linhas: LinhaImportAtividade[]) =>
-    req<{ ok: boolean; criadas: number; atualizadas: number; ignoradas: { linha: number; motivo: string }[] }>(
-      "/api/import/activities",
-      { method: "POST", body: JSON.stringify({ area, linhas }) }
-    ),
-
   salvarPreferencias: (patch: { tema?: string; area?: string; responsaveis?: string; densidade?: string; menu?: string; recolhidasComercial?: string; recolhidasOperacoes?: string }) =>
     req<{ ok: boolean }>("/api/me/preferencias", { method: "PATCH", body: JSON.stringify(patch) }),
-
-  /** Prévia da planilha do Drive. 428 = falta conectar a conta Google. */
-  previaPlanilha: (area: string) =>
-    req<{ ok: boolean; abas: unknown[] }>(`/api/sheets/preview?area=${encodeURIComponent(area)}`),
-
-  desconectarSheets: () => req<{ ok: boolean }>("/api/sheets/conectar", { method: "DELETE" }),
 
   sair: () => req<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
 };

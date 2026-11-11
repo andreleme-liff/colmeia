@@ -144,9 +144,9 @@ export async function GET() {
   // Cadastro dos produtos: rótulo, sigla e cor. Vai inteiro para o cliente, que transforma
   // a cor em variável CSS.
   const areasCadastro = await sql<
-    { id: string; label: string; short: string; cor: string; planilha_url: string | null }[]
+    { id: string; label: string; short: string; cor: string }[]
   >`
-    SELECT id, label, short, cor, planilha_url FROM areas ORDER BY ordem ASC, id ASC
+    SELECT id, label, short, cor FROM areas ORDER BY ordem ASC, id ASC
   `;
 
   // Produtos de todas as áreas visíveis. O formulário só oferece os da área escolhida.
@@ -198,13 +198,12 @@ export async function GET() {
     },
     perms: ctx.perms,
     areasVisiveis: ctx.areasVisiveis,
-    areas: areasCadastro.map((a) => ({ ...a, planilhaUrl: a.planilha_url })),
+    areas: areasCadastro,
     produtos,
     isAdmin: ctx.isAdmin,
     // O formulário de pré-cadastro precisa dizer qual domínio o login aceita, e a fonte
     // dessa verdade é uma variável de ambiente do servidor.
     dominioLogin: DOMINIO_PERMITIDO,
-    sheetsConectado: ctx.user.temSheets,
     // A tela de Conexões só ensina a conectar quando o MCP está ligado neste ambiente.
     mcpHabilitado: lerConfig(process.env).habilitado,
     // Cadastro de origens: todas (as inativas também, para o card mostrar a que já estava).

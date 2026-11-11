@@ -21,8 +21,6 @@ export type SessionUser = {
   avatarUrl: string | null;
   /** Tema e filtro de área escolhidos por esta pessoa. Vazio até ela escolher. */
   preferencias: Record<string, string>;
-  /** Se já autorizou leitura de planilhas. O TOKEN em si nunca sai da camada de servidor. */
-  temSheets: boolean;
   /**
    * Só quando um admin está no modo "ver como": o papel verdadeiro (`admin`), enquanto
    * `papel` leva o simulado. Ausente em todos os outros casos.
@@ -66,11 +64,10 @@ export async function getSessionUser(): Promise<SessionUser | null> {
       ativo: boolean;
       avatar_url: string | null;
       preferencias: Record<string, string> | null;
-      tem_sheets: boolean;
     }[]
   >`
     SELECT s.token, s.user_id, s.expires_at, u.nome, u.email, u.papel, u.iniciais, u.ativo,
-           u.avatar_url, u.preferencias, (u.google_refresh_token IS NOT NULL) AS tem_sheets
+           u.avatar_url, u.preferencias
     FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ${token}
   `;
   if (!rows.length) return null;
@@ -93,7 +90,6 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     ativo: row.ativo,
     avatarUrl: row.avatar_url,
     preferencias: row.preferencias ?? {},
-    temSheets: !!row.tem_sheets,
   };
 }
 
@@ -106,11 +102,10 @@ export async function carregarUsuario(userId: number): Promise<SessionUser | nul
   const rows = await sql<
     {
       id: number; nome: string; email: string; papel: Papel; iniciais: string; ativo: boolean;
-      avatar_url: string | null; preferencias: Record<string, string> | null; tem_sheets: boolean;
+      avatar_url: string | null; preferencias: Record<string, string> | null;
     }[]
   >`
-    SELECT id, nome, email, papel, iniciais, ativo, avatar_url, preferencias,
-           (google_refresh_token IS NOT NULL) AS tem_sheets
+    SELECT id, nome, email, papel, iniciais, ativo, avatar_url, preferencias
     FROM users WHERE id = ${userId}
   `;
   const u = rows[0];
@@ -125,7 +120,6 @@ export async function carregarUsuario(userId: number): Promise<SessionUser | nul
     ativo: u.ativo,
     avatarUrl: u.avatar_url,
     preferencias: u.preferencias ?? {},
-    temSheets: !!u.tem_sheets,
   };
 }
 
