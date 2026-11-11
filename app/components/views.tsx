@@ -9,7 +9,7 @@ import { Button, Field, Input, Select, Switch } from "./ds";
 import { C, GHOST_FIX, MONO, SANS, dot, eyebrow, mesh, statusColor } from "./tokens";
 import { type Activity, type AreaCadastro, type Deal, type LogEntry, type NovaOportunidade, type OrganizacaoResumo, type Origem, type Pessoa } from "./api";
 import SeletorArea, { type OpcaoArea } from "./SeletorArea";
-import Historico from "./Historico";
+import Historico, { LinhaDoTempo } from "./Historico";
 import { chaveCliente } from "@/lib/cliente";
 import Permissoes from "./Permissoes";
 import ViaConexao from "./ViaConexao";
@@ -2521,6 +2521,23 @@ export function FormOportunidade({
         />
       </Field>
 
+      {/* As últimas atualizações à vista, sem abrir o histórico: quem acabou de abrir o card
+          quer saber o que mudou por último, e isso é mais útil aqui do que no fim da cortina. */}
+      {editando && (
+        <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 18 }}>
+          <div style={{ ...eyebrow(11, C.dust), marginBottom: 14 }}>LINHA DO TEMPO · ÚLTIMAS ATUALIZAÇÕES</div>
+          <LinhaDoTempo
+            entidade={inicial.ref}
+            limite={5}
+            onVerTudo={() => {
+              setVerHistorico(true);
+              // Depois que o histórico completo abrir, leva a pessoa até ele.
+              window.setTimeout(() => document.getElementById("liff-historico-completo")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+            }}
+          />
+        </div>
+      )}
+
       {/* O lado operacional desta venda: as tarefas ligadas a ela. Só as que a pessoa
           enxerga — tarefa de produto sem acesso não aparece, como em todo o sistema. */}
       {editando && (
@@ -2552,7 +2569,7 @@ export function FormOportunidade({
       )}
 
       {editando && (
-        <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 18 }}>
+        <div id="liff-historico-completo" style={{ borderTop: `1px solid ${C.line}`, paddingTop: 18 }}>
           <div
             role="button"
             onClick={() => setVerHistorico((v) => !v)}

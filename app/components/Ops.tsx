@@ -4,7 +4,7 @@
 // despacha as alterações. Depois de cada escrita o estado é recarregado do servidor — o
 // conjunto é pequeno e assim a tela nunca mostra algo que o banco não confirmou.
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LiffSig, Button } from "./ds";
 import ThemeToggle from "./ThemeToggle";
@@ -199,6 +199,30 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
    * Único caminho de navegação: muda o estado e a barra de endereço na mesma ação, para as
    * duas nunca discordarem. Sem isto, o link copiado apontaria para a tela anterior.
    */
+  // Visita: avisa ao abrir e, enquanto a pessoa mexe na tela, no máximo uma vez a cada 5
+  // minutos. É o servidor que decide se isso abre uma visita nova no changelog (mais de 30
+  // minutos sem atividade) — aba aberta e esquecida não manda nada e não conta como uso.
+  const viewAtual = useRef(view);
+  useEffect(() => {
+    viewAtual.current = view;
+  }, [view]);
+  useEffect(() => {
+    let ultimo = 0;
+    const avisar = () => {
+      const agora = Date.now();
+      if (agora - ultimo < 5 * 60 * 1000) return;
+      ultimo = agora;
+      void api.visita(viewAtual.current).catch(() => {});
+    };
+    avisar();
+    window.addEventListener("pointerdown", avisar);
+    window.addEventListener("keydown", avisar);
+    return () => {
+      window.removeEventListener("pointerdown", avisar);
+      window.removeEventListener("keydown", avisar);
+    };
+  }, []);
+
   const navegar = useCallback(
     (destino: Rota, { substituir = false } = {}) => {
       setView(destino.view);

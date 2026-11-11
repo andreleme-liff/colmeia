@@ -859,6 +859,10 @@ async function migrate(): Promise<void> {
     // Depois do seed: base nova também nasce no formato C-/T-, pelo mesmo caminho.
     await converterReferencias(sql);
 
+    // Última atividade da pessoa na tela: é o que diz se um acesso é visita nova (mais de 30
+    // minutos parado, a regra de sessão do Google Analytics) ou continuação da anterior.
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS ultima_atividade_em TIMESTAMPTZ`;
+
     // Fim da permissão por produto (nov/2026): o papel passa a decidir tudo, e membro/gestor
     // editam todos os produtos. Uma única vez, quem não editava NENHUM produto vira `leitura`,
     // para não ganhar edição de surpresa — inclui quem entrou pelo primeiro login só com "ver".

@@ -128,6 +128,8 @@ export async function GET() {
       LEFT JOIN oauth_concessoes k ON k.id = l.concessao_id
       WHERE (l.area IS NULL OR l.area = ANY(${areas}))
         AND (${ctx.isAdmin} OR l.entidade !~ ${ENTIDADES_SO_ADMIN})
+        -- Visita não é alteração: fica só no changelog completo, fora do "recente" das telas.
+        AND l.campo IS DISTINCT FROM 'visita'
       ORDER BY l.criado_em DESC, l.id DESC
       LIMIT 200
     `,

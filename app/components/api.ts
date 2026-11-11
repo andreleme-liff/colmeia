@@ -231,6 +231,8 @@ export const api = {
   excluirCliente: (id: number) => req<{ ok: boolean }>(`/api/clientes/${id}`, { method: "DELETE" }),
   mesclarCliente: (id: number, em: number) =>
     req<{ ok: boolean; ref: string }>(`/api/clientes/${id}/mesclar`, { method: "POST", body: JSON.stringify({ em }) }),
+  /** Avisa que a pessoa está usando a tela; o servidor decide se é visita nova (30 min parado). */
+  visita: (secao: string) => req<{ ok: boolean; novaVisita: boolean }>("/api/me/visita", { method: "POST", body: JSON.stringify({ secao }) }),
   /** Faturamento (só admin). */
   faturas: () => req<{ faturas: import("@/lib/faturamento").Fatura[] }>("/api/faturamento"),
   emitirFatura: (corpo: Record<string, unknown>) =>
