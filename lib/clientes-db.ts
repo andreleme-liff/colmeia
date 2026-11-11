@@ -194,7 +194,7 @@ export async function vincularContrato(tx: Queryable, contratoId: number, autor:
     const [d] = await tx<{ cliente_id: number | null }[]>`SELECT cliente_id FROM deals WHERE id = ${k.deal_id}`;
     clienteId = d?.cliente_id ?? null;
   }
-  clienteId ??= await clienteDaConta(tx, k.conta, autor, `do contrato ${k.ref}`);
+  clienteId ??= await clienteDaConta(tx, k.conta, autor, `da receita ${k.ref}`);
   await tx`UPDATE contratos SET cliente_id = ${clienteId} WHERE id = ${contratoId}`;
   if (clienteId == null) return;
 
@@ -360,7 +360,7 @@ export async function excluirCliente(tx: Queryable, autor: AutorCliente, id: num
   if (!c) return { erro: "Cliente não encontrado.", status: 404 };
   if (c.deals || c.contratos) {
     return {
-      erro: `${c.nome} tem ${c.deals} oportunidade(s) e ${c.contratos} contrato(s). Mescle com outro cliente em vez de excluir.`,
+      erro: `${c.nome} tem ${c.deals} oportunidade(s) e ${c.contratos} receita(s) cadastrada(s). Mescle com outro cliente em vez de excluir.`,
       status: 409,
     };
   }

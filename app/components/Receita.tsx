@@ -156,7 +156,7 @@ export default function Receita({
         </span>
         <span style={{ marginLeft: "auto" }}>
           <Button variant="solid" size="sm" onClick={() => setEditando({ situacao: "contratada", inicioFaturamento: `${somarMeses(mesAtual, 1)}-01`, linhas: [] })}>
-            + contrato
+            + receita
           </Button>
         </span>
       </div>
@@ -262,12 +262,12 @@ export default function Receita({
         </section>
       )}
 
-      {/* ---------- 4 · contratos ---------- */}
+      {/* ---------- 4 · receitas cadastradas (contrato é só a contratada) ---------- */}
       <section>
-        <div style={{ ...eyebrow(11, C.dust, "0.14em"), marginBottom: 12 }}>CONTRATOS · {calc.efetivos.length}</div>
+        <div style={{ ...eyebrow(11, C.dust, "0.14em"), marginBottom: 12 }}>RECEITAS CADASTRADAS · {calc.efetivos.length}</div>
         {calc.efetivos.length === 0 ? (
           <div style={{ fontSize: 14, color: C.faint, lineHeight: 1.6, maxWidth: 620 }}>
-            Nenhum contrato cadastrado{area === "all" ? "" : ` em ${areaOf(area).label}`}. Use “+ contrato”, ou cadastre a
+            Nenhuma receita cadastrada{area === "all" ? "" : ` em ${areaOf(area).label}`}. Use “+ receita”, ou cadastre a
             partir das pendências acima: um card ganho vira receita contratada; um card nas etapas finais pode entrar como
             provável ou possível.
           </div>
@@ -520,7 +520,7 @@ function TabelaContratos({
               tabIndex={0}
               onClick={() => onAbrir(c)}
               onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), onAbrir(c))}
-              title="Abrir o contrato"
+              title="Abrir a receita"
               style={{ display: "grid", gridTemplateColumns: cols, background: C.cell, borderBottom: `1px solid ${C.line}`, cursor: "pointer", alignItems: "center" }}
             >
               <div style={{ padding: "12px 14px", minWidth: 0 }}>
@@ -658,7 +658,7 @@ function FormContrato({
   };
 
   const excluir = async () => {
-    if (!window.confirm(`Excluir a receita de ${inicial.conta}?\n\nO contrato e o cronograma de parcelas somem. O histórico continua no changelog.`)) return;
+    if (!window.confirm(`Excluir a receita de ${inicial.conta}?\n\nOs valores e o cronograma de parcelas somem. O histórico continua no changelog.`)) return;
     setSalvando(true);
     try {
       await api.excluirReceita(inicial.id!);
@@ -673,7 +673,7 @@ function FormContrato({
 
   return (
     <Modal
-      titulo={editando ? `${inicial.conta} · ${inicial.ref}` : "Novo contrato de receita"}
+      titulo={editando ? `${inicial.conta} · ${inicial.ref}` : "Nova receita"}
       eyebrowTexto="LIFF/ RECEITA · CONTRATO"
       onFechar={onFechar}
       largura={760}
@@ -823,7 +823,7 @@ function FormContrato({
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
           {editando ? (
             <button type="button" className="rec-link" style={{ color: C.error }} onClick={() => void excluir()} disabled={salvando}>
-              excluir contrato
+              excluir receita
             </button>
           ) : (
             <span />
@@ -833,7 +833,7 @@ function FormContrato({
               cancelar
             </Button>
             <Button variant="solid" size="sm" disabled={salvando || !conta.trim() || !area || !inicio} onClick={() => void salvar()}>
-              {salvando ? "salvando…" : editando ? "salvar alterações" : "cadastrar contrato"}
+              {salvando ? "salvando…" : editando ? "salvar alterações" : "cadastrar receita"}
             </Button>
           </span>
         </div>

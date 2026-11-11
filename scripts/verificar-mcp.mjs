@@ -70,7 +70,7 @@ checa("nomes no formato da spec", nomes.every((n) => /^[A-Za-z0-9_.-]{1,128}$/.t
 const soLeitura = descreverFerramentas("leitura offline_access").map((f) => f.name);
 checa("conexão só de leitura não vê ferramenta de gravação", soLeitura, ["contexto", "listar_cadastros", "listar_atividades", "listar_oportunidades", "ver_registro"]);
 checa("com escrita vê as nove (sem ser admin)", descreverFerramentas("leitura escrita").length, 9);
-const FIN = ["resumo_receita", "listar_contratos", "ver_contrato", "listar_faturas", "criar_contrato", "atualizar_contrato",
+const FIN = ["resumo_receita", "listar_receitas", "ver_receita", "listar_faturas", "criar_receita", "atualizar_receita",
   "emitir_fatura", "registrar_pagamento", "corrigir_fatura", "estornar_pagamento", "cancelar_fatura",
   "resumo_funding", "listar_arquetipos", "ver_estimativa", "criar_estimativa", "atualizar_estimativa", "registrar_funding",
   "atualizar_funding", "salvar_calculadora"];
@@ -80,7 +80,7 @@ checa("quem não é admin não vê nenhuma de receita", descreverFerramentas("le
 checa("admin com escrita vê as vinte e oito", descreverFerramentas("leitura escrita", true).length, 28);
 checa("admin só de leitura vê as de leitura de receita, não as de gravação",
   descreverFerramentas("leitura", true).map((f) => f.name).filter((n) => FIN.includes(n)),
-  ["resumo_receita", "listar_contratos", "ver_contrato", "listar_faturas", "resumo_funding", "listar_arquetipos", "ver_estimativa"]);
+  ["resumo_receita", "listar_receitas", "ver_receita", "listar_faturas", "resumo_funding", "listar_arquetipos", "ver_estimativa"]);
 checa("calculadora: link que não é da AWS recusado", valida("salvar_calculadora", { arquetipo_id: 1, regiao: "us-east-1", conta: "liff", porte: "M", custo_mensal_usd: 1, url: "https://evil.com" }), ["url: formato inválido"]);
 checa("funding: status fora da lista", valida("registrar_funding", { estimativa: "E-0001", programa: "poc-credits", beneficiario: "liff", valor_usd: 1, status: "talvez" })[0].startsWith("status: valor fora da lista"), true);
 checa("tools/list não vaza a marca interna `soAdmin`", descreverFerramentas("leitura escrita", true).some((f) => "soAdmin" in f), false);
@@ -90,14 +90,14 @@ checa("instruções avisam que texto de registro é dado, não instrução", INS
 console.log("\n5. argumentos, com os esquemas reais");
 const contratoOk = { conta: "Medley", produto: "tax", situacao: "contratada", inicio_faturamento: "2026-12-01",
   linhas: [{ tipo: "assinatura", valor_reais: 8000 }, { tipo: "implantacao", valor_reais: 40000, parcelas: 12 }] };
-checa("contrato válido", valida("criar_contrato", contratoOk), []);
-checa("linha sem tipo", valida("criar_contrato", { ...contratoOk, linhas: [{ valor_reais: 10 }] }), ["campo obrigatório ausente: linhas[0].tipo"]);
-checa("campo inventado dentro da linha", valida("criar_contrato", { ...contratoOk, linhas: [{ tipo: "assinatura", valor_reais: 1, juros: 2 }] }),
+checa("contrato válido", valida("criar_receita", contratoOk), []);
+checa("linha sem tipo", valida("criar_receita", { ...contratoOk, linhas: [{ valor_reais: 10 }] }), ["campo obrigatório ausente: linhas[0].tipo"]);
+checa("campo inventado dentro da linha", valida("criar_receita", { ...contratoOk, linhas: [{ tipo: "assinatura", valor_reais: 1, juros: 2 }] }),
   ["campo desconhecido: linhas[0].juros"]);
-checa("linha que não é objeto", valida("criar_contrato", { ...contratoOk, linhas: ["assinatura"] }), ["linhas[0]: cada item deve ser um objeto"]);
-checa("tipo de linha fora da lista", valida("criar_contrato", { ...contratoOk, linhas: [{ tipo: "licenca", valor_reais: 1 }] })[0].startsWith("linhas[0].tipo: valor fora da lista"), true);
-checa("cobrança com forma inválida", valida("criar_contrato", { ...contratoOk, cobranca: { forma: "cheque" } })[0].startsWith("cobranca.forma: valor fora da lista"), true);
-checa("dia de vencimento 31", valida("criar_contrato", { ...contratoOk, cobranca: { dia_vencimento: 31 } }), ["cobranca.dia_vencimento: máximo 28"]);
+checa("linha que não é objeto", valida("criar_receita", { ...contratoOk, linhas: ["assinatura"] }), ["linhas[0]: cada item deve ser um objeto"]);
+checa("tipo de linha fora da lista", valida("criar_receita", { ...contratoOk, linhas: [{ tipo: "licenca", valor_reais: 1 }] })[0].startsWith("linhas[0].tipo: valor fora da lista"), true);
+checa("cobrança com forma inválida", valida("criar_receita", { ...contratoOk, cobranca: { forma: "cheque" } })[0].startsWith("cobranca.forma: valor fora da lista"), true);
+checa("dia de vencimento 31", valida("criar_receita", { ...contratoOk, cobranca: { dia_vencimento: 31 } }), ["cobranca.dia_vencimento: máximo 28"]);
 checa("emitir: competência obrigatória", valida("emitir_fatura", { contrato: "R-0001", tipo: "assinatura" }), ["campo obrigatório ausente: competencia"]);
 checa("emitir: competência fora do formato", valida("emitir_fatura", { competencia: "2026-13" }), ["competencia: formato inválido"]);
 checa("cancelar exige motivo", valida("cancelar_fatura", { fatura: "F-0001" }), ["campo obrigatório ausente: motivo"]);

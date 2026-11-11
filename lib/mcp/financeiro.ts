@@ -196,7 +196,7 @@ export async function listarContratos(c: Contexto, a: Record<string, unknown>): 
 export async function verContrato(c: Contexto, a: Record<string, unknown>): Promise<Saida> {
   if (!c.ctx.isAdmin) return negado;
   const contrato = await contratoPorRef(c.sql, a.ref as string);
-  if (!contrato) return { ok: false, erro: "Contrato não encontrado." };
+  if (!contrato) return { ok: false, erro: "Receita não encontrada." };
   const cards = await lerCards(c.sql);
   const [e] = efetivos([contrato], cards);
   const hoje = hojeISO();
@@ -212,7 +212,7 @@ export async function verContrato(c: Contexto, a: Record<string, unknown>): Prom
     ok: true,
     ref: contrato.ref,
     dados: {
-      contrato: contratoParaSaida(contrato, e.card, e.efetiva, mesDe(hoje), somarMeses(mesDe(hoje), 11), c.base),
+      receita: contratoParaSaida(contrato, e.card, e.efetiva, mesDe(hoje), somarMeses(mesDe(hoje), 11), c.base),
       cronograma_24_meses: lancamentos(contrato, inicio, somarMeses(inicio, 23)).map((l) => ({
         mes: l.mes,
         tipo: l.tipo,
@@ -314,7 +314,7 @@ export async function criarContratoMcp(c: Contexto, a: Record<string, unknown>):
 export async function atualizarContratoMcp(c: Contexto, a: Record<string, unknown>): Promise<Saida> {
   if (!c.ctx.isAdmin) return negado;
   const atual = await contratoPorRef(c.sql, a.ref as string);
-  if (!atual) return { ok: false, erro: "Contrato não encontrado." };
+  if (!atual) return { ok: false, erro: "Receita não encontrada." };
   let dealId = atual.dealId;
   if (a.oportunidade !== undefined) {
     const d = await dealIdDe(c.sql, a.oportunidade);
@@ -377,7 +377,7 @@ export async function emitirFaturaMcp(c: Contexto, a: Record<string, unknown>): 
   } else {
     if (!a.contrato || !a.tipo) return { ok: false, erro: "Informe `contrato` e `tipo` (ou `avulsa`)." };
     const contrato = await contratoPorRef(c.sql, a.contrato as string);
-    if (!contrato) return { ok: false, erro: "Contrato não encontrado." };
+    if (!contrato) return { ok: false, erro: "Receita não encontrada." };
     corpo = {
       origem: "cronograma",
       contratoId: contrato.id,

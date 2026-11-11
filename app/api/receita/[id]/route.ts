@@ -19,7 +19,7 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/receita/[
   const ctx = await requireAdmin();
   if (ctx instanceof Response) return ctx;
   const id = await idDe(ctxRoute);
-  if (id == null) return err("Contrato inválido.", 400);
+  if (id == null) return err("Receita inválida.", 400);
   const c = lerContrato(await lerCorpo(req));
   if (typeof c === "string") return err(c, 400);
 
@@ -33,7 +33,7 @@ export async function DELETE(_req: Request, ctxRoute: RouteContext<"/api/receita
   const ctx = await requireAdmin();
   if (ctx instanceof Response) return ctx;
   const id = await idDe(ctxRoute);
-  if (id == null) return err("Contrato inválido.", 400);
+  if (id == null) return err("Receita inválida.", 400);
 
   const sql = await getDb();
   const r = await sql.begin(async (tx) => {
@@ -53,6 +53,6 @@ export async function DELETE(_req: Request, ctxRoute: RouteContext<"/api/receita
     });
     return alvo;
   });
-  if (!r) return err("Contrato não encontrado.", 404);
+  if (!r) return err("Receita não encontrada.", 404);
   return json({ ok: true });
 }

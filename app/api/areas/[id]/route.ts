@@ -135,7 +135,7 @@ export async function DELETE(_req: Request, ctxRoute: RouteContext<"/api/areas/[
     const partes = [
       atividades > 0 ? `${atividades} atividade${atividades > 1 ? "s" : ""}` : null,
       oportunidades > 0 ? `${oportunidades} oportunidade${oportunidades > 1 ? "s" : ""}` : null,
-      contratos > 0 ? `${contratos} contrato${contratos > 1 ? "s" : ""} de receita` : null,
+      contratos > 0 ? `${contratos} receita${contratos > 1 ? "s" : ""} cadastrada${contratos > 1 ? "s" : ""}` : null,
     ].filter(Boolean);
     return err(`${alvos[0].label} ainda tem ${partes.join(" e ")}. Mova ou exclua antes.`, 409);
   }

@@ -3,7 +3,8 @@
 // Clientes (só admin, por enquanto): a visão centrada no cliente.
 //
 // De cima para baixo:
-//  1. números — quantos clientes, quantos com oportunidade aberta, com contrato, e a pendência
+//  1. números — quantos clientes, quantos com oportunidade aberta, com contrato (receita
+//     CONTRATADA; previsão não é contrato), e a pendência
 //     que trava o faturamento (contrato sem CNPJ no cadastro);
 //  2. possíveis duplicados — o que a deduplicação automática não juntou, com a mescla a um clique;
 //  3. a lista — um cliente por linha, com os produtos, o pipeline aberto e a última interação;
@@ -40,6 +41,9 @@ type Visao = {
   deals: Deal[];
   abertas: Deal[];
   pipeline: number;
+  /** Tudo o que está cadastrado em Receita para o cliente: contratado ou só previsto. */
+  receitas: Contrato[];
+  /** Só a receita CONTRATADA (situação contratada, ou prevista com o card em Ganho). Só isto é contrato. */
   contratos: Contrato[];
   faturas: Fatura[];
   areas: string[];
@@ -88,6 +92,7 @@ export default function Clientes({
   if (!dados) return <div style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>carregando clientes…</div>;
 
   const recarregar = () => setVersao((v) => v + 1);
+  const dealPorId = new Map(deals.map((d) => [d.id, d]));
 
   // Dezenas a poucas centenas de clientes: monta tudo a cada render, sem memo.
   const visoes: Visao[] = dados.clientes.map((c) => {
@@ -105,7 +110,8 @@ export default function Clientes({
       deals: ds,
       abertas,
       pipeline: abertas.reduce((t, d) => t + d.valorCentavos, 0),
-      contratos: ks,
+      receitas: ks,
+      contratos: ks.filter((k) => situacaoEfetiva(k, k.dealId != null ? dealPorId.get(k.dealId) : null) === "contratada"),
       faturas: fs,
       areas: [...new Set([...ds.map((d) => d.area), ...ks.map((k) => k.area)])].sort(),
       ultima: interacoes.at(-1) ?? null,
@@ -136,7 +142,7 @@ export default function Clientes({
 
   const mesclar = async (some: ClienteLido, fica: ClienteLido) => {
     const n = visaoDe(some.id);
-    const leva = [n?.deals.length ? `${n.deals.length} oportunidade(s)` : "", n?.contratos.length ? `${n.contratos.length} contrato(s)` : ""]
+    const leva = [n?.deals.length ? `${n.deals.length} oportunidade(s)` : "", n?.receitas.length ? `${n.receitas.length} receita(s)` : ""]
       .filter(Boolean)
       .join(" e ");
     if (
@@ -162,13 +168,13 @@ export default function Clientes({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <div className="rec-numeros">
-        <Numero rotulo="CLIENTES" valor={String(naArea.length)} detalhe={area === "all" ? "No cadastro" : `Com oportunidade ou contrato em ${areaOf(area).label}`} />
+        <Numero rotulo="CLIENTES" valor={String(naArea.length)} detalhe={area === "all" ? "No cadastro" : `Com oportunidade ou receita em ${areaOf(area).label}`} />
         <Numero
           rotulo="COM OPORTUNIDADE ABERTA"
           valor={String(naArea.filter((v) => v.abertas.length).length)}
           detalhe={`${brl(naArea.reduce((t, v) => t + v.pipeline, 0))} em pipeline aberto`}
         />
-        <Numero rotulo="COM CONTRATO" valor={String(naArea.filter((v) => v.contratos.length).length)} detalhe="Receita cadastrada, contratada ou prevista" />
+        <Numero rotulo="COM CONTRATO" valor={String(naArea.filter((v) => v.contratos.length).length)} detalhe="Receita contratada: venda ganha" />
         <Numero
           rotulo="CONTRATO SEM CNPJ"
           valor={String(naArea.filter(semCnpj).length)}
@@ -443,7 +449,7 @@ function Ficha({
   const dealPorId = new Map(deals.map((d) => [d.id, d]));
   const aReceber = visao?.faturas.filter((f) => f.status === "emitida").reduce((t, f) => t + f.valorCentavos, 0) ?? 0;
   const recebido = visao?.faturas.filter((f) => f.status === "paga").reduce((t, f) => t + (f.valorPagoCentavos ?? f.valorCentavos), 0) ?? 0;
-  const vazio = !!visao && visao.deals.length === 0 && visao.contratos.length === 0;
+  const vazio = !!visao && visao.deals.length === 0 && visao.receitas.length === 0;
 
   const formulario = (
     <div className="cortina-col">
@@ -576,7 +582,7 @@ function Ficha({
             </Button>
           </div>
           <div style={{ fontSize: 12.5, color: C.faint, lineHeight: 1.5 }}>
-            Oportunidades, contratos e contatos de {c.nome} passam para o cadastro escolhido, e este deixa de existir.
+            Oportunidades, receitas e contatos de {c.nome} passam para o cadastro escolhido, e este deixa de existir.
           </div>
           {vazio && (
             <div>
@@ -660,12 +666,12 @@ function Ficha({
             </div>
           )}
 
-          {bloco(`CONTRATOS · ${visao.contratos.length}`)}
-          {visao.contratos.length === 0 ? (
-            <div style={{ fontSize: 12.5, color: C.faint }}>Nenhum contrato cadastrado em Receita.</div>
+          {bloco(`RECEITA · ${visao.receitas.length}`)}
+          {visao.receitas.length === 0 ? (
+            <div style={{ fontSize: 12.5, color: C.faint }}>Nenhuma receita cadastrada, nem contratada nem prevista.</div>
           ) : (
             <div style={{ display: "grid", gap: 8 }}>
-              {visao.contratos.map((k) => {
+              {visao.receitas.map((k) => {
                 const efetiva = situacaoEfetiva(k, k.dealId != null ? dealPorId.get(k.dealId) : null);
                 const [ano, mes] = k.inicioFaturamento.split("-");
                 return (

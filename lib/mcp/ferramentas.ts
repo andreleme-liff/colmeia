@@ -87,7 +87,7 @@ const EXECUTORES: Record<NomeFerramenta, Executor> = {
       estagios_oportunidade: STAGES.map((s) => ({ id: s.key, nome: s.label })),
       prioridades: [...PRIORIDADES],
       receita_e_faturamento: c.ctx.isAdmin
-        ? "Disponível (admin): receita, faturamento e funding AWS — resumo_receita, listar_contratos, ver_contrato, listar_faturas, resumo_funding, listar_arquetipos, ver_estimativa e, com permissão de gravar, contratos, faturas, estimativas, funding e calculadoras."
+        ? "Disponível (admin): receita, faturamento e funding AWS — resumo_receita, listar_receitas, ver_receita, listar_faturas, resumo_funding, listar_arquetipos, ver_estimativa e, com permissão de gravar, contratos, faturas, estimativas, funding e calculadoras."
         : "Indisponível: restrito à administração.",
       app: c.base,
     },
@@ -154,11 +154,11 @@ const EXECUTORES: Record<NomeFerramenta, Executor> = {
 
   // Receita e faturamento (só admin) — ver `financeiro.ts`.
   resumo_receita: resumoReceita,
-  listar_contratos: listarContratos,
-  ver_contrato: verContrato,
+  listar_receitas: listarContratos,
+  ver_receita: verContrato,
   listar_faturas: listarFaturas,
-  criar_contrato: criarContratoMcp,
-  atualizar_contrato: atualizarContratoMcp,
+  criar_receita: criarContratoMcp,
+  atualizar_receita: atualizarContratoMcp,
   emitir_fatura: emitirFaturaMcp,
   registrar_pagamento: registrarPagamentoMcp,
   corrigir_fatura: corrigirFaturaMcp,

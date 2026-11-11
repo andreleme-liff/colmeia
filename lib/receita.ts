@@ -123,7 +123,7 @@ export async function atualizarContrato(
   c: EntradaContrato
 ): Promise<{ ref: string } | { erro: string; status: number }> {
   const [atual] = await tx<{ ref: string }[]>`SELECT ref FROM contratos WHERE id = ${id} FOR UPDATE`;
-  if (!atual) return { erro: "Contrato não encontrado.", status: 404 };
+  if (!atual) return { erro: "Receita não encontrada.", status: 404 };
   const antes = (await lerContratos(tx)).find((x) => x.id === id)!;
   const erro = await conferir(tx, c, id);
   if (erro) return { erro, status: 400 };
