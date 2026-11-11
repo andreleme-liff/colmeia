@@ -1388,7 +1388,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             )}
 
             <Button
-              variant={["operacoes", "comercial"].includes(view) ? "outline" : "solid"}
+              variant="outline"
               size="sm"
               onClick={() => {
                 setWaArea(area);
