@@ -1,6 +1,7 @@
 "use client";
 
-// Forecast de receita (só admin, em construção).
+// Forecast de receita. Todos veem (números, gráfico, formatos de visualização, cronograma);
+// só a administração decide o que entra e altera valores.
 //
 // De cima para baixo:
 //  1. números do horizonte escolhido — contratada, assinatura do mês (MRR), provável, possível;
@@ -70,11 +71,14 @@ export default function Receita({
   deals,
   area,
   gatilho,
+  podeEditar,
   onAbrirDeal,
 }: {
   deals: Deal[];
   area: string;
   gatilho: number | undefined;
+  /** Só admin decide o que entra no forecast e mexe em valores; os demais leem. */
+  podeEditar: boolean;
   onAbrirDeal: (ref: string) => void;
 }) {
   const [contratos, setContratos] = useState<Contrato[] | null>(null);
@@ -154,11 +158,13 @@ export default function Receita({
         <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>
           {rotuloMes(mesAtual)} a {rotuloMes(fimHorizonte)}
         </span>
-        <span style={{ marginLeft: "auto" }}>
-          <Button variant="solid" size="sm" onClick={() => setEditando({ situacao: "contratada", inicioFaturamento: `${somarMeses(mesAtual, 1)}-01`, linhas: [] })}>
-            + receita
-          </Button>
-        </span>
+        {podeEditar && (
+          <span style={{ marginLeft: "auto" }}>
+            <Button variant="solid" size="sm" onClick={() => setEditando({ situacao: "contratada", inicioFaturamento: `${somarMeses(mesAtual, 1)}-01`, linhas: [] })}>
+              + receita
+            </Button>
+          </span>
+        )}
       </div>
 
       {/* ---------- 1 · números ---------- */}
@@ -222,7 +228,7 @@ export default function Receita({
                   rotulo: `${d.ref} · ${d.conta}`,
                   detalhe: `${areaOf(d.area).label} · card ${brl(d.valorCentavos)}`,
                   acao: "cadastrar receita",
-                  onAcao: () => setEditando(novoDeDeal(d)),
+                  onAcao: podeEditar ? () => setEditando(novoDeDeal(d)) : undefined,
                   onAbrir: () => onAbrirDeal(d.ref),
                 }))}
               />
@@ -236,7 +242,7 @@ export default function Receita({
                   rotulo: `${d.ref} · ${d.conta}`,
                   detalhe: `${stageLabel(d.estagio)} · card ${brl(d.valorCentavos)}`,
                   acao: "incluir no forecast",
-                  onAcao: () => setEditando(novoDeDeal(d)),
+                  onAcao: podeEditar ? () => setEditando(novoDeDeal(d)) : undefined,
                   onAbrir: () => onAbrirDeal(d.ref),
                 }))}
               />
@@ -252,7 +258,7 @@ export default function Receita({
                     rotulo: `${c.ref} · ${c.conta}`,
                     detalhe: d ? `card em ${stageLabel(d.estagio)}` : "card fora das etapas finais",
                     acao: "revisar",
-                    onAcao: () => setEditando(c),
+                    onAcao: podeEditar ? () => setEditando(c) : undefined,
                     onAbrir: d ? () => onAbrirDeal(d.ref) : undefined,
                   };
                 })}
@@ -289,6 +295,7 @@ export default function Receita({
           inicial={editando}
           deals={deals}
           contratos={contratos}
+          somenteLeitura={!podeEditar}
           onFechar={() => setEditando(null)}
           onMudou={() => {
             setEditando(null);
@@ -446,7 +453,7 @@ function ListaPendencia({
 }: {
   titulo: string;
   texto: string;
-  itens: { chave: string; rotulo: string; detalhe: string; acao: string; onAcao: () => void; onAbrir?: () => void }[];
+  itens: { chave: string; rotulo: string; detalhe: string; acao: string; onAcao?: () => void; onAbrir?: () => void }[];
 }) {
   return (
     <div className="rec-pendencia">
@@ -467,9 +474,11 @@ function ListaPendencia({
               )}
               <div style={{ fontFamily: MONO, fontSize: 10.5, color: C.faint }}>{i.detalhe}</div>
             </div>
-            <button type="button" className="rec-link" onClick={i.onAcao}>
-              {i.acao}
-            </button>
+            {i.onAcao && (
+              <button type="button" className="rec-link" onClick={i.onAcao}>
+                {i.acao}
+              </button>
+            )}
           </li>
         ))}
       </ul>
@@ -572,12 +581,15 @@ function FormContrato({
   inicial,
   deals,
   contratos,
+  somenteLeitura,
   onFechar,
   onMudou,
 }: {
   inicial: Partial<Contrato>;
   deals: Deal[];
   contratos: Contrato[];
+  /** Quem não é admin abre para ver o cronograma; não salva nem exclui. */
+  somenteLeitura?: boolean;
   onFechar: () => void;
   onMudou: () => void;
 }) {
@@ -821,7 +833,9 @@ function FormContrato({
 
         {erro && <div style={{ fontFamily: MONO, fontSize: 11, lineHeight: 1.6, color: C.error }}>{erro}</div>}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-          {editando ? (
+          {somenteLeitura ? (
+            <span style={{ fontSize: 12.5, color: C.faint }}>Somente leitura: só a administração altera a receita.</span>
+          ) : editando ? (
             <button type="button" className="rec-link" style={{ color: C.error }} onClick={() => void excluir()} disabled={salvando}>
               excluir receita
             </button>
@@ -830,11 +844,13 @@ function FormContrato({
           )}
           <span style={{ display: "flex", gap: 10 }}>
             <Button variant="ghost" size="sm" onClick={onFechar} style={GHOST_FIX}>
-              cancelar
+              {somenteLeitura ? "fechar" : "cancelar"}
             </Button>
-            <Button variant="solid" size="sm" disabled={salvando || !conta.trim() || !area || !inicio} onClick={() => void salvar()}>
-              {salvando ? "salvando…" : editando ? "salvar alterações" : "cadastrar receita"}
-            </Button>
+            {!somenteLeitura && (
+              <Button variant="solid" size="sm" disabled={salvando || !conta.trim() || !area || !inicio} onClick={() => void salvar()}>
+                {salvando ? "salvando…" : editando ? "salvar alterações" : "cadastrar receita"}
+              </Button>
+            )}
           </span>
         </div>
       </div>

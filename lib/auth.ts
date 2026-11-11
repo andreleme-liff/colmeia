@@ -145,8 +145,7 @@ export function iniciaisDe(nome: string): string {
 /**
  * Login via SSO: casa por e-mail. Se a conta já existe (inclusive pré-cadastrada pela
  * administração, sem google_sub), linka e assume nome/foto reais do Google na primeira vez.
- * Conta nova entra como 'membro', vendo todos os produtos e sem editar nenhum (pedido de
- * nov/2026; antes entrava sem nenhum produto). A exceção é ADMIN_EMAIL, que entra como admin para
+ * Conta nova entra como 'leitura': vê todos os produtos e não edita nenhum (nov/2026). A exceção é ADMIN_EMAIL, que entra como admin para
  * a primeira instalação não ficar sem ninguém que possa liberar acesso.
  */
 export async function findOrCreateGoogleUser(
@@ -173,11 +172,11 @@ export async function findOrCreateGoogleUser(
   }
 
   const adminEmail = (process.env.ADMIN_EMAIL ?? "").trim().toLowerCase();
-  const papel: Papel = adminEmail && email.toLowerCase() === adminEmail ? "admin" : "membro";
+  const papel: Papel = adminEmail && email.toLowerCase() === adminEmail ? "admin" : "leitura";
 
-  // Conta nova (primeiro login de alguém do domínio, sem pré-cadastro): vê todos os produtos
-  // que existem agora e não edita nenhum. Editar continua sendo liberação da administração,
-  // produto a produto, em Cadastros → pessoas. Produto criado depois não entra sozinho.
+  // Conta nova (primeiro login de alguém do domínio, sem pré-cadastro): entra como `leitura`,
+  // que vê todos os produtos e não edita nenhum. Para editar, a administração muda o papel em
+  // Cadastros → pessoas. (Não há mais permissão por produto: o papel decide tudo.)
   const id = await sql.begin(async (tx) => {
     const [row] = await tx<{ id: number }[]>`
       INSERT INTO users (nome, email, papel, iniciais, google_sub, avatar_url)
@@ -185,20 +184,14 @@ export async function findOrCreateGoogleUser(
       RETURNING id
     `;
     if (papel !== "admin") {
-      const liberadas = await tx<{ area: string }[]>`
-        INSERT INTO user_area_perms (user_id, area, nivel)
-        SELECT ${row.id}::int, a.id, 'view' FROM areas a
-        ON CONFLICT DO NOTHING
-        RETURNING area
-      `;
       await registrar(tx, {
         actorUserId: null,
         area: null,
         entidade: `U-${row.id}`,
-        campo: "permissoes",
+        campo: "papel",
         de: null,
-        para: `ver em ${liberadas.length} produto(s)`,
-        texto: `Primeiro acesso de ${nome}: liberado para ver todos os produtos, sem editar`,
+        para: papel,
+        texto: `Primeiro acesso de ${nome}: entrou com o papel leitura (vê tudo, não edita)`,
       });
     }
     return row.id;

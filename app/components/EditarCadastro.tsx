@@ -244,7 +244,7 @@ export function EditarPessoa({
       ],
       destinos: u.destinos.map((d) => ({ value: String(d.id), label: d.nome })),
       extra:
-        "A pessoa perde o acesso na hora: sessões, permissões por produto" +
+        "A pessoa perde o acesso na hora: sessões" +
         (u.conexoes ? ` e ${u.conexoes} conexão(ões) do Claude` : " e conexões do Claude") +
         ". O nome continua no histórico do que ela fez.",
     };
@@ -258,7 +258,7 @@ export function EditarPessoa({
       <Field label="E-mail" required hint={`Precisa ser @${dominio} — é o e-mail do login pelo Google.`}>
         <Input value={email} onChange={setEmail} />
       </Field>
-      <Field label="Papel" hint={souEu && pessoa.papel === "admin" ? "Você não pode mudar o próprio papel de admin." : "O acesso por produto se define na lista de pessoas, abrindo a linha."}>
+      <Field label="Papel" hint={souEu && pessoa.papel === "admin" ? "Você não pode mudar o próprio papel de admin." : "Leitura só vê; membro e gestor editam os cards de todos os produtos; admin também administra."}>
         <Select options={[...PAPEIS]} value={papel} onChange={setPapel} disabled={souEu && pessoa.papel === "admin"} />
       </Field>
       {erro && <div style={{ fontSize: 13, color: C.error }}>{erro}</div>}

@@ -918,8 +918,12 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             set={cadSet}
             pessoas={estado.pessoas}
             meuId={me.id}
-            onDefinirPermissoes={(usuarios, permissoes) => void acao(() => api.definirPermissoes({ usuarios, permissoes }))}
-            onCopiarPermissoes={(usuarios, copiarDe) => void acao(() => api.definirPermissoes({ usuarios, copiarDe }))}
+            onPapelPessoas={(usuarios, papel) =>
+              void acao(async () => {
+                // Uma chamada por pessoa: cada troca de papel tem a sua linha no changelog.
+                for (const id of usuarios) await api.alterarPessoa(id, { papel });
+              })
+            }
             onAtivoPessoa={(uid, v) => void acao(() => api.definirAtivo(uid, v))}
             onEditarPessoa={(id) => setCadEditando({ tipo: "pessoa", id })}
             areas={estado.areas.filter((a) => estado.areasVisiveis.includes(a.id))}
@@ -961,6 +965,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             deals={estado.deals}
             area={areaEfetiva}
             gatilho={estado.logs[0]?.id}
+            podeEditar={estado.isAdmin}
             onAbrirDeal={(ref) => navegar({ view: "comercial", ref })}
           />
         );

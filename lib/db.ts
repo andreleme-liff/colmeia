@@ -859,6 +859,33 @@ async function migrate(): Promise<void> {
     // Depois do seed: base nova também nasce no formato C-/T-, pelo mesmo caminho.
     await converterReferencias(sql);
 
+    // Fim da permissão por produto (nov/2026): o papel passa a decidir tudo, e membro/gestor
+    // editam todos os produtos. Uma única vez, quem não editava NENHUM produto vira `leitura`,
+    // para não ganhar edição de surpresa — inclui quem entrou pelo primeiro login só com "ver".
+    // Quem editava ao menos um passa a editar todos: é o que o fim da separação significa.
+    const [papeisAlinhados] = await sql`SELECT 1 AS ok FROM audit_log WHERE entidade = 'SISTEMA' AND campo = 'papeis-sem-matriz' LIMIT 1`;
+    if (!papeisAlinhados) {
+      const rebaixados = await sql<{ id: number; nome: string; papel_antigo: string }[]>`
+        UPDATE users u SET papel = 'leitura'
+        FROM (SELECT id, papel FROM users WHERE papel IN ('membro', 'gestor')
+              AND NOT EXISTS (SELECT 1 FROM user_area_perms p WHERE p.user_id = users.id AND p.nivel = 'edit')) antes
+        WHERE u.id = antes.id
+        RETURNING u.id, u.nome, antes.papel AS papel_antigo
+      `;
+      for (const r of rebaixados) {
+        await sql`
+          INSERT INTO audit_log (actor_user_id, area, entidade, campo, valor_anterior, valor_novo, texto)
+          VALUES (NULL, NULL, ${`U-${r.id}`}, 'papel', ${r.papel_antigo}, 'leitura',
+                  ${`Fim da permissão por produto: ${r.nome} não editava nenhum produto e passou a ter o papel leitura`})
+        `;
+      }
+      await sql`
+        INSERT INTO audit_log (actor_user_id, area, entidade, campo, valor_anterior, valor_novo, texto)
+        VALUES (NULL, NULL, 'SISTEMA', 'papeis-sem-matriz', NULL, ${String(rebaixados.length)},
+                'Permissão por produto desligada: o papel decide quem edita; quem não editava nada virou leitura')
+      `;
+    }
+
     // Por último, com as oportunidades (inclusive as do seed) já no lugar: extrai os clientes
     // do que ainda não tem cadastro. Só toca o que está sem vínculo.
     await ligarPendentes(sql);

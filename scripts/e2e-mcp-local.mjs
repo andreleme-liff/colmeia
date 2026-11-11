@@ -165,7 +165,7 @@ console.log("\n4. ferramentas");
 const init = await rpc(A, "initialize", { protocolVersion: "2025-06-18" });
 checa("initialize negocia a versão pedida", init.corpo.result.protocolVersion, "2025-06-18");
 checa("notificação → 202", (await fetch(`${BASE}/api/mcp`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${A}` }, body: JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }) })).status, 202);
-checa("com escrita, treze ferramentas", (await rpc(A, "tools/list")).corpo.result.tools.length, 13);
+checa("com escrita, dezesseis ferramentas", (await rpc(A, "tools/list")).corpo.result.tools.length, 16);
 const ctxt = (await tool(A, "contexto")).structuredContent;
 checa("age em nome de Rafael", ctxt.pessoa.nome, "Rafael Nunes");
 checa("áreas e níveis de Rafael",

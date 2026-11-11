@@ -1,4 +1,5 @@
-// Ferramentas do MCP de receita (forecast) e faturamento. Só admin — o catálogo marca
+// Ferramentas do MCP de receita (forecast) e faturamento. LER a receita é de todos (nov/2026);
+// gravar receita e tudo de faturamento é só admin — o catálogo marca
 // `soAdmin` e a rota recusa antes de chegar aqui; a checagem abaixo é a segunda barreira.
 //
 // Gravam pelas MESMAS funções da interface (lib/receita.ts, lib/faturas.ts), na transação que
@@ -130,7 +131,6 @@ async function faturaPorRef(sql: Queryable, ref: string): Promise<Fatura | null>
 /* ============================== leitura ============================== */
 
 export async function resumoReceita(c: Contexto, a: Record<string, unknown>): Promise<Saida> {
-  if (!c.ctx.isAdmin) return negado;
   const horizonte = (a.horizonte_meses as number | undefined) ?? 12;
   const area = a.area as string | undefined;
   const de = mesDe(hojeISO());
@@ -179,7 +179,6 @@ export async function resumoReceita(c: Contexto, a: Record<string, unknown>): Pr
 }
 
 export async function listarContratos(c: Contexto, a: Record<string, unknown>): Promise<Saida> {
-  if (!c.ctx.isAdmin) return negado;
   const horizonte = (a.horizonte_meses as number | undefined) ?? 12;
   const de = mesDe(hojeISO());
   const ate = somarMeses(de, horizonte - 1);
@@ -194,14 +193,14 @@ export async function listarContratos(c: Contexto, a: Record<string, unknown>): 
 }
 
 export async function verContrato(c: Contexto, a: Record<string, unknown>): Promise<Saida> {
-  if (!c.ctx.isAdmin) return negado;
   const contrato = await contratoPorRef(c.sql, a.ref as string);
   if (!contrato) return { ok: false, erro: "Receita não encontrada." };
   const cards = await lerCards(c.sql);
   const [e] = efetivos([contrato], cards);
   const hoje = hojeISO();
   const inicio = mesDe(contrato.inicioFaturamento);
-  const faturas = (await lerFaturas(c.sql)).filter((f) => f.contratoId === contrato.id);
+  // Faturamento continua só da administração: os demais veem a receita sem as faturas.
+  const faturas = c.ctx.isAdmin ? (await lerFaturas(c.sql)).filter((f) => f.contratoId === contrato.id) : [];
   const historico = await c.sql<{ criado_em: Date; autor: string | null; texto: string; origem: string | null }[]>`
     SELECT l.criado_em, u.nome AS autor, l.texto, l.origem
     FROM audit_log l LEFT JOIN users u ON u.id = l.actor_user_id
@@ -219,7 +218,7 @@ export async function verContrato(c: Contexto, a: Record<string, unknown>): Prom
         parcela: l.rotulo,
         valor_reais: reais(l.valorCentavos),
       })),
-      faturas: faturas.map((f) => faturaParaSaida(f, hoje, contrato.ref, c.base)),
+      ...(c.ctx.isAdmin ? { faturas: faturas.map((f) => faturaParaSaida(f, hoje, contrato.ref, c.base)) } : {}),
       historico: historico.map((h) => ({
         quando: h.criado_em.toISOString(),
         quem: h.autor ?? "sistema",

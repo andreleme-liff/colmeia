@@ -68,19 +68,20 @@ checa("nenhuma ferramenta fala com o mundo de fora (openWorld)", CATALOGO.every(
 checa("todo esquema fecha campos extras", CATALOGO.every((f) => f.inputSchema.additionalProperties === false), true);
 checa("nomes no formato da spec", nomes.every((n) => /^[A-Za-z0-9_.-]{1,128}$/.test(n)), true);
 const soLeitura = descreverFerramentas("leitura offline_access").map((f) => f.name);
-checa("conexão só de leitura não vê ferramenta de gravação", soLeitura, ["contexto", "listar_cadastros", "listar_atividades", "listar_oportunidades", "ver_registro", "listar_organizacoes", "ver_organizacao"]);
-checa("com escrita vê as treze (sem ser admin)", descreverFerramentas("leitura escrita").length, 13);
-const FIN = ["resumo_receita", "listar_receitas", "ver_receita", "listar_faturas", "criar_receita", "atualizar_receita",
+checa("conexão só de leitura não vê ferramenta de gravação", soLeitura, ["contexto", "listar_cadastros", "listar_atividades", "listar_oportunidades", "ver_registro", "listar_organizacoes", "ver_organizacao", "resumo_receita", "listar_receitas", "ver_receita"]);
+checa("com escrita vê as dezesseis (sem ser admin)", descreverFerramentas("leitura escrita").length, 16);
+const FIN = ["listar_faturas", "criar_receita", "atualizar_receita",
   "emitir_fatura", "registrar_pagamento", "corrigir_fatura", "estornar_pagamento", "cancelar_fatura",
   "resumo_funding", "listar_arquetipos", "ver_estimativa", "criar_estimativa", "atualizar_estimativa", "registrar_funding",
   "atualizar_funding", "salvar_calculadora"];
-checa("receita e faturamento são todas só de admin", FIN.every((n) => CATALOGO.find((f) => f.name === n)?.soAdmin === true), true);
+checa("gravar receita, faturamento e funding são só de admin", FIN.every((n) => CATALOGO.find((f) => f.name === n)?.soAdmin === true), true);
 checa("as do dia a dia não são só de admin", CATALOGO.filter((f) => !FIN.includes(f.name)).every((f) => !f.soAdmin), true);
-checa("quem não é admin não vê nenhuma de receita", descreverFerramentas("leitura escrita", false).some((f) => FIN.includes(f.name)), false);
+checa("quem não é admin não vê as de gravar receita, faturamento ou funding", descreverFerramentas("leitura escrita", false).some((f) => FIN.includes(f.name)), false);
 checa("admin com escrita vê as trinta e duas", descreverFerramentas("leitura escrita", true).length, 32);
-checa("admin só de leitura vê as de leitura de receita, não as de gravação",
+checa("ler a receita não é só de admin", ["resumo_receita", "listar_receitas", "ver_receita"].every((n) => !CATALOGO.find((f) => f.name === n)?.soAdmin), true);
+checa("admin só de leitura vê as de leitura de faturamento e funding, não as de gravação",
   descreverFerramentas("leitura", true).map((f) => f.name).filter((n) => FIN.includes(n)),
-  ["resumo_receita", "listar_receitas", "ver_receita", "listar_faturas", "resumo_funding", "listar_arquetipos", "ver_estimativa"]);
+  ["listar_faturas", "resumo_funding", "listar_arquetipos", "ver_estimativa"]);
 checa("calculadora: link que não é da AWS recusado", valida("salvar_calculadora", { arquetipo_id: 1, regiao: "us-east-1", conta: "liff", porte: "M", custo_mensal_usd: 1, url: "https://evil.com" }), ["url: formato inválido"]);
 checa("funding: status fora da lista", valida("registrar_funding", { estimativa: "E-0001", programa: "poc-credits", beneficiario: "liff", valor_usd: 1, status: "talvez" })[0].startsWith("status: valor fora da lista"), true);
 checa("tools/list não vaza a marca interna `soAdmin`", descreverFerramentas("leitura escrita", true).some((f) => "soAdmin" in f), false);

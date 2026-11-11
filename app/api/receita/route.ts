@@ -1,17 +1,17 @@
-// Forecast de receita: lista e cadastro de contratos. Só administração, por enquanto — a
-// tela está em construção e mostra números de toda a empresa.
+// Forecast de receita: lista (para todos) e cadastro (só administração).
 //
 // Toda gravação passa por `lerContrato` (lib/forecast.ts) e entra na auditoria na mesma
 // transação.
 
 import { getDb } from "@/lib/db";
-import { requireAdmin } from "@/lib/perms";
+import { requireAdmin, requireCtx } from "@/lib/perms";
 import { err, json, lerCorpo } from "@/lib/http";
 import { lerContrato } from "@/lib/forecast";
 import { criarContrato, lerContratos } from "@/lib/receita";
 
 export async function GET() {
-  const ctx = await requireAdmin();
+  // Ver o forecast é de todos (nov/2026); gravar continua só da administração.
+  const ctx = await requireCtx();
   if (ctx instanceof Response) return ctx;
   const sql = await getDb();
   return json({ contratos: await lerContratos(sql) });

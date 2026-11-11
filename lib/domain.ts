@@ -89,14 +89,14 @@ export const NAV = [
   { key: "clientes", label: "organizações" },
   { key: "operacoes", label: "operações" },
   { key: "cronograma", label: "cronograma" },
+  // Forecast de receita: todos veem; só admin decide o que entra e altera valores.
+  { key: "receita", label: "receita" },
   // Aplicativos externos (o Claude) que alguém autorizou a agir em seu nome pelo MCP. Para
   // TODOS, não só admin: cada pessoa revoga as próprias conexões — por isso não mora em
   // Cadastros, que é só da administração.
   { key: "conexoes", label: "conexões" },
   // Só admin, e por isso no fim do menu, num grupo separado. A antiga "administração" (a
   // matriz de permissões) virou parte de Cadastros → Pessoas; `/admin` redireciona para lá.
-  // Forecast de receita: em construção, por isso só admin. Mostra números da empresa inteira.
-  { key: "receita", label: "receita", soAdmin: true },
   // Contas a receber: emissão e baixa das faturas que saem dos contratos da receita.
   { key: "faturamento", label: "faturamento", soAdmin: true },
   // Funding AWS: consumo previsto por oportunidade (conta LIFF e conta do cliente), arquétipos
@@ -125,7 +125,7 @@ export const TITLES: Record<string, string> = {
 export const ADMIN_CARDS = [
   {
     title: "PAPÉIS",
-    body: "Admin, Gestor, Membro e Leitura. O papel define o teto de permissão; a lista acima refina por produto.",
+    body: "Leitura vê tudo e não edita. Membro e Gestor editam os cards de todos os produtos. Admin também administra cadastros, receita, faturamento e funding.",
   },
   {
     title: "SSO GOOGLE",

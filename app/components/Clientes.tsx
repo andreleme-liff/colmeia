@@ -96,9 +96,9 @@ export default function Clientes({
 
   useEffect(() => {
     let vivo = true;
-    // Receita e faturamento são rotas só da administração: os demais nem perguntam.
+    // Faturamento é rota só da administração: os demais nem perguntam. A receita todos leem.
     const vazio = <T,>(v: T) => Promise.resolve(v);
-    Promise.all([api.clientes(), isAdmin ? api.receitas() : vazio({ contratos: [] }), isAdmin ? api.faturas() : vazio({ faturas: [] })]).then(
+    Promise.all([api.clientes(), api.receitas(), isAdmin ? api.faturas() : vazio({ faturas: [] })]).then(
       ([c, r, f]) => vivo && (setDados({ clientes: c.clientes, contratos: r.contratos, faturas: f.faturas }), setFalha(null)),
       (e: unknown) => vivo && setFalha(e instanceof Error ? e.message : "Não foi possível carregar as organizações.")
     );
@@ -146,9 +146,7 @@ export default function Clientes({
     );
     return (!!termo && palheiro.includes(termo)) || (digitos.length >= 3 && v.c.cnpj.includes(digitos));
   };
-  // Quem não é admin não recebe a receita: para essas pessoas "fechou" é ter oportunidade em Ganho.
-  const ganhas = (v: Visao) => v.deals.filter((d) => d.estagio === "ganho" && (area === "all" || d.area === area)).length;
-  const fechou = (v: Visao) => (isAdmin ? v.contratos.length : ganhas(v));
+  const fechou = (v: Visao) => v.contratos.length;
   const semCnpj = (v: Visao) => v.contratos.length > 0 && !v.c.cnpj;
   // Só em prospecção: tem oportunidade em Prospecção (no produto do cabeçalho, se houver um) e
   // nada mais adiante: nenhuma em negociação, nenhum contrato. É quem ainda não conversou conosco.
@@ -210,9 +208,9 @@ export default function Clientes({
           detalhe={`Organizações distintas, da 1ª Reunião ao Contrato · ${brl(naArea.reduce((t, v) => t + v.pipeline, 0))}`}
         />
         <Numero
-          rotulo={isAdmin ? "COM CONTRATO" : "COM VENDA GANHA"}
+          rotulo="COM CONTRATO"
           valor={String(naArea.filter((v) => fechou(v)).length)}
-          detalhe={isAdmin ? "Receita contratada: venda ganha" : "Ao menos uma oportunidade em Ganho"}
+          detalhe="Receita contratada: venda ganha"
         />
       </div>
 
@@ -254,7 +252,7 @@ export default function Clientes({
         <div role="group" aria-label="Filtro de organizações" className="liff-densidade">
           {FILTROS.map((f) => (
             <button key={f.key} type="button" aria-pressed={filtro === f.key} onClick={() => setFiltro(f.key)}>
-              {f.key === "contrato" && !isAdmin ? "com venda ganha" : f.label}
+              {f.label}
             </button>
           ))}
         </div>
@@ -280,7 +278,7 @@ export default function Clientes({
         <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}` }}>
           <div style={{ minWidth: 1040 }}>
             <div style={{ display: "grid", gridTemplateColumns: cols, background: C.canvas, borderBottom: `1px solid ${C.line}` }}>
-              {["ORGANIZAÇÃO", "PRODUTOS", "OPORTUNIDADES", "EM NEGOCIAÇÃO (R$)", isAdmin ? "CONTRATOS" : "GANHAS", "ÚLT. INTERAÇÃO", "CNPJ"].map((h, k) => (
+              {["ORGANIZAÇÃO", "PRODUTOS", "OPORTUNIDADES", "EM NEGOCIAÇÃO (R$)", "CONTRATOS", "ÚLT. INTERAÇÃO", "CNPJ"].map((h, k) => (
                 <div key={h} style={{ padding: "12px 14px", ...eyebrow(10, C.faint), textAlign: k === 3 ? "right" : "left" }}>
                   {h}
                 </div>
@@ -713,8 +711,6 @@ function Ficha({
             </div>
           )}
 
-          {isAdmin && (
-            <>
           {bloco(`RECEITA · ${visao.receitas.length}`)}
           {visao.receitas.length === 0 ? (
             <div style={{ fontSize: 12.5, color: C.faint }}>Nenhuma receita cadastrada, nem contratada nem prevista.</div>
@@ -735,6 +731,8 @@ function Ficha({
             </div>
           )}
 
+          {isAdmin && (
+            <>
           {bloco(`FATURAS · ${visao.faturas.length}`)}
           {visao.faturas.length === 0 ? (
             <div style={{ fontSize: 12.5, color: C.faint }}>Nenhuma fatura emitida.</div>

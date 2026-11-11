@@ -29,28 +29,18 @@ export type Ctx = {
 };
 
 /**
- * O papel define o teto; a matriz por área refina dentro dele.
- * - admin   → edit em tudo, sem depender da matriz
- * - leitura → nunca passa de view, mesmo que a matriz diga edit
- * - demais  → exatamente o que a matriz disser
+ * O papel é a permissão inteira; não há mais matriz por produto.
+ * - leitura          → vê tudo, não edita
+ * - membro, gestor   → veem e editam os registros de todos os produtos
+ * - admin            → idem, e administra (o que é só de admin passa por `requireAdmin`)
  */
 export async function carregarPerms(user: SessionUser, areasExistentes: string[]): Promise<Record<string, Nivel>> {
-  const sql = await getDb();
-  const linhas = await sql<{ area: string; nivel: Nivel }[]>`
-    SELECT area, nivel FROM user_area_perms WHERE user_id = ${user.userId}
-  `;
-
+  // Não há mais permissão por produto (nov/2026): todo mundo vê todos os produtos que
+  // EXISTIREM (inclusive os cadastrados depois), e o papel decide quem edita. A tabela
+  // `user_area_perms` continua no banco, sem uso, como registro do que valia antes.
+  const nivel: Nivel = user.papel === "leitura" ? "view" : "edit";
   const perms: Record<string, Nivel> = {};
-  if (user.papel === "admin") {
-    // Vem do banco, não de lista fixa: admin edita toda área que EXISTIR, inclusive as
-    // cadastradas depois.
-    for (const a of areasExistentes) perms[a] = "edit";
-    return perms;
-  }
-
-  for (const l of linhas) {
-    perms[l.area] = user.papel === "leitura" ? "view" : l.nivel;
-  }
+  for (const a of areasExistentes) perms[a] = nivel;
   return perms;
 }
 

@@ -16,7 +16,7 @@ import ViaConexao from "./ViaConexao";
 import { CardOportunidade } from "./CardOportunidade";
 import { CardAtividade } from "./CardAtividade";
 import {
-  ADMIN_CARDS, BLOCKER_TIPOS, ERP_SUGESTOES, ESTAGIO_INICIAL, MOTIVOS_PERDA, PAPEIS, STAGES, STATUS, CHAVE_SEM_RESPONSAVEL, aplicarBusca, areaOf, prepararBusca, ddmm, porTexto, stamp, statusLabel, todasAreas, hostDaUrl, previaDaProposta, urlDaProposta,
+  ADMIN_CARDS, BLOCKER_TIPOS, ERP_SUGESTOES, ESTAGIO_INICIAL, MOTIVOS_PERDA, PAPEIS, STAGES, STATUS, CHAVE_SEM_RESPONSAVEL, aplicarBusca, areaOf, prepararBusca, ddmm, porTexto, stamp, statusLabel, hostDaUrl, previaDaProposta, urlDaProposta,
 } from "@/lib/domain";
 
 /* =========================================================
@@ -932,7 +932,7 @@ function NovaPessoa({
       <Field label="E-mail" required hint={`Precisa ser @${dominio} — é o domínio aceito no login.`}>
         <Input placeholder={`larissa@${dominio}`} value={email} onChange={setEmail} />
       </Field>
-      <Field label="Papel" hint="O papel é o teto; o acesso por produto se define depois, na matriz acima.">
+      <Field label="Papel" hint="Leitura só vê. Membro e gestor editam os cards de todos os produtos. Admin também administra.">
         <Select options={[...PAPEIS]} value={papel} onChange={setPapel} />
       </Field>
       <Button
@@ -1147,8 +1147,7 @@ export function Cadastros({
   onCriarOrigem,
   pessoas,
   meuId,
-  onDefinirPermissoes,
-  onCopiarPermissoes,
+  onPapelPessoas,
   onAtivoPessoa,
   onEditarPessoa,
 }: {
@@ -1158,8 +1157,7 @@ export function Cadastros({
   /** Aba Pessoas: a lista com papel, e-mail, acesso e as permissões por área (a antiga Administração). */
   pessoas: Pessoa[];
   meuId: number;
-  onDefinirPermissoes: (usuarios: number[], permissoes: Record<string, "edit" | "view" | null>) => void;
-  onCopiarPermissoes: (usuarios: number[], de: number) => void;
+  onPapelPessoas: (usuarios: number[], papel: string) => void;
   onAtivoPessoa: (userId: number, ativo: boolean) => void;
   onEditarPessoa: (id: number) => void;
   areas: AreaCadastro[];
@@ -1203,10 +1201,8 @@ export function Cadastros({
           {tab === "pessoas" ? (
             <Permissoes
               pessoas={pessoas}
-              areas={todasAreas()}
               meuId={meuId}
-              onDefinir={onDefinirPermissoes}
-              onCopiar={onCopiarPermissoes}
+              onPapel={onPapelPessoas}
               onAtivo={onAtivoPessoa}
               onEditar={podeEditarAreas ? onEditarPessoa : undefined}
             />
