@@ -74,7 +74,7 @@ irrelevante nesta escala.
 | `lib/db.ts` | Conexão, schema e seed |
 | `lib/auth.ts` | Sessão em cookie; criação/vínculo de conta pelo Google |
 | `lib/google-oauth.ts` | Authorization code flow, restrição de domínio |
-| `lib/perms.ts` | **Permissão por área — o enforcement de verdade** |
+| `lib/perms.ts` | **Permissão por papel — o enforcement de verdade** |
 | `lib/log.ts` | Escrita na auditoria |
 | `lib/domain.ts` | Áreas, status, estágios, papéis — compartilhado servidor/cliente |
 | `app/api/state` | Estado completo, já recortado pela permissão |
@@ -102,8 +102,9 @@ Duas decisões que valem registrar:
 - No pipeline o cliente manda a **direção** (`-1`/`+1`), não o estágio de destino. Assim não
   dá para pular etapas mandando um estágio arbitrário.
 
-O papel define o teto e a matriz por área refina dentro dele: `admin` tem edição em tudo sem
-depender da matriz, `leitura` nunca passa de `view` mesmo que a matriz diga `edit`.
+Desde nov/2026 não há permissão por produto: o papel decide. `leitura` vê todos os produtos e
+não edita; `membro` e `gestor` editam os registros de todos; `admin` também administra
+(cadastros, faturamento, funding e gravação de receita). A tabela `user_area_perms` ficou sem uso.
 
 ## Acesso
 
@@ -206,7 +207,7 @@ volta e o que a conexão poderá; **gravar é opção explícita**, desmarcada.
 - **Toda** chamada, leitura inclusive, fica em `mcp_chamadas`, na mesma transação da
   gravação quando há uma.
 - Autorizar e revogar também entram no `audit_log`. Cada pessoa vê e revoga as próprias
-  conexões em **Conexões** (menu); a administração vê e revoga todas.
+  conexões em **MCP Server** (menu); a administração vê e revoga todas.
 
 ### Referências e vínculo tarefa ↔ oportunidade
 

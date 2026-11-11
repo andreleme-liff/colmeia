@@ -1,8 +1,7 @@
 // Organizações no MCP: lista, ficha, cadastro e alteração. Mesmas regras da interface
 // (rotas /api/clientes) e as mesmas funções de gravação (`lib/clientes-db.ts`):
-//  - quem não é admin vê as organizações com oportunidade num produto visível e as que não têm
-//    oportunidade nenhuma; cobrança e receita só para admin;
-//  - cadastra quem edita algum produto; altera quem edita um produto da organização;
+//  - todos veem todas as organizações (não há mais permissão por produto); cobrança só admin;
+//  - cadastra e altera quem tem papel que edita (membro, gestor, admin);
 //  - sem mescla e sem exclusão: apagam um registro, e nada é excluído por aqui.
 
 import { estagioEmAberto, refCanonica, stageLabel } from "../domain";
@@ -93,9 +92,10 @@ export const listarOrganizacoes: Exec = async (c, a) => {
 async function ficha(c: Contexto, o: ClienteLido) {
   const ops = await oportunidadesVisiveis(c, o.id);
   const eventos = await historicoDoCliente(c.sql, o.id, areasDe(c));
-  const receitas = c.ctx.isAdmin
-    ? await c.sql<{ ref: string; area: string; situacao: string }[]>`SELECT ref, area, situacao FROM contratos WHERE cliente_id = ${o.id} ORDER BY ref`
-    : [];
+  // Ler a receita é de todos (ver `ver_receita` para valores e cronograma).
+  const receitas = await c.sql<{ ref: string; area: string; situacao: string }[]>`
+    SELECT ref, area, situacao FROM contratos WHERE cliente_id = ${o.id} ORDER BY ref
+  `;
   return {
     ...resumo(c, o, ops),
     razao_social: o.razaoSocial || null,
@@ -120,13 +120,9 @@ async function ficha(c: Contexto, o: ClienteLido) {
       proposta_url: x.proposta_url || null,
       url: c.base + caminhoDe({ view: "comercial", ref: refCanonica(x.ref) ?? x.ref }),
     })),
-    // Cobrança e receita: só a administração, como na interface.
-    ...(c.ctx.isAdmin
-      ? {
-          cobranca: { email: o.emailCobranca || null, dia_vencimento: o.diaVencimento, forma: o.formaCobranca },
-          receitas: receitas.map((r) => ({ ref: r.ref, produto: r.area, situacao: r.situacao })),
-        }
-      : {}),
+    receitas: receitas.map((r) => ({ ref: r.ref, produto: r.area, produto_nome: c.ctx.labelArea(r.area), situacao: r.situacao })),
+    // Cobrança: só a administração, como na interface.
+    ...(c.ctx.isAdmin ? { cobranca: { email: o.emailCobranca || null, dia_vencimento: o.diaVencimento, forma: o.formaCobranca } } : {}),
     linha_do_tempo: eventos.slice(0, 50).map((e) => ({ quando: e.criadoEm, quem: e.autor, registro: e.entidade, o_que: e.texto, valor: e.para })),
   };
 }

@@ -101,7 +101,7 @@ const CAMPOS_OPORTUNIDADE: Record<string, Prop> = {
     enum: STAGE_KEYS,
     description: `${STAGES.map((s) => `${s.key} = ${s.label}`).join("; ")}. As sete primeiras são o funil, em ordem; on_hold é "não é o momento" e lost é perdida.`,
   },
-  valor_reais: { type: "number", minimum: 0, description: "Valor total da proposta nos primeiros 12 meses (assinatura, implantação e customização somadas), em reais (não em centavos)." },
+  valor_reais: { type: "number", minimum: 0, description: "Valor total da proposta em 12 meses (assinatura, implantação e customização somadas), em reais (não em centavos)." },
   responsavel_id: { ...RESP, description: "Dono da oportunidade: id da pessoa (ver `listar_cadastros`); null remove." },
   responsavel_texto: { type: "string", maxLength: LIMITES.responsavelTexto, description: "Dono em texto livre, quando não é alguém cadastrado." },
   origem: { type: ["string", "null"], maxLength: 60, description: "Id da origem (ver `listar_cadastros`): Base Fius, AWS, Evento… null limpa." },
@@ -277,7 +277,7 @@ export const CATALOGO = [
     name: "contexto",
     title: "Quem sou e o que posso",
     description:
-      "Mostra em nome de quem esta conexão age, os produtos que ela vê e edita, os escopos concedidos e o vocabulário do sistema (status, estágios, prioridades). Chame primeiro.",
+      "Mostra em nome de quem esta conexão age, o papel da pessoa (leitura só vê; membro, gestor e admin editam), os produtos, os escopos concedidos e o vocabulário do sistema (status, estágios, prioridades). Chame primeiro.",
     escrita: false,
     inputSchema: objeto({}),
     annotations: LEITURA,
@@ -285,7 +285,7 @@ export const CATALOGO = [
   {
     name: "listar_cadastros",
     title: "Produtos, módulos e pessoas",
-    description: "Produtos visíveis (com nível), módulos desses produtos (os de interesse das oportunidades), origens e pessoas cadastradas (id e nome, para atribuir dono e quem resolve blocker).",
+    description: "Os produtos, os módulos de cada um (os de interesse das oportunidades), origens e pessoas cadastradas (id e nome, para atribuir dono e quem resolve blocker).",
     escrita: false,
     inputSchema: objeto({}),
     annotations: LEITURA,
@@ -294,7 +294,7 @@ export const CATALOGO = [
     name: "listar_atividades",
     title: "Listar atividades",
     description:
-      "Tarefas do quadro operacional nos produtos visíveis, com filtros. Com `oportunidade`, só as ligadas àquela venda — é como responder \"o que falta na operação para a conta X\". Devolve também o total encontrado.",
+      "Tarefas do quadro operacional, de todos os produtos, com filtros. Com `oportunidade`, só as ligadas àquela venda — é como responder \"o que falta na operação para a conta X\". Devolve também o total encontrado.",
     escrita: false,
     inputSchema: objeto({
       produto: PRODUTO,
@@ -310,7 +310,7 @@ export const CATALOGO = [
     name: "listar_oportunidades",
     title: "Listar oportunidades",
     description:
-      "Oportunidades do pipeline comercial nos produtos visíveis, com filtros. O filtro de responsável também reconhece o nome escrito em texto livre.",
+      "Oportunidades do pipeline comercial, de todos os produtos, com filtros. O filtro de responsável também reconhece o nome escrito em texto livre.",
     escrita: false,
     inputSchema: objeto({
       produto: PRODUTO,
@@ -333,7 +333,7 @@ export const CATALOGO = [
   {
     name: "criar_atividade",
     title: "Criar atividade",
-    description: `Cria uma atividade no quadro operacional. Exige nível 'editar' no produto. Status padrão backlog (${statusLabel("backlog")}), prioridade padrão media.`,
+    description: `Cria uma atividade no quadro operacional. Exige papel que edita (membro, gestor ou admin). Status padrão backlog (${statusLabel("backlog")}), prioridade padrão media.`,
     escrita: true,
     inputSchema: objeto({ ...CAMPOS_ATIVIDADE, chave_idempotencia: CHAVE }, ["titulo", "produto"]),
     annotations: CRIACAO,
@@ -342,7 +342,7 @@ export const CATALOGO = [
     name: "atualizar_atividade",
     title: "Atualizar atividade",
     description:
-      "Altera só os campos enviados de uma atividade. Mudar de produto exige 'editar' nos dois produtos. Cada campo alterado fica no histórico com o valor anterior.",
+      "Altera só os campos enviados de uma atividade. Cada campo alterado fica no histórico com o valor anterior.",
     escrita: true,
     inputSchema: objeto({ ref: REF_A, ...CAMPOS_ATIVIDADE }, ["ref"]),
     annotations: ATUALIZACAO,
@@ -350,7 +350,7 @@ export const CATALOGO = [
   {
     name: "criar_oportunidade",
     title: "Criar oportunidade",
-    description: `Cria uma oportunidade no pipeline comercial, ligada a uma organização: mande \`organizacao\` (CLI-…) ou, sem a referência, \`conta\` com o nome. Exige nível 'editar' no produto. Estágio padrão ${ESTAGIO_INICIAL} (${stageLabel(ESTAGIO_INICIAL)}).`,
+    description: `Cria uma oportunidade no pipeline comercial, ligada a uma organização: mande \`organizacao\` (CLI-…) ou, sem a referência, \`conta\` com o nome. Exige papel que edita (membro, gestor ou admin). Estágio padrão ${ESTAGIO_INICIAL} (${stageLabel(ESTAGIO_INICIAL)}).`,
     escrita: true,
     inputSchema: objeto({ ...CAMPOS_OPORTUNIDADE, chave_idempotencia: CHAVE }, ["produto"]),
     annotations: CRIACAO,
@@ -359,7 +359,7 @@ export const CATALOGO = [
     name: "atualizar_oportunidade",
     title: "Atualizar oportunidade",
     description:
-      "Altera só os campos enviados de uma oportunidade (estágio, valor, próximo passo…). `organizacao` ou `conta` trocam a organização a que ela pertence. Mudar de produto exige 'editar' nos dois. Cada campo alterado fica no histórico com o valor anterior.",
+      "Altera só os campos enviados de uma oportunidade (estágio, valor, próximo passo…). `organizacao` ou `conta` trocam a organização a que ela pertence. Cada campo alterado fica no histórico com o valor anterior.",
     escrita: true,
     inputSchema: objeto({ ref: REF_D, ...CAMPOS_OPORTUNIDADE }, ["ref"]),
     annotations: ATUALIZACAO,
@@ -369,7 +369,7 @@ export const CATALOGO = [
     name: "listar_organizacoes",
     title: "Listar organizações",
     description:
-      "O cadastro de organizações (refs CLI-0000): as empresas com que a LIFF fala, com ou sem oportunidade. Cada uma traz os produtos, quantas oportunidades tem e em que ponto está (so_prospeccao, em_negociacao = da 1ª Reunião ao Contrato, com_venda_ganha). Quem não é admin vê as que têm oportunidade num produto visível e as que não têm oportunidade nenhuma.",
+      "O cadastro de organizações (refs CLI-0000): as empresas com que a LIFF fala, com ou sem oportunidade. Cada uma traz os produtos, quantas oportunidades tem e em que ponto está (so_prospeccao, em_negociacao = da 1ª Reunião ao Contrato, com_venda_ganha).",
     escrita: false,
     inputSchema: objeto({
       busca: { type: "string", maxLength: 100, description: "Texto contido no nome, razão social, outro nome, CNPJ ou contato." },
@@ -383,7 +383,7 @@ export const CATALOGO = [
     name: "ver_organizacao",
     title: "Ver organização",
     description:
-      "A ficha de uma organização: cadastro (CNPJ, endereço, site), contatos, as oportunidades visíveis dela em todos os produtos (com estágio, valor e link da proposta) e a linha do tempo. Para admin, também a cobrança e as receitas cadastradas.",
+      "A ficha de uma organização: cadastro (CNPJ, endereço, site), contatos, as oportunidades dela em todos os produtos (com estágio, valor e link da proposta), as receitas cadastradas e a linha do tempo. Para admin, também os dados de cobrança.",
     escrita: false,
     inputSchema: objeto({ organizacao: REF_CLI }, ["organizacao"]),
     annotations: LEITURA,
@@ -392,7 +392,7 @@ export const CATALOGO = [
     name: "criar_organizacao",
     title: "Cadastrar organização",
     description:
-      "Cadastra uma organização, com ou sem oportunidade: é o dado mestre que as oportunidades referenciam. Recusa nome ou CNPJ que já esteja no cadastro (use a que existe). Exige nível 'editar' em algum produto.",
+      "Cadastra uma organização, com ou sem oportunidade: é o dado mestre que as oportunidades referenciam. Recusa nome ou CNPJ que já esteja no cadastro (use a que existe). Exige papel que edita (membro, gestor ou admin).",
     escrita: true,
     inputSchema: objeto({ ...CAMPOS_ORGANIZACAO, chave_idempotencia: CHAVE }, ["nome"]),
     annotations: CRIACAO,
@@ -401,7 +401,7 @@ export const CATALOGO = [
     name: "atualizar_organizacao",
     title: "Atualizar organização",
     description:
-      "Altera só os campos enviados do cadastro de uma organização. Mudar o `nome` muda o nome mostrado em todas as oportunidades e receitas dela. `contatos`, se vier, substitui a lista inteira. Exige 'editar' em algum produto em que a organização tem oportunidade.",
+      "Altera só os campos enviados do cadastro de uma organização. Mudar o `nome` muda o nome mostrado em todas as oportunidades e receitas dela. `contatos`, se vier, substitui a lista inteira. Exige papel que edita (membro, gestor ou admin).",
     escrita: true,
     inputSchema: objeto({ organizacao: REF_CLI, ...CAMPOS_ORGANIZACAO }, ["organizacao"]),
     annotations: ATUALIZACAO,
@@ -649,7 +649,8 @@ export function descreverFerramentas(escopos: string, admin = false) {
 
 export const INSTRUCOES = [
   "LIFF go (antes LIFF tasks): quadro operacional (tarefas, refs T-0000), pipeline comercial (oportunidades, refs C-0000) e cadastro de organizações (refs CLI-0000) da LIFF.",
-  "Chame `contexto` primeiro: ele diz em nome de quem você age, os produtos que vê e edita, e o vocabulário de status e estágios.",
+  "Chame `contexto` primeiro: ele diz em nome de quem você age, o papel da pessoa, os produtos e o vocabulário de status e estágios.",
+  "Permissão é por papel, não por produto: todos veem todos os produtos; `leitura` não grava; `membro`, `gestor` e `admin` gravam em qualquer produto; só `admin` grava receita e usa faturamento e funding.",
   "Valores em reais; datas AAAA-MM-DD. Responsável: use o id de `listar_cadastros`.",
   "Tarefa e oportunidade se ligam pelo campo `oportunidade` da tarefa (ex.: C-0104). Ao criar uma tarefa que serve a uma venda, ligue-a.",
   "Organização é o dado mestre: toda oportunidade pertence a uma, e o nome mostrado no card é o do cadastro. Antes de criar uma oportunidade, procure a organização com `listar_organizacoes` e mande a referência em `organizacao`; só use `conta` (o nome) quando ela não existir. Uma organização pode existir sem oportunidade. Mesclar e excluir organizações só pela interface.",

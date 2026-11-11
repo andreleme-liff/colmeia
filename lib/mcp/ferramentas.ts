@@ -86,7 +86,11 @@ const EXECUTORES: Record<NomeFerramenta, Executor> = {
   contexto: async (c) => ({
     ok: true,
     dados: {
-      pessoa: { id: c.ctx.user.userId, nome: c.ctx.user.nome, papel: c.ctx.user.papel },
+      pessoa: {
+        id: c.ctx.user.userId, nome: c.ctx.user.nome, papel: c.ctx.user.papel,
+        // Permissão é por papel: leitura só vê; os demais editam todos os produtos.
+        edita: c.ctx.user.papel !== "leitura",
+      },
       conexao: {
         cliente: c.acesso.clientNome,
         escopos: c.acesso.escopos.split(" "),
