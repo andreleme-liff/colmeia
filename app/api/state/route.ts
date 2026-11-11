@@ -247,8 +247,7 @@ export async function GET() {
       dor: d.dor,
       erp: d.erp,
       propostaUrl: d.proposta_url,
-      // Só a administração enxerga o cadastro de clientes, por enquanto.
-      clienteId: ctx.isAdmin ? d.cliente_id : null,
+      clienteId: d.cliente_id,
       ultimaInteracao: d.ultima_interacao ? d.ultima_interacao.toISOString().slice(0, 10) : null,
       blocker: d.blocker,
       blockerTipo: d.blocker_tipo,

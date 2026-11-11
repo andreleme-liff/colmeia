@@ -1,11 +1,12 @@
-// Um cliente: histórico (GET), alteração (PATCH) e exclusão (DELETE). Só administração.
+// Uma organização: histórico (GET) e alteração (PATCH) para quem a enxerga e edita pelo
+// produto; exclusão (DELETE) só da administração.
 // A alteração substitui o cadastro inteiro, como o formulário; o changelog guarda cada campo.
 
 import { getDb } from "@/lib/db";
-import { requireAdmin } from "@/lib/perms";
+import { requireAdmin, requireCtx } from "@/lib/perms";
 import { err, json, lerCorpo } from "@/lib/http";
 import { lerCliente } from "@/lib/cliente";
-import { atualizarCliente, excluirCliente, historicoDoCliente } from "@/lib/clientes-db";
+import { atualizarCliente, excluirCliente, historicoDoCliente, lerClientes } from "@/lib/clientes-db";
 
 async function idDe(ctxRoute: RouteContext<"/api/clientes/[id]">): Promise<number | null> {
   const { id } = await ctxRoute.params;
@@ -14,18 +15,21 @@ async function idDe(ctxRoute: RouteContext<"/api/clientes/[id]">): Promise<numbe
 }
 
 export async function GET(_req: Request, ctxRoute: RouteContext<"/api/clientes/[id]">) {
-  const ctx = await requireAdmin();
+  const ctx = await requireCtx();
   if (ctx instanceof Response) return ctx;
   const id = await idDe(ctxRoute);
   if (id == null) return err("Organização inválida.", 400);
   const sql = await getDb();
-  const [existe] = await sql<{ id: number }[]>`SELECT id FROM clientes WHERE id = ${id}`;
+  // Quem não é admin só vê organização com oportunidade num produto que enxerga; fora disso
+  // é 404, como todo registro invisível.
+  const areas = ctx.isAdmin ? undefined : ctx.areasVisiveis;
+  const [existe] = await lerClientes(sql, id, areas);
   if (!existe) return err("Organização não encontrada.", 404);
-  return json({ eventos: await historicoDoCliente(sql, id) });
+  return json({ eventos: await historicoDoCliente(sql, id, areas) });
 }
 
 export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/clientes/[id]">) {
-  const ctx = await requireAdmin();
+  const ctx = await requireCtx();
   if (ctx instanceof Response) return ctx;
   const id = await idDe(ctxRoute);
   if (id == null) return err("Organização inválida.", 400);
@@ -33,6 +37,21 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/clientes/
   if (typeof e === "string") return err(e, 400);
 
   const sql = await getDb();
+  if (!ctx.isAdmin) {
+    // Edita o cadastro quem edita algum produto em que a organização tem oportunidade.
+    const [atual] = await lerClientes(sql, id, ctx.areasVisiveis);
+    if (!atual) return err("Organização não encontrada.", 404);
+    const [edita] = ctx.areasEditaveis.length
+      ? await sql<{ id: number }[]>`
+          SELECT id FROM deals WHERE cliente_id = ${id} AND area = ANY(${ctx.areasEditaveis}::text[]) LIMIT 1
+        `
+      : [];
+    if (!edita) return err("Sem permissão de edição nesta organização.", 403);
+    // Cobrança é da administração: o que vier no corpo é ignorado e fica o que já estava.
+    e.emailCobranca = atual.emailCobranca;
+    e.diaVencimento = atual.diaVencimento;
+    e.formaCobranca = atual.formaCobranca;
+  }
   const r = await sql.begin((tx) => atualizarCliente(tx, { userId: ctx.user.userId, origem: null, concessaoId: null }, id, e));
   if ("erro" in r) return err(r.erro, r.status);
   return json({ ok: true, mudancas: r.mudancas });

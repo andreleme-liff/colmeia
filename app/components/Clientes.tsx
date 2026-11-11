@@ -1,11 +1,13 @@
 "use client";
 
-// Clientes (só admin, por enquanto): a visão centrada no cliente.
+// Organizações (ex-Clientes): a visão centrada na organização. Para todos, com o recorte por
+// produto feito no servidor; receita, faturas, cobrança, cadastro manual, mescla e exclusão só
+// aparecem para a administração.
 //
 // De cima para baixo:
 //  1. números — quantos clientes, quantos em negociação (organizações distintas, sem prospecção), com contrato (receita
-//     CONTRATADA; previsão não é contrato), e a pendência
-//     que trava o faturamento (contrato sem CNPJ no cadastro);
+//     CONTRATADA; previsão não é contrato). Lidos em ordem, são o funil por organização:
+//     só em prospecção → em negociação → com contrato. O CNPJ que falta aparece na coluna da lista;
 //  2. possíveis duplicados — o que a deduplicação automática não juntou, com a mescla a um clique;
 //  3. a lista — um cliente por linha, com os produtos, o pipeline aberto e a última interação;
 //  4. a ficha — cadastro, cobrança e contatos à esquerda; oportunidades e propostas, contratos,
@@ -30,12 +32,12 @@ import type { ClienteLido, EventoCliente } from "@/lib/clientes-db";
 /** Em negociação = no funil, depois da prospecção e antes do ganho. */
 const emNegociacao = (estagio: string) => estagioEmAberto(estagio) && estagio !== "prospeccao";
 
-type Filtro = "todos" | "abertas" | "contrato" | "semcnpj";
+type Filtro = "todos" | "prospeccao" | "abertas" | "contrato";
 const FILTROS: { key: Filtro; label: string }[] = [
   { key: "todos", label: "todos" },
+  { key: "prospeccao", label: "só em prospecção" },
   { key: "abertas", label: "em negociação" },
   { key: "contrato", label: "com contrato" },
-  { key: "semcnpj", label: "contrato sem CNPJ" },
 ];
 
 /** O que a tela sabe de um cliente, somando as três fontes. */
@@ -69,12 +71,15 @@ export default function Clientes({
   area,
   busca,
   gatilho,
+  isAdmin,
   onAbrirDeal,
 }: {
   deals: Deal[];
   area: string;
   busca: string;
   gatilho: number | undefined;
+  /** Admin vê também receita, faturas e cobrança, e pode cadastrar, mesclar e excluir. */
+  isAdmin: boolean;
   onAbrirDeal: (ref: string) => void;
 }) {
   const [dados, setDados] = useState<{ clientes: ClienteLido[]; contratos: Contrato[]; faturas: Fatura[] } | null>(null);
@@ -87,14 +92,16 @@ export default function Clientes({
 
   useEffect(() => {
     let vivo = true;
-    Promise.all([api.clientes(), api.receitas(), api.faturas()]).then(
+    // Receita e faturamento são rotas só da administração: os demais nem perguntam.
+    const vazio = <T,>(v: T) => Promise.resolve(v);
+    Promise.all([api.clientes(), isAdmin ? api.receitas() : vazio({ contratos: [] }), isAdmin ? api.faturas() : vazio({ faturas: [] })]).then(
       ([c, r, f]) => vivo && (setDados({ clientes: c.clientes, contratos: r.contratos, faturas: f.faturas }), setFalha(null)),
       (e: unknown) => vivo && setFalha(e instanceof Error ? e.message : "Não foi possível carregar as organizações.")
     );
     return () => {
       vivo = false;
     };
-  }, [gatilho, versao]);
+  }, [gatilho, versao, isAdmin]);
 
   if (falha && !dados) return <div style={{ fontSize: 14, color: C.error }}>{falha}</div>;
   if (!dados) return <div style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>carregando organizações…</div>;
@@ -135,12 +142,21 @@ export default function Clientes({
     );
     return (!!termo && palheiro.includes(termo)) || (digitos.length >= 3 && v.c.cnpj.includes(digitos));
   };
+  // Quem não é admin não recebe a receita: para essas pessoas "fechou" é ter oportunidade em Ganho.
+  const ganhas = (v: Visao) => v.deals.filter((d) => d.estagio === "ganho" && (area === "all" || d.area === area)).length;
+  const fechou = (v: Visao) => (isAdmin ? v.contratos.length : ganhas(v));
   const semCnpj = (v: Visao) => v.contratos.length > 0 && !v.c.cnpj;
+  // Só em prospecção: tem oportunidade em Prospecção (no produto do cabeçalho, se houver um) e
+  // nada mais adiante: nenhuma em negociação, nenhum contrato. É quem ainda não conversou conosco.
+  const soProspeccao = (v: Visao) =>
+    v.abertas.length === 0 &&
+    fechou(v) === 0 &&
+    v.deals.some((d) => d.estagio === "prospeccao" && (area === "all" || d.area === area));
   const naArea = visoes.filter((v) => area === "all" || v.areas.includes(area));
   const lista = naArea
     .filter(casaBusca)
     .filter((v) =>
-      filtro === "abertas" ? v.abertas.length > 0 : filtro === "contrato" ? v.contratos.length > 0 : filtro === "semcnpj" ? semCnpj(v) : true
+      filtro === "abertas" ? v.abertas.length > 0 : filtro === "contrato" ? fechou(v) > 0 : filtro === "prospeccao" ? soProspeccao(v) : true
     )
     .sort((a, b) => porTexto(a.c.nome, b.c.nome));
 
@@ -178,21 +194,25 @@ export default function Clientes({
       <div className="rec-numeros">
         <Numero rotulo="ORGANIZAÇÕES" valor={String(naArea.length)} detalhe={area === "all" ? "No cadastro" : `Com oportunidade ou receita em ${areaOf(area).label}`} />
         <Numero
+          rotulo="SÓ EM PROSPECÇÃO"
+          valor={String(naArea.filter(soProspeccao).length)}
+          titulo="Organizações distintas que só têm oportunidade em Prospecção: nenhuma em negociação e nenhum contrato."
+          detalhe="Ainda sem conversa: nada em negociação nem contrato"
+        />
+        <Numero
           rotulo="EM NEGOCIAÇÃO"
           valor={String(naArea.filter((v) => v.abertas.length).length)}
           titulo="Organizações distintas com ao menos uma oportunidade da 1ª Reunião ao Contrato. Cada organização conta uma vez, mesmo com oportunidades em vários produtos. Prospecção, On hold, Lost e Ganho não entram."
           detalhe={`Organizações distintas, da 1ª Reunião ao Contrato · ${brl(naArea.reduce((t, v) => t + v.pipeline, 0))}`}
         />
-        <Numero rotulo="COM CONTRATO" valor={String(naArea.filter((v) => v.contratos.length).length)} detalhe="Receita contratada: venda ganha" />
         <Numero
-          rotulo="CONTRATO SEM CNPJ"
-          valor={String(naArea.filter(semCnpj).length)}
-          detalhe="Falta o CNPJ no cadastro para faturar"
-          alerta={naArea.some(semCnpj)}
+          rotulo={isAdmin ? "COM CONTRATO" : "COM VENDA GANHA"}
+          valor={String(naArea.filter((v) => fechou(v)).length)}
+          detalhe={isAdmin ? "Receita contratada: venda ganha" : "Ao menos uma oportunidade em Ganho"}
         />
       </div>
 
-      {duplicados.length > 0 && (
+      {isAdmin && duplicados.length > 0 && (
         <div style={{ border: `1px solid ${C.line}`, background: C.canvas, padding: "12px 14px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <span style={eyebrow(10, C.warning, "0.14em")}>
@@ -230,31 +250,33 @@ export default function Clientes({
         <div role="group" aria-label="Filtro de organizações" className="liff-densidade">
           {FILTROS.map((f) => (
             <button key={f.key} type="button" aria-pressed={filtro === f.key} onClick={() => setFiltro(f.key)}>
-              {f.label}
+              {f.key === "contrato" && !isAdmin ? "com venda ganha" : f.label}
             </button>
           ))}
         </div>
         <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>
           {lista.length} de {naArea.length}
         </span>
-        <span style={{ marginLeft: "auto" }}>
-          <Button variant="solid" size="sm" onClick={() => setAberto("novo")}>
-            + organização
-          </Button>
-        </span>
+        {isAdmin && (
+          <span style={{ marginLeft: "auto" }}>
+            <Button variant="solid" size="sm" onClick={() => setAberto("novo")}>
+              + organização
+            </Button>
+          </span>
+        )}
       </div>
 
       {lista.length === 0 ? (
         <div style={{ fontSize: 13.5, color: C.faint, lineHeight: 1.6 }}>
           {dados.clientes.length === 0
-            ? "Nenhuma organização ainda. Elas nascem sozinhas quando uma oportunidade é criada, ou pelo botão + organização."
+            ? "Nenhuma organização ainda. Elas nascem sozinhas quando uma oportunidade é criada, ou pelo cadastro da administração."
             : "Nenhuma organização com esse recorte. Ajuste a busca, o produto ou o filtro."}
         </div>
       ) : (
         <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}` }}>
           <div style={{ minWidth: 1040 }}>
             <div style={{ display: "grid", gridTemplateColumns: cols, background: C.canvas, borderBottom: `1px solid ${C.line}` }}>
-              {["ORGANIZAÇÃO", "PRODUTOS", "OPORTUNIDADES", "EM NEGOCIAÇÃO (R$)", "CONTRATOS", "ÚLT. INTERAÇÃO", "CNPJ"].map((h, k) => (
+              {["ORGANIZAÇÃO", "PRODUTOS", "OPORTUNIDADES", "EM NEGOCIAÇÃO (R$)", isAdmin ? "CONTRATOS" : "GANHAS", "ÚLT. INTERAÇÃO", "CNPJ"].map((h, k) => (
                 <div key={h} style={{ padding: "12px 14px", ...eyebrow(10, C.faint), textAlign: k === 3 ? "right" : "left" }}>
                   {h}
                 </div>
@@ -295,7 +317,7 @@ export default function Clientes({
                 <div style={{ padding: "12px 14px", fontFamily: MONO, fontSize: 12, textAlign: "right", color: v.pipeline ? C.ink : C.ghost }} title={brlExato(v.pipeline)}>
                   {v.pipeline ? brl(v.pipeline) : "—"}
                 </div>
-                <div style={{ padding: "12px 14px", fontSize: 13, color: v.contratos.length ? C.body : C.ghost }}>{v.contratos.length || "—"}</div>
+                <div style={{ padding: "12px 14px", fontSize: 13, color: fechou(v) ? C.body : C.ghost }}>{fechou(v) || "—"}</div>
                 <div style={{ padding: "12px 14px", fontFamily: MONO, fontSize: 12, color: v.ultima ? C.body : C.ghost }}>{dataBR(v.ultima)}</div>
                 <div style={{ padding: "12px 14px", fontFamily: MONO, fontSize: 11, whiteSpace: "nowrap", color: v.c.cnpj ? C.body : semCnpj(v) ? C.warning : C.ghost }}>
                   {v.c.cnpj ? cnpjFormatado(v.c.cnpj) : semCnpj(v) ? "FALTA" : "—"}
@@ -311,6 +333,7 @@ export default function Clientes({
           // Troca de cliente (depois de uma mescla, por exemplo) recomeça o formulário.
           key={String(aberto)}
           visao={aberto === "novo" ? null : visaoAberta!}
+          isAdmin={isAdmin}
           outros={dados.clientes.filter((c) => c.id !== aberto)}
           deals={deals}
           onFechar={() => setAberto(null)}
@@ -359,6 +382,7 @@ const CONTATO_VAZIO: Contato = { nome: "", cargo: "", email: "", telefone: "", p
 
 function Ficha({
   visao,
+  isAdmin,
   outros,
   deals,
   onFechar,
@@ -369,6 +393,7 @@ function Ficha({
 }: {
   /** `null` = cliente novo. */
   visao: Visao | null;
+  isAdmin: boolean;
   outros: ClienteLido[];
   deals: Deal[];
   onFechar: () => void;
@@ -398,6 +423,7 @@ function Ficha({
   const [verTudo, setVerTudo] = useState(false);
 
   const id = c?.id;
+  const podeEditar = !c || c.podeEditar !== false;
   useEffect(() => {
     if (id == null) return;
     let vivo = true;
@@ -489,6 +515,8 @@ function Ficha({
         <Input value={endereco} onChange={setEndereco} placeholder="Rua, número, cidade, UF, CEP" />
       </Field>
 
+      {isAdmin && (
+        <>
       {bloco("COBRANÇA")}
       <Field label="E-mail do financeiro">
         <Input value={emailCobranca} onChange={setEmailCobranca} placeholder="financeiro@cliente.com.br" />
@@ -505,6 +533,8 @@ function Ficha({
           />
         </Field>
       </div>
+        </>
+      )}
 
       {bloco(`CONTATOS${contatos.length ? ` · ${contatos.length}` : ""}`)}
       {contatos.length === 0 && <div style={{ fontSize: 12.5, color: C.faint }}>Nenhuma pessoa cadastrada nesta organização.</div>}
@@ -563,12 +593,16 @@ function Ficha({
         <Button variant="ghost" size="sm" onClick={onFechar} style={GHOST_FIX}>
           fechar
         </Button>
-        <Button variant="solid" size="sm" disabled={salvando || !nome.trim()} onClick={() => void salvar()}>
-          {salvando ? "salvando…" : c ? "salvar alterações" : "cadastrar organização"}
-        </Button>
+        {podeEditar ? (
+          <Button variant="solid" size="sm" disabled={salvando || !nome.trim()} onClick={() => void salvar()}>
+            {salvando ? "salvando…" : c ? "salvar alterações" : "cadastrar organização"}
+          </Button>
+        ) : (
+          <span style={{ fontSize: 12.5, color: C.faint }}>Somente leitura: você não edita nenhum produto desta organização.</span>
+        )}
       </div>
 
-      {c && (
+      {c && isAdmin && (
         <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 16, display: "grid", gap: 12 }}>
           <div style={eyebrow(10, C.dust, "0.14em")}>É A MESMA QUE OUTRA ORGANIZAÇÃO?</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 12, alignItems: "center" }}>
@@ -675,6 +709,8 @@ function Ficha({
             </div>
           )}
 
+          {isAdmin && (
+            <>
           {bloco(`RECEITA · ${visao.receitas.length}`)}
           {visao.receitas.length === 0 ? (
             <div style={{ fontSize: 12.5, color: C.faint }}>Nenhuma receita cadastrada, nem contratada nem prevista.</div>
@@ -726,6 +762,8 @@ function Ficha({
                   ))}
               </div>
               {visao.faturas.length > 8 && <div style={{ fontSize: 12, color: C.faint }}>As 8 mais recentes. O resto está em Faturamento.</div>}
+            </>
+          )}
             </>
           )}
 

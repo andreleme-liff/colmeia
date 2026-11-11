@@ -60,7 +60,7 @@ export type Deal = {
   dor: string;
   erp: string;
   propostaUrl: string;
-  /** Cadastro de cliente desta conta (só vem para admin). */
+  /** Organização a que esta oportunidade pertence. */
   clienteId: number | null;
   /** Último contato com o cliente — não a última edição do card. */
   ultimaInteracao: string | null;
@@ -215,7 +215,7 @@ export const api = {
   alterarReceita: (id: number, corpo: Record<string, unknown>) =>
     req<{ ok: boolean }>(`/api/receita/${id}`, { method: "PATCH", body: JSON.stringify(corpo) }),
   excluirReceita: (id: number) => req<{ ok: boolean }>(`/api/receita/${id}`, { method: "DELETE" }),
-  /** Clientes (só admin). */
+  /** Organizações: lista para todos (recortada por produto); cadastrar, mesclar e excluir, só admin. */
   clientes: () => req<{ clientes: import("@/lib/clientes-db").ClienteLido[] }>("/api/clientes"),
   historicoCliente: (id: number) => req<{ eventos: import("@/lib/clientes-db").EventoCliente[] }>(`/api/clientes/${id}`),
   criarCliente: (corpo: Record<string, unknown>) =>

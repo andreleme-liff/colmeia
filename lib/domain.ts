@@ -83,6 +83,10 @@ export type Papel = (typeof PAPEIS)[number];
 export const NAV = [
   { key: "overview", label: "visão geral" },
   { key: "comercial", label: "comercial" },
+  // Organizações (a chave e o endereço continuam `clientes`; o nome mudou em nov/2026, porque o
+  // cadastro inclui quem ainda é só prospecção): junta as oportunidades de todos os produtos
+  // que a pessoa enxerga. Para todos; receita, faturas e cobrança só aparecem para admin.
+  { key: "clientes", label: "organizações" },
   { key: "operacoes", label: "operações" },
   { key: "cronograma", label: "cronograma" },
   // Aplicativos externos (o Claude) que alguém autorizou a agir em seu nome pelo MCP. Para
@@ -91,10 +95,6 @@ export const NAV = [
   { key: "conexoes", label: "conexões" },
   // Só admin, e por isso no fim do menu, num grupo separado. A antiga "administração" (a
   // matriz de permissões) virou parte de Cadastros → Pessoas; `/admin` redireciona para lá.
-  // Organizações (a chave e o endereço continuam `clientes`; o nome mudou a pedido em
-  // nov/2026, porque o cadastro inclui quem ainda é só prospecção): o cadastro que junta oportunidades (de todos os produtos), contratos, faturas e
-  // os dados de cobrança. Só admin por enquanto; a ideia é abrir para todos depois.
-  { key: "clientes", label: "organizações", soAdmin: true },
   // Forecast de receita: em construção, por isso só admin. Mostra números da empresa inteira.
   { key: "receita", label: "receita", soAdmin: true },
   // Contas a receber: emissão e baixa das faturas que saem dos contratos da receita.

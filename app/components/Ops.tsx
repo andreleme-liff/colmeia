@@ -971,6 +971,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             area={areaEfetiva}
             busca={busca}
             gatilho={estado.logs[0]?.id}
+            isAdmin={estado.isAdmin}
             onAbrirDeal={(ref) => navegar({ view: "comercial", ref })}
           />
         );

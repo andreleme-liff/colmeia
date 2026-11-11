@@ -30,9 +30,17 @@ type Linha = {
   chaves: string[];
 };
 
-export type ClienteLido = Cliente & { chaves: string[] };
+export type ClienteLido = Cliente & {
+  chaves: string[];
+  /** Preenchido pela rota: admin, ou quem edita algum produto em que a organização tem oportunidade. */
+  podeEditar?: boolean;
+};
 
-export async function lerClientes(sql: Queryable, id?: number): Promise<ClienteLido[]> {
+/**
+ * `areas`: quando vem (quem não é admin), só as organizações com ao menos uma oportunidade
+ * num desses produtos. É a mesma regra do resto do sistema: o que a pessoa não enxerga não existe.
+ */
+export async function lerClientes(sql: Queryable, id?: number, areas?: string[]): Promise<ClienteLido[]> {
   const rows = await sql<Linha[]>`
     SELECT c.id, c.ref, c.nome, c.razao_social, c.cnpj, c.inscricao_municipal, c.site, c.segmento, c.endereco,
            c.email_cobranca, c.dia_vencimento, c.forma_cobranca, c.notas, c.criado_em,
@@ -44,7 +52,9 @@ export async function lerClientes(sql: Queryable, id?: number): Promise<ClienteL
                      WHERE x.cliente_id = c.id AND NOT x.principal), '{}') AS outros_nomes,
            COALESCE((SELECT array_agg(x.chave) FROM cliente_chaves x WHERE x.cliente_id = c.id), '{}') AS chaves
     FROM clientes c
-    WHERE ${id ?? null}::int IS NULL OR c.id = ${id ?? null}
+    WHERE (${id ?? null}::int IS NULL OR c.id = ${id ?? null})
+      AND (${areas ?? null}::text[] IS NULL
+           OR EXISTS (SELECT 1 FROM deals d WHERE d.cliente_id = c.id AND d.area = ANY(${areas ?? []}::text[])))
     ORDER BY lower(c.nome) ASC, c.id ASC
   `;
   return rows.map((r) => ({
@@ -440,15 +450,18 @@ export type EventoCliente = {
  * oportunidades dele (criação, estágio, situação, próximo passo, proposta, última interação),
  * dos contratos e do próprio cadastro. Sai do changelog; nada é digitado duas vezes.
  */
-export async function historicoDoCliente(sql: Queryable, id: number): Promise<EventoCliente[]> {
+/** `areas` (quem não é admin): só o que é do cadastro e das oportunidades desses produtos; receita fica de fora. */
+export async function historicoDoCliente(sql: Queryable, id: number, areas?: string[]): Promise<EventoCliente[]> {
   const linhas = await sql<
     { id: number; criado_em: Date; autor: string | null; entidade: string; campo: string | null; valor_anterior: string | null; valor_novo: string | null; texto: string }[]
   >`
     WITH refs AS (
       SELECT ref FROM clientes WHERE id = ${id}
       UNION SELECT ref FROM deals WHERE cliente_id = ${id}
+        AND (${areas ?? null}::text[] IS NULL OR area = ANY(${areas ?? []}::text[]))
       UNION SELECT ref_antiga FROM deals WHERE cliente_id = ${id} AND ref_antiga IS NOT NULL
-      UNION SELECT ref FROM contratos WHERE cliente_id = ${id}
+        AND (${areas ?? null}::text[] IS NULL OR area = ANY(${areas ?? []}::text[]))
+      UNION SELECT ref FROM contratos WHERE cliente_id = ${id} AND ${areas ?? null}::text[] IS NULL
     )
     SELECT l.id, l.criado_em, u.nome AS autor, l.entidade, l.campo, l.valor_anterior, l.valor_novo, l.texto
     FROM audit_log l LEFT JOIN users u ON u.id = l.actor_user_id
