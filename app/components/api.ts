@@ -282,6 +282,11 @@ export const api = {
       body: JSON.stringify({ ciclarArea: area }),
     }),
 
+  /** Define o nível de várias pessoas em vários produtos, ou copia o acesso de uma pessoa. */
+  definirPermissoes: (
+    dados: { usuarios: number[] } & ({ permissoes: Record<string, "edit" | "view" | null> } | { copiarDe: number })
+  ) => req<{ ok: boolean; mudancas: number; ignorados: number }>("/api/users/permissoes", { method: "POST", body: JSON.stringify(dados) }),
+
   definirAtivo: (userId: number, ativo: boolean) =>
     req<{ ok: boolean }>(`/api/users/${userId}`, { method: "PATCH", body: JSON.stringify({ ativo }) }),
 

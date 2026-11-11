@@ -917,7 +917,8 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             set={cadSet}
             pessoas={estado.pessoas}
             meuId={me.id}
-            onCiclarPermissao={(uid, a) => void acao(() => api.ciclarPermissao(uid, a))}
+            onDefinirPermissoes={(usuarios, permissoes) => void acao(() => api.definirPermissoes({ usuarios, permissoes }))}
+            onCopiarPermissoes={(usuarios, copiarDe) => void acao(() => api.definirPermissoes({ usuarios, copiarDe }))}
             onAtivoPessoa={(uid, v) => void acao(() => api.definirAtivo(uid, v))}
             onEditarPessoa={(id) => setCadEditando({ tipo: "pessoa", id })}
             areas={estado.areas.filter((a) => estado.areasVisiveis.includes(a.id))}

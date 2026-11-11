@@ -10,6 +10,7 @@ import { C, GHOST_FIX, MONO, SANS, dot, eyebrow, mesh, statusColor } from "./tok
 import { type Activity, type AreaCadastro, type Deal, type LogEntry, type NovaOportunidade, type Origem, type Pessoa } from "./api";
 import SeletorArea, { type OpcaoArea } from "./SeletorArea";
 import Historico from "./Historico";
+import Permissoes from "./Permissoes";
 import ViaConexao from "./ViaConexao";
 import { CardOportunidade } from "./CardOportunidade";
 import { CardAtividade } from "./CardAtividade";
@@ -930,7 +931,7 @@ function NovaPessoa({
       <Field label="E-mail" required hint={`Precisa ser @${dominio} — é o domínio aceito no login.`}>
         <Input placeholder={`larissa@${dominio}`} value={email} onChange={setEmail} />
       </Field>
-      <Field label="Papel" hint="O papel é o teto; o acesso por produto se define depois, abrindo a linha da pessoa na lista.">
+      <Field label="Papel" hint="O papel é o teto; o acesso por produto se define depois, na matriz acima.">
         <Select options={[...PAPEIS]} value={papel} onChange={setPapel} />
       </Field>
       <Button
@@ -1145,7 +1146,8 @@ export function Cadastros({
   onCriarOrigem,
   pessoas,
   meuId,
-  onCiclarPermissao,
+  onDefinirPermissoes,
+  onCopiarPermissoes,
   onAtivoPessoa,
   onEditarPessoa,
 }: {
@@ -1155,7 +1157,8 @@ export function Cadastros({
   /** Aba Pessoas: a lista com papel, e-mail, acesso e as permissões por área (a antiga Administração). */
   pessoas: Pessoa[];
   meuId: number;
-  onCiclarPermissao: (userId: number, area: string) => void;
+  onDefinirPermissoes: (usuarios: number[], permissoes: Record<string, "edit" | "view" | null>) => void;
+  onCopiarPermissoes: (usuarios: number[], de: number) => void;
   onAtivoPessoa: (userId: number, ativo: boolean) => void;
   onEditarPessoa: (id: number) => void;
   areas: AreaCadastro[];
@@ -1194,14 +1197,15 @@ export function Cadastros({
         ))}
       </div>
 
-      <div className="liff-cad-split" style={mesh({ display: "grid", gap: 1 })}>
+      <div className="liff-cad-split" style={mesh({ display: "grid", gap: 1, ...(tab === "pessoas" ? { gridTemplateColumns: "minmax(0, 1fr)" } : null) })}>
         <div className="liff-scroll-x" style={{ background: C.cell }}>
           {tab === "pessoas" ? (
-            <PermissoesPorPessoa
+            <Permissoes
               pessoas={pessoas}
               areas={todasAreas()}
               meuId={meuId}
-              onCiclar={onCiclarPermissao}
+              onDefinir={onDefinirPermissoes}
+              onCopiar={onCopiarPermissoes}
               onAtivo={onAtivoPessoa}
               onEditar={podeEditarAreas ? onEditarPessoa : undefined}
             />
@@ -1261,7 +1265,7 @@ export function Cadastros({
 
         <div style={{ background: C.cell, padding: 22 }}>
           <div style={{ ...eyebrow(11, C.dust), marginBottom: 18 }}>{TITULO_NOVO[tab] ?? "NOVO REGISTRO"}</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: tab === "pessoas" ? 420 : undefined }}>
             {/* Um formulário por aba, e não um genérico com Nome/Área/Observação: pessoa e
                 produto não pedem os mesmos campos, e o formulário único não conseguia
                 enviar nenhum dos dois. Produtos e módulos são configuração do sistema —
@@ -1305,180 +1309,6 @@ export function Cadastros({
 /* =========================================================
    Pessoas e permissões (Cadastros → Pessoas; antes, a Administração)
    ========================================================= */
-const PERM_STYLE: Record<string, { label: string; bg: string; bd: string; ink: string }> = {
-  edit: {
-    label: "editar",
-    bg: "color-mix(in srgb, var(--liff-success) 12%, transparent)",
-    bd: "color-mix(in srgb, var(--liff-success) 35%, transparent)",
-    ink: C.success,
-  },
-  view: {
-    label: "ver",
-    bg: "color-mix(in srgb, var(--liff-info) 12%, transparent)",
-    bd: "color-mix(in srgb, var(--liff-info) 35%, transparent)",
-    ink: C.info,
-  },
-  none: { label: "—", bg: "transparent", bd: C.line, ink: C.ghost },
-};
-
-/** A célula de permissão, igual nos dois formatos. */
-function CelulaPerm({
-  nivel,
-  travado,
-  onClick,
-  style,
-}: {
-  nivel: string;
-  travado: boolean;
-  onClick: () => void;
-  style?: CSSProperties;
-}) {
-  const s = PERM_STYLE[nivel] ?? PERM_STYLE.none;
-  return (
-    <div
-      onClick={() => !travado && onClick()}
-      title={
-        travado ? "Admin tem edição em tudo por definição do papel" : "Clique para alternar sem acesso / ver / editar"
-      }
-      style={{
-        padding: "7px 4px",
-        textAlign: "center",
-        cursor: travado ? "default" : "pointer",
-        ...eyebrow(10, s.ink, "0.1em"),
-        border: `1px solid ${s.bd}`,
-        background: s.bg,
-        borderRadius: 6,
-        ...style,
-      }}
-    >
-      {s.label}
-    </div>
-  );
-}
-
-/** Uma pessoa por linha; as permissões por área abrem embaixo dela, em grade que quebra.
- *  Serve com qualquer número de áreas — a antiga matriz só cabia até umas oito. */
-function PermissoesPorPessoa({
-  pessoas,
-  areas,
-  meuId,
-  onCiclar,
-  onAtivo,
-  onEditar,
-}: {
-  pessoas: Pessoa[];
-  areas: { id: string; label: string; short: string; color: string }[];
-  meuId: number;
-  onCiclar: (userId: number, area: string) => void;
-  onAtivo: (userId: number, ativo: boolean) => void;
-  /** Abre o cadastro da pessoa (nome, e-mail, papel, exclusão). */
-  onEditar?: (id: number) => void;
-}) {
-  const [aberto, setAberto] = useState<number | null>(null);
-
-  return (
-    <div>
-      {pessoas.map((u) => {
-        const expandido = aberto === u.id;
-        const edita = u.papel === "admin" ? areas.length : Object.values(u.perms).filter((n) => n === "edit").length;
-        const ve = u.papel === "admin" ? 0 : Object.values(u.perms).filter((n) => n === "view").length;
-        return (
-          <div key={u.id} style={{ borderBottom: `1px solid ${C.line}`, background: C.cell }}>
-            <div
-              className="liff-hover-row"
-              onClick={() => setAberto(expandido ? null : u.id)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 14,
-                padding: "13px 16px",
-                cursor: "pointer",
-              }}
-            >
-              <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint, width: 12 }}>{expandido ? "−" : "+"}</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, color: u.ativo ? C.ink : C.faint, fontWeight: 600 }}>
-                  {u.nome}
-                  {u.ativo ? "" : " (inativo)"}
-                </div>
-                <div style={{ fontSize: 12, color: C.faint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  <span style={eyebrow(10, C.faint, "0.1em")}>{u.papel}</span> · <span style={{ fontFamily: MONO, fontSize: 11 }}>{u.email}</span>
-                </div>
-              </div>
-              <div style={{ ...eyebrow(10, C.faint, "0.1em"), whiteSpace: "nowrap" }}>
-                {u.papel === "admin" ? "todos os produtos" : `${edita} editar · ${ve} ver`}
-              </div>
-              {onEditar && (
-                // O clique no botão não pode também abrir/fechar as permissões da linha.
-                <span onClick={(e) => e.stopPropagation()}>
-                  <Button variant="ghost" size="sm" style={GHOST_FIX} onClick={() => onEditar(u.id)}>
-                    editar
-                  </Button>
-                </span>
-              )}
-              <Switch
-                checked={u.ativo}
-                disabled={u.id === meuId}
-                title={u.id === meuId ? "Você não pode desativar a própria conta" : "Ativa ou corta o acesso"}
-                onChange={(v) => onAtivo(u.id, v)}
-              />
-            </div>
-
-            {expandido && (
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))",
-                  gap: 8,
-                  padding: "4px 16px 16px",
-                  background: C.canvas,
-                }}
-              >
-                {areas.map((a) => (
-                  // Cada área é uma célula fechada: sem a borda, o controle de uma coluna
-                  // encosta no nome da coluna seguinte e não dá para saber a qual pertence.
-                  <div
-                    key={a.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      padding: "6px 10px",
-                      background: C.cell,
-                      border: `1px solid ${C.line}`,
-                    }}
-                  >
-                    <span style={{ ...dot(a.color), flex: "none" }} />
-                    <span
-                      style={{
-                        fontSize: 13,
-                        color: C.body,
-                        flex: 1,
-                        minWidth: 0,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {a.label}
-                    </span>
-                    <CelulaPerm
-                      nivel={u.papel === "admin" ? "edit" : u.perms[a.id] ?? "none"}
-                      travado={u.papel === "admin"}
-                      onClick={() => onCiclar(u.id, a.id)}
-                      style={{ minWidth: 62, flex: "none" }}
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 /* =========================================================
    Auditoria
    ========================================================= */
