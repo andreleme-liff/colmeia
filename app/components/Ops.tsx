@@ -6,7 +6,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LiffSig, Button, Select } from "./ds";
+import { LiffSig, Button } from "./ds";
 import { IconeLua, IconeMenu, IconeRecolher, IconeSair, IconeSol } from "./IconesMenu";
 import {
   Auditoria,
@@ -1171,19 +1171,20 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
               {/* Só para quem é admin de verdade: olhar o sistema com outro papel, para conferir o
                   que cada perfil enxerga. O servidor passa a responder como aquele papel. */}
               {me.papelReal === "admin" && (
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12 }}>
-                  <span style={{ ...eyebrow(10, C.faint, "0.14em"), whiteSpace: "nowrap" }}>VER COMO</span>
-                  <Select
-                    size="sm"
-                    value={simulando ? me.papel : "admin"}
-                    onChange={(v) => void verComo(v)}
-                    options={[
-                      { value: "admin", label: "admin (você)" },
-                      { value: "gestor", label: "gestor" },
-                      { value: "membro", label: "membro" },
-                      { value: "leitura", label: "leitura" },
+                <div style={{ marginTop: 12 }}>
+                  <SeletorArea
+                    prefixo="ver como"
+                    larguraTotal
+                    larguraMin={0}
+                    paraCima
+                    opcoes={[
+                      { id: "admin", label: "admin" },
+                      { id: "gestor", label: "gestor" },
+                      { id: "membro", label: "membro" },
+                      { id: "leitura", label: "leitura" },
                     ]}
-                    style={{ flex: 1, minWidth: 0 }}
+                    valor={simulando ? me.papel : "admin"}
+                    onChange={(v) => void verComo(v)}
                   />
                 </div>
               )}
@@ -1272,35 +1273,20 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           <div style={{ display: "flex", gap: 10, alignItems: "center", marginLeft: "auto" }}>
             {/* Densidade do kanban comercial. Fica no perfil: abre do jeito que a pessoa deixou. */}
             {view === "comercial" && (
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={eyebrow(10, C.faint, "0.14em")}>CARD</span>
-                <div role="group" aria-label="Tamanho dos cards" className="liff-densidade liff-densidade--icones">
-                  {(
-                    [
-                      // Completo: o card alto, com as linhas de situação e próximo passo.
-                      { d: "completo", rotulo: "Card completo", desenho: <><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></> },
-                      // Compacto: dois cards baixos, só com o título.
-                      { d: "compacto", rotulo: "Card compacto", desenho: <><rect x="4" y="4" width="16" height="6.5" rx="1.5" /><rect x="4" y="13.5" width="16" height="6.5" rx="1.5" /></> },
-                    ] as const
-                  ).map(({ d, rotulo, desenho }) => (
-                    <button
-                      key={d}
-                      type="button"
-                      aria-pressed={densidade === d}
-                      aria-label={rotulo}
-                      title={rotulo}
-                      onClick={() => {
-                        setDensidade(d);
-                        lembrar({ densidade: d });
-                      }}
-                    >
-                      <svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                        {desenho}
-                      </svg>
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <SeletorArea
+                prefixo="card"
+                larguraMin={0}
+                opcoes={[
+                  { id: "completo", label: "Completo" },
+                  { id: "compacto", label: "Compacto" },
+                ]}
+                valor={densidade}
+                onChange={(d) => {
+                  const nova = d === "compacto" ? "compacto" : "completo";
+                  setDensidade(nova);
+                  lembrar({ densidade: nova });
+                }}
+              />
             )}
 
             {/* Criar aparece onde a coisa vive: atividade no quadro operacional,

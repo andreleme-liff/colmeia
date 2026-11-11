@@ -8,7 +8,8 @@
 import { useEffect, useRef, useState } from "react";
 import { C, eyebrow, dot, MONO } from "./tokens";
 
-export type OpcaoArea = { id: string; label: string; color: string };
+/** `color` é opcional: sem ela a opção não leva o ponto (o seletor de tamanho do card, por exemplo). */
+export type OpcaoArea = { id: string; label: string; color?: string };
 
 export default function SeletorArea({
   opcoes,
@@ -16,6 +17,9 @@ export default function SeletorArea({
   onChange,
   className,
   larguraTotal = false,
+  prefixo,
+  larguraMin = 190,
+  paraCima = false,
 }: {
   opcoes: OpcaoArea[];
   valor: string;
@@ -23,6 +27,12 @@ export default function SeletorArea({
   className?: string;
   /** No modal o seletor ocupa a largura toda; no cabeçalho, só o necessário. */
   larguraTotal?: boolean;
+  /** Rótulo apagado antes do valor, como o "QUEM" do filtro de responsável. Ex.: "card". */
+  prefixo?: string;
+  /** Largura mínima do botão; menor para seletores de poucas opções curtas. */
+  larguraMin?: number;
+  /** Abre a lista para cima: para o seletor que fica no rodapé do menu lateral. */
+  paraCima?: boolean;
 }) {
   const [aberto, setAberto] = useState(false);
   const caixa = useRef<HTMLDivElement>(null);
@@ -60,12 +70,13 @@ export default function SeletorArea({
           ...eyebrow(11, C.ink, "0.1em"),
           background: C.canvas,
           border: `1px solid ${C.line}`,
-          minWidth: 190,
+          minWidth: larguraMin,
           justifyContent: "space-between",
         }}
       >
         <span style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
-          <span style={{ ...dot(atual?.color ?? C.dust), borderRadius: 2 }} />
+          {prefixo && <span style={{ color: C.faint, whiteSpace: "nowrap", flex: "none" }}>{prefixo}</span>}
+          {(atual?.color || !prefixo) && <span style={{ ...dot(atual?.color ?? C.dust), borderRadius: 2 }} />}
           <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {atual?.label ?? "—"}
           </span>
@@ -78,7 +89,7 @@ export default function SeletorArea({
           role="listbox"
           style={{
             position: "absolute",
-            top: "calc(100% + 4px)",
+            ...(paraCima ? { bottom: "calc(100% + 4px)" } : { top: "calc(100% + 4px)" }),
             right: 0,
             minWidth: "100%",
             maxHeight: 300,
@@ -113,7 +124,7 @@ export default function SeletorArea({
                   background: on ? C.panel2 : C.panel,
                 }}
               >
-                <span style={{ ...dot(o.color), borderRadius: 2 }} />
+                {o.color && <span style={{ ...dot(o.color), borderRadius: 2 }} />}
                 {o.label}
               </div>
             );
