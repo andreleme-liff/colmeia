@@ -78,23 +78,21 @@ function IconeEstado({ tom, rotulo, children }: { tom: TomPrazo | "info"; rotulo
 const BASE = { width: 17, height: 17, viewBox: "0 0 24 24" } as const;
 const GLIFO = { fill: "none", stroke: "var(--cop-glifo, #fff)", strokeWidth: 2.4, strokeLinecap: "round", strokeLinejoin: "round" } as const;
 
-/** Prazo: calendário com ✓ (em dia), ! (vence em até 7 dias), × (vencido); só o contorno pontilhado quando não há data. */
+/** Prazo: calendário com ✓ (em dia), ! (vence em até 7 dias), × (vencido); sem data, o mesmo calendário em cinza com ?. */
 function Calendario({ tom, semData }: { tom: TomPrazo; semData: boolean }) {
-  if (semData) {
-    return (
-      <svg aria-hidden {...BASE} fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeDasharray="2.5 2.5">
-        <rect x="3.5" y="5" width="17" height="15.5" rx="2.5" />
-      </svg>
-    );
-  }
   return (
-    <svg aria-hidden {...BASE}>
+    // Sem data: cinza mais claro que o texto apagado, que preenchido ficaria quase preto.
+    <svg aria-hidden {...BASE} style={semData ? { color: "color-mix(in srgb, var(--liff-text-faint) 55%, transparent)" } : undefined}>
       <path d="M8 2.5v4M16 2.5v4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
       <rect x="2.5" y="4.5" width="19" height="17" rx="3" fill="currentColor" />
       {tom === "sucesso" && <path d="M8 13.5l2.8 2.8L16 11" {...GLIFO} />}
       {tom === "warning" && <path d="M12 9.5v4.5M12 17.5v.01" {...GLIFO} />}
       {tom === "erro" && <path d="M9 10.5l6 6M15 10.5l-6 6" {...GLIFO} />}
-      {tom === "neutro" && <path d="M8 13.5h8" {...GLIFO} />}
+      {semData ? (
+        <path d="M9.7 11.4a2.4 2.4 0 1 1 3.6 2.1c-.8.5-1.3 1-1.3 1.8M12 18.4v.01" {...GLIFO} strokeWidth={2.1} />
+      ) : (
+        tom === "neutro" && <path d="M8 13.5h8" {...GLIFO} />
+      )}
     </svg>
   );
 }
