@@ -17,7 +17,7 @@ export type Activity = {
   proximoPasso: string;
   /** Módulo classificado, do mesmo produto da atividade. */
   produtoId: string | null;
-  /** Quando o próximo passo acontece. Nulo = sem data; o cronograma assume o fim da semana. */
+  /** Quando o próximo passo acontece. Nulo = sem data; no cronograma fica em "Sem data". */
   proximoPassoEm: string | null;
   /** ISO da criação e da última mexida (ou da criação, se nunca foi editada). */
   criadoEm: string;
@@ -51,7 +51,7 @@ export type Deal = {
   situacaoEm: string | null;
   /** Contato / sponsor: quem decide no cliente. */
   contato: string;
-  /** Quando o próximo passo acontece. Nulo = sem data; o cronograma assume o fim da semana. */
+  /** Quando o próximo passo acontece. Nulo = sem data; no cronograma fica em "Sem data". */
   proximoPassoEm: string | null;
   /** Oportunidade já registrada no ACE do AWS Partner Central. */
   aceAws: boolean;
@@ -130,7 +130,7 @@ export type Me = {
    * texto para texto, e um tipo misto aqui convidaria a um `=== true` falhando contra
    * "true". `responsaveis` são as chaves do filtro separadas por vírgula; vazio é "todos".
    */
-  preferencias: { tema?: string; area?: string; responsaveis?: string; densidade?: string; menu?: string; recolhidasComercial?: string; recolhidasOperacoes?: string; resumoEtapas?: string; ordemCards?: string };
+  preferencias: { tema?: string; area?: string; responsaveis?: string; densidade?: string; menu?: string; recolhidasComercial?: string; recolhidasOperacoes?: string; resumoEtapas?: string; ordemCards?: string; cronograma?: string };
 };
 
 export type AreaCadastro = { id: string; label: string; short: string; cor: string };
@@ -373,7 +373,7 @@ export const api = {
       body: destino ? JSON.stringify(destino) : undefined,
     }),
 
-  salvarPreferencias: (patch: { tema?: string; area?: string; responsaveis?: string; densidade?: string; menu?: string; recolhidasComercial?: string; recolhidasOperacoes?: string; resumoEtapas?: string; ordemCards?: string }) =>
+  salvarPreferencias: (patch: { tema?: string; area?: string; responsaveis?: string; densidade?: string; menu?: string; recolhidasComercial?: string; recolhidasOperacoes?: string; resumoEtapas?: string; ordemCards?: string; cronograma?: string }) =>
     req<{ ok: boolean }>("/api/me/preferencias", { method: "PATCH", body: JSON.stringify(patch) }),
 
   sair: () => req<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),

@@ -1744,7 +1744,7 @@ export function Drawer({
               />
             </div>
             <div style={{ fontSize: 12, color: C.faint, marginTop: 6, lineHeight: 1.5 }}>
-              Sem data, o cronograma coloca no fim desta semana.
+              Sem data, fica em “Sem data” no cronograma.
             </div>
           </div>
 
@@ -2117,7 +2117,7 @@ export function NovaAtividade({
         />
       </Field>
 
-      <Field label="Quando" hint="Alimenta o cronograma. Em branco, entra no fim desta semana.">
+      <Field label="Quando" hint="Alimenta o cronograma. Em branco, fica em “Sem data”.">
         <CampoData valor={proximoEm} onChange={setProximoEm} />
       </Field>
 

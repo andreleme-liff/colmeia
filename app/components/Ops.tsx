@@ -35,12 +35,13 @@ import Faturamento from "./Faturamento";
 import Funding from "./Funding";
 import Clientes from "./Clientes";
 import Conexoes from "./Conexoes";
+import Agenda, { type ItemAgenda } from "./Agenda";
 import { EditarPessoa, EditarProduto } from "./EditarCadastro";
 import { api, type State } from "./api";
 import type { LinhaAuditoria } from "./views";
 import {
   NAV, STAGES, STAGE_KEYS, STATUS, STATUS_KEYS, TITLES, areaOf, brl, daISO, ddmm, diaISO, ehDoResponsavel, estagioEmAberto,
-  escreverSelecaoDeResponsaveis, fimDaSemana, inicioDaSemana, lerSelecaoDeResponsaveis,
+  escreverSelecaoDeResponsaveis, inicioDaSemana, lerSelecaoDeResponsaveis,
   CHAVE_SEM_RESPONSAVEL, aplicarBusca, opcoesDeResponsavel, porTexto, prepararBusca, rotuloDaSemana, setAreas, stageLabel, statusLabel, todasAreas,
   type RegistroComResponsavel,
 } from "@/lib/domain";
@@ -122,6 +123,8 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
   // Ordem dos cards dentro das colunas dos dois kanbans. "antigos" é a ordem em que os
   // cards sempre apareceram (pelo número), por isso é o padrão de quem nunca escolheu.
   const [ordemCards, setOrdemCards] = useState<OrdemCards>("antigos");
+  // Cronograma: agenda da semana (padrão) ou a lista por semana.
+  const [exibicaoCronograma, setExibicaoCronograma] = useState<"agenda" | "lista">("agenda");
   // Colunas recolhidas de cada kanban, guardadas no perfil como a densidade.
   const [recolhidas, setRecolhidas] = useState<{ comercial: string[]; operacoes: string[] }>({ comercial: [], operacoes: [] });
   // Lateral recolhida mostra só os ícones. Só vale na tela larga: abaixo de 860px a lateral é
@@ -204,6 +207,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
          */
         const { tema, area: areaSalva, responsaveis: respSalvos, densidade: densSalva, menu: menuSalvo } = s.me.preferencias ?? {};
         if (densSalva === "compacto") setDensidade("compacto");
+        if (s.me.preferencias?.cronograma === "lista") setExibicaoCronograma("lista");
         const ordemSalva = s.me.preferencias?.ordemCards;
         if (ORDENS_CARDS.some((o) => o.id === ordemSalva)) setOrdemCards(ordemSalva as OrdemCards);
         // Chave que deixou de existir (estágio renomeado) é descartada na leitura.
@@ -648,15 +652,13 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
   /**
    * Linha do tempo por semana, e dentro dela por área, misturando oportunidade e atividade.
    *
-   * A data vem do próximo passo. Quem não tem data entra no fim da semana corrente — é a
-   * regra que o formulário anuncia, e ela mantém no cronograma quem escreveu o passo sem
-   * saber o dia, em vez de deixar esse trabalho invisível.
+   * A data vem do próximo passo. Quem não tem data vai para um bloco próprio, "Sem data", no
+   * fim: continua visível, sem fingir que alguém marcou um dia.
    *
    * Já concluído e já ganho ficam de fora: cronograma é o que falta fazer.
    */
   const cronograma: Semana[] = useMemo(() => {
     if (!dados) return [];
-    const padrao = fimDaSemana();
     const hojeISO = diaISO(new Date());
 
     type Bruto = { areaId: string; quando: string; semData: boolean; item: Omit<ItemCronograma, "quando" | "semData" | "atrasado"> };
@@ -668,7 +670,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
       const semData = !d.proximoPassoEm;
       brutos.push({
         areaId: d.area,
-        quando: d.proximoPassoEm ?? padrao,
+        quando: d.proximoPassoEm ?? "",
         semData,
         item: {
           ref: d.ref,
@@ -687,7 +689,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
       const semData = !a.proximoPassoEm;
       brutos.push({
         areaId: a.area,
-        quando: a.proximoPassoEm ?? padrao,
+        quando: a.proximoPassoEm ?? "",
         semData,
         item: {
           ref: a.ref,
@@ -705,14 +707,14 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     // atraso em semanas antigas encheria a tela de cabeçalhos vazios de utilidade.
     const porSemana = new Map<string, Bruto[]>();
     for (const b of brutos) {
-      const chave = b.quando < hojeISO ? "atrasado" : diaISO(inicioDaSemana(daISO(b.quando)));
+      const chave = b.semData ? "semdata" : b.quando < hojeISO ? "atrasado" : diaISO(inicioDaSemana(daISO(b.quando)));
       const lista = porSemana.get(chave) ?? [];
       lista.push(b);
       porSemana.set(chave, lista);
     }
 
     return [...porSemana.entries()]
-      .sort(([x], [y]) => (x === "atrasado" ? -1 : y === "atrasado" ? 1 : x.localeCompare(y)))
+      .sort(([x], [y]) => (x === "atrasado" || y === "semdata" ? -1 : y === "atrasado" || x === "semdata" ? 1 : x.localeCompare(y)))
       .map(([chave, lista]) => {
         const porArea = new Map<string, Bruto[]>();
         for (const b of lista) {
@@ -722,8 +724,8 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         }
         return {
           chave,
-          titulo: chave === "atrasado" ? "ATRASADO" : `SEMANA DE ${rotuloDaSemana(chave).split(" a ")[0]}`,
-          rotulo: chave === "atrasado" ? "próximo passo com data já vencida" : rotuloDaSemana(chave),
+          titulo: chave === "atrasado" ? "ATRASADO" : chave === "semdata" ? "SEM DATA" : `SEMANA DE ${rotuloDaSemana(chave).split(" a ")[0]}`,
+          rotulo: chave === "atrasado" ? "próximo passo com data já vencida" : chave === "semdata" ? "próximo passo sem dia marcado" : rotuloDaSemana(chave),
           total: lista.length,
           areas: [...porArea.entries()]
             .map(([areaId, itens]) => ({
@@ -734,14 +736,41 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
                 .sort((x, y) => x.quando.localeCompare(y.quando) || porTexto(x.item.titulo, y.item.titulo))
                 .map((b) => ({
                   ...b.item,
-                  quando: ddmm(b.quando),
+                  quando: b.semData ? "—" : ddmm(b.quando),
                   semData: b.semData,
-                  atrasado: b.quando < hojeISO,
+                  atrasado: !b.semData && b.quando < hojeISO,
                 })),
             }))
             .sort((x, y) => porTexto(x.label, y.label)),
         };
       });
+  }, [dados]);
+
+  /** Os mesmos itens, soltos, para a agenda da semana. */
+  const itensAgenda: ItemAgenda[] = useMemo(() => {
+    if (!dados) return [];
+    const lista: ItemAgenda[] = [];
+    for (const d of dados.oportunidadesBuscadas) {
+      if (!estagioEmAberto(d.estagio)) continue;
+      lista.push({
+        ref: d.ref, id: d.id, tipo: "oportunidade", titulo: d.conta,
+        passo: resumirPasso(d.proximoPasso, 90),
+        meta: [stageLabel(d.estagio), d.responsavel].filter(Boolean).join(" · "),
+        areaLabel: areaOf(d.area).label, cor: areaOf(d.area).color,
+        quando: d.proximoPassoEm, podeEditar: d.podeEditar,
+      });
+    }
+    for (const a of dados.atividadesBuscadas) {
+      if (a.status === "concluido") continue;
+      lista.push({
+        ref: a.ref, id: a.id, tipo: "atividade", titulo: a.titulo,
+        passo: resumirPasso(a.proximoPasso, 90),
+        meta: ["Tarefa", a.responsavel].filter(Boolean).join(" · "),
+        areaLabel: areaOf(a.area).label, cor: areaOf(a.area).color,
+        quando: a.proximoPassoEm, podeEditar: a.podeEditar,
+      });
+    }
+    return lista.sort((x, y) => porTexto(x.titulo, y.titulo));
   }, [dados]);
 
   // ---------- resumo para WhatsApp ----------
@@ -976,15 +1005,30 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             }}
           />
         );
-      case "cronograma":
+      case "cronograma": {
+        const abrir = (ref: string, tipo: "oportunidade" | "atividade") =>
+          navegar({ view: tipo === "oportunidade" ? "comercial" : "operacoes", ref });
+        const lista = <Cronograma semanas={cronograma} onAbrir={abrir} />;
+        if (exibicaoCronograma === "lista") return lista;
         return (
-          <Cronograma
-            semanas={cronograma}
-            onAbrir={(ref, tipo) =>
-              navegar({ view: tipo === "oportunidade" ? "comercial" : "operacoes", ref })
-            }
-          />
+          <>
+            <div className="liff-so-largo">
+              <Agenda
+                itens={itensAgenda}
+                onAbrir={abrir}
+                onReagendar={(item, quando) =>
+                  void acao(() =>
+                    item.tipo === "oportunidade"
+                      ? api.alterarOportunidade(item.id, { proximoPassoEm: quando })
+                      : api.alterarAtividade(item.id, { proximoPassoEm: quando })
+                  )
+                }
+              />
+            </div>
+            <div className="liff-so-estreito">{lista}</div>
+          </>
         );
+      }
       case "cadastros": {
         const prodEdit = cadEditando?.tipo === "produto" ? estado.produtos.find((p) => p.id === cadEditando.id) : undefined;
         const pessoaEdit = cadEditando?.tipo === "pessoa" ? estado.pessoas.find((p) => p.id === cadEditando.id) : undefined;
@@ -1354,6 +1398,23 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           {/* As ações ficam num grupo próprio para quebrarem juntas quando o cabeçalho
               não couber, em vez de uma delas cair sozinha para a linha de baixo. */}
           <div style={{ display: "flex", gap: 10, alignItems: "center", marginLeft: "auto" }}>
+            {view === "cronograma" && (
+              <div role="group" aria-label="Exibição do cronograma" className="liff-densidade liff-so-largo">
+                {(["agenda", "lista"] as const).map((e) => (
+                  <button
+                    key={e}
+                    type="button"
+                    aria-pressed={exibicaoCronograma === e}
+                    onClick={() => {
+                      setExibicaoCronograma(e);
+                      lembrar({ cronograma: e });
+                    }}
+                  >
+                    {e === "agenda" ? "Agenda" : "Lista"}
+                  </button>
+                ))}
+              </div>
+            )}
             {/* Ordem dos cards nas colunas, a mesma nos dois kanbans. Fica no perfil. */}
             {["operacoes", "comercial"].includes(view) && (
               <SeletorArea

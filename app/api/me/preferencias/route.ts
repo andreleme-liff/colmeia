@@ -14,7 +14,7 @@ import { requireCtx } from "@/lib/perms";
 import { json, err } from "@/lib/http";
 import { lerSelecaoDeResponsaveis, MAX_RESPONSAVEIS_NA_SELECAO, STAGE_KEYS, STATUS_KEYS } from "@/lib/domain";
 
-type Body = { tema?: string; area?: string; responsaveis?: string; densidade?: string; menu?: string; recolhidasComercial?: string; recolhidasOperacoes?: string; resumoEtapas?: string; ordemCards?: string };
+type Body = { tema?: string; area?: string; responsaveis?: string; densidade?: string; menu?: string; recolhidasComercial?: string; recolhidasOperacoes?: string; resumoEtapas?: string; ordemCards?: string; cronograma?: string };
 
 const TEMAS = ["dark", "light"];
 const DENSIDADES = ["completo", "compacto"];
@@ -48,6 +48,11 @@ export async function PATCH(req: Request) {
   if (body.ordemCards !== undefined) {
     if (!ORDENS.includes(body.ordemCards)) return err("Ordem inválida.", 400);
     patch.ordemCards = body.ordemCards;
+  }
+
+  if (body.cronograma !== undefined) {
+    if (!["agenda", "lista"].includes(body.cronograma)) return err("Exibição inválida.", 400);
+    patch.cronograma = body.cronograma;
   }
 
   if (body.menu !== undefined) {

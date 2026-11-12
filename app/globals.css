@@ -829,3 +829,31 @@ input[type="date"]:disabled::-webkit-calendar-picker-indicator {
      centralizaria: ele é flex, quem manda é o eixo principal. */
   .liff-filtro-quem > [role="button"] { width: 100%; justify-content: center; }
 }
+
+/* ---------- cronograma em agenda ---------- */
+.liff-agenda-grade { display: grid; gap: 8px; align-items: stretch; }
+.liff-agenda-col { min-width: 0; min-height: 260px; padding: 10px 8px; border: 1px solid transparent; border-top: 1px solid var(--liff-border); border-radius: 0; }
+.liff-agenda-col--hoje { border-top: 2px solid var(--liff-accent); padding-top: 9px; }
+.liff-agenda-col--atraso, .liff-agenda-col--fixa { background: var(--liff-app-raia); border: 1px solid transparent; border-radius: var(--liff-radius-sm); }
+.liff-agenda-col--alvo { border: 1px dashed var(--liff-accent); border-radius: var(--liff-radius-sm); }
+.liff-agenda-card { background: var(--liff-surface-cell); border: 1px solid var(--liff-border); border-radius: 0 var(--liff-radius-sm) var(--liff-radius-sm) 0; padding: 8px 10px; margin-bottom: 6px; min-width: 0; }
+.liff-agenda-card:hover { border-color: var(--liff-text-muted); }
+.liff-agenda-card:active { cursor: grabbing; }
+.liff-agenda-passo { font-size: 12px; line-height: 1.4; margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.liff-agenda-vazio { font-size: 12px; color: var(--liff-text-faint); }
+.liff-agenda-mais { all: unset; cursor: pointer; display: block; width: 100%; box-sizing: border-box; padding: 4px 2px; font-family: var(--liff-font-mono); font-size: 11px; color: var(--liff-text-muted); }
+.liff-agenda-mais:hover { color: var(--liff-text); }
+.liff-agenda-mais:focus-visible, .liff-agenda-nav:focus-visible, .liff-agenda-faixa button:focus-visible { outline: 2px solid var(--liff-accent); outline-offset: 2px; }
+.liff-agenda-nav { all: unset; cursor: pointer; width: 34px; height: 34px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--liff-border); border-radius: var(--liff-radius-sm); color: var(--liff-text); font-size: 18px; line-height: 1; }
+.liff-agenda-nav:disabled { opacity: .35; cursor: default; }
+.liff-agenda-faixa { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; max-width: 760px; }
+.liff-agenda-faixa button { all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 4px; padding: 6px 6px 4px; border: 1px solid transparent; border-radius: var(--liff-radius-sm); }
+.liff-agenda-faixa button[aria-pressed="true"] { border-color: var(--liff-border); background: var(--liff-surface-2); }
+.liff-agenda-barras { display: flex; align-items: flex-end; gap: 3px; height: 36px; }
+.liff-agenda-barras > span { flex: 1; border-radius: 2px 2px 0 0; }
+/* No celular sete colunas não cabem: a agenda dá lugar à lista. */
+.liff-so-estreito { display: none; }
+@media (max-width: 860px) {
+  .liff-so-largo { display: none; }
+  .liff-so-estreito { display: block; }
+}
