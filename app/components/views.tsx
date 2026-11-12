@@ -2654,12 +2654,12 @@ export function FormOportunidade({
           style={{ ...campoNativo, resize: "vertical", lineHeight: 1.5 }}
         />
       </Field>
-      {/* As três últimas vezes em que a situação foi reescrita: dá o fio da conversa sem abrir
-          o histórico inteiro. */}
+      {/* As três situações anteriores à que está no campo: dá o fio da conversa sem abrir o
+          histórico inteiro. */}
       {editando && (
         <div>
-          <div style={{ ...eyebrow(10, C.faint, "0.12em"), marginBottom: 8 }}>ÚLTIMAS ATUALIZAÇÕES DA SITUAÇÃO</div>
-          <UltimasDoCampo entidade={inicial.ref} campo="situacao" limite={3} vazio="A situação ainda não foi atualizada desde que o card foi criado." />
+          <div style={{ ...eyebrow(10, C.faint, "0.12em"), marginBottom: 8 }}>SITUAÇÕES ANTERIORES</div>
+          <UltimasDoCampo entidade={inicial.ref} campo="situacao" atual={inicial.situacao} limite={3} vazio="Ainda não há situação anterior a esta." />
         </div>
       )}
       <Field label="Próximo passo">

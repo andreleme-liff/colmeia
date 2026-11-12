@@ -113,10 +113,21 @@ export function LinhaDoTempo({ entidade, limite = 5, onVerTudo }: { entidade: st
  * As últimas alterações de UM campo do registro (a situação do card comercial, por exemplo),
  * com o texto que foi escrito, quem escreveu e quando. Fica logo abaixo do campo.
  */
-export function UltimasDoCampo({ entidade, campo, limite = 3, vazio }: { entidade: string; campo: string; limite?: number; vazio: string }) {
+export function UltimasDoCampo({ entidade, campo, atual, limite = 3, vazio }: {
+  entidade: string;
+  campo: string;
+  /** O valor que está no campo agora: a alteração que o escreveu não se repete na lista. */
+  atual?: string;
+  limite?: number;
+  vazio: string;
+}) {
   const { entradas, erro } = useHistorico(entidade);
   if (erro || !entradas) return null;
-  const doCampo = entradas.filter((e) => e.campo === campo).slice(0, limite);
+  const todas = entradas.filter((e) => e.campo === campo);
+  // A mais recente é a que escreveu o texto do campo: mostrar de novo seria repetir o que
+  // está logo acima. Ficam as anteriores.
+  const repetida = atual !== undefined && todas[0]?.para === (atual || "—");
+  const doCampo = todas.slice(repetida ? 1 : 0, (repetida ? 1 : 0) + limite);
   if (!doCampo.length) return <div style={{ fontSize: 12, color: C.faint, lineHeight: 1.5 }}>{vazio}</div>;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8, borderLeft: `2px solid ${C.line}`, paddingLeft: 12 }}>
