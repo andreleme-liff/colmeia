@@ -347,5 +347,17 @@ checa("arquétipo de outro produto",
   erro(planejarAtualizacaoOportunidade(OPOR, { arquetipoId: 4 }, perm, { ...fatosArq, arquetipos: [{ id: 4, nome: "De outro", ativo: true, pasta: "Jur", area: "jur" }] })),
   "400 Este arquétipo é de outro produto.");
 
+// Registros na AWS: N ACEs e N pedidos de funding por oportunidade, cada um com o link.
+const comAws = { ...OPOR, ace_aws: true, aws: [{ tipo: "ace", descricao: "O1", url: "" }] };
+const novaAws = planejarAtualizacaoOportunidade(OPOR, { aws: [{ tipo: "ace", descricao: "O1", url: "aws.com/o1" }, { tipo: "funding", descricao: "MAP", url: "" }] }, perm, fatos);
+checa("lista de registros na AWS grava e liga o ace_aws", [novaAws.aws?.length, novaAws.aws?.[0].url, novaAws.sets.ace_aws], [2, "https://aws.com/o1", true]);
+checa("tirar a última ACE desliga o ace_aws", planejarAtualizacaoOportunidade(comAws, { aws: [] }, perm, fatos).sets.ace_aws, false);
+checa("lista igual não gera mudança", planejarAtualizacaoOportunidade(comAws, { aws: comAws.aws }, perm, fatos).mudancas.length, 0);
+checa("acrescentar (MCP) mantém o que havia", planejarAtualizacaoOportunidade(comAws, { awsAdicionar: { tipo: "funding", descricao: "POC" } }, perm, fatos).aws?.length, 2);
+checa("aceAws antigo: true cria uma ACE sem link", planejarAtualizacaoOportunidade(OPOR, { aceAws: true }, perm, fatos).aws, [{ tipo: "ace", descricao: "", url: "" }]);
+checa("aceAws antigo: false não apaga ACE cadastrada", erro(planejarAtualizacaoOportunidade(comAws, { aceAws: false }, perm, fatos)), "400 Este card tem ACE cadastrada. Remova a ACE pela tela do card.");
+checa("tipo de registro inválido", erro(planejarAtualizacaoOportunidade(OPOR, { aws: [{ tipo: "x" }] }, perm, fatos)), "400 Tipo de registro da AWS inválido: use ace ou funding.");
+checa("criar com aceAws antigo", planejarCriacaoOportunidade({ conta: "X", area: "tax", aceAws: true }, perm, fatos).linha?.aws.length, 1);
+
 console.log(`\n${ok} passaram, ${falhou} falharam`);
 process.exit(falhou ? 1 : 0);

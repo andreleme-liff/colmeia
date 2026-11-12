@@ -21,7 +21,7 @@ const base: Deal = {
   id: 1, ref: "C-0001", conta: "São Salvador Alimentos", area: "tax", estagio: "contrato", valorCentavos: 12000000,
   responsavel: "Bruno Santo", responsavelId: 1, responsavelTexto: "", proximoPasso: "Avançar com o contrato",
   situacao: "Validação técnica realizada e valores da proposta aceitos", situacaoEm: "2026-10-19", contato: "",
-  proximoPassoEm: "2026-10-23", aceAws: true, atualizadoEm: "", criadoEm: "", arquetipoId: null, proposta: { assinaturaCentavos: 0, implantacaoCentavos: 0, implantacaoParcelas: 1, customizacaoCentavos: 0, customizacaoParcelas: 1 }, podeEditar: true, origemId: null, ponte: "",
+  proximoPassoEm: "2026-10-23", aceAws: true, atualizadoEm: "", criadoEm: "", arquetipoId: null, aws: [], proposta: { assinaturaCentavos: 0, implantacaoCentavos: 0, implantacaoParcelas: 1, customizacaoCentavos: 0, customizacaoParcelas: 1 }, podeEditar: true, origemId: null, ponte: "",
   contatoOperacional: "", dor: "", erp: "", clienteId: null, propostaUrl: "https://docs.google.com/presentation/d/1AbCdEfGhIjKlMnOp/edit", ultimaInteracao: null, blocker: "Responder questionário de LGPD e segurança de TI",
   blockerTipo: "seguranca", blockerDonoId: null, blockerDono: null, motivoPerda: null, motivoPerdaDetalhe: "", notas: "",
   modulos: ["apuracao", "precificacao", "genius"],

@@ -84,6 +84,8 @@ export type Deal = {
   proposta: import("@/lib/domain").ComposicaoProposta;
   /** Arquétipo de funding escolhido para a proposta; opcional. */
   arquetipoId: number | null;
+  /** ACEs e pedidos de funding na AWS, cada um com o link do cadastro. */
+  aws: import("@/lib/domain").RegistroAws[];
 };
 
 export type Origem = { id: string; label: string; ativo: boolean };
@@ -182,7 +184,8 @@ export type NovaOportunidade = {
   contato: string;
   responsavelTexto: string;
   proximoPassoEm: string | null;
-  aceAws: boolean;
+  /** Forma antiga ("há ACE"); a tela manda a lista `aws`. */
+  aceAws?: boolean;
   origemId: string | null;
   ponte: string;
   contatoOperacional: string;
@@ -204,6 +207,7 @@ export type NovaOportunidade = {
   propCustomizacaoReais?: number;
   propCustomizacaoParcelas?: number;
   arquetipoId?: number | null;
+  aws?: import("@/lib/domain").RegistroAws[];
 };
 
 async function req<T>(url: string, opts: RequestInit = {}): Promise<T> {

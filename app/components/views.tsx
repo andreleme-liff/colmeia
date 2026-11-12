@@ -5,7 +5,7 @@
 // chega em cada registro é o eco daquela decisão, usado só para desenhar o estado.
 
 import { useEffect, useState, type CSSProperties, type MouseEvent, type ReactNode, type RefObject, useRef } from "react";
-import { Button, Field, Input, Select, Switch } from "./ds";
+import { Button, Field, Input, Select } from "./ds";
 import { C, GHOST_FIX, MONO, SANS, dot, eyebrow, mesh, statusColor, R } from "./tokens";
 import { type Activity, type AreaCadastro, type ArquetipoResumo, type Deal, type LogEntry, type NovaOportunidade, type OrganizacaoResumo, type Origem, type Pessoa } from "./api";
 import SeletorArea, { type OpcaoArea } from "./SeletorArea";
@@ -18,7 +18,7 @@ import { CardOportunidade } from "./CardOportunidade";
 import { CardAtividade } from "./CardAtividade";
 import {
   ADMIN_CARDS, BLOCKER_TIPOS, ERP_SUGESTOES, ESTAGIO_INICIAL, MOTIVOS_PERDA, PAPEIS, STAGES, STATUS, CHAVE_SEM_RESPONSAVEL, aplicarBusca, areaOf, prepararBusca, ddmm, porTexto, stamp, statusLabel, hostDaUrl, previaDaProposta, urlDaProposta,
-  PROPOSTA_VAZIA, brlExato, estagioTemProposta, temComposicao, totalPrimeiroAno, type ComposicaoProposta,
+  PROPOSTA_VAZIA, TIPOS_AWS, brlExato, estagioTemProposta, temComposicao, totalPrimeiroAno, type ComposicaoProposta, type RegistroAws, type TipoAws,
 } from "@/lib/domain";
 
 /* =========================================================
@@ -2190,6 +2190,65 @@ function CampoProposta({
   );
 }
 
+/**
+ * Os registros de um tipo (ACE ou funding) do card: uma linha por registro, com a identificação
+ * e o link do cadastro na AWS, e o botão de acrescentar. A lista é uma só para os dois tipos,
+ * para a ordem de cadastro se manter.
+ */
+function RegistrosAws({ tipo, lista, onChange }: { tipo: TipoAws; lista: RegistroAws[]; onChange: (l: RegistroAws[]) => void }) {
+  const ace = tipo === "ace";
+  const mexe = (i: number, campo: "descricao" | "url", v: string) => onChange(lista.map((r, j) => (j === i ? { ...r, [campo]: v } : r)));
+  const doTipo = lista.map((r, i) => ({ r, i })).filter((x) => x.r.tipo === tipo);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
+        <span style={eyebrow(10, C.faint, "0.12em")}>
+          {ace ? "ACE" : "FUNDING SOLICITADO"}
+          {doTipo.length > 0 && <span style={{ color: C.dust }}> · {doTipo.length}</span>}
+        </span>
+        <button type="button" className="rec-link" onClick={() => onChange([...lista, { tipo, descricao: "", url: "" }])}>
+          + {ace ? "ACE" : "funding"}
+        </button>
+      </div>
+      {doTipo.length === 0 && (
+        <div style={{ fontSize: 12, color: C.faint, lineHeight: 1.5 }}>
+          {ace ? "Nenhuma ACE aberta para esta oportunidade." : "Nenhum funding solicitado para esta oportunidade."}
+        </div>
+      )}
+      {doTipo.map(({ r, i }) => {
+        const url = urlDaProposta(r.url);
+        return (
+          <div key={i} className="cop-aws">
+            <input
+              value={r.descricao}
+              onChange={(e) => mexe(i, "descricao", e.target.value)}
+              placeholder={ace ? "ID ou nome da ACE" : "Programa e valor"}
+              aria-label={ace ? "Identificação da ACE" : "Identificação do funding"}
+              style={campoNativo}
+            />
+            <input
+              value={r.url}
+              onChange={(e) => mexe(i, "url", e.target.value)}
+              placeholder="Link do cadastro na AWS (https://…)"
+              aria-label="Link do cadastro na AWS"
+              inputMode="url"
+              style={{ ...campoNativo, ...(url === null ? { borderColor: C.error } : {}) }}
+            />
+            {url ? (
+              <a href={url} target="_blank" rel="noopener noreferrer" className="cop-aws__acao" title="Abrir o cadastro na AWS em nova aba">↗</a>
+            ) : (
+              <span className="cop-aws__acao" aria-hidden style={{ opacity: 0.3 }}>↗</span>
+            )}
+            <button type="button" className="cop-aws__acao" onClick={() => onChange(lista.filter((_, j) => j !== i))} title="Remover este registro" aria-label="Remover este registro">
+              ×
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /** Centavos → texto do campo, no formato brasileiro ("1.500,5"); zero fica vazio. */
 function reaisParaCampo(centavos: number): string {
   if (!centavos) return "";
@@ -2275,6 +2334,7 @@ export function FormOportunidade({
   const [propCus, setPropCus] = useState(reaisParaCampo(p0.customizacaoCentavos));
   const [propCusX, setPropCusX] = useState(p0.customizacaoParcelas);
   const [arquetipoId, setArquetipoId] = useState(inicial?.arquetipoId ? String(inicial.arquetipoId) : "");
+  const [aws, setAws] = useState<RegistroAws[]>(inicial?.aws ?? []);
   const [proximo, setProximo] = useState(inicial?.proximoPasso ?? "");
   const [responsavel, setResponsavel] = useState<string>(
     inicial ? String(inicial.responsavelId ?? pessoas.find((p) => p.nome === inicial.responsavel)?.id ?? "") : ""
@@ -2283,7 +2343,6 @@ export function FormOportunidade({
   const [contato, setContato] = useState(inicial?.contato ?? "");
   const [respTexto, setRespTexto] = useState(inicial?.responsavelTexto ?? "");
   const [proximoEm, setProximoEm] = useState(inicial?.proximoPassoEm ?? "");
-  const [aceAws, setAceAws] = useState(inicial?.aceAws ?? false);
   const [origemId, setOrigemId] = useState(inicial?.origemId ?? "");
   const [ponte, setPonte] = useState(inicial?.ponte ?? "");
   const [contatoOp, setContatoOp] = useState(inicial?.contatoOperacional ?? "");
@@ -2319,7 +2378,7 @@ export function FormOportunidade({
   // Os três valores aparecem a partir do estágio Proposta — ou se já foram preenchidos (um
   // card que voltou para On hold ou foi perdido depois da proposta não esconde o que tinha).
   const comProposta = estagioTemProposta(estagio) || temComposicao(inicial?.proposta ?? PROPOSTA_VAZIA);
-  const mostraNegocio = !emProspeccao || !!valor.replace(/[0.,]/g, "") || aceAws || comProposta;
+  const mostraNegocio = !emProspeccao || !!valor.replace(/[0.,]/g, "") || aws.length > 0 || comProposta;
   // Arquétipos do produto do card: os da pasta ligada a um módulo dele, mais os de pasta sem
   // módulo (valem para qualquer produto). Inativo só aparece se já era o do card.
   const arquetiposDoProduto = arquetipos.filter(
@@ -2341,13 +2400,14 @@ export function FormOportunidade({
       propCustomizacaoReais: composicao.customizacaoCentavos / 100,
       propCustomizacaoParcelas: composicao.customizacaoParcelas,
       arquetipoId: arquetiposDoProduto.some((a) => String(a.id) === arquetipoId) ? Number(arquetipoId) : null,
+      // Linha sem identificação nem link também vale: é "há uma ACE (ou um pedido), sem link ainda".
+      aws,
       proximoPasso: proximo,
       responsavelId: responsavel ? Number(responsavel) : null,
       situacao,
       contato,
       responsavelTexto: respTexto,
       proximoPassoEm: proximoEm || null,
-      aceAws,
       origemId: origemId || null,
       ponte,
       contatoOperacional: contatoOp,
@@ -2366,8 +2426,13 @@ export function FormOportunidade({
 
   const opcoesPessoa = [{ value: "", label: "—" }, ...pessoas.map((p) => ({ value: String(p.id), label: p.nome }))];
   // `primeiro`: o bloco que abre uma coluna não leva o fio de cima — não há o que separar.
+  // Os blocos são numerados na ordem em que aparecem: alguns somem conforme o estágio
+  // (valor, AWS, blocker, perda), e um número fixo deixaria buracos na sequência.
+  let ordem = 0;
   const bloco = (titulo: string, primeiro = false) => (
-    <div className={primeiro ? "cortina-bloco-topo" : undefined} style={{ ...eyebrow(10, C.dust, "0.14em"), ...(primeiro ? {} : { borderTop: `1px solid ${C.line}`, paddingTop: 16, marginTop: 2 }) }}>{titulo}</div>
+    <div className={primeiro ? "cortina-bloco-topo" : undefined} style={{ ...eyebrow(10, C.dust, "0.14em"), ...(primeiro ? {} : { borderTop: `1px solid ${C.line}`, paddingTop: 16, marginTop: 2 }) }}>
+      {++ordem} · {titulo}
+    </div>
   );
   const duas = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 } as const;
 
@@ -2430,7 +2495,7 @@ export function FormOportunidade({
 
       <div className="cortina-duas">
       <div className="cortina-col">
-      {bloco("1 · DONO E ORIGEM", true)}
+      {bloco("DONO E ORIGEM", true)}
       <div style={duas}>
         <Field label="Dono">
           <Select options={opcoesPessoa} value={responsavel} onChange={setResponsavel} />
@@ -2452,7 +2517,7 @@ export function FormOportunidade({
         </Field>
       </div>
 
-      {bloco("2 · PESSOAS NO CLIENTE")}
+      {bloco("PESSOAS NO CLIENTE")}
       <div style={duas}>
         <Field label="Contato / sponsor" hint="Quem decide.">
           <Input placeholder="Fernando — Diretor de Tax" value={contato} onChange={setContato} />
@@ -2462,7 +2527,7 @@ export function FormOportunidade({
         </Field>
       </div>
 
-      {bloco("3 · O QUE SE VENDE")}
+      {bloco("O QUE SE VENDE")}
       <Field label="Dor principal">
         <Input placeholder="Conferir a apuração" value={dor} onChange={setDor} />
       </Field>
@@ -2507,58 +2572,10 @@ export function FormOportunidade({
         </datalist>
       </Field>
 
-      {bloco("NOTAS")}
-      <Field label="Observações" hint="Fatos que valem para a oportunidade inteira — não o andamento.">
-        <textarea
-          rows={3}
-          value={notas}
-          onChange={(e) => setNotas(e.target.value)}
-          placeholder="AWS: Wilson Mansano é o account manager."
-          style={{ ...campoNativo, resize: "vertical", lineHeight: 1.5 }}
-        />
-      </Field>
-      </div>
-
-      <div className="cortina-col">
-      {bloco("4 · ANDAMENTO", true)}
-      <Field label="Situação atual" hint="Só o estado de hoje. Ao salvar, o texto anterior vai para a lista abaixo.">
-        <textarea
-          rows={3}
-          value={situacao}
-          onChange={(e) => setSituacao(e.target.value)}
-          placeholder="Proposta aceita; contrato em revisão no jurídico do cliente."
-          style={{ ...campoNativo, resize: "vertical", lineHeight: 1.5 }}
-        />
-      </Field>
-      {/* As três últimas vezes em que a situação foi reescrita: dá o fio da conversa sem abrir
-          o histórico inteiro. */}
-      {editando && (
-        <div>
-          <div style={{ ...eyebrow(10, C.faint, "0.12em"), marginBottom: 8 }}>ÚLTIMAS ATUALIZAÇÕES DA SITUAÇÃO</div>
-          <UltimasDoCampo entidade={inicial.ref} campo="situacao" limite={3} vazio="A situação ainda não foi atualizada desde que o card foi criado." />
-        </div>
-      )}
-      <Field label="Próximo passo">
-        <textarea
-          rows={2}
-          value={proximo}
-          onChange={(e) => setProximo(e.target.value)}
-          placeholder="Recepção dos arquivos para o kickoff."
-          style={{ ...campoNativo, resize: "vertical", lineHeight: 1.5 }}
-        />
-      </Field>
-      <div style={duas}>
-        <Field label="Data do próximo passo" hint="Define o status do FUP e o cronograma.">
-          <CampoData valor={proximoEm} onChange={setProximoEm} />
-        </Field>
-        <Field label="Última interação" hint="Último contato com o cliente.">
-          <CampoData valor={ultimaInteracao} onChange={setUltimaInteracao} />
-        </Field>
-      </div>
 
       {mostraNegocio && (
         <>
-          {bloco("5 · VALOR E PROPOSTA")}
+          {bloco("VALOR E PROPOSTA")}
           {/* A partir de Proposta o valor se abre nos três tipos da receita. Antes disso é só
               uma estimativa, num número. */}
           {comProposta && (
@@ -2611,46 +2628,61 @@ export function FormOportunidade({
             </Field>
           )}
           <CampoProposta valor={propostaUrl} onChange={setPropostaUrl} aberta={verProposta} onAlternar={() => setVerProposta((v) => !v)} />
-          {/* AWS: o arquétipo da solução proposta (base da ACE e do pedido de funding) e se a
-              ACE já foi criada. */}
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)", gap: 14 }}>
-            <Field
-              label="Arquétipo AWS"
-              hint={
-                !area
-                  ? "Escolha o produto para ver os arquétipos."
-                  : arquetiposDoProduto.length
-                    ? "Opcional. Serve depois para abrir a ACE e pedir funding."
-                    : "Ainda não há arquétipo cadastrado para este produto."
-              }
-            >
-              <Select
-                options={[
-                  { value: "", label: "—" },
-                  ...arquetiposDoProduto.map((a) => ({
-                    value: String(a.id),
-                    label: a.nome + (a.ativo ? "" : " (inativo)"),
-                  })),
-                ]}
-                value={arquetiposDoProduto.some((a) => String(a.id) === arquetipoId) ? arquetipoId : ""}
-                onChange={setArquetipoId}
-              />
-            </Field>
-            <Field label="ACE" hint="No AWS Partner Central.">
-              <div style={{ display: "flex", alignItems: "center", height: 40 }}>
-                <span style={{ flex: "none" }}>
-                  <Switch checked={aceAws} onChange={setAceAws} />
-                </span>
-                <span style={{ fontSize: 13, color: C.body, marginLeft: 10 }}>{aceAws ? "Criada" : "Não criada"}</span>
-              </div>
-            </Field>
-          </div>
         </>
       )}
 
+      {bloco("NOTAS")}
+      <Field label="Observações" hint="Fatos que valem para a oportunidade inteira — não o andamento.">
+        <textarea
+          rows={3}
+          value={notas}
+          onChange={(e) => setNotas(e.target.value)}
+          placeholder="AWS: Wilson Mansano é o account manager."
+          style={{ ...campoNativo, resize: "vertical", lineHeight: 1.5 }}
+        />
+      </Field>
+      </div>
+
+      <div className="cortina-col">
+      {bloco("ANDAMENTO", true)}
+      <Field label="Situação atual" hint="Só o estado de hoje. Ao salvar, o texto anterior vai para a lista abaixo.">
+        <textarea
+          rows={3}
+          value={situacao}
+          onChange={(e) => setSituacao(e.target.value)}
+          placeholder="Proposta aceita; contrato em revisão no jurídico do cliente."
+          style={{ ...campoNativo, resize: "vertical", lineHeight: 1.5 }}
+        />
+      </Field>
+      {/* As três últimas vezes em que a situação foi reescrita: dá o fio da conversa sem abrir
+          o histórico inteiro. */}
+      {editando && (
+        <div>
+          <div style={{ ...eyebrow(10, C.faint, "0.12em"), marginBottom: 8 }}>ÚLTIMAS ATUALIZAÇÕES DA SITUAÇÃO</div>
+          <UltimasDoCampo entidade={inicial.ref} campo="situacao" limite={3} vazio="A situação ainda não foi atualizada desde que o card foi criado." />
+        </div>
+      )}
+      <Field label="Próximo passo">
+        <textarea
+          rows={2}
+          value={proximo}
+          onChange={(e) => setProximo(e.target.value)}
+          placeholder="Recepção dos arquivos para o kickoff."
+          style={{ ...campoNativo, resize: "vertical", lineHeight: 1.5 }}
+        />
+      </Field>
+      <div style={duas}>
+        <Field label="Data do próximo passo" hint="Define o status do FUP e o cronograma.">
+          <CampoData valor={proximoEm} onChange={setProximoEm} />
+        </Field>
+        <Field label="Última interação" hint="Último contato com o cliente.">
+          <CampoData valor={ultimaInteracao} onChange={setUltimaInteracao} />
+        </Field>
+      </div>
+
       {mostraBlocker && (
         <>
-          {bloco("6 · BLOCKER")}
+          {bloco("BLOCKER")}
           <Field label="O que está travando" hint="Em branco quando nada trava.">
             <Input placeholder="Questionário de LGPD e segurança de TI" value={blocker} onChange={setBlocker} />
           </Field>
@@ -2670,9 +2702,45 @@ export function FormOportunidade({
       )}
 
 
+
+      {mostraNegocio && (
+        <>
+          {bloco("AWS")}
+          <Field
+            label="Arquétipo"
+            hint={
+              !area
+                ? "Escolha o produto para ver os arquétipos."
+                : arquetiposDoProduto.length
+                  ? "Opcional. É a base para abrir a ACE e pedir funding."
+                  : "Ainda não há arquétipo cadastrado para este produto."
+            }
+          >
+            <Select
+              options={[
+                { value: "", label: "—" },
+                ...arquetiposDoProduto.map((a) => ({ value: String(a.id), label: a.nome + (a.ativo ? "" : " (inativo)") })),
+              ]}
+              value={arquetiposDoProduto.some((a) => String(a.id) === arquetipoId) ? arquetipoId : ""}
+              onChange={setArquetipoId}
+            />
+          </Field>
+          {/* Uma oportunidade pode ter várias ACEs e vários pedidos de funding. Cada linha guarda
+              a identificação e o link do cadastro no Partner Central. */}
+          {TIPOS_AWS.map((t) => (
+            <RegistrosAws
+              key={t.key}
+              tipo={t.key}
+              lista={aws}
+              onChange={setAws}
+            />
+          ))}
+        </>
+      )}
+
       {estagio === "lost" && (
         <>
-          {bloco("7 · PERDA")}
+          {bloco("PERDA")}
           <div style={duas}>
             <Field label="Motivo">
               <Select
@@ -2687,56 +2755,55 @@ export function FormOportunidade({
           </div>
         </>
       )}
-      </div>
-      </div>
 
-      {/* Rodapé de consulta, também em duas colunas: o que mudou por último e o lado
-          operacional da venda. */}
-      {editando && (
-        <div className="cortina-duas" style={{ borderTop: `1px solid ${C.line}`, paddingTop: 18 }}>
-          <div className="cortina-col">
-            <div style={eyebrow(11, C.dust)}>LINHA DO TEMPO · ÚLTIMAS ATUALIZAÇÕES</div>
-            <LinhaDoTempo
-              entidade={inicial.ref}
-              limite={5}
-              onVerTudo={() => {
-                setVerHistorico(true);
-                // Depois que o histórico completo abrir, leva a pessoa até ele.
-                window.setTimeout(() => document.getElementById("liff-historico-completo")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
-              }}
-            />
-          </div>
-          <div className="cortina-col">
       {/* O lado operacional desta venda: as tarefas ligadas a ela. Só as que a pessoa
-              enxerga — tarefa de produto sem acesso não aparece, como em todo o sistema. */}
-          {editando && (
-            <div>
-              <div style={{ ...eyebrow(11, C.dust), marginBottom: 12 }}>TAREFAS LIGADAS</div>
-              {tarefas.length ? (
-                <div style={{ display: "grid", gap: 8 }}>
-                  {tarefas.map((t) => (
-                    <div
-                      key={t.ref}
-                      role="button"
-                      className="liff-hover-row"
-                      onClick={() => onAbrirTarefa?.(t.ref)}
-                      title="Abrir a tarefa"
-                      style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", gap: 10, alignItems: "baseline", padding: "6px 8px", cursor: "pointer", borderRadius: R }}
-                    >
-                      <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>{t.ref}</span>
-                      <span style={{ fontSize: 13, color: C.ink, lineHeight: 1.4 }}>{t.titulo}</span>
-                      <span style={eyebrow(10, statusColor(t.status), "0.1em")}>{statusLabel(t.status)}</span>
-                    </div>
-                  ))}
+          enxerga — tarefa de produto sem acesso não aparece, como em todo o sistema. */}
+      {editando && (
+        <>
+          {bloco("TAREFAS LIGADAS")}
+          <div>
+          {tarefas.length ? (
+            <div style={{ display: "grid", gap: 8 }}>
+              {tarefas.map((t) => (
+                <div
+                  key={t.ref}
+                  role="button"
+                  className="liff-hover-row"
+                  onClick={() => onAbrirTarefa?.(t.ref)}
+                  title="Abrir a tarefa"
+                  style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", gap: 10, alignItems: "baseline", padding: "6px 8px", cursor: "pointer", borderRadius: R }}
+                >
+                  <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>{t.ref}</span>
+                  <span style={{ fontSize: 13, color: C.ink, lineHeight: 1.4 }}>{t.titulo}</span>
+                  <span style={eyebrow(10, statusColor(t.status), "0.1em")}>{statusLabel(t.status)}</span>
                 </div>
-              ) : (
-                <div style={{ fontSize: 13, color: C.faint, lineHeight: 1.5 }}>
-                  Nenhuma tarefa ligada. Ligue uma tarefa pelo campo Oportunidade, no card dela em Operações.
-                </div>
-              )}
+              ))}
+            </div>
+          ) : (
+            <div style={{ fontSize: 13, color: C.faint, lineHeight: 1.5 }}>
+              Nenhuma tarefa ligada. Ligue uma tarefa pelo campo Oportunidade, no card dela em Operações.
             </div>
           )}
           </div>
+        </>
+      )}
+      </div>
+      </div>
+
+      {/* Rodapé de consulta, na largura toda: o que mudou por último e, sob demanda, o
+          histórico completo. */}
+      {editando && (
+        <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 18 }}>
+          <div style={{ ...eyebrow(11, C.dust), marginBottom: 14 }}>LINHA DO TEMPO · ÚLTIMAS ATUALIZAÇÕES</div>
+          <LinhaDoTempo
+            entidade={inicial.ref}
+            limite={5}
+            onVerTudo={() => {
+              setVerHistorico(true);
+              // Depois que o histórico completo abrir, leva a pessoa até ele.
+              window.setTimeout(() => document.getElementById("liff-historico-completo")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+            }}
+          />
         </div>
       )}
 

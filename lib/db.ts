@@ -495,6 +495,28 @@ async function migrate(): Promise<void> {
       )
     `;
 
+    // Registros da oportunidade na AWS (nov/2026): N ACEs e N pedidos de funding por card, cada
+    // um com o link do cadastro no Partner Central. Substitui o interruptor "ACE": `ace_aws`
+    // continua na tabela (os cards e filtros leem dele) e passa a significar "há ACE na lista".
+    // Na criação da tabela, cada card que já estava marcado ganha uma ACE sem link.
+    const [{ awsNova }] = await sql<{ awsNova: boolean }[]>`
+      SELECT to_regclass('public.oportunidade_aws') IS NULL AS "awsNova"
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS oportunidade_aws (
+        id        SERIAL PRIMARY KEY,
+        deal_id   INTEGER NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
+        tipo      TEXT NOT NULL CHECK (tipo IN ('ace', 'funding')),
+        descricao TEXT NOT NULL DEFAULT '',
+        url       TEXT NOT NULL DEFAULT '',
+        criado_em TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS idx_oportunidade_aws_deal ON oportunidade_aws(deal_id)`;
+    if (awsNova) {
+      await sql`INSERT INTO oportunidade_aws (deal_id, tipo) SELECT id, 'ace' FROM deals WHERE ace_aws ORDER BY id`;
+    }
+
     // ---- Acesso por sistemas externos (MCP + OAuth 2.1) ----
     //
     // De onde veio cada escrita. Nulo é a interface, como sempre foi. Sem chave estrangeira
@@ -869,7 +891,7 @@ async function migrate(): Promise<void> {
             -- não cabe a esta migração. TABELA NOVA NESTE APP ENTRA NESTA LISTA.
             EXECUTE format(
               'REVOKE ALL ON users, user_area_perms, activities, deals, sessions, audit_log, areas, produtos, '
-              'oauth_concessoes, oauth_codigos, oauth_tokens, mcp_chamadas, origens, oportunidade_modulos, '
+              'oauth_concessoes, oauth_codigos, oauth_tokens, mcp_chamadas, origens, oportunidade_modulos, oportunidade_aws, '
               'contratos, contrato_receitas, faturas, funding_programas, funding_arquetipos, funding_calculadoras, '
               'funding_estimativas, funding_linhas, funding_pastas, clientes, cliente_chaves, cliente_contatos FROM %I',
               papel

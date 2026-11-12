@@ -68,6 +68,20 @@ export type ComposicaoProposta = {
 export const PROPOSTA_VAZIA: ComposicaoProposta = {
   assinaturaCentavos: 0, implantacaoCentavos: 0, implantacaoParcelas: 1, customizacaoCentavos: 0, customizacaoParcelas: 1,
 };
+/** Registro da oportunidade na AWS: uma ACE ou um pedido de funding, com o link do cadastro. */
+export const TIPOS_AWS = [
+  { key: "ace", label: "ACE" },
+  { key: "funding", label: "Funding" },
+] as const;
+export type TipoAws = (typeof TIPOS_AWS)[number]["key"];
+export type RegistroAws = { tipo: TipoAws; descricao: string; url: string };
+export const LIMITES_AWS = { registros: 30, descricao: 160 };
+/** "2 ACE, 1 funding" — para o histórico e para a dica do card. */
+export function resumoAws(lista: RegistroAws[]): string {
+  const n = (t: TipoAws) => lista.filter((r) => r.tipo === t).length;
+  const partes = [n("ace") ? `${n("ace")} ACE` : "", n("funding") ? `${n("funding")} funding` : ""].filter(Boolean);
+  return partes.join(", ") || "—";
+}
 export const PARCELAS_MAX = 60;
 /** A composição vale a partir do estágio Proposta: antes disso não há proposta para detalhar. */
 export function estagioTemProposta(k: string): boolean {

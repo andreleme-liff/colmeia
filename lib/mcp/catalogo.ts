@@ -106,6 +106,16 @@ const CAMPOS_OPORTUNIDADE: Record<string, Prop> = {
   implantacao_reais: { type: "number", minimum: 0, description: "Composição da proposta: valor TOTAL da implantação, em reais. 0 limpa." },
   implantacao_parcelas: { type: "integer", minimum: 1, maximum: 60, description: "Em quantas parcelas mensais a implantação é paga (1 = à vista)." },
   customizacao_reais: { type: "number", minimum: 0, description: "Composição da proposta: valor TOTAL da customização, em reais. 0 limpa." },
+  registro_aws: {
+    type: "object",
+    required: ["tipo"],
+    properties: {
+      tipo: { type: "string", enum: ["ace", "funding"], description: "ace = oportunidade registrada no ACE; funding = pedido de funding." },
+      descricao: { type: "string", maxLength: 160, description: "Identificação: o ID da ACE, ou o programa e o valor do funding." },
+      url: { type: "string", maxLength: 2000, description: "Link (https) do cadastro no AWS Partner Central." },
+    },
+    description: "ACRESCENTA um registro da oportunidade na AWS (uma ACE ou um pedido de funding) com o link do cadastro. Uma oportunidade pode ter vários; não remove nem altera os que já existem (isso é pela tela).",
+  },
   arquetipo_id: { type: ["integer", "null"], description: "Arquétipo de funding da proposta (id de `listar_arquetipos`), usado depois para abrir a ACE e pedir funding na AWS. Opcional; null remove. Tem de ser do produto da oportunidade." },
   customizacao_parcelas: { type: "integer", minimum: 1, maximum: 60, description: "Em quantas parcelas mensais a customização é paga (1 = à vista)." },
   responsavel_id: { ...RESP, description: "Dono da oportunidade: id da pessoa (ver `listar_cadastros`); null remove." },
@@ -133,7 +143,7 @@ const CAMPOS_OPORTUNIDADE: Record<string, Prop> = {
   motivo_perda: { type: ["string", "null"], enum: [...MOTIVO_PERDA_KEYS, null], description: MOTIVOS_PERDA.map((m) => `${m.key} = ${m.label}`).join("; ") },
   motivo_perda_detalhe: { type: "string", maxLength: LIMITES.motivoPerdaDetalhe },
   notas: { type: "string", maxLength: LIMITES.notas, description: "Fatos que valem para a oportunidade inteira — não o andamento." },
-  ace_aws: { type: "boolean", description: "Já registrada no ACE do AWS Partner Central." },
+  ace_aws: { type: "boolean", description: "Forma antiga de dizer que há ACE: true acrescenta uma ACE sem link se ainda não houver nenhuma. Prefira `registro_aws`, que guarda o link." },
 };
 
 // ---- organizações

@@ -433,6 +433,13 @@ body { background: var(--liff-canvas); color: var(--liff-text); }
   border: 1px solid var(--liff-border); border-radius: var(--liff-radius-sm); overflow: hidden; }
 .cop-proposta > div { background: var(--liff-canvas); padding: 12px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 @media (max-width: 560px) { .cop-proposta { grid-template-columns: 1fr; } }
+/* Registro na AWS (ACE ou funding): identificação, link, abrir e remover numa linha só. */
+.cop-aws { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) 34px 34px; gap: 6px; align-items: center; }
+.cop-aws__acao { all: unset; box-sizing: border-box; width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 16px; color: var(--liff-text-muted); border: 1px solid var(--liff-border); border-radius: var(--liff-radius-sm); }
+a.cop-aws__acao:hover, button.cop-aws__acao:hover { color: var(--liff-text); background: var(--liff-surface-2); }
+.cop-aws__acao:focus-visible { outline: 2px solid var(--liff-accent); }
+@media (max-width: 560px) { .cop-aws { grid-template-columns: minmax(0, 1fr) 34px 34px; } .cop-aws > input:first-child { grid-column: 1 / -1; } }
 .cop-total { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; padding: 10px 12px;
   border: 1px solid var(--liff-border); border-radius: var(--liff-radius-sm); background: var(--liff-surface-2); }
 .cop-total strong { font-family: var(--liff-font-mono); font-size: 16px; color: var(--liff-text); font-weight: 600; }

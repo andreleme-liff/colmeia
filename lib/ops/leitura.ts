@@ -78,6 +78,7 @@ type LinhaOportunidade = {
   prop_assinatura_centavos: string; prop_implantacao_centavos: string; prop_implantacao_parcelas: number;
   prop_customizacao_centavos: string; prop_customizacao_parcelas: number;
   arquetipo_id: number | null; arquetipo: string | null;
+  aws: { tipo: string; descricao: string; url: string }[];
   org_ref: string | null; org_nome: string | null;
 };
 
@@ -91,6 +92,8 @@ const COLUNAS_OPORTUNIDADE = `
   d.prop_assinatura_centavos, d.prop_implantacao_centavos, d.prop_implantacao_parcelas,
   d.prop_customizacao_centavos, d.prop_customizacao_parcelas,
   d.arquetipo_id, (SELECT fa.nome FROM funding_arquetipos fa WHERE fa.id = d.arquetipo_id) AS arquetipo,
+  COALESCE((SELECT json_agg(json_build_object('tipo', w.tipo, 'descricao', w.descricao, 'url', w.url) ORDER BY w.id)
+            FROM oportunidade_aws w WHERE w.deal_id = d.id), '[]'::json) AS aws,
   COALESCE((SELECT array_agg(p.label ORDER BY p.label) FROM oportunidade_modulos m JOIN produtos p ON p.id = m.produto_id
             WHERE m.deal_id = d.id), '{}') AS modulos,
   COALESCE((SELECT array_agg(m.produto_id ORDER BY m.produto_id) FROM oportunidade_modulos m
@@ -121,6 +124,8 @@ function oportunidadeDto(d: LinhaOportunidade, ctx: Ctx, base: string) {
     customizacao_parcelas: d.prop_customizacao_parcelas,
     arquetipo_id: d.arquetipo_id,
     arquetipo: d.arquetipo,
+    // ACEs e pedidos de funding na AWS, com o link de cada cadastro.
+    registros_aws: d.aws.map((r) => ({ tipo: r.tipo, descricao: r.descricao || null, url: r.url || null })),
     responsavel_id: d.responsavel_user_id,
     responsavel: d.responsavel,
     responsavel_texto: d.responsavel_texto,

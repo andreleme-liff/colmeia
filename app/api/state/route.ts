@@ -107,6 +107,7 @@ export async function GET() {
         motivo_perda_detalhe: string; notas: string; modulos: string[];
         prop_assinatura_centavos: string; prop_implantacao_centavos: string; prop_implantacao_parcelas: number;
         prop_customizacao_centavos: string; prop_customizacao_parcelas: number; arquetipo_id: number | null;
+        aws: { tipo: "ace" | "funding"; descricao: string; url: string }[];
       }[]
     >`
       SELECT d.id, d.ref, d.conta, d.area, d.estagio, d.valor_centavos,
@@ -117,6 +118,8 @@ export async function GET() {
              d.motivo_perda, d.motivo_perda_detalhe, d.notas,
              d.prop_assinatura_centavos, d.prop_implantacao_centavos, d.prop_implantacao_parcelas,
              d.prop_customizacao_centavos, d.prop_customizacao_parcelas, d.arquetipo_id,
+             COALESCE((SELECT json_agg(json_build_object('tipo', w.tipo, 'descricao', w.descricao, 'url', w.url) ORDER BY w.id)
+                       FROM oportunidade_aws w WHERE w.deal_id = d.id), '[]'::json) AS aws,
              COALESCE((SELECT array_agg(m.produto_id ORDER BY m.produto_id) FROM oportunidade_modulos m
                        WHERE m.deal_id = d.id), '{}') AS modulos,
              -- Card nunca editado tem atualizado_em nulo; nesse caso a idade conta da criação,
@@ -292,6 +295,7 @@ export async function GET() {
         customizacaoParcelas: d.prop_customizacao_parcelas,
       },
       arquetipoId: d.arquetipo_id,
+      aws: d.aws,
       atualizadoEm: d.mexido_em.toISOString(),
       criadoEm: d.criado_em.toISOString(),
       podeEditar: ctx.podeEditar(d.area),

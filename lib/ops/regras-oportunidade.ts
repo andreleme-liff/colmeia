@@ -9,8 +9,8 @@
 // resolve), motivo da perda e notas. `contato` passou a ser "Contato / sponsor".
 
 import {
-  BLOCKER_TIPO_KEYS, ESTAGIO_INICIAL, FUNIL, MOTIVO_PERDA_KEYS, PARCELAS_MAX, STAGE_KEYS, blockerTipoLabel, brlExato,
-  hojeISO, motivoPerdaLabel, stageLabel, temComposicao, totalPrimeiroAno, urlDaProposta, type ComposicaoProposta,
+  BLOCKER_TIPO_KEYS, ESTAGIO_INICIAL, FUNIL, LIMITES_AWS, MOTIVO_PERDA_KEYS, PARCELAS_MAX, TIPOS_AWS, resumoAws, STAGE_KEYS, blockerTipoLabel, brlExato,
+  hojeISO, motivoPerdaLabel, stageLabel, temComposicao, totalPrimeiroAno, urlDaProposta, type ComposicaoProposta, type RegistroAws,
 } from "../domain.ts";
 import {
   LIMITES, dataOuNula, falha, idDePessoa, isoDoBanco, texto,
@@ -47,6 +47,7 @@ export type OportunidadeNova = {
   modulos: string[];
   proposta: ComposicaoProposta;
   arquetipoId: number | null;
+  aws: RegistroAws[];
 };
 
 export type OportunidadeAtual = {
@@ -89,6 +90,8 @@ export type OportunidadeAtual = {
   prop_customizacao_centavos?: string | number;
   prop_customizacao_parcelas?: number;
   arquetipo_id?: number | null;
+  /** ACEs e pedidos de funding do card, na ordem em que foram cadastrados. */
+  aws?: RegistroAws[];
 };
 
 type Entrada = Record<string, unknown>;
@@ -131,6 +134,34 @@ function lerProposta(body: Entrada, base: ComposicaoProposta): string | { final:
   }
   return { final, mudou };
 }
+
+/** Um registro na AWS vindo do corpo: o registro limpo, ou a mensagem de erro. */
+function registroAws(v: unknown): RegistroAws | string {
+  if (!v || typeof v !== "object") return "Registro da AWS inválido.";
+  const r = v as Record<string, unknown>;
+  if (!TIPOS_AWS.some((t) => t.key === r.tipo)) return "Tipo de registro da AWS inválido: use ace ou funding.";
+  const url = urlDaProposta(r.url);
+  if (url === null) return "Link da AWS inválido. Cole o endereço completo, começando por https://.";
+  return { tipo: r.tipo as RegistroAws["tipo"], descricao: texto(r.descricao, LIMITES_AWS.descricao), url };
+}
+
+/** A lista inteira de registros na AWS. Linha sem descrição e sem link é descartada. */
+function listaAws(v: unknown): RegistroAws[] | string {
+  if (v === null) return [];
+  if (!Array.isArray(v)) return "Registros da AWS inválidos.";
+  if (v.length > LIMITES_AWS.registros) return `No máximo ${LIMITES_AWS.registros} registros na AWS por oportunidade.`;
+  const lista: RegistroAws[] = [];
+  for (const item of v) {
+    const r = registroAws(item);
+    if (typeof r === "string") return r;
+    lista.push(r);
+  }
+  return lista;
+}
+
+const mesmaAws = (a: RegistroAws[], b: RegistroAws[]) =>
+  a.length === b.length && a.every((x, i) => x.tipo === b[i].tipo && x.descricao === b[i].descricao && x.url === b[i].url);
+const temAce = (l: RegistroAws[]) => l.some((r) => r.tipo === "ace");
 
 /**
  * Arquétipo da proposta: tem de existir, estar ativo (ou já ser o do card) e ser do produto
@@ -242,6 +273,10 @@ export function planejarCriacaoOportunidade(
   }
   const arquetipoId = arquetipoValido(body.arquetipoId ?? null, fatos, area, null);
   if (typeof arquetipoId === "string") return falha(arquetipoId);
+  // Registros na AWS. `aceAws: true` sozinho (forma antiga, MCP) vale como uma ACE sem link.
+  let aws = body.aws === undefined ? [] : listaAws(body.aws);
+  if (typeof aws === "string") return falha(aws);
+  if (body.aws === undefined && aceAws === true) aws = [{ tipo: "ace", descricao: "", url: "" }];
 
   const linha: OportunidadeNova = {
     conta,
@@ -255,7 +290,7 @@ export function planejarCriacaoOportunidade(
     situacaoEm: texto(body.situacao, LIMITES.situacao) ? (dataOuNula(body.situacaoEm) ?? hojeISO()) : null,
     contato: texto(body.contato, LIMITES.contato),
     responsavelTexto: texto(body.responsavelTexto, LIMITES.responsavelTexto),
-    aceAws: aceAws ?? false,
+    aceAws: temAce(aws),
     origemId,
     ponte: texto(body.ponte, LIMITES.ponte),
     contatoOperacional: texto(body.contatoOperacional, LIMITES.contatoOperacional),
@@ -272,6 +307,7 @@ export function planejarCriacaoOportunidade(
     modulos,
     proposta: proposta.final,
     arquetipoId,
+    aws,
   };
 
   return {
@@ -300,6 +336,8 @@ export type PlanoOportunidade = {
   sets: Partial<Record<ColunaOportunidade, string | number | boolean | null>>;
   /** Lista NOVA de módulos, quando mudou. Ausente = não mexer. */
   modulos?: string[];
+  /** Lista NOVA de registros na AWS (ACEs e fundings), quando mudou. Ausente = não mexer. */
+  aws?: RegistroAws[];
   mudancas: Mudanca[];
   areaFinal: string;
 };
@@ -613,16 +651,30 @@ export function planejarAtualizacaoOportunidade(
     }
   }
 
-  const aceAws = booleanoOpcional(body.aceAws);
-  if (aceAws === "invalido") return falha("Requisição inválida.");
-  if (aceAws !== undefined && aceAws !== atual.ace_aws) {
-    mudancas.push({
-      campo: "ace_aws",
-      de: String(atual.ace_aws),
-      para: String(aceAws),
-      texto: `${aceAws ? "Registrou" : "Desmarcou o registro de"} ${atual.conta} no ACE da AWS`,
-    });
-    sets.ace_aws = aceAws;
+  // Registros na AWS: N ACEs e N pedidos de funding, cada um com o link do cadastro. Três
+  // entradas: a lista inteira (a tela), um registro a acrescentar (o MCP, que não remove nada)
+  // e o `aceAws` antigo, que hoje só sabe dizer "há uma ACE".
+  const awsAtual = atual.aws ?? [];
+  let aws: RegistroAws[] | undefined;
+  if (body.aws !== undefined) {
+    const nova = listaAws(body.aws);
+    if (typeof nova === "string") return falha(nova);
+    if (!mesmaAws(nova, awsAtual)) aws = nova;
+  } else if (body.awsAdicionar !== undefined) {
+    const r = registroAws(body.awsAdicionar);
+    if (typeof r === "string") return falha(r);
+    if (awsAtual.length >= LIMITES_AWS.registros) return falha(`No máximo ${LIMITES_AWS.registros} registros na AWS por oportunidade.`);
+    aws = [...awsAtual, r];
+  } else {
+    const aceAws = booleanoOpcional(body.aceAws);
+    if (aceAws === "invalido") return falha("Requisição inválida.");
+    if (aceAws === true && !temAce(awsAtual)) aws = [...awsAtual, { tipo: "ace", descricao: "", url: "" }];
+    if (aceAws === false && temAce(awsAtual)) return falha("Este card tem ACE cadastrada. Remova a ACE pela tela do card.");
+  }
+  if (aws) {
+    mudancas.push({ campo: "aws", de: resumoAws(awsAtual), para: resumoAws(aws), texto: `Alterou os registros de ${atual.conta} na AWS (ACE e funding)` });
+    // `ace_aws` acompanha a lista: é o que o card e os filtros leem.
+    if (temAce(aws) !== atual.ace_aws) sets.ace_aws = temAce(aws);
   }
 
   if (body.responsavelId !== undefined && body.responsavelId !== atual.responsavel_user_id) {
@@ -644,5 +696,5 @@ export function planejarAtualizacaoOportunidade(
     sets.responsavel_user_id = novoId;
   }
 
-  return { ok: true, sets, modulos, mudancas, areaFinal };
+  return { ok: true, sets, modulos, aws, mudancas, areaFinal };
 }
