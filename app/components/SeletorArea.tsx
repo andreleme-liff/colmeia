@@ -5,7 +5,7 @@
 // eram poucos; a forma mudava conforme o cadastro crescia, e isso saiu a pedido.
 // O menu é próprio, não um <select> nativo, para manter o ponto de cor ao lado de cada nome.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { C, eyebrow, dot, MONO } from "./tokens";
 
 /** `color` é opcional: sem ela a opção não leva o ponto (o seletor de tamanho do card, por exemplo). */
@@ -20,6 +20,8 @@ export default function SeletorArea({
   prefixo,
   larguraMin = 190,
   paraCima = false,
+  icone,
+  titulo,
 }: {
   opcoes: OpcaoArea[];
   valor: string;
@@ -33,6 +35,12 @@ export default function SeletorArea({
   larguraMin?: number;
   /** Abre a lista para cima: para o seletor que fica no rodapé do menu lateral. */
   paraCima?: boolean;
+  /**
+   * Forma mínima: o botão vira só este ícone, sem rótulo nem valor. O valor atual aparece
+   * na dica do botão e marcado na lista, que ganha `titulo` como cabeçalho.
+   */
+  icone?: ReactNode;
+  titulo?: string;
 }) {
   const [aberto, setAberto] = useState(false);
   const caixa = useRef<HTMLDivElement>(null);
@@ -61,19 +69,25 @@ export default function SeletorArea({
         aria-haspopup="listbox"
         aria-expanded={aberto}
         onClick={() => setAberto((v) => !v)}
+        title={icone ? `${titulo ?? ""}: ${atual?.label ?? ""}` : undefined}
+        aria-label={icone ? `${titulo ?? ""}: ${atual?.label ?? ""}` : undefined}
         style={{
           display: "flex",
           alignItems: "center",
           gap: 9,
-          padding: "8px 13px",
+          padding: icone ? 0 : "8px 13px",
           cursor: "pointer",
           ...eyebrow(11, C.ink, "0.1em"),
           background: C.canvas,
           border: `1px solid ${C.line}`,
-          minWidth: larguraMin,
-          justifyContent: "space-between",
+          ...(icone
+            ? { width: 34, height: 34, justifyContent: "center", color: aberto ? C.ink : C.dust }
+            : { minWidth: larguraMin, justifyContent: "space-between" }),
         }}
       >
+        {icone}
+        {!icone && (
+          <>
         <span style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
           {prefixo && <span style={{ color: C.faint, whiteSpace: "nowrap", flex: "none" }}>{prefixo}</span>}
           {(atual?.color || !prefixo) && <span style={{ ...dot(atual?.color ?? C.dust), borderRadius: 2 }} />}
@@ -82,6 +96,8 @@ export default function SeletorArea({
           </span>
         </span>
         <span style={{ fontFamily: MONO, fontSize: 10, color: C.faint }}>{aberto ? "▴" : "▾"}</span>
+          </>
+        )}
       </div>
 
       {aberto && (
@@ -101,6 +117,9 @@ export default function SeletorArea({
             flexDirection: "column",
           }}
         >
+          {icone && titulo && (
+            <div style={{ padding: "9px 13px 6px", whiteSpace: "nowrap", ...eyebrow(10, C.faint, "0.12em") }}>{titulo}</div>
+          )}
           {opcoes.map((o) => {
             const on = valor === o.id;
             return (
@@ -126,6 +145,7 @@ export default function SeletorArea({
               >
                 {o.color && <span style={{ ...dot(o.color), borderRadius: 2 }} />}
                 {o.label}
+                {icone && on && <span style={{ marginLeft: "auto", paddingLeft: 12, color: C.accent }}>✓</span>}
               </div>
             );
           })}

@@ -1357,8 +1357,12 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             {/* Ordem dos cards nas colunas, a mesma nos dois kanbans. Fica no perfil. */}
             {["operacoes", "comercial"].includes(view) && (
               <SeletorArea
-                prefixo="ordem"
-                larguraMin={0}
+                titulo="Ordenar por"
+                icone={
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M4.5 13V3M2 5.5L4.5 3 7 5.5M9.5 4h4.5M9.5 8h3.2M9.5 12h1.8" />
+                  </svg>
+                }
                 opcoes={ORDENS_CARDS}
                 valor={ordemCards}
                 onChange={(o) => {
