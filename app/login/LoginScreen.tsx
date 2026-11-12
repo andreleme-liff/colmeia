@@ -5,7 +5,7 @@
 // definido pelo Google, não por um clique.
 
 import { LiffSig, Button } from "../components/ds";
-import { C, MONO, eyebrow, markTone, useTheme } from "../components/tokens";
+import { C, MONO, eyebrow, markTone, useTheme, R } from "../components/tokens";
 import ThemeToggle from "../components/ThemeToggle";
 
 export default function LoginScreen({ erro, dominio }: { erro?: string; dominio: string }) {
@@ -47,7 +47,7 @@ export default function LoginScreen({ erro, dominio }: { erro?: string; dominio:
       </div>
 
       <div className="liff-login__panel">
-        <div style={{ width: "100%", maxWidth: 420, background: C.panel, border: `1px solid ${C.line}`, padding: 36 }}>
+        <div style={{ width: "100%", maxWidth: 420, background: C.panel, border: `1px solid ${C.line}`, borderRadius: R, padding: 36 }}>
           <div style={{ ...eyebrow(11, C.faint), marginBottom: 8 }}>ACESSO</div>
           <h2 style={{ fontSize: 26, letterSpacing: "-0.02em", fontWeight: 800, color: C.ink, margin: "0 0 6px" }}>
             Entrar com Google
@@ -59,7 +59,7 @@ export default function LoginScreen({ erro, dominio }: { erro?: string; dominio:
           {erro && (
             <div
               style={{
-                border: `1px solid ${C.error}`,
+                border: `1px solid ${C.error}`, borderRadius: R,
                 background: "color-mix(in srgb, var(--liff-error) 10%, transparent)",
                 color: C.error,
                 fontFamily: MONO,

@@ -11,7 +11,7 @@
 
 import { useMemo, useState, type CSSProperties } from "react";
 import { Switch } from "./ds";
-import { C, eyebrow } from "./tokens";
+import { C, eyebrow, R } from "./tokens";
 import type { Pessoa } from "./api";
 import { porTexto } from "@/lib/domain";
 import { useOrdem } from "./ordenacao";
@@ -26,7 +26,7 @@ const PAPEIS_TELA: { key: string; nome: string; faz: string }[] = [
 const campo: CSSProperties = {
   background: C.cell,
   border: `1px solid ${C.line}`,
-  borderRadius: 4,
+  borderRadius: R,
   color: C.ink,
   fontFamily: "inherit",
   fontSize: 13,

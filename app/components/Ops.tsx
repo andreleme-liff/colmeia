@@ -24,7 +24,7 @@ import {
   type ItemCronograma,
   type Semana,
 } from "./views";
-import { C, avatarStyle, eyebrow, markTone, statusColor, useTheme, writeTheme, type Theme } from "./tokens";
+import { C, avatarStyle, eyebrow, markTone, statusColor, useTheme, writeTheme, type Theme, R } from "./tokens";
 import CoresDasAreas from "./CoresDasAreas";
 import SeletorArea from "./SeletorArea";
 import SeletorResponsaveis from "./SeletorResponsaveis";
@@ -1296,7 +1296,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
               padding: 0,
               flexShrink: 0,
               background: "transparent",
-              border: `1px solid ${C.line}`,
+              border: `1px solid ${C.line}`, borderRadius: R,
               color: C.ink,
               cursor: "pointer",
             }}
@@ -1431,7 +1431,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
               role="status"
               style={{
                 display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 16, padding: "10px 14px",
-                border: `1px solid ${C.warning}`, background: "color-mix(in srgb, var(--liff-warning) 10%, transparent)",
+                border: `1px solid ${C.warning}`, borderRadius: R, background: "color-mix(in srgb, var(--liff-warning) 10%, transparent)",
                 fontSize: 13, color: C.ink,
               }}
             >
@@ -1448,7 +1448,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             <div
               onClick={() => setAviso(null)}
               style={{
-                border: `1px solid ${C.success}`,
+                border: `1px solid ${C.success}`, borderRadius: R,
                 color: C.success,
                 fontFamily: "var(--liff-font-mono)",
                 fontSize: 12,
@@ -1464,7 +1464,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           {refPerdida && (
             <div
               style={{
-                border: `1px solid ${C.warning}`,
+                border: `1px solid ${C.warning}`, borderRadius: R,
                 color: C.warning,
                 fontFamily: "var(--liff-font-mono)",
                 fontSize: 12,
@@ -1480,7 +1480,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           {erro && (
             <div
               style={{
-                border: `1px solid ${C.error}`,
+                border: `1px solid ${C.error}`, borderRadius: R,
                 color: C.error,
                 fontFamily: "var(--liff-font-mono)",
                 fontSize: 12,

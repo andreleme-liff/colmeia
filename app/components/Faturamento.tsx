@@ -14,7 +14,7 @@
 import { useOrdem } from "./ordenacao";
 import { useEffect, useState } from "react";
 import { Button, Field, Input, Select } from "./ds";
-import { C, GHOST_FIX, MONO, eyebrow } from "./tokens";
+import { C, GHOST_FIX, MONO, eyebrow, R } from "./tokens";
 import { api, type Deal } from "./api";
 import { CampoData, Modal } from "./views";
 import { aplicarBusca, areaOf, brl, brlExato, hojeISO, prepararBusca, porTexto, todasAreas } from "@/lib/domain";
@@ -312,7 +312,7 @@ function TabelaMes({ itens, vazio, hoje, onAcao }: { itens: ItemDoMes[]; vazio: 
   const ord = useOrdem();
   if (!itens.length) return <div style={{ fontSize: 14, color: C.faint, lineHeight: 1.6, maxWidth: 640 }}>{vazio}</div>;
   return (
-    <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}` }}>
+    <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
       <div style={{ minWidth: 920 }}>
         <div className="fat-linha fat-linha--cab" style={{ gridTemplateColumns: COLS_MES }}>
           {(
@@ -393,7 +393,7 @@ function TabelaAberto({
   const ord = useOrdem();
   if (!faturas.length) return <div style={{ fontSize: 14, color: C.faint }}>Nenhuma fatura em aberto.</div>;
   return (
-    <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}` }}>
+    <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
       <div style={{ minWidth: 980 }}>
         <div className="fat-linha fat-linha--cab" style={{ gridTemplateColumns: COLS_ABERTO }}>
           {(

@@ -14,6 +14,7 @@ import { useState, type CSSProperties, type ReactNode } from "react";
 
 const MONO = 'var(--liff-font-mono, "JetBrains Mono", monospace)';
 const SANS = 'var(--liff-font-body, "Rethink Sans", sans-serif)';
+const R = "var(--liff-radius-sm)";
 
 /* ---------------------------------------------------------------
    LiffMark — wordmark monocromático (viewBox 0 0 1000 360).
@@ -137,7 +138,7 @@ export function Button({
     letterSpacing: "0.08em",
     textTransform: "uppercase",
     padding: pads[size],
-    borderRadius: "var(--liff-radius-sm, 6px)",
+    borderRadius: R,
     cursor: disabled ? "not-allowed" : "pointer",
     opacity: disabled ? 0.45 : 1,
     border: "1px solid transparent",
@@ -242,7 +243,7 @@ export function Input({
         width: "100%",
         background: "var(--liff-code-bg, #0B0D10)",
         border: `1px solid ${border}`,
-        borderRadius: "var(--liff-radius-sm, 6px)",
+        borderRadius: R,
         color: "var(--liff-floral)",
         fontFamily: SANS,
         fontSize: 15,
@@ -292,7 +293,7 @@ export function Select({
           WebkitAppearance: "none",
           background: "var(--liff-code-bg, #0B0D10)",
           border: `1px solid ${border}`,
-          borderRadius: "var(--liff-radius-sm, 6px)",
+          borderRadius: R,
           color: "var(--liff-floral)",
           fontFamily: SANS,
           fontSize: 15,

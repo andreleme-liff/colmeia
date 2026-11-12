@@ -25,6 +25,9 @@ export const C = {
   onState: "var(--liff-app-on-state)", // texto sobre preenchimento de estado
 } as const;
 
+/** Raio dos cantos: um valor só para tudo que tem borda. O número mora em globals.css. */
+export const R = "var(--liff-radius-sm)";
+
 export const SANS = "var(--liff-font-body)";
 export const MONO = "var(--liff-font-mono)";
 
@@ -40,7 +43,8 @@ export function dot(color: string): CSSProperties {
 
 /** Malha estrutural: fundo charcoal + gap de 1px = fios entre as células. */
 export function mesh(extra: CSSProperties = {}): CSSProperties {
-  return { background: C.line, border: `1px solid ${C.line}`, ...extra };
+  // `overflow: hidden` para as células de dentro não cobrirem o canto arredondado.
+  return { background: C.line, border: `1px solid ${C.line}`, borderRadius: R, overflow: "hidden", ...extra };
 }
 
 export function avatarStyle(size: number): CSSProperties {

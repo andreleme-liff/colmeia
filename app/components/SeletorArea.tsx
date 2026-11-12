@@ -6,7 +6,7 @@
 // O menu é próprio, não um <select> nativo, para manter o ponto de cor ao lado de cada nome.
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { C, eyebrow, dot, MONO } from "./tokens";
+import { C, eyebrow, dot, MONO, R } from "./tokens";
 
 /** `color` é opcional: sem ela a opção não leva o ponto (o seletor de tamanho do card, por exemplo). */
 export type OpcaoArea = { id: string; label: string; color?: string };
@@ -79,7 +79,7 @@ export default function SeletorArea({
           cursor: "pointer",
           ...eyebrow(11, C.ink, "0.1em"),
           background: C.canvas,
-          border: `1px solid ${C.line}`,
+          border: `1px solid ${C.line}`, borderRadius: R,
           ...(icone
             ? { width: 34, height: 34, justifyContent: "center", color: aberto ? C.ink : C.dust }
             : { minWidth: larguraMin, justifyContent: "space-between" }),
@@ -111,7 +111,7 @@ export default function SeletorArea({
             maxHeight: 300,
             overflowY: "auto",
             background: C.panel,
-            border: `1px solid ${C.line}`,
+            border: `1px solid ${C.line}`, borderRadius: R,
             zIndex: 60,
             display: "flex",
             flexDirection: "column",

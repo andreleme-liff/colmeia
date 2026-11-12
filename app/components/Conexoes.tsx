@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { Button } from "./ds";
-import { C, MONO, eyebrow, mesh } from "./tokens";
+import { C, MONO, eyebrow, mesh, R } from "./tokens";
 import { stamp } from "@/lib/domain";
 
 type Conexao = {
@@ -37,7 +37,7 @@ const CHIP = (cor: string) => ({
   border: `1px solid color-mix(in srgb, ${cor} 40%, transparent)`,
   background: `color-mix(in srgb, ${cor} 10%, transparent)`,
   padding: "3px 7px",
-  borderRadius: 5,
+  borderRadius: R,
   whiteSpace: "nowrap" as const,
 });
 

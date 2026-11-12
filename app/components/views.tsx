@@ -6,7 +6,7 @@
 
 import { useEffect, useState, type CSSProperties, type MouseEvent, type ReactNode, type RefObject, useRef } from "react";
 import { Button, Field, Input, Select, Switch } from "./ds";
-import { C, GHOST_FIX, MONO, SANS, dot, eyebrow, mesh, statusColor } from "./tokens";
+import { C, GHOST_FIX, MONO, SANS, dot, eyebrow, mesh, statusColor, R } from "./tokens";
 import { type Activity, type AreaCadastro, type Deal, type LogEntry, type NovaOportunidade, type OrganizacaoResumo, type Origem, type Pessoa } from "./api";
 import SeletorArea, { type OpcaoArea } from "./SeletorArea";
 import Historico, { LinhaDoTempo } from "./Historico";
@@ -465,7 +465,7 @@ export function Atividades({
   onAbrir: (id: number) => void;
 }) {
   return (
-    <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}` }}>
+    <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
       <div className="liff-table">
         <div
           style={{
@@ -673,7 +673,7 @@ function TextoEditavel({
         ...estilo,
         background: C.code,
         border: `1px solid ${C.accent}`,
-        borderRadius: 4,
+        borderRadius: R,
         padding: "4px 7px",
         outline: "none",
         fontFamily: "inherit",
@@ -803,7 +803,7 @@ function TabelaAreas({
                 height: 26,
                 padding: 0,
                 border: `1px solid ${C.line}`,
-                borderRadius: 4,
+                borderRadius: R,
                 background: "transparent",
                 cursor: podeEditar ? "pointer" : "not-allowed",
               }}
@@ -862,7 +862,7 @@ function NovaArea({ salvando, onCriar }: { salvando: boolean; onCriar: (d: { lab
               height: 32,
               padding: 0,
               border: `1px solid ${C.line}`,
-              borderRadius: 4,
+              borderRadius: R,
               background: "transparent",
               cursor: "pointer",
             }}
@@ -1330,7 +1330,7 @@ export function Auditoria({
       {todas.length === 1 ? " linha" : " linhas"}
       {todas.length >= limite ? ` · as ${limite.toLocaleString("pt-BR")} mais recentes` : ""}
     </div>
-    <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}` }}>
+    <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
       <div style={{ minWidth: 760 }}>
         <div
           style={{
@@ -1404,7 +1404,7 @@ const nativeSelectStyle: CSSProperties = {
   width: "100%",
   background: C.canvas,
   border: `1px solid ${C.line}`,
-  borderRadius: 6,
+  borderRadius: R,
   color: C.ink,
   fontFamily: SANS,
   fontSize: 14,
@@ -1480,7 +1480,7 @@ function TituloEditavel({
         fontFamily: SANS,
         background: C.code,
         border: `1px solid ${C.accent}`,
-        borderRadius: 6,
+        borderRadius: R,
         padding: "6px 9px",
         outline: "none",
       }}
@@ -1826,7 +1826,7 @@ export function WaModal({
                     ...eyebrow(11, on ? C.ink : C.faint, "0.06em"),
                     textTransform: "none",
                     padding: "6px 10px",
-                    borderRadius: 6,
+                    borderRadius: R,
                     cursor: "pointer",
                     border: `1px solid ${on ? C.accent : C.line}`,
                     background: on ? "color-mix(in srgb, var(--liff-accent) 12%, transparent)" : "transparent",
@@ -1850,7 +1850,7 @@ export function WaModal({
               color: C.body,
               background: C.code,
               border: `1px solid ${C.line}`,
-              borderRadius: 8,
+              borderRadius: R,
               padding: 18,
             }}
           >
@@ -1890,7 +1890,7 @@ const campoNativo: CSSProperties = {
   width: "100%",
   background: C.code,
   border: `1px solid ${C.line}`,
-  borderRadius: 6,
+  borderRadius: R,
   color: C.ink,
   fontFamily: SANS,
   fontSize: 15,
@@ -2412,7 +2412,7 @@ export function FormOportunidade({
                     ...eyebrow(11, marcado ? C.ink : C.faint, "0.06em"),
                     textTransform: "none",
                     padding: "6px 10px",
-                    borderRadius: 6,
+                    borderRadius: R,
                     cursor: "pointer",
                     border: `1px solid ${marcado ? C.accent : C.line}`,
                     background: marcado ? "color-mix(in srgb, var(--liff-accent) 12%, transparent)" : "transparent",
@@ -2570,7 +2570,7 @@ export function FormOportunidade({
                   className="liff-hover-row"
                   onClick={() => onAbrirTarefa?.(t.ref)}
                   title="Abrir a tarefa"
-                  style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", gap: 10, alignItems: "baseline", padding: "6px 8px", cursor: "pointer", borderRadius: 4 }}
+                  style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", gap: 10, alignItems: "baseline", padding: "6px 8px", cursor: "pointer", borderRadius: R }}
                 >
                   <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>{t.ref}</span>
                   <span style={{ fontSize: 13, color: C.ink, lineHeight: 1.4 }}>{t.titulo}</span>

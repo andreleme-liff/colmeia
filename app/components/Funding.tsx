@@ -17,7 +17,7 @@
 import { useOrdem } from "./ordenacao";
 import { useEffect, useState } from "react";
 import { Button, Field, Input, Select } from "./ds";
-import { C, GHOST_FIX, MONO, eyebrow } from "./tokens";
+import { C, GHOST_FIX, MONO, eyebrow, R } from "./tokens";
 import { api } from "./api";
 import { Modal } from "./views";
 import {
@@ -200,7 +200,7 @@ function Estimativas({ dados, arqPorId, onAbrir }: { dados: Dados; arqPorId: Map
           os programas de funding da oportunidade.
         </div>
       ) : (
-        <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}` }}>
+        <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
           <div style={{ minWidth: 1080 }}>
             <div className="fat-linha fat-linha--cab" style={{ gridTemplateColumns: cols }}>
               {(
@@ -664,7 +664,7 @@ function Arquetipos({
           {a.calculadoras.length === 0 ? (
             <div style={{ fontSize: 13, color: C.faint }}>Nenhuma calculadora cadastrada.</div>
           ) : (
-            <div style={{ border: `1px solid ${C.line}` }}>
+            <div style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
               {a.calculadoras.map((c) => (
                 <div key={c.id} className="fat-linha liff-hover-row fd-calc" onClick={() => onCalc(a.id, c)} style={{ cursor: "pointer" }}>
                   <span style={{ fontSize: 13, color: C.body }}>{rotuloRegiao(c.regiao)}</span>
@@ -942,7 +942,7 @@ function FormPasta({
 
 function Programas({ programas, onAbrir }: { programas: Programa[]; onAbrir: (p: Programa) => void }) {
   return (
-    <div style={{ border: `1px solid ${C.line}` }}>
+    <div style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
       {programas.map((p) => (
         <div key={p.id} className="fat-linha liff-hover-row fd-prog" onClick={() => onAbrir(p)} style={{ cursor: "pointer", opacity: p.ativo ? 1 : 0.55 }}>
           <span className="fat-cliente">{p.label}</span>

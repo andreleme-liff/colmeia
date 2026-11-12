@@ -8,7 +8,7 @@
 //  · O QUE a conexão vai poder — ler é a base; gravar é opção explícita, desmarcada.
 
 import { LiffSig, Button } from "../../components/ds";
-import { C, MONO, eyebrow, markTone, useTheme } from "../../components/tokens";
+import { C, MONO, eyebrow, markTone, useTheme, R } from "../../components/tokens";
 
 type Acao = (form: FormData) => Promise<void>;
 
@@ -31,7 +31,7 @@ type Props =
       recusar: Acao;
     };
 
-const caixa = { border: `1px solid ${C.line}`, background: C.panel2, padding: "12px 14px" } as const;
+const caixa = { border: `1px solid ${C.line}`, borderRadius: R, background: C.panel2, padding: "12px 14px" } as const;
 const rotulo = (cor: string = C.faint) => ({ ...eyebrow(10, cor, "0.14em"), marginBottom: 6 });
 
 function lista(areas: string[]): string {
@@ -72,13 +72,13 @@ export default function TelaConsentimento(props: Props) {
       </div>
 
       <div className="liff-login__panel">
-        <div style={{ width: "100%", maxWidth: 460, background: C.panel, border: `1px solid ${C.line}`, padding: 32 }}>
+        <div style={{ width: "100%", maxWidth: 460, background: C.panel, border: `1px solid ${C.line}`, borderRadius: R, padding: 32 }}>
           {props.modo === "erro" ? (
             <>
               <div style={{ ...eyebrow(11, C.faint), marginBottom: 8 }}>CONEXÃO RECUSADA</div>
               <div
                 style={{
-                  border: `1px solid ${C.error}`, background: "color-mix(in srgb, var(--liff-error) 10%, transparent)",
+                  border: `1px solid ${C.error}`, borderRadius: R, background: "color-mix(in srgb, var(--liff-error) 10%, transparent)",
                   color: C.error, fontFamily: MONO, fontSize: 12, lineHeight: 1.6, padding: "12px 14px",
                 }}
               >

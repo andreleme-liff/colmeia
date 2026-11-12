@@ -19,7 +19,7 @@
 
 import { useEffect, useState } from "react";
 import { Button, Field, Input, Select } from "./ds";
-import { C, GHOST_FIX, MONO, dot, eyebrow } from "./tokens";
+import { C, GHOST_FIX, MONO, dot, eyebrow, R } from "./tokens";
 import { api, type Deal } from "./api";
 import { Modal } from "./views";
 import { useOrdem } from "./ordenacao";
@@ -227,7 +227,7 @@ export default function Clientes({
       </div>
 
       {isAdmin && duplicados.length > 0 && (
-        <div style={{ border: `1px solid ${C.line}`, background: C.canvas, padding: "12px 14px" }}>
+        <div style={{ border: `1px solid ${C.line}`, borderRadius: R, background: C.canvas, padding: "12px 14px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <span style={eyebrow(10, C.warning, "0.14em")}>
               {duplicados.length} {duplicados.length === 1 ? "POSSÍVEL DUPLICADO" : "POSSÍVEIS DUPLICADOS"}
@@ -287,7 +287,7 @@ export default function Clientes({
             : "Nenhuma organização com esse recorte. Ajuste a busca, o produto ou o filtro."}
         </div>
       ) : (
-        <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}` }}>
+        <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
           <div style={{ minWidth: 1040 }}>
             <div style={{ display: "grid", gridTemplateColumns: cols, background: C.canvas, borderBottom: `1px solid ${C.line}` }}>
               {(
@@ -554,7 +554,7 @@ function Ficha({
       {bloco(`CONTATOS${contatos.length ? ` · ${contatos.length}` : ""}`)}
       {contatos.length === 0 && <div style={{ fontSize: 12.5, color: C.faint }}>Nenhuma pessoa cadastrada nesta organização.</div>}
       {contatos.map((k, i) => (
-        <div key={i} style={{ display: "grid", gap: 8, padding: 12, border: `1px solid ${C.line}`, borderRadius: 6 }}>
+        <div key={i} style={{ display: "grid", gap: 8, padding: 12, border: `1px solid ${C.line}`, borderRadius: R }}>
           <div style={duas}>
             <Input value={k.nome} onChange={(v) => mexeContato(i, "nome", v)} placeholder="Nome" size="sm" />
             <Input value={k.cargo} onChange={(v) => mexeContato(i, "cargo", v)} placeholder="Cargo" size="sm" />
@@ -689,7 +689,7 @@ function Ficha({
                   onClick={() => onAbrirDeal(d.ref)}
                   onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), onAbrirDeal(d.ref))}
                   title="Abrir a oportunidade no Comercial"
-                  style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "2px 12px", padding: "8px 8px", borderRadius: 4, cursor: "pointer", opacity: estagioEmAberto(d.estagio) || d.estagio === "ganho" ? 1 : 0.7 }}
+                  style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "2px 12px", padding: "8px 8px", borderRadius: R, cursor: "pointer", opacity: estagioEmAberto(d.estagio) || d.estagio === "ganho" ? 1 : 0.7 }}
                 >
                   <span style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", minWidth: 0 }}>
                     <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>{d.ref}</span>

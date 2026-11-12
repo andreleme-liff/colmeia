@@ -10,7 +10,7 @@
 // em lib/domain.ts para o porquê (texto livre vindo de planilha).
 
 import { useEffect, useRef, useState } from "react";
-import { C, eyebrow, dot, MONO } from "./tokens";
+import { C, eyebrow, dot, MONO, R } from "./tokens";
 import { CHAVE_SEM_RESPONSAVEL, type OpcaoResponsavel } from "@/lib/domain";
 
 export default function SeletorResponsaveis({
@@ -89,7 +89,7 @@ export default function SeletorResponsaveis({
           // Ligado fica com fundo de painel, como o chip de área selecionado: é o sinal de
           // que a tela está recortada e não mostra tudo.
           background: ativo ? C.panel2 : C.canvas,
-          border: `1px solid ${ativo ? C.ink : C.line}`,
+          border: `1px solid ${ativo ? C.ink : C.line}`, borderRadius: R,
           whiteSpace: "nowrap",
           // A largura FIXA mora no CSS (`.liff-filtro-quem > [role="button"]`), não aqui:
           // estilo inline vence media query, e no celular o gatilho ficaria preso nos
@@ -114,7 +114,7 @@ export default function SeletorResponsaveis({
             maxHeight: 340,
             overflowY: "auto",
             background: C.panel,
-            border: `1px solid ${C.line}`,
+            border: `1px solid ${C.line}`, borderRadius: R,
             zIndex: 60,
             display: "flex",
             flexDirection: "column",

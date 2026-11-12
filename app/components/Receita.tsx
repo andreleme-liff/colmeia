@@ -16,7 +16,7 @@
 
 import { useEffect, useState, type CSSProperties } from "react";
 import { Button, Field, Input, Select } from "./ds";
-import { C, GHOST_FIX, MONO, eyebrow } from "./tokens";
+import { C, GHOST_FIX, MONO, eyebrow, R } from "./tokens";
 import { api, type Deal } from "./api";
 import { CampoData, Modal } from "./views";
 import { useOrdem } from "./ordenacao";
@@ -423,7 +423,7 @@ function TabelaMensal({ serie, series }: { serie: MesForecast[]; series: Serie[]
   const comTotal = series.length > 1;
   const cols = `0.8fr repeat(${series.length + (comTotal ? 1 : 0)}, 1fr)`;
   return (
-    <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}` }}>
+    <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
       <div style={{ minWidth: 120 + (series.length + 1) * 130 }}>
         <div style={{ display: "grid", gridTemplateColumns: cols, background: C.canvas, borderBottom: `1px solid ${C.line}` }}>
           {["MÊS", ...series.map((s) => s.label.toUpperCase()), ...(comTotal ? ["TOTAL"] : [])].map((h) => (
@@ -517,7 +517,7 @@ function TabelaContratos({
     total: (i) => (i.efetiva === "fora" ? null : totalNoPeriodo(i.contrato, de, ate)),
   });
   return (
-    <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}` }}>
+    <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
       <div style={{ minWidth: 980 }}>
         <div style={{ display: "grid", gridTemplateColumns: cols, background: C.canvas, borderBottom: `1px solid ${C.line}` }}>
           {(
