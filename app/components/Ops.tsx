@@ -125,6 +125,8 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
   const [ordemCards, setOrdemCards] = useState<OrdemCards>("antigos");
   // Cronograma: agenda da semana (padrão) ou a lista por semana.
   const [exibicaoCronograma, setExibicaoCronograma] = useState<"agenda" | "lista">("agenda");
+  // Que cards entram no cronograma: os dois tipos, só comercial ou só operações.
+  const [tipoCronograma, setTipoCronograma] = useState<"todos" | "comercial" | "operacoes">("todos");
   // Colunas recolhidas de cada kanban, guardadas no perfil como a densidade.
   const [recolhidas, setRecolhidas] = useState<{ comercial: string[]; operacoes: string[] }>({ comercial: [], operacoes: [] });
   // Lateral recolhida mostra só os ícones. Só vale na tela larga: abaixo de 860px a lateral é
@@ -208,6 +210,8 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         const { tema, area: areaSalva, responsaveis: respSalvos, densidade: densSalva, menu: menuSalvo } = s.me.preferencias ?? {};
         if (densSalva === "compacto") setDensidade("compacto");
         if (s.me.preferencias?.cronograma === "lista") setExibicaoCronograma("lista");
+        const tipoSalvo = s.me.preferencias?.cronogramaTipo;
+        if (tipoSalvo === "comercial" || tipoSalvo === "operacoes") setTipoCronograma(tipoSalvo);
         const ordemSalva = s.me.preferencias?.ordemCards;
         if (ORDENS_CARDS.some((o) => o.id === ordemSalva)) setOrdemCards(ordemSalva as OrdemCards);
         // Chave que deixou de existir (estágio renomeado) é descartada na leitura.
@@ -664,7 +668,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     type Bruto = { areaId: string; quando: string; semData: boolean; item: Omit<ItemCronograma, "quando" | "semData" | "atrasado"> };
     const brutos: Bruto[] = [];
 
-    for (const d of dados.oportunidadesBuscadas) {
+    for (const d of tipoCronograma === "operacoes" ? [] : dados.oportunidadesBuscadas) {
       // Só o que está em aberto tem próximo passo a cumprir: Ganho, On hold e Lost ficam fora.
       if (!estagioEmAberto(d.estagio)) continue;
       const semData = !d.proximoPassoEm;
@@ -684,7 +688,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
       });
     }
 
-    for (const a of dados.atividadesBuscadas) {
+    for (const a of tipoCronograma === "comercial" ? [] : dados.atividadesBuscadas) {
       if (a.status === "concluido") continue;
       const semData = !a.proximoPassoEm;
       brutos.push({
@@ -744,13 +748,13 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             .sort((x, y) => porTexto(x.label, y.label)),
         };
       });
-  }, [dados]);
+  }, [dados, tipoCronograma]);
 
   /** Os mesmos itens, soltos, para a agenda da semana. */
   const itensAgenda: ItemAgenda[] = useMemo(() => {
     if (!dados) return [];
     const lista: ItemAgenda[] = [];
-    for (const d of dados.oportunidadesBuscadas) {
+    for (const d of tipoCronograma === "operacoes" ? [] : dados.oportunidadesBuscadas) {
       if (!estagioEmAberto(d.estagio)) continue;
       lista.push({
         ref: d.ref, id: d.id, tipo: "oportunidade", titulo: d.conta,
@@ -760,7 +764,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         quando: d.proximoPassoEm, podeEditar: d.podeEditar,
       });
     }
-    for (const a of dados.atividadesBuscadas) {
+    for (const a of tipoCronograma === "comercial" ? [] : dados.atividadesBuscadas) {
       if (a.status === "concluido") continue;
       lista.push({
         ref: a.ref, id: a.id, tipo: "atividade", titulo: a.titulo,
@@ -771,7 +775,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
       });
     }
     return lista.sort((x, y) => porTexto(x.titulo, y.titulo));
-  }, [dados]);
+  }, [dados, tipoCronograma]);
 
   // ---------- resumo para WhatsApp ----------
   const waTexto = useMemo(() => {
@@ -1398,6 +1402,23 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           {/* As ações ficam num grupo próprio para quebrarem juntas quando o cabeçalho
               não couber, em vez de uma delas cair sozinha para a linha de baixo. */}
           <div style={{ display: "flex", gap: 10, alignItems: "center", marginLeft: "auto" }}>
+            {view === "cronograma" && (
+              <div role="group" aria-label="Tipo de card" className="liff-densidade">
+                {([["todos", "Ambos"], ["comercial", "Comercial"], ["operacoes", "Operações"]] as const).map(([t, rotulo]) => (
+                  <button
+                    key={t}
+                    type="button"
+                    aria-pressed={tipoCronograma === t}
+                    onClick={() => {
+                      setTipoCronograma(t);
+                      lembrar({ cronogramaTipo: t });
+                    }}
+                  >
+                    {rotulo}
+                  </button>
+                ))}
+              </div>
+            )}
             {view === "cronograma" && (
               <div role="group" aria-label="Exibição do cronograma" className="liff-densidade liff-so-largo">
                 {(["agenda", "lista"] as const).map((e) => (

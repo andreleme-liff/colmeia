@@ -130,7 +130,7 @@ export type Me = {
    * texto para texto, e um tipo misto aqui convidaria a um `=== true` falhando contra
    * "true". `responsaveis` são as chaves do filtro separadas por vírgula; vazio é "todos".
    */
-  preferencias: { tema?: string; area?: string; responsaveis?: string; densidade?: string; menu?: string; recolhidasComercial?: string; recolhidasOperacoes?: string; resumoEtapas?: string; ordemCards?: string; cronograma?: string };
+  preferencias: { tema?: string; area?: string; responsaveis?: string; densidade?: string; menu?: string; recolhidasComercial?: string; recolhidasOperacoes?: string; resumoEtapas?: string; ordemCards?: string; cronograma?: string; cronogramaTipo?: string };
 };
 
 export type AreaCadastro = { id: string; label: string; short: string; cor: string };
@@ -373,7 +373,7 @@ export const api = {
       body: destino ? JSON.stringify(destino) : undefined,
     }),
 
-  salvarPreferencias: (patch: { tema?: string; area?: string; responsaveis?: string; densidade?: string; menu?: string; recolhidasComercial?: string; recolhidasOperacoes?: string; resumoEtapas?: string; ordemCards?: string; cronograma?: string }) =>
+  salvarPreferencias: (patch: { tema?: string; area?: string; responsaveis?: string; densidade?: string; menu?: string; recolhidasComercial?: string; recolhidasOperacoes?: string; resumoEtapas?: string; ordemCards?: string; cronograma?: string; cronogramaTipo?: string }) =>
     req<{ ok: boolean }>("/api/me/preferencias", { method: "PATCH", body: JSON.stringify(patch) }),
 
   sair: () => req<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
