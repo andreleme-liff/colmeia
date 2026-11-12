@@ -61,54 +61,6 @@ function useHistorico(entidade: string): { entradas: Entrada[] | null; erro: str
   return { entradas, erro };
 }
 
-/** Campos cujo valor novo é o próprio conteúdo da atualização, e vale mostrar por extenso. */
-// O próximo passo fica de fora: a frase do log já traz o texto dele.
-const COM_TEXTO = new Set(["situacao", "blocker", "notas", "motivo_perda_detalhe"]);
-
-/**
- * Linha do tempo curta: as últimas atualizações do registro, à vista, sem abrir o histórico.
- * Uma linha por alteração, da mais recente para a mais antiga: quando, quem e o quê; nas
- * mudanças de texto (situação, próximo passo), o texto que entrou.
- */
-export function LinhaDoTempo({ entidade, limite = 5, onVerTudo }: { entidade: string; limite?: number; onVerTudo?: () => void }) {
-  const { entradas, erro } = useHistorico(entidade);
-  if (erro) return <div style={{ fontSize: 13, color: C.error }}>{erro}</div>;
-  if (!entradas) return <div style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>carregando…</div>;
-  if (!entradas.length) return <div style={{ fontSize: 13, color: C.faint }}>Nenhuma atualização registrada ainda.</div>;
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {entradas.slice(0, limite).map((e) => (
-        <div key={e.id} style={{ display: "grid", gridTemplateColumns: "92px minmax(0, 1fr)", gap: 12, alignItems: "baseline" }}>
-          <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint, whiteSpace: "nowrap" }}>{stamp(e.criadoEm)}</span>
-          <span style={{ minWidth: 0 }}>
-            <span style={{ fontSize: 13, color: C.ink, lineHeight: 1.45 }}>{e.texto}</span>
-            {e.campo && COM_TEXTO.has(e.campo) && e.para && e.para !== "—" && (
-              <span style={{ display: "block", fontSize: 12.5, color: C.body, lineHeight: 1.5, marginTop: 2, overflowWrap: "anywhere" }}>{e.para}</span>
-            )}
-            {e.campo && !COM_TEXTO.has(e.campo) && !["criacao", "proximo_passo", "ace_aws"].includes(e.campo) && e.de !== null && e.para !== null && (
-              <span style={{ display: "block", fontFamily: MONO, fontSize: 11, color: C.faint, marginTop: 2, overflowWrap: "anywhere" }}>
-                {e.de} → <span style={{ color: C.body }}>{e.para}</span>
-              </span>
-            )}
-            <span style={{ display: "block", ...eyebrow(10, C.faint, "0.1em"), marginTop: 3 }}>
-              {e.autor}
-              {e.via && <ViaConexao nome={e.via} />}
-            </span>
-          </span>
-        </div>
-      ))}
-      {entradas.length > limite && onVerTudo && (
-        <div>
-          <button type="button" className="rec-link" onClick={onVerTudo}>
-            ver as {entradas.length} alterações
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
 /**
  * As últimas alterações de UM campo do registro (a situação do card comercial, por exemplo),
  * com o texto que foi escrito, quem escreveu e quando. Fica logo abaixo do campo.

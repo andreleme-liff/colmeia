@@ -9,7 +9,7 @@ import { Button, Field, Input, Select } from "./ds";
 import { C, GHOST_FIX, MONO, SANS, dot, eyebrow, mesh, statusColor, R } from "./tokens";
 import { type Activity, type AreaCadastro, type ArquetipoResumo, type Deal, type LogEntry, type NovaOportunidade, type OrganizacaoResumo, type Origem, type Pessoa } from "./api";
 import SeletorArea, { type OpcaoArea } from "./SeletorArea";
-import Historico, { LinhaDoTempo, UltimasDoCampo } from "./Historico";
+import Historico, { UltimasDoCampo } from "./Historico";
 import { useOrdem } from "./ordenacao";
 import { chaveCliente } from "@/lib/cliente";
 import Permissoes from "./Permissoes";
@@ -2790,23 +2790,7 @@ export function FormOportunidade({
       </div>
       </div>
 
-      {/* Rodapé de consulta, na largura toda: o que mudou por último e, sob demanda, o
-          histórico completo. */}
-      {editando && (
-        <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 18 }}>
-          <div style={{ ...eyebrow(11, C.dust), marginBottom: 14 }}>LINHA DO TEMPO · ÚLTIMAS ATUALIZAÇÕES</div>
-          <LinhaDoTempo
-            entidade={inicial.ref}
-            limite={5}
-            onVerTudo={() => {
-              setVerHistorico(true);
-              // Depois que o histórico completo abrir, leva a pessoa até ele.
-              window.setTimeout(() => document.getElementById("liff-historico-completo")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
-            }}
-          />
-        </div>
-      )}
-
+      {/* Rodapé de consulta: o histórico completo, sob demanda. */}
       {editando && (
         <div id="liff-historico-completo" style={{ borderTop: `1px solid ${C.line}`, paddingTop: 18, marginTop: 4 }}>
           <div
