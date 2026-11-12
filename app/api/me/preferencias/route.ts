@@ -14,11 +14,13 @@ import { requireCtx } from "@/lib/perms";
 import { json, err } from "@/lib/http";
 import { lerSelecaoDeResponsaveis, MAX_RESPONSAVEIS_NA_SELECAO, STAGE_KEYS, STATUS_KEYS } from "@/lib/domain";
 
-type Body = { tema?: string; area?: string; responsaveis?: string; densidade?: string; menu?: string; recolhidasComercial?: string; recolhidasOperacoes?: string; resumoEtapas?: string };
+type Body = { tema?: string; area?: string; responsaveis?: string; densidade?: string; menu?: string; recolhidasComercial?: string; recolhidasOperacoes?: string; resumoEtapas?: string; ordemCards?: string };
 
 const TEMAS = ["dark", "light"];
 const DENSIDADES = ["completo", "compacto"];
 const MENUS = ["expandido", "recolhido"];
+// Ordem dos cards dentro de cada coluna dos kanbans.
+const ORDENS = ["antigos", "novos", "alterados", "nome"];
 
 export async function PATCH(req: Request) {
   const ctx = await requireCtx();
@@ -41,6 +43,11 @@ export async function PATCH(req: Request) {
   if (body.densidade !== undefined) {
     if (!DENSIDADES.includes(body.densidade)) return err("Densidade inválida.", 400);
     patch.densidade = body.densidade;
+  }
+
+  if (body.ordemCards !== undefined) {
+    if (!ORDENS.includes(body.ordemCards)) return err("Ordem inválida.", 400);
+    patch.ordemCards = body.ordemCards;
   }
 
   if (body.menu !== undefined) {

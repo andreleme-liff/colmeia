@@ -119,6 +119,9 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
   const [area, setArea] = useState("all");
   // Densidade do kanban comercial: card completo (padrão) ou compacto, guardada no perfil.
   const [densidade, setDensidade] = useState<"completo" | "compacto">("completo");
+  // Ordem dos cards dentro das colunas dos dois kanbans. "antigos" é a ordem em que os
+  // cards sempre apareceram (pelo número), por isso é o padrão de quem nunca escolheu.
+  const [ordemCards, setOrdemCards] = useState<OrdemCards>("antigos");
   // Colunas recolhidas de cada kanban, guardadas no perfil como a densidade.
   const [recolhidas, setRecolhidas] = useState<{ comercial: string[]; operacoes: string[] }>({ comercial: [], operacoes: [] });
   // Lateral recolhida mostra só os ícones. Só vale na tela larga: abaixo de 860px a lateral é
@@ -201,6 +204,8 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
          */
         const { tema, area: areaSalva, responsaveis: respSalvos, densidade: densSalva, menu: menuSalvo } = s.me.preferencias ?? {};
         if (densSalva === "compacto") setDensidade("compacto");
+        const ordemSalva = s.me.preferencias?.ordemCards;
+        if (ORDENS_CARDS.some((o) => o.id === ordemSalva)) setOrdemCards(ordemSalva as OrdemCards);
         // Chave que deixou de existir (estágio renomeado) é descartada na leitura.
         const ler = (v: string | undefined, validas: readonly string[]) => (v ?? "").split(",").filter((c) => validas.includes(c));
         setRecolhidas({
@@ -551,7 +556,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     };
 
     const colunasDeal = STAGES.map((s) => {
-      const cards = oportunidadesBuscadas.filter((d) => d.estagio === s.key);
+      const cards = ordenarCards(oportunidadesBuscadas.filter((d) => d.estagio === s.key), ordemCards, (d) => d.conta);
       return {
         key: s.key,
         label: s.label,
@@ -563,14 +568,14 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     const colunasBoard = STATUS.map((s) => ({
       key: s.key,
       label: s.label,
-      cards: atividadesBuscadas.filter((a) => a.status === s.key),
+      cards: ordenarCards(atividadesBuscadas.filter((a) => a.status === s.key), ordemCards, (a) => a.titulo),
     }));
 
     return {
       atividades, oportunidades, logs, areasVisiveis, painel, colunasDeal, colunasBoard,
       opcoesResponsavel, atividadesBuscadas, oportunidadesBuscadas,
     };
-  }, [estado, areaEfetiva, responsaveis, busca, diasFora, agoraMs]);
+  }, [estado, areaEfetiva, responsaveis, busca, diasFora, agoraMs, ordemCards]);
 
   // ---------- cadastros ----------
   const cadSet: CadSet | null = useMemo(() => {
@@ -1349,6 +1354,21 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           {/* As ações ficam num grupo próprio para quebrarem juntas quando o cabeçalho
               não couber, em vez de uma delas cair sozinha para a linha de baixo. */}
           <div style={{ display: "flex", gap: 10, alignItems: "center", marginLeft: "auto" }}>
+            {/* Ordem dos cards nas colunas, a mesma nos dois kanbans. Fica no perfil. */}
+            {["operacoes", "comercial"].includes(view) && (
+              <SeletorArea
+                prefixo="ordem"
+                larguraMin={0}
+                opcoes={ORDENS_CARDS}
+                valor={ordemCards}
+                onChange={(o) => {
+                  const nova = (ORDENS_CARDS.find((x) => x.id === o)?.id ?? "antigos") as OrdemCards;
+                  setOrdemCards(nova);
+                  lembrar({ ordemCards: nova });
+                }}
+              />
+            )}
+
             {/* Densidade do kanban comercial. Fica no perfil: abre do jeito que a pessoa deixou. */}
             {view === "comercial" && (
               <SeletorArea
@@ -1594,4 +1614,29 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
       )}
     </div>
   );
+}
+
+type OrdemCards = "antigos" | "novos" | "alterados" | "nome";
+
+const ORDENS_CARDS: { id: OrdemCards; label: string }[] = [
+  { id: "antigos", label: "Mais antigos" },
+  { id: "novos", label: "Mais novos" },
+  { id: "alterados", label: "Última alteração" },
+  { id: "nome", label: "Nome (A–Z)" },
+];
+
+/** Ordena os cards de uma coluna. Empate cai sempre no número do card, para a ordem não dançar. */
+function ordenarCards<T extends { ref: string; criadoEm: string; atualizadoEm: string }>(
+  cards: T[],
+  ordem: OrdemCards,
+  nome: (c: T) => string
+): T[] {
+  const porRef = (a: T, b: T) => a.ref.localeCompare(b.ref, "pt-BR", { numeric: true });
+  const criterio: Record<OrdemCards, (a: T, b: T) => number> = {
+    antigos: (a, b) => a.criadoEm.localeCompare(b.criadoEm),
+    novos: (a, b) => b.criadoEm.localeCompare(a.criadoEm),
+    alterados: (a, b) => b.atualizadoEm.localeCompare(a.atualizadoEm),
+    nome: (a, b) => porTexto(nome(a), nome(b)),
+  };
+  return [...cards].sort((a, b) => criterio[ordem](a, b) || porRef(a, b));
 }

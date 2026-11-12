@@ -25,6 +25,9 @@ export type ActivityDTO = {
   produtoId: string | null;
   /** Quando o próximo passo acontece. Nulo = sem data marcada. */
   proximoPassoEm: string | null;
+  criadoEm: string;
+  /** Última mexida no card, ou a criação se nunca foi editado. */
+  atualizadoEm: string;
   podeEditar: boolean;
 };
 
@@ -40,6 +43,7 @@ export type DealDTO = {
   proximoPasso: string;
   /** Última mexida no card, ou a criação se nunca foi editado. */
   atualizadoEm: string;
+  criadoEm: string;
   podeEditar: boolean;
 };
 
@@ -78,11 +82,13 @@ export async function GET() {
         prioridade: string; prazo: Date | null; responsavel_user_id: number | null; responsavel: string | null;
         situacao: string; proximo_passo: string; proximo_passo_em: Date | null; produto_id: string | null;
         oportunidade_id: number | null; op_ref: string | null; op_conta: string | null; op_area: string | null;
+        criado_em: Date; mexido_em: Date;
       }[]
     >`
       SELECT a.id, a.ref, a.titulo, a.area, a.status, a.prioridade, a.prazo,
              a.responsavel_user_id, a.situacao, a.proximo_passo, a.proximo_passo_em, a.produto_id,
-             u.nome AS responsavel, a.oportunidade_id, o.ref AS op_ref, o.conta AS op_conta, o.area AS op_area
+             u.nome AS responsavel, a.oportunidade_id, o.ref AS op_ref, o.conta AS op_conta, o.area AS op_area,
+             a.criado_em, COALESCE(a.atualizado_em, a.criado_em) AS mexido_em
       FROM activities a
       LEFT JOIN users u ON u.id = a.responsavel_user_id
       LEFT JOIN deals o ON o.id = a.oportunidade_id
@@ -94,7 +100,7 @@ export async function GET() {
         id: number; ref: string; conta: string; area: string; estagio: string;
         valor_centavos: string; responsavel: string | null; responsavel_user_id: number | null;
         proximo_passo: string; situacao: string; situacao_em: Date | null; contato: string; responsavel_texto: string;
-        mexido_em: Date; proximo_passo_em: Date | null; ace_aws: boolean;
+        mexido_em: Date; criado_em: Date; proximo_passo_em: Date | null; ace_aws: boolean;
         origem_id: string | null; ponte: string; contato_operacional: string; dor: string; erp: string; proposta_url: string; cliente_id: number | null;
         ultima_interacao: Date | null; blocker: string; blocker_tipo: string | null;
         blocker_dono_id: number | null; blocker_dono: string | null; motivo_perda: string | null;
@@ -111,7 +117,7 @@ export async function GET() {
                        WHERE m.deal_id = d.id), '{}') AS modulos,
              -- Card nunca editado tem atualizado_em nulo; nesse caso a idade conta da criação,
              -- que é o que faz sentido para "está parado há quanto tempo".
-             COALESCE(d.atualizado_em, d.criado_em) AS mexido_em
+             COALESCE(d.atualizado_em, d.criado_em) AS mexido_em, d.criado_em
       FROM deals d
       LEFT JOIN users u ON u.id = d.responsavel_user_id
       LEFT JOIN users bd ON bd.id = d.blocker_dono_id
@@ -227,6 +233,8 @@ export async function GET() {
       proximoPasso: a.proximo_passo,
       produtoId: a.produto_id,
       proximoPassoEm: a.proximo_passo_em ? a.proximo_passo_em.toISOString().slice(0, 10) : null,
+      criadoEm: a.criado_em.toISOString(),
+      atualizadoEm: a.mexido_em.toISOString(),
       podeEditar: ctx.podeEditar(a.area),
       // A oportunidade ligada, só se quem olha enxerga a área dela. Tarefa de Operações
       // ligada a uma venda de outro produto mostra que HÁ vínculo, sem abrir a carteira alheia.
@@ -267,6 +275,7 @@ export async function GET() {
       notas: d.notas,
       modulos: d.modulos,
       atualizadoEm: d.mexido_em.toISOString(),
+      criadoEm: d.criado_em.toISOString(),
       podeEditar: ctx.podeEditar(d.area),
     })),
     logs: logs.map((l) => ({

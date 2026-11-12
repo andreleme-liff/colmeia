@@ -19,6 +19,9 @@ export type Activity = {
   produtoId: string | null;
   /** Quando o próximo passo acontece. Nulo = sem data; o cronograma assume o fim da semana. */
   proximoPassoEm: string | null;
+  /** ISO da criação e da última mexida (ou da criação, se nunca foi editada). */
+  criadoEm: string;
+  atualizadoEm: string;
   podeEditar: boolean;
   /** A oportunidade comercial ligada — só quando quem olha enxerga a área dela. */
   oportunidadeId: number | null;
@@ -51,6 +54,7 @@ export type Deal = {
   aceAws: boolean;
   /** ISO da última mexida no card — ou da criação, se nunca foi editado. */
   atualizadoEm: string;
+  criadoEm: string;
   podeEditar: boolean;
   origemId: string | null;
   /** Quem abre a porta no cliente (parceiro, indicação). */
@@ -117,7 +121,7 @@ export type Me = {
    * texto para texto, e um tipo misto aqui convidaria a um `=== true` falhando contra
    * "true". `responsaveis` são as chaves do filtro separadas por vírgula; vazio é "todos".
    */
-  preferencias: { tema?: string; area?: string; responsaveis?: string; densidade?: string; menu?: string; recolhidasComercial?: string; recolhidasOperacoes?: string; resumoEtapas?: string };
+  preferencias: { tema?: string; area?: string; responsaveis?: string; densidade?: string; menu?: string; recolhidasComercial?: string; recolhidasOperacoes?: string; resumoEtapas?: string; ordemCards?: string };
 };
 
 export type AreaCadastro = { id: string; label: string; short: string; cor: string };
@@ -350,7 +354,7 @@ export const api = {
       body: destino ? JSON.stringify(destino) : undefined,
     }),
 
-  salvarPreferencias: (patch: { tema?: string; area?: string; responsaveis?: string; densidade?: string; menu?: string; recolhidasComercial?: string; recolhidasOperacoes?: string; resumoEtapas?: string }) =>
+  salvarPreferencias: (patch: { tema?: string; area?: string; responsaveis?: string; densidade?: string; menu?: string; recolhidasComercial?: string; recolhidasOperacoes?: string; resumoEtapas?: string; ordemCards?: string }) =>
     req<{ ok: boolean }>("/api/me/preferencias", { method: "PATCH", body: JSON.stringify(patch) }),
 
   sair: () => req<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
