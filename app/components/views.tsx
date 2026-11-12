@@ -1166,7 +1166,11 @@ export function Cadastros({
             key={t.key}
             onClick={() => onTab(t.key)}
             style={{
-              padding: "9px 16px",
+              // 32 + a borda da malha = 34, a altura dos botões.
+              height: 32,
+              display: "flex",
+              alignItems: "center",
+              padding: "0 16px",
               cursor: "pointer",
               ...eyebrow(11, tab === t.key ? C.ink : C.faint, "0.1em"),
               background: tab === t.key ? C.panel2 : C.canvas,

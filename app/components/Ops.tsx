@@ -1398,7 +1398,6 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
               <Button
                 variant="solid"
                 size="sm"
-                style={ALTURA_CABECALHO}
                 disabled={areasEditaveis.length === 0}
                 title={
                   areasEditaveis.length === 0 ? "Você não tem permissão de edição em nenhum produto" : undefined
@@ -1415,7 +1414,6 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             <Button
               variant="outline"
               size="sm"
-              style={ALTURA_CABECALHO}
               onClick={() => {
                 setWaArea(area);
                 setCopiado(false);
@@ -1646,6 +1644,3 @@ function ordenarCards<T extends { ref: string; criadoEm: string; atualizadoEm: s
   };
   return [...cards].sort((a, b) => criterio[ordem](a, b) || porRef(a, b));
 }
-
-/** Botões do cabeçalho na mesma altura da busca e dos seletores (34px). */
-const ALTURA_CABECALHO = { height: 34, boxSizing: "border-box" } as const;

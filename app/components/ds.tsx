@@ -117,7 +117,9 @@ export function Button({
 }: {
   children: ReactNode;
   variant?: "solid" | "outline" | "ghost";
-  size?: "sm" | "md" | "lg";
+  /** `sm` e `md` têm 34px, a altura dos seletores e da busca. `xs` é o botão de dentro de
+   *  linha de tabela, que não pode engordar a linha. `lg` é o das telas de entrada. */
+  size?: "xs" | "sm" | "md" | "lg";
   accent?: string;
   disabled?: boolean;
   style?: CSSProperties;
@@ -127,8 +129,9 @@ export function Button({
   type?: "button" | "submit";
   formAction?: (form: FormData) => void | Promise<void>;
 }) {
-  const pads = { sm: "7px 12px", md: "10px 16px", lg: "13px 22px" };
-  const fonts = { sm: "11px", md: "12px", lg: "13px" };
+  const pads = { xs: "7px 12px", sm: "0 14px", md: "0 16px", lg: "13px 22px" };
+  const fonts = { xs: "11px", sm: "11px", md: "12px", lg: "13px" };
+  const altura: CSSProperties = size === "sm" || size === "md" ? { height: 34, boxSizing: "border-box" } : {};
   const base: CSSProperties = {
     display: "inline-flex",
     alignItems: "center",
@@ -138,6 +141,7 @@ export function Button({
     letterSpacing: "0.08em",
     textTransform: "uppercase",
     padding: pads[size],
+    ...altura,
     borderRadius: R,
     cursor: disabled ? "not-allowed" : "pointer",
     opacity: disabled ? 0.45 : 1,

@@ -359,12 +359,12 @@ function TabelaMes({ itens, vazio, hoje, onAcao }: { itens: ItemDoMes[]; vazio: 
               </div>
               <div style={{ textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
                 {i.status === "a_emitir" && (
-                  <Button variant="outline" size="sm" onClick={() => onAcao({ tipo: "emitir", item: i })}>
+                  <Button variant="outline" size="xs" onClick={() => onAcao({ tipo: "emitir", item: i })}>
                     emitir
                   </Button>
                 )}
                 {f && (i.status === "emitida" || i.status === "vencida") && (
-                  <Button variant="outline" size="sm" onClick={() => onAcao({ tipo: "pagar", fatura: f })}>
+                  <Button variant="outline" size="xs" onClick={() => onAcao({ tipo: "pagar", fatura: f })}>
                     dar baixa
                   </Button>
                 )}
@@ -435,7 +435,7 @@ function TabelaAberto({
                     cobrar
                   </a>
                 )}
-                <Button variant="outline" size="sm" onClick={() => onAcao({ tipo: "pagar", fatura: f })}>
+                <Button variant="outline" size="xs" onClick={() => onAcao({ tipo: "pagar", fatura: f })}>
                   dar baixa
                 </Button>
               </div>
@@ -751,12 +751,12 @@ function Detalhe({
           </span>
           <span style={{ display: "flex", gap: 10 }}>
             {f.status === "emitida" && (
-              <Button variant="outline" size="sm" onClick={() => onAcao({ tipo: "corrigir", fatura: f })}>
+              <Button variant="outline" size="xs" onClick={() => onAcao({ tipo: "corrigir", fatura: f })}>
                 corrigir
               </Button>
             )}
             {f.status === "emitida" && (
-              <Button variant="solid" size="sm" onClick={() => onAcao({ tipo: "pagar", fatura: f })}>
+              <Button variant="solid" size="xs" onClick={() => onAcao({ tipo: "pagar", fatura: f })}>
                 dar baixa
               </Button>
             )}

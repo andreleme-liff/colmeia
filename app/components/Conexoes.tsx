@@ -161,7 +161,7 @@ export default function Conexoes({ mcpHabilitado }: { mcpHabilitado: boolean }) 
                   </div>
                 </div>
                 {!morta && (
-                  <Button variant="outline" size="sm" disabled={revogando === c.id} onClick={() => void revogar(c)}>
+                  <Button variant="outline" size="xs" disabled={revogando === c.id} onClick={() => void revogar(c)}>
                     {revogando === c.id ? "revogando…" : "revogar"}
                   </Button>
                 )}
