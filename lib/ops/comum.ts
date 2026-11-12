@@ -54,6 +54,8 @@ export type Fatos = {
   produtos: { id: string; area: string; label?: string }[];
   /** Cadastro de origens da oportunidade (Base Fius, AWS, Evento…). */
   origens?: { id: string; label: string; ativo: boolean }[];
+  /** Arquétipos de funding. `area` = produto da pasta do arquétipo; nulo = pasta sem módulo, vale para todos. */
+  arquetipos?: { id: number; nome: string; ativo: boolean; pasta: string | null; area: string | null }[];
   /** Toda oportunidade: para ligar uma tarefa a ela, por id (tela) ou referência (MCP). */
   oportunidades: { id: number; ref: string; conta: string; area: string }[];
 };

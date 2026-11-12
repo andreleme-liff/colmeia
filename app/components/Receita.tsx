@@ -618,11 +618,19 @@ function FormContrato({
   const [emailCobranca, setEmailCobranca] = useState(inicial.cobranca?.emailCobranca ?? "");
   const [diaVencimento, setDiaVencimento] = useState(String(inicial.cobranca?.diaVencimento ?? 10));
   const [formaCobranca, setFormaCobranca] = useState<string>(inicial.cobranca?.formaCobranca ?? "boleto");
-  const [rasc, setRasc] = useState<Record<TipoReceita, Rascunho>>(() => ({
-    assinatura: rascunhoDe(inicial.linhas?.find((l) => l.tipo === "assinatura")),
-    implantacao: rascunhoDe(inicial.linhas?.find((l) => l.tipo === "implantacao")),
-    customizacao: rascunhoDe(inicial.linhas?.find((l) => l.tipo === "customizacao")),
-  }));
+  const [rasc, setRasc] = useState<Record<TipoReceita, Rascunho>>(() => {
+    // Receita nova a partir de um card: começa com a composição da proposta que está no card
+    // (assinatura, implantação e customização, com as parcelas), para não digitar duas vezes.
+    const p = !editando && !inicial.linhas?.length ? deals.find((d) => d.id === inicial.dealId)?.proposta : undefined;
+    const doCard = (tipo: TipoReceita, valorCentavos: number, parcelas: number): LinhaReceita | undefined =>
+      valorCentavos > 0 ? { tipo, valorCentavos, parcelas, inicioMes: 0, duracaoMeses: null } : undefined;
+    const linha = (tipo: TipoReceita) => inicial.linhas?.find((l) => l.tipo === tipo);
+    return {
+      assinatura: rascunhoDe(linha("assinatura") ?? (p && doCard("assinatura", p.assinaturaCentavos, 1))),
+      implantacao: rascunhoDe(linha("implantacao") ?? (p && doCard("implantacao", p.implantacaoCentavos, p.implantacaoParcelas))),
+      customizacao: rascunhoDe(linha("customizacao") ?? (p && doCard("customizacao", p.customizacaoCentavos, p.customizacaoParcelas))),
+    };
+  });
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 

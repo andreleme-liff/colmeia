@@ -105,6 +105,8 @@ export async function GET() {
         ultima_interacao: Date | null; blocker: string; blocker_tipo: string | null;
         blocker_dono_id: number | null; blocker_dono: string | null; motivo_perda: string | null;
         motivo_perda_detalhe: string; notas: string; modulos: string[];
+        prop_assinatura_centavos: string; prop_implantacao_centavos: string; prop_implantacao_parcelas: number;
+        prop_customizacao_centavos: string; prop_customizacao_parcelas: number; arquetipo_id: number | null;
       }[]
     >`
       SELECT d.id, d.ref, d.conta, d.area, d.estagio, d.valor_centavos,
@@ -113,6 +115,8 @@ export async function GET() {
              d.origem_id, d.ponte, d.contato_operacional, d.dor, d.erp, d.proposta_url, d.cliente_id, d.ultima_interacao,
              d.blocker, d.blocker_tipo, d.blocker_dono_id, bd.nome AS blocker_dono,
              d.motivo_perda, d.motivo_perda_detalhe, d.notas,
+             d.prop_assinatura_centavos, d.prop_implantacao_centavos, d.prop_implantacao_parcelas,
+             d.prop_customizacao_centavos, d.prop_customizacao_parcelas, d.arquetipo_id,
              COALESCE((SELECT array_agg(m.produto_id ORDER BY m.produto_id) FROM oportunidade_modulos m
                        WHERE m.deal_id = d.id), '{}') AS modulos,
              -- Card nunca editado tem atualizado_em nulo; nesse caso a idade conta da criação,
@@ -156,6 +160,9 @@ export async function GET() {
   `;
 
   // Produtos de todas as áreas visíveis. O formulário só oferece os da área escolhida.
+  const arquetipos = await sql<{ id: number; nome: string; ativo: boolean; pasta: string | null; area: string | null }[]>`
+    SELECT a.id, a.nome, a.ativo, p.nome AS pasta, COALESCE(m.area, p.area) AS area FROM funding_arquetipos a LEFT JOIN funding_pastas p ON p.id = a.pasta_id LEFT JOIN produtos m ON m.id = p.produto_id ORDER BY p.ordem NULLS LAST, a.ordem, a.nome
+  `;
   const origens = await sql<{ id: string; label: string; ativo: boolean }[]>`
     SELECT id, label, ativo FROM origens ORDER BY ordem, label
   `;
@@ -214,6 +221,9 @@ export async function GET() {
     mcpHabilitado: lerConfig(process.env).habilitado,
     // Cadastro de origens: todas (as inativas também, para o card mostrar a que já estava).
     origens: [...origens],
+    // Arquétipos de funding: só o nome, a pasta e o produto, para o seletor do card comercial.
+    // O resto do Funding (custos, calculadoras) continua só para admin.
+    arquetipos: [...arquetipos],
     // Cadastro de organizações que a pessoa enxerga: é de onde o formulário da oportunidade
     // escolhe a conta. `chaves` são os nomes (normalizados) que caem em cada uma.
     organizacoes: (await lerClientes(sql, undefined, ctx.isAdmin ? undefined : ctx.areasVisiveis)).map((c) => ({
@@ -274,6 +284,14 @@ export async function GET() {
       motivoPerdaDetalhe: d.motivo_perda_detalhe,
       notas: d.notas,
       modulos: d.modulos,
+      proposta: {
+        assinaturaCentavos: Number(d.prop_assinatura_centavos),
+        implantacaoCentavos: Number(d.prop_implantacao_centavos),
+        implantacaoParcelas: d.prop_implantacao_parcelas,
+        customizacaoCentavos: Number(d.prop_customizacao_centavos),
+        customizacaoParcelas: d.prop_customizacao_parcelas,
+      },
+      arquetipoId: d.arquetipo_id,
       atualizadoEm: d.mexido_em.toISOString(),
       criadoEm: d.criado_em.toISOString(),
       podeEditar: ctx.podeEditar(d.area),

@@ -35,11 +35,15 @@ export async function criarOportunidade(
     INSERT INTO deals (ref, conta, area, estagio, valor_centavos, responsavel_user_id,
                        proximo_passo, proximo_passo_em, situacao, situacao_em, contato, responsavel_texto, ace_aws,
                        origem_id, ponte, contato_operacional, dor, erp, ultima_interacao,
-                       blocker, blocker_tipo, blocker_dono_id, motivo_perda, motivo_perda_detalhe, notas, proposta_url)
+                       blocker, blocker_tipo, blocker_dono_id, motivo_perda, motivo_perda_detalhe, notas, proposta_url,
+                       prop_assinatura_centavos, prop_implantacao_centavos, prop_implantacao_parcelas,
+                       prop_customizacao_centavos, prop_customizacao_parcelas, arquetipo_id)
     VALUES (${ref}, ${l.conta}, ${l.area}, ${l.estagio}, ${l.valorCentavos}, ${l.responsavelId},
             ${l.proximoPasso}, ${l.proximoPassoEm}, ${l.situacao}, ${l.situacaoEm}, ${l.contato}, ${l.responsavelTexto}, ${l.aceAws},
             ${l.origemId}, ${l.ponte}, ${l.contatoOperacional}, ${l.dor}, ${l.erp}, ${l.ultimaInteracao},
-            ${l.blocker}, ${l.blockerTipo}, ${l.blockerDonoId}, ${l.motivoPerda}, ${l.motivoPerdaDetalhe}, ${l.notas}, ${l.propostaUrl})
+            ${l.blocker}, ${l.blockerTipo}, ${l.blockerDonoId}, ${l.motivoPerda}, ${l.motivoPerdaDetalhe}, ${l.notas}, ${l.propostaUrl},
+            ${l.proposta.assinaturaCentavos}, ${l.proposta.implantacaoCentavos}, ${l.proposta.implantacaoParcelas},
+            ${l.proposta.customizacaoCentavos}, ${l.proposta.customizacaoParcelas}, ${l.arquetipoId})
     RETURNING id
   `;
   await gravarModulos(tx, nova.id, l.modulos);
@@ -89,6 +93,8 @@ async function lerAtual(tx: Queryable, dealId: number): Promise<OportunidadeAtua
            d.situacao, d.situacao_em, d.contato, d.responsavel_texto, d.proximo_passo_em, d.ace_aws,
            d.origem_id, d.ponte, d.contato_operacional, d.dor, d.erp, d.ultima_interacao,
            d.blocker, d.blocker_tipo, d.blocker_dono_id, d.motivo_perda, d.motivo_perda_detalhe, d.notas, d.proposta_url,
+           d.prop_assinatura_centavos, d.prop_implantacao_centavos, d.prop_implantacao_parcelas,
+           d.prop_customizacao_centavos, d.prop_customizacao_parcelas, d.arquetipo_id,
            COALESCE((SELECT array_agg(m.produto_id ORDER BY m.produto_id) FROM oportunidade_modulos m
                      WHERE m.deal_id = d.id), '{}') AS modulos
     FROM deals d LEFT JOIN users u ON u.id = d.responsavel_user_id

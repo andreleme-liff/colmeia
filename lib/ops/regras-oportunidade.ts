@@ -9,8 +9,8 @@
 // resolve), motivo da perda e notas. `contato` passou a ser "Contato / sponsor".
 
 import {
-  BLOCKER_TIPO_KEYS, ESTAGIO_INICIAL, FUNIL, MOTIVO_PERDA_KEYS, STAGE_KEYS, blockerTipoLabel, brlExato,
-  hojeISO, motivoPerdaLabel, stageLabel, urlDaProposta,
+  BLOCKER_TIPO_KEYS, ESTAGIO_INICIAL, FUNIL, MOTIVO_PERDA_KEYS, PARCELAS_MAX, STAGE_KEYS, blockerTipoLabel, brlExato,
+  hojeISO, motivoPerdaLabel, stageLabel, temComposicao, totalPrimeiroAno, urlDaProposta, type ComposicaoProposta,
 } from "../domain.ts";
 import {
   LIMITES, dataOuNula, falha, idDePessoa, isoDoBanco, texto,
@@ -45,6 +45,8 @@ export type OportunidadeNova = {
   motivoPerdaDetalhe: string;
   notas: string;
   modulos: string[];
+  proposta: ComposicaoProposta;
+  arquetipoId: number | null;
 };
 
 export type OportunidadeAtual = {
@@ -80,6 +82,13 @@ export type OportunidadeAtual = {
   notas: string;
   /** Ids dos produtos marcados como módulos de interesse. */
   modulos: string[];
+  /** Composição da proposta; BIGINT chega como string. Ausente em leitura antiga = zero. */
+  prop_assinatura_centavos?: string | number;
+  prop_implantacao_centavos?: string | number;
+  prop_implantacao_parcelas?: number;
+  prop_customizacao_centavos?: string | number;
+  prop_customizacao_parcelas?: number;
+  arquetipo_id?: number | null;
 };
 
 type Entrada = Record<string, unknown>;
@@ -89,6 +98,51 @@ function centavosDe(v: unknown): number | null {
   const reais = Number(v);
   if (!Number.isFinite(reais) || reais < 0) return null;
   return Math.round(reais * 100);
+}
+
+/** Número de parcelas: inteiro de 1 a PARCELAS_MAX. */
+function parcelasDe(v: unknown): number | null {
+  const n = Number(v);
+  return Number.isInteger(n) && n >= 1 && n <= PARCELAS_MAX ? n : null;
+}
+
+const CAMPOS_PROPOSTA = [
+  { chave: "propAssinaturaReais", campo: "assinaturaCentavos", coluna: "prop_assinatura_centavos", tipo: "valor", rotulo: "a assinatura mensal da proposta" },
+  { chave: "propImplantacaoReais", campo: "implantacaoCentavos", coluna: "prop_implantacao_centavos", tipo: "valor", rotulo: "a implantação da proposta" },
+  { chave: "propImplantacaoParcelas", campo: "implantacaoParcelas", coluna: "prop_implantacao_parcelas", tipo: "parcelas", rotulo: "as parcelas da implantação" },
+  { chave: "propCustomizacaoReais", campo: "customizacaoCentavos", coluna: "prop_customizacao_centavos", tipo: "valor", rotulo: "a customização da proposta" },
+  { chave: "propCustomizacaoParcelas", campo: "customizacaoParcelas", coluna: "prop_customizacao_parcelas", tipo: "parcelas", rotulo: "as parcelas da customização" },
+] as const;
+
+/**
+ * Lê do corpo os campos da composição que vieram, por cima de `base`. Devolve a composição
+ * final e o que mudou, ou a mensagem de erro.
+ */
+function lerProposta(body: Entrada, base: ComposicaoProposta): string | { final: ComposicaoProposta; mudou: (typeof CAMPOS_PROPOSTA)[number][] } {
+  const final = { ...base };
+  const mudou: (typeof CAMPOS_PROPOSTA)[number][] = [];
+  for (const c of CAMPOS_PROPOSTA) {
+    const v = body[c.chave];
+    if (v === undefined) continue;
+    const n = c.tipo === "valor" ? centavosDe(v ?? 0) : parcelasDe(v ?? 1);
+    if (n === null) return c.tipo === "valor" ? "Valor da proposta inválido." : `Parcelas inválidas: use de 1 a ${PARCELAS_MAX}.`;
+    if (n !== base[c.campo]) mudou.push(c);
+    final[c.campo] = n;
+  }
+  return { final, mudou };
+}
+
+/**
+ * Arquétipo da proposta: tem de existir, estar ativo (ou já ser o do card) e ser do produto
+ * do card — arquétipo de pasta sem módulo vale para qualquer produto.
+ */
+function arquetipoValido(v: unknown, fatos: Fatos, area: string, atual: number | null): number | null | string {
+  if (v === null || v === "") return null;
+  const id = Number(v);
+  const a = Number.isInteger(id) ? (fatos.arquetipos ?? []).find((x) => x.id === id) : undefined;
+  if (!a || !(a.ativo || a.id === atual)) return "Arquétipo inválido.";
+  if (a.area && a.area !== area) return "Este arquétipo é de outro produto.";
+  return a.id;
 }
 
 function booleanoOpcional(v: unknown): boolean | undefined | "invalido" {
@@ -148,7 +202,12 @@ export function planejarCriacaoOportunidade(
   const estagio = body.estagio ?? ESTAGIO_INICIAL;
   if (typeof estagio !== "string" || !STAGE_KEYS.includes(estagio)) return falha("Estágio inválido.");
 
-  const valorCentavos = centavosDe(body.valorReais ?? 0);
+  const proposta = lerProposta(body, {
+    assinaturaCentavos: 0, implantacaoCentavos: 0, implantacaoParcelas: 1, customizacaoCentavos: 0, customizacaoParcelas: 1,
+  });
+  if (typeof proposta === "string") return falha(proposta);
+  // Com a composição preenchida, o total em 12 meses é calculado dela, e não digitado.
+  const valorCentavos = temComposicao(proposta.final) ? totalPrimeiroAno(proposta.final) : centavosDe(body.valorReais ?? 0);
   if (valorCentavos === null) return falha("Valor inválido.");
 
   let responsavelId: number | null = null;
@@ -181,6 +240,8 @@ export function planejarCriacaoOportunidade(
     if (id === undefined || !fatos.pessoas.has(id)) return falha("Quem resolve o blocker é inválido.");
     blockerDonoId = id;
   }
+  const arquetipoId = arquetipoValido(body.arquetipoId ?? null, fatos, area, null);
+  if (typeof arquetipoId === "string") return falha(arquetipoId);
 
   const linha: OportunidadeNova = {
     conta,
@@ -209,6 +270,8 @@ export function planejarCriacaoOportunidade(
     motivoPerdaDetalhe: texto(body.motivoPerdaDetalhe, LIMITES.motivoPerdaDetalhe),
     notas: texto(body.notas, LIMITES.notas),
     modulos,
+    proposta: proposta.final,
+    arquetipoId,
   };
 
   return {
@@ -228,7 +291,9 @@ export type ColunaOportunidade =
   | "situacao" | "situacao_em" | "contato" | "responsavel_texto" | "proximo_passo_em"
   | "ace_aws" | "responsavel_user_id"
   | "origem_id" | "ponte" | "contato_operacional" | "dor" | "erp" | "ultima_interacao"
-  | "blocker" | "blocker_tipo" | "blocker_dono_id" | "motivo_perda" | "motivo_perda_detalhe" | "notas" | "proposta_url";
+  | "blocker" | "blocker_tipo" | "blocker_dono_id" | "motivo_perda" | "motivo_perda_detalhe" | "notas" | "proposta_url"
+  | "prop_assinatura_centavos" | "prop_implantacao_centavos" | "prop_implantacao_parcelas"
+  | "prop_customizacao_centavos" | "prop_customizacao_parcelas" | "arquetipo_id";
 
 export type PlanoOportunidade = {
   ok: true;
@@ -329,8 +394,31 @@ export function planejarAtualizacaoOportunidade(
     sets.estagio = body.estagio;
   }
 
-  if (body.valorReais !== undefined) {
-    const centavos = centavosDe(body.valorReais);
+  // Composição da proposta. Vem antes do valor porque, preenchida, é ela quem define o total.
+  const propostaAtual: ComposicaoProposta = {
+    assinaturaCentavos: Number(atual.prop_assinatura_centavos ?? 0),
+    implantacaoCentavos: Number(atual.prop_implantacao_centavos ?? 0),
+    implantacaoParcelas: Number(atual.prop_implantacao_parcelas ?? 1),
+    customizacaoCentavos: Number(atual.prop_customizacao_centavos ?? 0),
+    customizacaoParcelas: Number(atual.prop_customizacao_parcelas ?? 1),
+  };
+  const proposta = lerProposta(body, propostaAtual);
+  if (typeof proposta === "string") return falha(proposta);
+  for (const c of proposta.mudou) {
+    const mostra = (n: number) => (c.tipo === "valor" ? brlExato(n) : `${n}x`);
+    mudancas.push({
+      campo: c.coluna,
+      de: mostra(propostaAtual[c.campo]),
+      para: mostra(proposta.final[c.campo]),
+      texto: `Alterou ${c.rotulo} de ${atual.conta}`,
+    });
+    sets[c.coluna] = proposta.final[c.campo];
+  }
+  // Com a composição preenchida, o total digitado é ignorado: vale a soma dos três.
+  const valorPedido = temComposicao(proposta.final) ? totalPrimeiroAno(proposta.final) / 100 : body.valorReais;
+
+  if (valorPedido !== undefined) {
+    const centavos = centavosDe(valorPedido);
     if (centavos === null) return falha("Valor inválido.");
     const antes = Number(atual.valor_centavos);
     if (centavos !== antes) {
@@ -451,6 +539,23 @@ export function planejarAtualizacaoOportunidade(
       para: listaDeModulos(fatos, modulos),
       texto: `Alterou os módulos de interesse de ${atual.conta}`,
     });
+  }
+
+  // Arquétipo, contra o produto FINAL. Trocar só o produto derruba o arquétipo que não serve.
+  const arqAtual = atual.arquetipo_id ?? null;
+  const nomeArq = (id: number | null) => (id === null ? "—" : ((fatos.arquetipos ?? []).find((a) => a.id === id)?.nome ?? `#${id}`));
+  let arqNovo: number | null | undefined;
+  if (body.arquetipoId !== undefined) {
+    const v = arquetipoValido(body.arquetipoId, fatos, areaFinal, arqAtual);
+    if (typeof v === "string") return falha(v);
+    arqNovo = v;
+  } else if (areaFinal !== atual.area && arqAtual !== null) {
+    const a = (fatos.arquetipos ?? []).find((x) => x.id === arqAtual);
+    if (a?.area && a.area !== areaFinal) arqNovo = null;
+  }
+  if (arqNovo !== undefined && arqNovo !== arqAtual) {
+    mudancas.push({ campo: "arquetipo", de: nomeArq(arqAtual), para: nomeArq(arqNovo), texto: `Alterou o arquétipo da proposta de ${atual.conta}` });
+    sets.arquetipo_id = arqNovo;
   }
 
   if (body.origemId !== undefined) {

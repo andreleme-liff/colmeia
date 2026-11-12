@@ -109,6 +109,32 @@ export function LinhaDoTempo({ entidade, limite = 5, onVerTudo }: { entidade: st
   );
 }
 
+/**
+ * As últimas alterações de UM campo do registro (a situação do card comercial, por exemplo),
+ * com o texto que foi escrito, quem escreveu e quando. Fica logo abaixo do campo.
+ */
+export function UltimasDoCampo({ entidade, campo, limite = 3, vazio }: { entidade: string; campo: string; limite?: number; vazio: string }) {
+  const { entradas, erro } = useHistorico(entidade);
+  if (erro || !entradas) return null;
+  const doCampo = entradas.filter((e) => e.campo === campo).slice(0, limite);
+  if (!doCampo.length) return <div style={{ fontSize: 12, color: C.faint, lineHeight: 1.5 }}>{vazio}</div>;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8, borderLeft: `2px solid ${C.line}`, paddingLeft: 12 }}>
+      {doCampo.map((e) => (
+        <div key={e.id} style={{ minWidth: 0 }}>
+          <div style={eyebrow(10, C.faint, "0.1em")}>
+            {stamp(e.criadoEm)} · {e.autor}
+            {e.via && <ViaConexao nome={e.via} />}
+          </div>
+          <div style={{ fontSize: 12.5, color: C.body, lineHeight: 1.5, marginTop: 2, overflowWrap: "anywhere", whiteSpace: "pre-wrap" }}>
+            {e.para && e.para !== "—" ? e.para : "(apagou o texto)"}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function Historico({ entidade }: { entidade: string }) {
   const { entradas, erro } = useHistorico(entidade);
 

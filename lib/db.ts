@@ -427,6 +427,14 @@ async function migrate(): Promise<void> {
     await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS erp TEXT NOT NULL DEFAULT ''`;
     // Onde a proposta comercial está (Drive, Docs, PDF). Só o endereço; o arquivo fica onde já mora.
     await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS proposta_url TEXT NOT NULL DEFAULT ''`;
+    // Composição da proposta (nov/2026): os mesmos três tipos da receita. Assinatura é o valor
+    // por mês; implantação e customização são totais, divididos em N parcelas. Com qualquer um
+    // preenchido, `valor_centavos` (o total em 12 meses) passa a ser calculado deles.
+    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS prop_assinatura_centavos BIGINT NOT NULL DEFAULT 0`;
+    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS prop_implantacao_centavos BIGINT NOT NULL DEFAULT 0`;
+    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS prop_implantacao_parcelas INTEGER NOT NULL DEFAULT 1`;
+    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS prop_customizacao_centavos BIGINT NOT NULL DEFAULT 0`;
+    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS prop_customizacao_parcelas INTEGER NOT NULL DEFAULT 1`;
     await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS ultima_interacao DATE`;
     await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS blocker TEXT NOT NULL DEFAULT ''`;
     await sql.unsafe(
@@ -809,6 +817,24 @@ async function migrate(): Promise<void> {
       `;
       await sql`UPDATE funding_arquetipos SET pasta_id = ${pasta.id} WHERE pasta_id IS NULL`;
     }
+
+    // Arquétipo da proposta no card comercial (nov/2026): opcional, serve depois para abrir a
+    // ACE e pedir funding. Aqui, e não junto das outras colunas de `deals`, porque a tabela de
+    // arquétipos só existe a partir deste ponto da migração.
+    // Produto da pasta de arquétipos. Vale o do módulo ligado à pasta; esta coluna cobre a pasta
+    // sem módulo. Na criação da coluna, a pasta semeada "LIFF Tax Reform" vai para o LIFF Tax:
+    // é o único produto com arquétipo até aqui, e sem isso ela apareceria em todos.
+    const [{ pastaSemArea }] = await sql<{ pastaSemArea: boolean }[]>`
+      SELECT NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'funding_pastas' AND column_name = 'area') AS "pastaSemArea"
+    `;
+    await sql`ALTER TABLE funding_pastas ADD COLUMN IF NOT EXISTS area TEXT REFERENCES areas(id) ON DELETE SET NULL`;
+    if (pastaSemArea) {
+      await sql`
+        UPDATE funding_pastas SET area = 'tax'
+        WHERE produto_id IS NULL AND nome = 'LIFF Tax Reform' AND EXISTS (SELECT 1 FROM areas WHERE id = 'tax')
+      `;
+    }
+    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS arquetipo_id INTEGER REFERENCES funding_arquetipos(id) ON DELETE SET NULL`;
 
     // Uma fatura viva por linha do cronograma: emitir duas vezes a mesma parcela é erro que a
     // tela não deve conseguir cometer. Cancelada sai da regra (reemissão).

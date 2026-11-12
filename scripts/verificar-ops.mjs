@@ -329,5 +329,23 @@ checa("…e volta para o funil", planejarAtualizacaoOportunidade({ ...OPOR, esta
 checa("em aberto: do início ao Contrato", FUNIL.slice(0, 6).every(estagioEmAberto), true);
 checa("fora do aberto: Ganho, On hold, Lost", ["ganho", "on_hold", "lost"].some(estagioEmAberto), false);
 
+// Composição da proposta (assinatura mensal, implantação e customização com parcelas) e arquétipo.
+const fatosArq = { ...fatos, arquetipos: [{ id: 1, nome: "Compartilhado", ativo: true, pasta: "Tax", area: "tax" }, { id: 2, nome: "Geral", ativo: true, pasta: null, area: null }, { id: 3, nome: "Velho", ativo: false, pasta: "Tax", area: "tax" }] };
+const comp = planejarCriacaoOportunidade(
+  { conta: "X", area: "tax", valorReais: 1, propAssinaturaReais: 5000, propImplantacaoReais: 30000, propImplantacaoParcelas: 3, propCustomizacaoReais: 24000, propCustomizacaoParcelas: 24, arquetipoId: 1 },
+  perm, fatosArq);
+checa("composição define o total em 12 meses (parcelas acima de 12 contam só 12)", comp.linha?.valorCentavos, 5000 * 12 * 100 + 3000000 + 1200000);
+checa("…e o arquétipo vai junto", comp.linha?.arquetipoId, 1);
+checa("sem composição vale o valor digitado", planejarCriacaoOportunidade({ conta: "X", area: "tax", valorReais: 1500 }, perm, fatos).linha?.valorCentavos, 150000);
+checa("parcelas fora da faixa", erro(planejarCriacaoOportunidade({ conta: "X", area: "tax", propImplantacaoParcelas: 0 }, perm, fatos)), "400 Parcelas inválidas: use de 1 a 60.");
+const upd = planejarAtualizacaoOportunidade(OPOR, { propAssinaturaReais: 1000, valorReais: 7 }, perm, fatos);
+checa("atualizar a assinatura recalcula o valor", [upd.sets.prop_assinatura_centavos, upd.sets.valor_centavos], [100000, 1200000]);
+checa("arquétipo inexistente", erro(planejarAtualizacaoOportunidade(OPOR, { arquetipoId: 99 }, perm, fatosArq)), "400 Arquétipo inválido.");
+checa("arquétipo inativo não entra", erro(planejarAtualizacaoOportunidade(OPOR, { arquetipoId: 3 }, perm, fatosArq)), "400 Arquétipo inválido.");
+checa("arquétipo de pasta sem produto vale em qualquer um", planejarAtualizacaoOportunidade(OPOR, { arquetipoId: 2 }, perm, fatosArq).sets.arquetipo_id, 2);
+checa("arquétipo de outro produto",
+  erro(planejarAtualizacaoOportunidade(OPOR, { arquetipoId: 4 }, perm, { ...fatosArq, arquetipos: [{ id: 4, nome: "De outro", ativo: true, pasta: "Jur", area: "jur" }] })),
+  "400 Este arquétipo é de outro produto.");
+
 console.log(`\n${ok} passaram, ${falhou} falharam`);
 process.exit(falhou ? 1 : 0);

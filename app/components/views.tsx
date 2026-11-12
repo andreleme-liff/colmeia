@@ -7,9 +7,9 @@
 import { useEffect, useState, type CSSProperties, type MouseEvent, type ReactNode, type RefObject, useRef } from "react";
 import { Button, Field, Input, Select, Switch } from "./ds";
 import { C, GHOST_FIX, MONO, SANS, dot, eyebrow, mesh, statusColor, R } from "./tokens";
-import { type Activity, type AreaCadastro, type Deal, type LogEntry, type NovaOportunidade, type OrganizacaoResumo, type Origem, type Pessoa } from "./api";
+import { type Activity, type AreaCadastro, type ArquetipoResumo, type Deal, type LogEntry, type NovaOportunidade, type OrganizacaoResumo, type Origem, type Pessoa } from "./api";
 import SeletorArea, { type OpcaoArea } from "./SeletorArea";
-import Historico, { LinhaDoTempo } from "./Historico";
+import Historico, { LinhaDoTempo, UltimasDoCampo } from "./Historico";
 import { useOrdem } from "./ordenacao";
 import { chaveCliente } from "@/lib/cliente";
 import Permissoes from "./Permissoes";
@@ -18,6 +18,7 @@ import { CardOportunidade } from "./CardOportunidade";
 import { CardAtividade } from "./CardAtividade";
 import {
   ADMIN_CARDS, BLOCKER_TIPOS, ERP_SUGESTOES, ESTAGIO_INICIAL, MOTIVOS_PERDA, PAPEIS, STAGES, STATUS, CHAVE_SEM_RESPONSAVEL, aplicarBusca, areaOf, prepararBusca, ddmm, porTexto, stamp, statusLabel, hostDaUrl, previaDaProposta, urlDaProposta,
+  PROPOSTA_VAZIA, brlExato, estagioTemProposta, temComposicao, totalPrimeiroAno, type ComposicaoProposta,
 } from "@/lib/domain";
 
 /* =========================================================
@@ -2189,6 +2190,37 @@ function CampoProposta({
   );
 }
 
+/** Centavos → texto do campo, no formato brasileiro ("1.500,5"); zero fica vazio. */
+function reaisParaCampo(centavos: number): string {
+  if (!centavos) return "";
+  // Centavos só aparecem quando existem: "9.000", mas "8.500,50".
+  return (centavos / 100).toLocaleString("pt-BR", { minimumFractionDigits: centavos % 100 ? 2 : 0, maximumFractionDigits: 2 });
+}
+/** Texto do campo → reais. Ponto é milhar e vírgula é decimal, como se escreve no Brasil. */
+function campoParaReais(v: string): number {
+  const n = Number(v.replace(/[^\d.,]/g, "").replace(/\./g, "").replace(",", "."));
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+/** Lista fechada de parcelamentos; um valor fora dela (vindo do MCP) entra como opção extra. */
+function opcoesParcelas(atual: number) {
+  const lista = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 18, 24, 36, 48, 60];
+  if (!lista.includes(atual)) lista.push(atual);
+  return lista.sort((a, b) => a - b).map((n) => ({ value: String(n), label: n === 1 ? "à vista (1x)" : `${n}x` }));
+}
+/** De onde vem o total: "12 × R$ 5.000 + implantação R$ 30.000 + customização R$ 12.000 (12 de 24 parcelas)". */
+function resumoDaComposicao(c: ComposicaoProposta): string {
+  const partes: string[] = [];
+  if (c.assinaturaCentavos) partes.push(`12 × ${brlExato(c.assinaturaCentavos)}`);
+  const parcelado = (nome: string, total: number, x: number) => {
+    if (!total) return;
+    // Parcelamento acima de 12 vezes: só as 12 primeiras caem no primeiro ano.
+    partes.push(x > 12 ? `${nome} ${brlExato(Math.round((total * 12) / x))} (12 de ${x} parcelas)` : `${nome} ${brlExato(total)}`);
+  };
+  parcelado("implantação", c.implantacaoCentavos, c.implantacaoParcelas);
+  parcelado("customização", c.customizacaoCentavos, c.customizacaoParcelas);
+  return partes.join(" + ");
+}
+
 export function FormOportunidade({
   areasEditaveis,
   pessoas,
@@ -2203,6 +2235,7 @@ export function FormOportunidade({
   onAbrirTarefa,
   origens = [],
   organizacoes = [],
+  arquetipos = [],
 }: {
   areasEditaveis: { id: string; label: string }[];
   pessoas: OpcaoPessoa[];
@@ -2211,6 +2244,8 @@ export function FormOportunidade({
   origens?: Origem[];
   /** Cadastro de organizações que a pessoa enxerga. */
   organizacoes?: OrganizacaoResumo[];
+  /** Arquétipos de funding; o card oferece os do produto escolhido. */
+  arquetipos?: ArquetipoResumo[];
   salvando: boolean;
   erro: string | null;
   /** Ausente = criação. */
@@ -2231,7 +2266,15 @@ export function FormOportunidade({
   // Na edição vem a área do registro; na criação, em branco — ver NovaAtividade.
   const [area, setArea] = useState(inicial?.area ?? "");
   const [estagio, setEstagio] = useState<string>(inicial?.estagio ?? ESTAGIO_INICIAL);
-  const [valor, setValor] = useState(inicial ? String(inicial.valorCentavos / 100) : "");
+  const [valor, setValor] = useState(inicial ? reaisParaCampo(inicial.valorCentavos) : "");
+  // Composição da proposta: valores como texto (aceitam "1.500,00"), parcelas como número.
+  const p0 = inicial?.proposta ?? PROPOSTA_VAZIA;
+  const [propAss, setPropAss] = useState(reaisParaCampo(p0.assinaturaCentavos));
+  const [propImp, setPropImp] = useState(reaisParaCampo(p0.implantacaoCentavos));
+  const [propImpX, setPropImpX] = useState(p0.implantacaoParcelas);
+  const [propCus, setPropCus] = useState(reaisParaCampo(p0.customizacaoCentavos));
+  const [propCusX, setPropCusX] = useState(p0.customizacaoParcelas);
+  const [arquetipoId, setArquetipoId] = useState(inicial?.arquetipoId ? String(inicial.arquetipoId) : "");
   const [proximo, setProximo] = useState(inicial?.proximoPasso ?? "");
   const [responsavel, setResponsavel] = useState<string>(
     inicial ? String(inicial.responsavelId ?? pessoas.find((p) => p.nome === inicial.responsavel)?.id ?? "") : ""
@@ -2265,8 +2308,23 @@ export function FormOportunidade({
   // Prospecção ainda não teve reunião: valor, ACE e blocker não existem — a aba Prospecção da
   // planilha nem tem essas colunas. Ficam à vista se já estiverem preenchidos.
   const emProspeccao = estagio === "prospeccao";
-  const mostraNegocio = !emProspeccao || !!valor.replace(/[0.,]/g, "") || aceAws;
   const mostraBlocker = !emProspeccao || !!blocker || !!blockerTipo || !!blockerDono;
+  const composicao: ComposicaoProposta = {
+    assinaturaCentavos: Math.round(campoParaReais(propAss) * 100),
+    implantacaoCentavos: Math.round(campoParaReais(propImp) * 100),
+    implantacaoParcelas: propImpX,
+    customizacaoCentavos: Math.round(campoParaReais(propCus) * 100),
+    customizacaoParcelas: propCusX,
+  };
+  // Os três valores aparecem a partir do estágio Proposta — ou se já foram preenchidos (um
+  // card que voltou para On hold ou foi perdido depois da proposta não esconde o que tinha).
+  const comProposta = estagioTemProposta(estagio) || temComposicao(inicial?.proposta ?? PROPOSTA_VAZIA);
+  const mostraNegocio = !emProspeccao || !!valor.replace(/[0.,]/g, "") || aceAws || comProposta;
+  // Arquétipos do produto do card: os da pasta ligada a um módulo dele, mais os de pasta sem
+  // módulo (valem para qualquer produto). Inativo só aparece se já era o do card.
+  const arquetiposDoProduto = arquetipos.filter(
+    (a) => (!a.area || a.area === area) && (a.ativo || a.id === inicial?.arquetipoId)
+  );
   const alternarModulo = (id: string) =>
     setModulos((m) => (m.includes(id) ? m.filter((x) => x !== id) : [...m, id]));
 
@@ -2276,7 +2334,13 @@ export function FormOportunidade({
       clienteId: orgEscolhida?.id ?? null,
       area,
       estagio,
-      valorReais: Number(valor.replace(/\./g, "").replace(",", ".")) || 0,
+      valorReais: campoParaReais(valor),
+      propAssinaturaReais: composicao.assinaturaCentavos / 100,
+      propImplantacaoReais: composicao.implantacaoCentavos / 100,
+      propImplantacaoParcelas: composicao.implantacaoParcelas,
+      propCustomizacaoReais: composicao.customizacaoCentavos / 100,
+      propCustomizacaoParcelas: composicao.customizacaoParcelas,
+      arquetipoId: arquetiposDoProduto.some((a) => String(a.id) === arquetipoId) ? Number(arquetipoId) : null,
       proximoPasso: proximo,
       responsavelId: responsavel ? Number(responsavel) : null,
       situacao,
@@ -2314,40 +2378,40 @@ export function FormOportunidade({
       onFechar={onFechar}
       largura={1120}
     >
-      {/* Duas colunas na cortina larga: à esquerda quem é e o que se vende; à direita o
-          andamento. Assim a edição do dia a dia (situação, próximo passo) fica à vista sem
-          rolar por cima dos dados de cadastro. No celular vira uma coluna só. */}
-      <div className="cortina-duas">
-      <div className="cortina-col">
-      {/* A conta é uma organização do cadastro: escolhe-se uma que existe, ou digita-se um nome
-          novo e ela é cadastrada ao salvar. O nome mostrado no card é sempre o do cadastro. */}
+      {/* Ordem de leitura e de preenchimento:
+            topo     — o que identifica o card (organização, produto, estágio);
+            esquerda — o cadastro, preenchido uma vez: quem cuida e de onde veio, as pessoas no
+                       cliente, o que se vende, as notas;
+            direita  — o que muda toda semana: andamento, valor e proposta, blocker, perda;
+            rodapé   — só consulta: linha do tempo, tarefas e histórico.
+          No celular vira uma coluna só, nessa mesma ordem. */}
+      <div className="cortina-topo">
       <Field
-        label="Organização"
-        required
-        hint={
-          orgEscolhida
-            ? `Do cadastro: ${orgEscolhida.nome} (${orgEscolhida.ref}).${orgEscolhida.nome !== conta.trim() ? " O card vai mostrar esse nome." : ""}`
-            : conta.trim()
-              ? "Não está no cadastro: será criada uma organização nova ao salvar."
-              : "Escolha uma organização do cadastro ou digite o nome de uma nova."
-        }
-      >
-        <input
-          list="liff-organizacoes"
-          value={conta}
-          onChange={(e) => setConta(e.target.value)}
-          placeholder="Nome da organização"
-          autoComplete="off"
-          style={campoNativo}
-        />
-        <datalist id="liff-organizacoes">
-          {organizacoes.map((o) => (
-            <option key={o.id} value={o.nome} />
-          ))}
-        </datalist>
-      </Field>
+    label="Organização"
+    required
+    hint={
+      orgEscolhida
+        ? `Do cadastro: ${orgEscolhida.nome} (${orgEscolhida.ref}).${orgEscolhida.nome !== conta.trim() ? " O card vai mostrar esse nome." : ""}`
+        : conta.trim()
+          ? "Não está no cadastro: será criada uma organização nova ao salvar."
+          : "Escolha uma organização do cadastro ou digite o nome de uma nova."
+    }
+  >
+    <input
+      list="liff-organizacoes"
+      value={conta}
+      onChange={(e) => setConta(e.target.value)}
+      placeholder="Nome da organização"
+      autoComplete="off"
+      style={campoNativo}
+    />
+    <datalist id="liff-organizacoes">
+      {organizacoes.map((o) => (
+        <option key={o.id} value={o.nome} />
+      ))}
+    </datalist>
+  </Field>
 
-      <div style={duas}>
         <Field label="Produto" required hint={editando ? undefined : "Escolha antes de salvar."}>
           <Select
             options={opcoesArea(areasEditaveis, inicial?.area)}
@@ -2359,11 +2423,14 @@ export function FormOportunidade({
             }}
           />
         </Field>
-        <Field label="Estágio">
+        <Field label="Estágio" hint={comProposta && !estagioTemProposta(inicial?.estagio ?? ESTAGIO_INICIAL) ? "A partir daqui o card detalha a proposta." : undefined}>
           <Select options={STAGES.map((s) => ({ value: s.key, label: s.label }))} value={estagio} onChange={setEstagio} />
         </Field>
       </div>
 
+      <div className="cortina-duas">
+      <div className="cortina-col">
+      {bloco("1 · DONO E ORIGEM", true)}
       <div style={duas}>
         <Field label="Dono">
           <Select options={opcoesPessoa} value={responsavel} onChange={setResponsavel} />
@@ -2372,8 +2439,6 @@ export function FormOportunidade({
           <Input placeholder="Felipe Silveira / Bianka" value={respTexto} onChange={setRespTexto} />
         </Field>
       </div>
-
-      {bloco("1 · ORIGEM")}
       <div style={duas}>
         <Field label="Origem">
           <Select
@@ -2397,7 +2462,7 @@ export function FormOportunidade({
         </Field>
       </div>
 
-      {bloco("3 · OPORTUNIDADE")}
+      {bloco("3 · O QUE SE VENDE")}
       <Field label="Dor principal">
         <Input placeholder="Conferir a apuração" value={dor} onChange={setDor} />
       </Field>
@@ -2433,40 +2498,30 @@ export function FormOportunidade({
           )}
         </div>
       </Field>
-      <div style={duas}>
-        <Field label="ERP" hint="Escolha um ou escreva outro.">
-          <input list="liff-erps" value={erp} onChange={(e) => setErp(e.target.value)} placeholder="SAP ECC" style={campoNativo} />
-          <datalist id="liff-erps">
-            {ERP_SUGESTOES.map((e) => (
-              <option key={e} value={e} />
-            ))}
-          </datalist>
-        </Field>
-        {mostraNegocio && (
-          <Field label="Valor total · 12 meses (R$)" hint="Tudo o que a proposta soma no primeiro ano: assinatura, implantação e customização.">
-            <Input placeholder="294000" value={valor} onChange={setValor} />
-          </Field>
-        )}
-      </div>
-      {mostraNegocio && (
-        // `flex: none` no interruptor: sem isso o flex o encolhe e o rótulo quebra em uma
-        // palavra por linha. A explicação é que fica com a folga.
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <span style={{ flex: "none" }}>
-            <Switch checked={aceAws} onChange={setAceAws} label="ACE" />
-          </span>
-          <span style={{ fontSize: 12, color: C.faint, lineHeight: 1.5 }}>
-            ACE criada no AWS Partner Central.
-          </span>
-        </div>
-      )}
+      <Field label="ERP" hint="Escolha um ou escreva outro.">
+        <input list="liff-erps" value={erp} onChange={(e) => setErp(e.target.value)} placeholder="SAP ECC" style={campoNativo} />
+        <datalist id="liff-erps">
+          {ERP_SUGESTOES.map((e) => (
+            <option key={e} value={e} />
+          ))}
+        </datalist>
+      </Field>
 
-      <CampoProposta valor={propostaUrl} onChange={setPropostaUrl} aberta={verProposta} onAlternar={() => setVerProposta((v) => !v)} />
-
+      {bloco("NOTAS")}
+      <Field label="Observações" hint="Fatos que valem para a oportunidade inteira — não o andamento.">
+        <textarea
+          rows={3}
+          value={notas}
+          onChange={(e) => setNotas(e.target.value)}
+          placeholder="AWS: Wilson Mansano é o account manager."
+          style={{ ...campoNativo, resize: "vertical", lineHeight: 1.5 }}
+        />
+      </Field>
       </div>
+
       <div className="cortina-col">
       {bloco("4 · ANDAMENTO", true)}
-      <Field label="Situação atual" hint="Só o estado de hoje. O que já foi fica no histórico do card.">
+      <Field label="Situação atual" hint="Só o estado de hoje. Ao salvar, o texto anterior vai para a lista abaixo.">
         <textarea
           rows={3}
           value={situacao}
@@ -2475,6 +2530,14 @@ export function FormOportunidade({
           style={{ ...campoNativo, resize: "vertical", lineHeight: 1.5 }}
         />
       </Field>
+      {/* As três últimas vezes em que a situação foi reescrita: dá o fio da conversa sem abrir
+          o histórico inteiro. */}
+      {editando && (
+        <div>
+          <div style={{ ...eyebrow(10, C.faint, "0.12em"), marginBottom: 8 }}>ÚLTIMAS ATUALIZAÇÕES DA SITUAÇÃO</div>
+          <UltimasDoCampo entidade={inicial.ref} campo="situacao" limite={3} vazio="A situação ainda não foi atualizada desde que o card foi criado." />
+        </div>
+      )}
       <Field label="Próximo passo">
         <textarea
           rows={2}
@@ -2493,9 +2556,101 @@ export function FormOportunidade({
         </Field>
       </div>
 
+      {mostraNegocio && (
+        <>
+          {bloco("5 · VALOR E PROPOSTA")}
+          {/* A partir de Proposta o valor se abre nos três tipos da receita. Antes disso é só
+              uma estimativa, num número. */}
+          {comProposta && (
+            <div className="cop-proposta">
+              <div>
+                <div style={eyebrow(10, C.dust, "0.14em")}>ASSINATURA</div>
+                <Field label="Por mês (R$)">
+                  <Input placeholder="0,00" value={propAss} onChange={setPropAss} size="sm" />
+                </Field>
+                <div style={{ fontSize: 12, color: C.faint, lineHeight: 1.5 }}>Mensal, sem parcelas.</div>
+              </div>
+              <div>
+                <div style={eyebrow(10, C.dust, "0.14em")}>IMPLANTAÇÃO</div>
+                <Field label="Total (R$)">
+                  <Input placeholder="0,00" value={propImp} onChange={setPropImp} size="sm" />
+                </Field>
+                <Field label="Dividido em">
+                  <Select options={opcoesParcelas(propImpX)} value={String(propImpX)} onChange={(v) => setPropImpX(Number(v))} />
+                </Field>
+              </div>
+              <div>
+                <div style={eyebrow(10, C.dust, "0.14em")}>CUSTOMIZAÇÃO</div>
+                <Field label="Total (R$)">
+                  <Input placeholder="0,00" value={propCus} onChange={setPropCus} size="sm" />
+                </Field>
+                <Field label="Dividido em">
+                  <Select options={opcoesParcelas(propCusX)} value={String(propCusX)} onChange={(v) => setPropCusX(Number(v))} />
+                </Field>
+              </div>
+            </div>
+          )}
+          {comProposta && temComposicao(composicao) ? (
+            <div className="cop-total">
+              <div>
+                <div style={eyebrow(10, C.dust, "0.14em")}>VALOR TOTAL · 12 MESES</div>
+                <span>{resumoDaComposicao(composicao)}</span>
+              </div>
+              <strong>{brlExato(totalPrimeiroAno(composicao))}</strong>
+            </div>
+          ) : (
+            <Field
+              label="Valor total · 12 meses (R$)"
+              hint={
+                comProposta
+                  ? "Preencha assinatura, implantação ou customização acima e o total passa a ser calculado."
+                  : "Estimativa do primeiro ano: assinatura, implantação e customização somadas."
+              }
+            >
+              <Input placeholder="294.000" value={valor} onChange={setValor} />
+            </Field>
+          )}
+          <CampoProposta valor={propostaUrl} onChange={setPropostaUrl} aberta={verProposta} onAlternar={() => setVerProposta((v) => !v)} />
+          {/* AWS: o arquétipo da solução proposta (base da ACE e do pedido de funding) e se a
+              ACE já foi criada. */}
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)", gap: 14 }}>
+            <Field
+              label="Arquétipo AWS"
+              hint={
+                !area
+                  ? "Escolha o produto para ver os arquétipos."
+                  : arquetiposDoProduto.length
+                    ? "Opcional. Serve depois para abrir a ACE e pedir funding."
+                    : "Ainda não há arquétipo cadastrado para este produto."
+              }
+            >
+              <Select
+                options={[
+                  { value: "", label: "—" },
+                  ...arquetiposDoProduto.map((a) => ({
+                    value: String(a.id),
+                    label: a.nome + (a.ativo ? "" : " (inativo)"),
+                  })),
+                ]}
+                value={arquetiposDoProduto.some((a) => String(a.id) === arquetipoId) ? arquetipoId : ""}
+                onChange={setArquetipoId}
+              />
+            </Field>
+            <Field label="ACE" hint="No AWS Partner Central.">
+              <div style={{ display: "flex", alignItems: "center", height: 40 }}>
+                <span style={{ flex: "none" }}>
+                  <Switch checked={aceAws} onChange={setAceAws} />
+                </span>
+                <span style={{ fontSize: 13, color: C.body, marginLeft: 10 }}>{aceAws ? "Criada" : "Não criada"}</span>
+              </div>
+            </Field>
+          </div>
+        </>
+      )}
+
       {mostraBlocker && (
         <>
-          {bloco("5 · BLOCKER")}
+          {bloco("6 · BLOCKER")}
           <Field label="O que está travando" hint="Em branco quando nada trava.">
             <Input placeholder="Questionário de LGPD e segurança de TI" value={blocker} onChange={setBlocker} />
           </Field>
@@ -2514,9 +2669,10 @@ export function FormOportunidade({
         </>
       )}
 
+
       {estagio === "lost" && (
         <>
-          {bloco("6 · PERDA")}
+          {bloco("7 · PERDA")}
           <div style={duas}>
             <Field label="Motivo">
               <Select
@@ -2531,67 +2687,61 @@ export function FormOportunidade({
           </div>
         </>
       )}
+      </div>
+      </div>
 
-      {bloco("NOTAS")}
-      <Field label="Observações" hint="Fatos que valem para a oportunidade inteira — não o andamento.">
-        <textarea
-          rows={2}
-          value={notas}
-          onChange={(e) => setNotas(e.target.value)}
-          placeholder="AWS: Wilson Mansano é o account manager."
-          style={{ ...campoNativo, resize: "vertical", lineHeight: 1.5 }}
-        />
-      </Field>
-
-      {/* As últimas atualizações à vista, sem abrir o histórico: quem acabou de abrir o card
-          quer saber o que mudou por último, e isso é mais útil aqui do que no fim da cortina. */}
+      {/* Rodapé de consulta, também em duas colunas: o que mudou por último e o lado
+          operacional da venda. */}
       {editando && (
-        <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 18 }}>
-          <div style={{ ...eyebrow(11, C.dust), marginBottom: 14 }}>LINHA DO TEMPO · ÚLTIMAS ATUALIZAÇÕES</div>
-          <LinhaDoTempo
-            entidade={inicial.ref}
-            limite={5}
-            onVerTudo={() => {
-              setVerHistorico(true);
-              // Depois que o histórico completo abrir, leva a pessoa até ele.
-              window.setTimeout(() => document.getElementById("liff-historico-completo")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
-            }}
-          />
-        </div>
-      )}
-
+        <div className="cortina-duas" style={{ borderTop: `1px solid ${C.line}`, paddingTop: 18 }}>
+          <div className="cortina-col">
+            <div style={eyebrow(11, C.dust)}>LINHA DO TEMPO · ÚLTIMAS ATUALIZAÇÕES</div>
+            <LinhaDoTempo
+              entidade={inicial.ref}
+              limite={5}
+              onVerTudo={() => {
+                setVerHistorico(true);
+                // Depois que o histórico completo abrir, leva a pessoa até ele.
+                window.setTimeout(() => document.getElementById("liff-historico-completo")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+              }}
+            />
+          </div>
+          <div className="cortina-col">
       {/* O lado operacional desta venda: as tarefas ligadas a ela. Só as que a pessoa
-          enxerga — tarefa de produto sem acesso não aparece, como em todo o sistema. */}
-      {editando && (
-        <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 18 }}>
-          <div style={{ ...eyebrow(11, C.dust), marginBottom: 12 }}>TAREFAS LIGADAS</div>
-          {tarefas.length ? (
-            <div style={{ display: "grid", gap: 8 }}>
-              {tarefas.map((t) => (
-                <div
-                  key={t.ref}
-                  role="button"
-                  className="liff-hover-row"
-                  onClick={() => onAbrirTarefa?.(t.ref)}
-                  title="Abrir a tarefa"
-                  style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", gap: 10, alignItems: "baseline", padding: "6px 8px", cursor: "pointer", borderRadius: R }}
-                >
-                  <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>{t.ref}</span>
-                  <span style={{ fontSize: 13, color: C.ink, lineHeight: 1.4 }}>{t.titulo}</span>
-                  <span style={eyebrow(10, statusColor(t.status), "0.1em")}>{statusLabel(t.status)}</span>
+              enxerga — tarefa de produto sem acesso não aparece, como em todo o sistema. */}
+          {editando && (
+            <div>
+              <div style={{ ...eyebrow(11, C.dust), marginBottom: 12 }}>TAREFAS LIGADAS</div>
+              {tarefas.length ? (
+                <div style={{ display: "grid", gap: 8 }}>
+                  {tarefas.map((t) => (
+                    <div
+                      key={t.ref}
+                      role="button"
+                      className="liff-hover-row"
+                      onClick={() => onAbrirTarefa?.(t.ref)}
+                      title="Abrir a tarefa"
+                      style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", gap: 10, alignItems: "baseline", padding: "6px 8px", cursor: "pointer", borderRadius: R }}
+                    >
+                      <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>{t.ref}</span>
+                      <span style={{ fontSize: 13, color: C.ink, lineHeight: 1.4 }}>{t.titulo}</span>
+                      <span style={eyebrow(10, statusColor(t.status), "0.1em")}>{statusLabel(t.status)}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ fontSize: 13, color: C.faint, lineHeight: 1.5 }}>
-              Nenhuma tarefa ligada. Ligue uma tarefa pelo campo Oportunidade, no card dela em Operações.
+              ) : (
+                <div style={{ fontSize: 13, color: C.faint, lineHeight: 1.5 }}>
+                  Nenhuma tarefa ligada. Ligue uma tarefa pelo campo Oportunidade, no card dela em Operações.
+                </div>
+              )}
             </div>
           )}
+          </div>
         </div>
       )}
 
       {editando && (
-        <div id="liff-historico-completo" style={{ borderTop: `1px solid ${C.line}`, paddingTop: 18 }}>
+        <div id="liff-historico-completo" style={{ borderTop: `1px solid ${C.line}`, paddingTop: 18, marginTop: 4 }}>
           <div
             role="button"
             onClick={() => setVerHistorico((v) => !v)}
@@ -2608,8 +2758,7 @@ export function FormOportunidade({
         </div>
       )}
 
-      </div>
-      </div>
+
       {erro && <div style={{ fontFamily: MONO, fontSize: 11, lineHeight: 1.6, color: C.error }}>{erro}</div>}
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginTop: 4, alignItems: "center" }}>
         {/* Excluir fica longe do salvar, e do lado oposto: é a única ação irreversível aqui. */}

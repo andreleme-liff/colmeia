@@ -1543,6 +1543,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         <FormOportunidade
           origens={estado.origens}
           organizacoes={estado.organizacoes}
+            arquetipos={estado.arquetipos}
           areasEditaveis={areasEditaveis}
           pessoas={pessoasAtivas}
           produtos={estado.produtos}
@@ -1557,6 +1558,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         <FormOportunidade
           origens={estado.origens}
           organizacoes={estado.organizacoes}
+            arquetipos={estado.arquetipos}
           inicial={dealEmEdicao}
           tarefas={estado.activities.filter((a) => a.oportunidadeId === dealEmEdicao.id)}
           onAbrirTarefa={(ref) => navegar({ view: "operacoes", ref })}

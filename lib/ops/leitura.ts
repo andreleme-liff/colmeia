@@ -75,6 +75,9 @@ type LinhaOportunidade = {
   ultima_interacao: Date | null; blocker: string; blocker_tipo: string | null; blocker_dono: string | null;
   motivo_perda: string | null; motivo_perda_detalhe: string; notas: string;
   modulos: string[]; modulos_ids: string[];
+  prop_assinatura_centavos: string; prop_implantacao_centavos: string; prop_implantacao_parcelas: number;
+  prop_customizacao_centavos: string; prop_customizacao_parcelas: number;
+  arquetipo_id: number | null; arquetipo: string | null;
   org_ref: string | null; org_nome: string | null;
 };
 
@@ -85,6 +88,9 @@ const COLUNAS_OPORTUNIDADE = `
   d.atualizado_em, d.criado_em, o.label AS origem, d.ponte, d.contato_operacional, d.dor, d.erp, d.proposta_url,
   d.ultima_interacao, d.blocker, d.blocker_tipo, bd.nome AS blocker_dono, d.motivo_perda,
   d.motivo_perda_detalhe, d.notas, cl.ref AS org_ref, cl.nome AS org_nome,
+  d.prop_assinatura_centavos, d.prop_implantacao_centavos, d.prop_implantacao_parcelas,
+  d.prop_customizacao_centavos, d.prop_customizacao_parcelas,
+  d.arquetipo_id, (SELECT fa.nome FROM funding_arquetipos fa WHERE fa.id = d.arquetipo_id) AS arquetipo,
   COALESCE((SELECT array_agg(p.label ORDER BY p.label) FROM oportunidade_modulos m JOIN produtos p ON p.id = m.produto_id
             WHERE m.deal_id = d.id), '{}') AS modulos,
   COALESCE((SELECT array_agg(m.produto_id ORDER BY m.produto_id) FROM oportunidade_modulos m
@@ -107,6 +113,14 @@ function oportunidadeDto(d: LinhaOportunidade, ctx: Ctx, base: string) {
     estagio: d.estagio,
     estagio_nome: stageLabel(d.estagio),
     valor_reais: Number(d.valor_centavos) / 100,
+    // Composição da proposta; tudo zero = ainda não detalhada, e `valor_reais` é o digitado.
+    assinatura_mensal_reais: Number(d.prop_assinatura_centavos) / 100,
+    implantacao_reais: Number(d.prop_implantacao_centavos) / 100,
+    implantacao_parcelas: d.prop_implantacao_parcelas,
+    customizacao_reais: Number(d.prop_customizacao_centavos) / 100,
+    customizacao_parcelas: d.prop_customizacao_parcelas,
+    arquetipo_id: d.arquetipo_id,
+    arquetipo: d.arquetipo,
     responsavel_id: d.responsavel_user_id,
     responsavel: d.responsavel,
     responsavel_texto: d.responsavel_texto,

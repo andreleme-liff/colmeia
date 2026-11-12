@@ -31,6 +31,9 @@ export type Activity = {
   oportunidadeOculta: boolean;
 };
 
+/** Arquétipo de funding, no que o card comercial precisa. `area` nulo = vale para todo produto. */
+export type ArquetipoResumo = { id: number; nome: string; ativo: boolean; pasta: string | null; area: string | null };
+
 export type Deal = {
   id: number;
   ref: string;
@@ -77,6 +80,10 @@ export type Deal = {
   notas: string;
   /** Ids dos produtos da área marcados como módulos de interesse. */
   modulos: string[];
+  /** Composição da proposta: assinatura por mês, implantação e customização com parcelas. */
+  proposta: import("@/lib/domain").ComposicaoProposta;
+  /** Arquétipo de funding escolhido para a proposta; opcional. */
+  arquetipoId: number | null;
 };
 
 export type Origem = { id: string; label: string; ativo: boolean };
@@ -133,6 +140,7 @@ export type State = {
   areas: AreaCadastro[];
   produtos: ProdutoCadastro[];
   origens: Origem[];
+  arquetipos: ArquetipoResumo[];
   isAdmin: boolean;
   /** Domínio aceito no login — vem do servidor, alimenta o cadastro de pessoa. */
   dominioLogin: string;
@@ -189,6 +197,13 @@ export type NovaOportunidade = {
   motivoPerdaDetalhe: string;
   notas: string;
   modulos: string[];
+  /** Composição da proposta, em reais. Com algum valor, o total em 12 meses é calculado. */
+  propAssinaturaReais?: number;
+  propImplantacaoReais?: number;
+  propImplantacaoParcelas?: number;
+  propCustomizacaoReais?: number;
+  propCustomizacaoParcelas?: number;
+  arquetipoId?: number | null;
 };
 
 async function req<T>(url: string, opts: RequestInit = {}): Promise<T> {

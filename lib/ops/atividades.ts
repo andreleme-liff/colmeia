@@ -11,17 +11,21 @@ import { ehFalha, type Autor, type Falha, type Fatos, type Permissoes } from "./
 import { planejarAtualizacaoAtividade, planejarCriacaoAtividade, type AtividadeAtual } from "./regras-atividade";
 
 export async function carregarFatos(tx: Queryable): Promise<Fatos> {
-  const [pessoas, produtos, oportunidades, origens] = await Promise.all([
+  const [pessoas, produtos, oportunidades, origens, arquetipos] = await Promise.all([
     tx<{ id: number; nome: string }[]>`SELECT id, nome FROM users WHERE excluido_em IS NULL`,
     tx<{ id: string; area: string; label: string }[]>`SELECT id, area, label FROM produtos`,
     tx<{ id: number; ref: string; conta: string; area: string }[]>`SELECT id, ref, conta, area FROM deals`,
     tx<{ id: string; label: string; ativo: boolean }[]>`SELECT id, label, ativo FROM origens`,
+    tx<{ id: number; nome: string; ativo: boolean; pasta: string | null; area: string | null }[]>`
+      SELECT a.id, a.nome, a.ativo, p.nome AS pasta, COALESCE(m.area, p.area) AS area FROM funding_arquetipos a LEFT JOIN funding_pastas p ON p.id = a.pasta_id LEFT JOIN produtos m ON m.id = p.produto_id ORDER BY p.ordem NULLS LAST, a.ordem, a.nome
+    `,
   ]);
   return {
     pessoas: new Map(pessoas.map((p) => [p.id, p.nome])),
     produtos: [...produtos],
     oportunidades: [...oportunidades],
     origens: [...origens],
+    arquetipos: [...arquetipos],
   };
 }
 

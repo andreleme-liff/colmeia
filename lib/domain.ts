@@ -54,6 +54,37 @@ export function estagioEmAberto(k: string): boolean {
 }
 export const STAGE_KEYS = STAGES.map((s) => s.key) as readonly string[];
 
+/**
+ * Composição da proposta comercial: os mesmos três tipos da receita. Assinatura é o valor POR
+ * MÊS; implantação e customização são o total, pago em N parcelas mensais.
+ */
+export type ComposicaoProposta = {
+  assinaturaCentavos: number;
+  implantacaoCentavos: number;
+  implantacaoParcelas: number;
+  customizacaoCentavos: number;
+  customizacaoParcelas: number;
+};
+export const PROPOSTA_VAZIA: ComposicaoProposta = {
+  assinaturaCentavos: 0, implantacaoCentavos: 0, implantacaoParcelas: 1, customizacaoCentavos: 0, customizacaoParcelas: 1,
+};
+export const PARCELAS_MAX = 60;
+/** A composição vale a partir do estágio Proposta: antes disso não há proposta para detalhar. */
+export function estagioTemProposta(k: string): boolean {
+  return FUNIL.indexOf(k as StageKey) >= FUNIL.indexOf("proposta");
+}
+export function temComposicao(c: ComposicaoProposta): boolean {
+  return c.assinaturaCentavos > 0 || c.implantacaoCentavos > 0 || c.customizacaoCentavos > 0;
+}
+/**
+ * O que a proposta soma nos primeiros 12 meses: 12 mensalidades, mais a implantação e a
+ * customização — só a parte que cai no primeiro ano quando o parcelamento passa de 12 vezes.
+ */
+export function totalPrimeiroAno(c: ComposicaoProposta): number {
+  const noAno = (total: number, parcelas: number) => Math.round((total * Math.min(12, Math.max(1, parcelas))) / Math.max(1, parcelas));
+  return c.assinaturaCentavos * 12 + noAno(c.implantacaoCentavos, c.implantacaoParcelas) + noAno(c.customizacaoCentavos, c.customizacaoParcelas);
+}
+
 export const PRIORIDADES = ["alta", "media", "baixa"] as const;
 export type Prioridade = (typeof PRIORIDADES)[number];
 
