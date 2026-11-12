@@ -2645,7 +2645,7 @@ export function FormOportunidade({
 
       <div className="cortina-col">
       {bloco("ANDAMENTO", true)}
-      <Field label="Situação atual" hint="Só o estado de hoje. Ao salvar, o texto anterior vai para a lista abaixo.">
+      <Field label="Situação atual">
         <textarea
           rows={3}
           value={situacao}
