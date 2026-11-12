@@ -24,6 +24,7 @@ const reais = (c: number | null | undefined) => (c == null ? null : Math.round(c
 const centavos = (r: unknown) => (typeof r === "number" ? Math.round(r * 100) : undefined);
 const autorDe = (c: Contexto): Autor => ({ userId: c.ctx.user.userId, origem: "mcp", concessaoId: c.acesso.concessaoId });
 const negado: Saida = { ok: false, erro: "Restrito à administração." };
+const negadoReceita: Saida = { ok: false, erro: "Receita restrita a gestores e à administração." };
 
 type Card = { id: number; ref: string; conta: string; area: string; estagio: string; valor_centavos: string };
 async function lerCards(sql: Queryable): Promise<Card[]> {
@@ -131,6 +132,7 @@ async function faturaPorRef(sql: Queryable, ref: string): Promise<Fatura | null>
 /* ============================== leitura ============================== */
 
 export async function resumoReceita(c: Contexto, a: Record<string, unknown>): Promise<Saida> {
+  if (!c.ctx.podeVerReceita) return negadoReceita;
   const horizonte = (a.horizonte_meses as number | undefined) ?? 12;
   const area = a.area as string | undefined;
   const de = mesDe(hojeISO());
@@ -179,6 +181,7 @@ export async function resumoReceita(c: Contexto, a: Record<string, unknown>): Pr
 }
 
 export async function listarContratos(c: Contexto, a: Record<string, unknown>): Promise<Saida> {
+  if (!c.ctx.podeVerReceita) return negadoReceita;
   const horizonte = (a.horizonte_meses as number | undefined) ?? 12;
   const de = mesDe(hojeISO());
   const ate = somarMeses(de, horizonte - 1);
@@ -193,6 +196,7 @@ export async function listarContratos(c: Contexto, a: Record<string, unknown>): 
 }
 
 export async function verContrato(c: Contexto, a: Record<string, unknown>): Promise<Saida> {
+  if (!c.ctx.podeVerReceita) return negadoReceita;
   const contrato = await contratoPorRef(c.sql, a.ref as string);
   if (!contrato) return { ok: false, erro: "Receita não encontrada." };
   const cards = await lerCards(c.sql);

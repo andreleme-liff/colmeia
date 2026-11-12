@@ -74,6 +74,7 @@ export default function Clientes({
   busca,
   gatilho,
   isAdmin,
+  podeVerReceita,
   podeCriar,
   onAbrirDeal,
 }: {
@@ -83,6 +84,8 @@ export default function Clientes({
   gatilho: number | undefined;
   /** Admin vê também receita, faturas e cobrança, e pode cadastrar, mesclar e excluir. */
   isAdmin: boolean;
+  /** Gestor e admin: sem isso a ficha não busca nem mostra receita. */
+  podeVerReceita: boolean;
   /** Cadastra organização quem edita algum produto (ou é admin). */
   podeCriar: boolean;
   onAbrirDeal: (ref: string) => void;
@@ -98,16 +101,16 @@ export default function Clientes({
 
   useEffect(() => {
     let vivo = true;
-    // Faturamento é rota só da administração: os demais nem perguntam. A receita todos leem.
+    // Faturamento é rota só da administração e receita só de gestor e admin: os demais nem perguntam.
     const vazio = <T,>(v: T) => Promise.resolve(v);
-    Promise.all([api.clientes(), api.receitas(), isAdmin ? api.faturas() : vazio({ faturas: [] })]).then(
+    Promise.all([api.clientes(), podeVerReceita ? api.receitas() : vazio({ contratos: [] as Contrato[] }), isAdmin ? api.faturas() : vazio({ faturas: [] })]).then(
       ([c, r, f]) => vivo && (setDados({ clientes: c.clientes, contratos: r.contratos, faturas: f.faturas }), setFalha(null)),
       (e: unknown) => vivo && setFalha(e instanceof Error ? e.message : "Não foi possível carregar as organizações.")
     );
     return () => {
       vivo = false;
     };
-  }, [gatilho, versao, isAdmin]);
+  }, [gatilho, versao, isAdmin, podeVerReceita]);
 
   if (falha && !dados) return <div style={{ fontSize: 14, color: C.error }}>{falha}</div>;
   if (!dados) return <div style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>carregando organizações…</div>;
@@ -349,6 +352,7 @@ export default function Clientes({
           key={String(aberto)}
           visao={aberto === "novo" ? null : visaoAberta!}
           isAdmin={isAdmin}
+          podeVerReceita={podeVerReceita}
           outros={dados.clientes.filter((c) => c.id !== aberto)}
           deals={deals}
           onFechar={() => setAberto(null)}
@@ -398,6 +402,7 @@ const CONTATO_VAZIO: Contato = { nome: "", cargo: "", email: "", telefone: "", p
 function Ficha({
   visao,
   isAdmin,
+  podeVerReceita,
   outros,
   deals,
   onFechar,
@@ -409,6 +414,7 @@ function Ficha({
   /** `null` = cliente novo. */
   visao: Visao | null;
   isAdmin: boolean;
+  podeVerReceita: boolean;
   outros: ClienteLido[];
   deals: Deal[];
   onFechar: () => void;
@@ -724,8 +730,8 @@ function Ficha({
             </div>
           )}
 
-          {bloco(`RECEITA · ${visao.receitas.length}`)}
-          {visao.receitas.length === 0 ? (
+          {podeVerReceita && bloco(`RECEITA · ${visao.receitas.length}`)}
+          {!podeVerReceita ? null : visao.receitas.length === 0 ? (
             <div style={{ fontSize: 12.5, color: C.faint }}>Nenhuma receita cadastrada, nem contratada nem prevista.</div>
           ) : (
             <div style={{ display: "grid", gap: 8 }}>

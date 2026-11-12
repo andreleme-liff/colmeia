@@ -7,11 +7,11 @@
 //     em atraso, próximos 7 dias);
 //  2. gráficos — funil comercial por etapa, pipeline aberto por produto, atividades por
 //     status e por prazo;
-//  3. só admin — receita dos próximos 12 meses (contratada + provável) e faturamento do mês;
+//  3. gestor e admin — receita dos próximos 12 meses (contratada + provável); só admin — faturamento do mês;
 //  4. foco da semana do comercial e da operação, e as alterações recentes (como antes).
 //
 // Tudo respeita os filtros do cabeçalho (produto e "Quem"): as listas que chegam aqui já vêm
-// recortadas. Receita e faturamento são da empresa inteira e só aparecem para admin.
+// recortadas. Receita (gestor e admin) e faturamento (só admin) são da empresa inteira.
 
 import { useEffect, useState } from "react";
 import { C, MONO, eyebrow, statusColor } from "./tokens";
@@ -34,6 +34,7 @@ export default function Painel({
   todasOportunidades,
   meId,
   isAdmin,
+  podeVerReceita,
   area,
   gatilho,
   onAbrirAtividade,
@@ -48,6 +49,8 @@ export default function Painel({
   todasOportunidades: Deal[];
   meId: number;
   isAdmin: boolean;
+  /** Gestor e admin veem o resumo de receita; o faturamento ao lado é só de admin. */
+  podeVerReceita: boolean;
   area: string;
   gatilho: number | undefined;
   onAbrirAtividade: (ref: string) => void;
@@ -156,8 +159,8 @@ export default function Painel({
         </section>
       </div>
 
-      {/* ---------- 3 · receita e faturamento (só admin) ---------- */}
-      {isAdmin && <Financeiro area={area} oportunidades={todasOportunidades} hoje={hoje} gatilho={gatilho} onIr={onIr} />}
+      {/* ---------- 3 · receita (gestor e admin) e faturamento (só admin) ---------- */}
+      {podeVerReceita && <Financeiro comFaturamento={isAdmin} area={area} oportunidades={todasOportunidades} hoje={hoje} gatilho={gatilho} onIr={onIr} />}
 
       {/* ---------- 4 · foco e alterações, como antes ---------- */}
       <section className="pn-painel">
@@ -271,14 +274,16 @@ function BarraEmpilhada({ itens }: { itens: { chave: string; rotulo: string; qtd
   );
 }
 
-/** Receita e faturamento (só admin): busca os contratos e as faturas e resume. */
+/** Receita (gestor e admin) e faturamento (só admin): busca os contratos e as faturas e resume. */
 function Financeiro({
+  comFaturamento,
   area,
   oportunidades,
   hoje,
   gatilho,
   onIr,
 }: {
+  comFaturamento: boolean;
   area: string;
   oportunidades: Deal[];
   hoje: string;
@@ -289,14 +294,15 @@ function Financeiro({
   const [falha, setFalha] = useState(false);
   useEffect(() => {
     let vivo = true;
-    Promise.all([api.receitas(), api.faturas()]).then(
+    // Faturamento é rota só da administração: o gestor nem pergunta.
+    Promise.all([api.receitas(), comFaturamento ? api.faturas() : Promise.resolve({ faturas: [] as Fatura[] })]).then(
       ([r, f]) => vivo && setDados({ contratos: r.contratos, faturas: f.faturas }),
       () => vivo && setFalha(true)
     );
     return () => {
       vivo = false;
     };
-  }, [gatilho]);
+  }, [gatilho, comFaturamento]);
 
   if (falha) return null;
   if (!dados) return <div style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>carregando receita…</div>;
@@ -319,7 +325,7 @@ function Financeiro({
   const somaLiq = (l: Fatura[]) => l.reduce((t, f) => t + liquidoEsperado(f), 0);
 
   return (
-    <div className="pn-linha pn-linha--larga">
+    <div className={comFaturamento ? "pn-linha pn-linha--larga" : undefined}>
       <section className="pn-painel">
         <CabecalhoSecao
           titulo={`RECEITA · ${rotuloMes(mes).toUpperCase()} A ${rotuloMes(serie[serie.length - 1].mes).toUpperCase()}`}
@@ -340,7 +346,7 @@ function Financeiro({
         </ul>
         <Grafico serie={serie} series={[S_CONTRATADA, S_PROVAVEL]} />
       </section>
-      <section className="pn-painel">
+      {comFaturamento && <section className="pn-painel">
         <CabecalhoSecao titulo={`FATURAMENTO · ${rotuloMes(mes).toUpperCase()}`} acao={{ texto: "faturamento →", onClick: () => onIr("faturamento") }} />
         <div className="pn-fat">
           <Mini rotulo="A emitir este mês" valor={aEmitir.reduce((t, i) => t + i.valorCentavos, 0)} detalhe={`${aEmitir.length} fatura${aEmitir.length === 1 ? "" : "s"}`} />
@@ -348,7 +354,7 @@ function Financeiro({
           <Mini rotulo="Vencido" valor={somaLiq(vencidas)} detalhe={vencidas.length ? `${vencidas.length} em atraso` : "nada vencido"} tom={vencidas.length ? "erro" : "ok"} />
           <Mini rotulo="Recebido este mês" valor={recebido.reduce((t, f) => t + (f.valorPagoCentavos ?? 0), 0)} detalhe={`${recebido.length} baixa${recebido.length === 1 ? "" : "s"}`} />
         </div>
-      </section>
+      </section>}
     </div>
   );
 }

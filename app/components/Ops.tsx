@@ -866,7 +866,10 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
 
   // Tela só de admin aberta por quem não é (link colado, estado antigo): volta para o início,
   // em vez de mostrar o título da tela sobre o conteúdo de outra.
-  const soAdminSemPermissao = !!estado && !estado.isAdmin && NAV.some((n) => n.key === view && "soAdmin" in n);
+  const soAdminSemPermissao =
+    !!estado &&
+    ((!estado.isAdmin && NAV.some((n) => n.key === view && "soAdmin" in n)) ||
+      (!estado.podeVerReceita && NAV.some((n) => n.key === view && "soReceita" in n)));
   // Só troca a URL (sistema externo); a tela acompanha a rota pelo ajuste feito no render.
   useEffect(() => {
     if (soAdminSemPermissao) router.replace("/");
@@ -920,7 +923,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
   // Cadastros (que inclui pessoas e permissões) é configuração do sistema — as rotas já exigem
   // admin, e deixar a tela à vista só oferecia caminhos que terminam em 403. No menu, o que é
   // só de admin fica num grupo à parte, no fim.
-  const navComum = NAV.filter((n) => !("soAdmin" in n));
+  const navComum = NAV.filter((n) => !("soAdmin" in n) && (estado.podeVerReceita || !("soReceita" in n)));
   const navAdmin = estado.isAdmin ? NAV.filter((n) => "soAdmin" in n) : [];
   const chips = [{ id: "all", label: "Todas", color: C.dust }, ...dados.areasVisiveis];
   // Só oferece criar nas áreas onde a pessoa realmente escreve.
@@ -959,7 +962,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
   const conteudo = () => {
     // Rede de segurança: o menu já esconde estas telas de quem não é admin, mas um estado
     // antigo não pode virar uma tela vazia sem explicação.
-    if (NAV.some((n) => n.key === view && "soAdmin" in n) && !estado.isAdmin) {
+    if (soAdminSemPermissao) {
       return <Painel
           dados={dados.painel}
           atividades={dados.atividades}
@@ -967,6 +970,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           todasOportunidades={estado.deals}
           meId={me.id}
           isAdmin={estado.isAdmin}
+          podeVerReceita={estado.podeVerReceita}
           area={areaEfetiva}
           gatilho={estado.logs[0]?.id}
           onAbrirAtividade={(ref) => navegar({ view: "operacoes", ref })}
@@ -1122,6 +1126,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             busca={busca}
             gatilho={estado.logs[0]?.id}
             isAdmin={estado.isAdmin}
+            podeVerReceita={estado.podeVerReceita}
             podeCriar={estado.isAdmin || areasEditaveis.length > 0}
             onAbrirDeal={(ref) => navegar({ view: "comercial", ref })}
           />
@@ -1149,6 +1154,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           todasOportunidades={estado.deals}
           meId={me.id}
           isAdmin={estado.isAdmin}
+          podeVerReceita={estado.podeVerReceita}
           area={areaEfetiva}
           gatilho={estado.logs[0]?.id}
           onAbrirAtividade={(ref) => navegar({ view: "operacoes", ref })}

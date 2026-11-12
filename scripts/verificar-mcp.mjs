@@ -67,9 +67,16 @@ checa("atualizar é marcada destrutiva (o cliente pede confirmação)",
 checa("nenhuma ferramenta fala com o mundo de fora (openWorld)", CATALOGO.every((f) => !f.annotations.openWorldHint), true);
 checa("todo esquema fecha campos extras", CATALOGO.every((f) => f.inputSchema.additionalProperties === false), true);
 checa("nomes no formato da spec", nomes.every((n) => /^[A-Za-z0-9_.-]{1,128}$/.test(n)), true);
+const RECEITA_LEITURA = ["resumo_receita", "listar_receitas", "ver_receita"];
+const BASE_LEITURA = ["contexto", "listar_cadastros", "listar_atividades", "listar_oportunidades", "ver_registro", "listar_organizacoes", "ver_organizacao"];
+// Sem ser admin nem gestor (membro e leitura): nada de receita.
 const soLeitura = descreverFerramentas("leitura offline_access").map((f) => f.name);
-checa("conexão só de leitura não vê ferramenta de gravação", soLeitura, ["contexto", "listar_cadastros", "listar_atividades", "listar_oportunidades", "ver_registro", "listar_organizacoes", "ver_organizacao", "resumo_receita", "listar_receitas", "ver_receita"]);
-checa("com escrita vê as dezesseis (sem ser admin)", descreverFerramentas("leitura escrita").length, 16);
+checa("conexão só de leitura não vê ferramenta de gravação nem receita", soLeitura, BASE_LEITURA);
+checa("gestor só de leitura vê também a receita", descreverFerramentas("leitura offline_access", false, true).map((f) => f.name), [...BASE_LEITURA, ...RECEITA_LEITURA]);
+checa("membro com escrita vê treze, sem receita", descreverFerramentas("leitura escrita").length, 13);
+checa("gestor com escrita vê as dezesseis", descreverFerramentas("leitura escrita", false, true).length, 16);
+checa("as três de ler receita são marcadas para gestor e admin", RECEITA_LEITURA.every((n) => CATALOGO.find((f) => f.name === n)?.soReceita === true), true);
+checa("tools/list não vaza a marca interna `soReceita`", descreverFerramentas("leitura escrita", true).some((f) => "soReceita" in f), false);
 const FIN = ["listar_faturas", "criar_receita", "atualizar_receita",
   "emitir_fatura", "registrar_pagamento", "corrigir_fatura", "estornar_pagamento", "cancelar_fatura",
   "resumo_funding", "listar_arquetipos", "ver_estimativa", "criar_estimativa", "atualizar_estimativa", "registrar_funding",

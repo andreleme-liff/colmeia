@@ -134,8 +134,8 @@ export const NAV = [
   { key: "clientes", label: "organizações" },
   { key: "operacoes", label: "operações" },
   { key: "cronograma", label: "cronograma" },
-  // Forecast de receita: todos veem; só admin decide o que entra e altera valores.
-  { key: "receita", label: "receita" },
+  // Forecast de receita: gestor e admin veem; só admin decide o que entra e altera valores.
+  { key: "receita", label: "receita", soReceita: true },
   // Aplicativos externos (o Claude) que alguém autorizou a agir em seu nome pelo MCP. Para
   // TODOS, não só admin: cada pessoa revoga as próprias conexões — por isso não mora em
   // Cadastros, que é só da administração.

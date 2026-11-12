@@ -110,7 +110,9 @@ const EXECUTORES: Record<NomeFerramenta, Executor> = {
         "Toda oportunidade pertence a uma organização do cadastro (refs CLI-0000): listar_organizacoes, ver_organizacao e, com permissão de gravar, criar_organizacao e atualizar_organizacao. Ao criar oportunidade, prefira `organizacao` a `conta`.",
       receita_e_faturamento: c.ctx.isAdmin
         ? "Disponível (admin): receita, faturamento e funding AWS — resumo_receita, listar_receitas, ver_receita, listar_faturas, resumo_funding, listar_arquetipos, ver_estimativa e, com permissão de gravar, receitas, faturas, estimativas, funding e calculadoras."
-        : "Receita: só leitura (resumo_receita, listar_receitas, ver_receita). Cadastrar ou alterar receita, faturamento e funding são restritos à administração.",
+        : c.ctx.podeVerReceita
+          ? "Receita: só leitura (resumo_receita, listar_receitas, ver_receita). Cadastrar ou alterar receita, faturamento e funding são restritos à administração."
+          : "Receita, faturamento e funding não estão disponíveis para este papel (receita: gestor e admin; o restante: admin).",
       app: c.base,
     },
   }),

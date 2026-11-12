@@ -217,6 +217,7 @@ export async function GET() {
     areas: areasCadastro,
     produtos,
     isAdmin: ctx.isAdmin,
+    podeVerReceita: ctx.podeVerReceita,
     // O formulário de pré-cadastro precisa dizer qual domínio o login aceita, e a fonte
     // dessa verdade é uma variável de ambiente do servidor.
     dominioLogin: DOMINIO_PERMITIDO,

@@ -31,6 +31,8 @@ export type Definicao = {
   escrita: boolean;
   /** Só para admin: some da lista e é recusada para os demais (receita e faturamento). */
   soAdmin?: boolean;
+  /** Leitura de receita: só para gestor e admin. */
+  soReceita?: boolean;
   inputSchema: Esquema;
   annotations: Anotacoes;
 };
@@ -429,6 +431,7 @@ export const CATALOGO = [
     description:
       "Receita mês a mês num horizonte: contratada (por tipo: assinatura, implantação, customização), provável e possível, mais a assinatura do mês atual (MRR) e as pendências (cards ganhos sem receita, cards nas etapas finais fora do forecast, previsões cujo card saiu das etapas finais).",
     escrita: false,
+    soReceita: true,
     inputSchema: objeto({ horizonte_meses: HORIZONTE, produto: PRODUTO }),
     annotations: LEITURA,
   },
@@ -438,6 +441,7 @@ export const CATALOGO = [
     description:
       "Receitas cadastradas (refs R-0000) com a situação que vale hoje (contratada, provavel, possivel, fora). Só a contratada é contrato; as demais são previsão de forecast. Traz as linhas, os dados de cobrança e o total no horizonte.",
     escrita: false,
+    soReceita: true,
     inputSchema: objeto({
       produto: PRODUTO,
       situacao: { type: "string", enum: ["contratada", "provavel", "possivel", "fora"] },
@@ -451,6 +455,7 @@ export const CATALOGO = [
     title: "Ver receita e cronograma",
     description: "Uma receita cadastrada (contratada ou prevista) com o cronograma de faturamento (24 meses a partir do início), o histórico de alterações e, para admin, as faturas já emitidas.",
     escrita: false,
+    soReceita: true,
     inputSchema: objeto({ ref: REF_R }, ["ref"]),
     annotations: LEITURA,
   },
@@ -654,11 +659,11 @@ export const CATALOGO = [
 export type NomeFerramenta = (typeof CATALOGO)[number]["name"];
 
 /** O que vai em `tools/list`. Sem a marca interna `escrita`. */
-export function descreverFerramentas(escopos: string, admin = false) {
+export function descreverFerramentas(escopos: string, admin = false, receita = admin) {
   const pode = temEscopo(escopos, "escrita");
   // Conexão só de leitura não vê as ferramentas de gravação: o modelo não tenta o que não
   // pode, e `contexto` explica como ganhar a permissão. Quem não é admin não vê as de receita.
-  return CATALOGO.filter((f) => (pode || !f.escrita) && (admin || !("soAdmin" in f && f.soAdmin))).map(({ name, title, description, inputSchema, annotations }) => ({
+  return CATALOGO.filter((f) => (pode || !f.escrita) && (admin || !("soAdmin" in f && f.soAdmin)) && (receita || !("soReceita" in f && f.soReceita))).map(({ name, title, description, inputSchema, annotations }) => ({
     name, title, description, inputSchema, annotations,
   }));
 }
@@ -666,7 +671,7 @@ export function descreverFerramentas(escopos: string, admin = false) {
 export const INSTRUCOES = [
   "LIFF go (antes LIFF tasks): quadro operacional (tarefas, refs T-0000), pipeline comercial (oportunidades, refs C-0000) e cadastro de organizações (refs CLI-0000) da LIFF.",
   "Chame `contexto` primeiro: ele diz em nome de quem você age, o papel da pessoa, os produtos e o vocabulário de status e estágios.",
-  "Permissão é por papel, não por produto: todos veem todos os produtos; `leitura` não grava; `membro`, `gestor` e `admin` gravam em qualquer produto; só `admin` grava receita e usa faturamento e funding.",
+  "Permissão é por papel, não por produto: todos veem todos os produtos; `leitura` não grava; `membro`, `gestor` e `admin` gravam em qualquer produto; receita só é lida por `gestor` e `admin`; só `admin` grava receita e usa faturamento e funding.",
   "Valores em reais; datas AAAA-MM-DD. Responsável: use o id de `listar_cadastros`.",
   "Tarefa e oportunidade se ligam pelo campo `oportunidade` da tarefa (ex.: C-0104). Ao criar uma tarefa que serve a uma venda, ligue-a.",
   "Organização é o dado mestre: toda oportunidade pertence a uma, e o nome mostrado no card é o do cadastro. Antes de criar uma oportunidade, procure a organização com `listar_organizacoes` e mande a referência em `organizacao`; só use `conta` (o nome) quando ela não existir. Uma organização pode existir sem oportunidade. Mesclar e excluir organizações só pela interface.",

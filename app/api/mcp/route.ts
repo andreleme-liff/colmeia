@@ -95,7 +95,7 @@ export async function POST(req: Request) {
     case "ping":
       return jsonRpc(ok(id, {}));
     case "tools/list":
-      return jsonRpc(ok(id, { tools: descreverFerramentas(acesso.escopos, ctx.isAdmin) }));
+      return jsonRpc(ok(id, { tools: descreverFerramentas(acesso.escopos, ctx.isAdmin, ctx.podeVerReceita) }));
     case "tools/call":
       return jsonRpc(await chamarFerramenta(id, params, acesso, ctx, sql, cfg.issuer));
     default:
@@ -152,6 +152,9 @@ async function chamarFerramenta(
   // os demais, e a chamada direta também é recusada (com o registro da tentativa).
   if ("soAdmin" in ferramenta && ferramenta.soAdmin && !ctx.isAdmin) {
     return recusar("Ferramenta restrita à administração.");
+  }
+  if ("soReceita" in ferramenta && ferramenta.soReceita && !ctx.podeVerReceita) {
+    return recusar("Receita restrita a gestores e à administração.");
   }
   if (ferramenta.escrita && !temEscopo(acesso.escopos, "escrita")) {
     return recusar("Esta conexão só tem permissão de leitura. Para gravar, reconecte marcando 'Gravar' na tela de autorização.");

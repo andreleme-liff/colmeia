@@ -25,14 +25,17 @@ export type Ctx = {
    */
   labelArea: (area: string) => string;
   isAdmin: boolean;
+  /** Receita (forecast e contratos): só gestor e admin enxergam; membro e leitura, não. */
+  podeVerReceita: boolean;
   podeVer: (area: string) => boolean;
   podeEditar: (area: string) => boolean;
 };
 
 /**
  * O papel é a permissão inteira; não há mais matriz por produto.
- * - leitura          → vê tudo, não edita
- * - membro, gestor   → veem e editam os registros de todos os produtos
+ * - leitura          → vê os cards de todos os produtos, não edita
+ * - membro           → vê e edita os cards de todos os produtos
+ * - gestor           → como o membro, e também vê a receita (forecast e contratos)
  * - admin            → idem, e administra (o que é só de admin passa por `requireAdmin`)
  */
 export async function carregarPerms(user: SessionUser, areasExistentes: string[]): Promise<Record<string, Nivel>> {
@@ -61,6 +64,7 @@ export function montarCtx(
     areasExistentes,
     labelArea: (area) => cadastro.find((a) => a.id === area)?.label ?? area,
     isAdmin: user.papel === "admin",
+    podeVerReceita: user.papel === "admin" || user.papel === "gestor",
     podeVer: (area) => !!perms[area],
     podeEditar: (area) => perms[area] === "edit",
   };
@@ -108,6 +112,14 @@ async function comPapelSimulado(user: SessionUser): Promise<SessionUser> {
 export async function ctxDoUsuario(userId: number): Promise<Ctx | null> {
   const user = await carregarUsuario(userId);
   return user ? ctxDe(user) : null;
+}
+
+/** Receita é de gestor e admin: membro e leitura não leem forecast nem contratos. */
+export async function requireReceita(): Promise<Ctx | Response> {
+  const ctx = await requireCtx();
+  if (ctx instanceof Response) return ctx;
+  if (!ctx.podeVerReceita) return err("Receita restrita a gestores e à administração.", 403);
+  return ctx;
 }
 
 /** Só admin mexe em permissões e em usuários. */
