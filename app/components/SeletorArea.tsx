@@ -75,13 +75,16 @@ export default function SeletorArea({
           display: "flex",
           alignItems: "center",
           gap: 9,
-          padding: icone ? 0 : "8px 13px",
+          // 34px: a mesma altura da busca, do filtro de responsável e dos botões do cabeçalho.
+          height: 34,
+          boxSizing: "border-box",
+          padding: icone ? 0 : "0 13px",
           cursor: "pointer",
           ...eyebrow(11, C.ink, "0.1em"),
           background: C.canvas,
           border: `1px solid ${C.line}`, borderRadius: R,
           ...(icone
-            ? { width: 34, height: 34, justifyContent: "center", color: aberto ? C.ink : C.dust }
+            ? { width: 34, justifyContent: "center", color: aberto ? C.ink : C.dust }
             : { minWidth: larguraMin, justifyContent: "space-between" }),
         }}
       >

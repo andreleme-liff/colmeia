@@ -83,7 +83,9 @@ export default function SeletorResponsaveis({
           display: "flex",
           alignItems: "center",
           gap: 8,
-          padding: "8px 12px",
+          height: 34,
+          boxSizing: "border-box",
+          padding: "0 12px",
           cursor: "pointer",
           ...eyebrow(11, C.ink, "0.1em"),
           // Ligado fica com fundo de painel, como o chip de área selecionado: é o sinal de
