@@ -61,11 +61,13 @@ function paraCentavos(texto: string): number {
 }
 const deCentavos = (c: number) => (c ? (c / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "");
 
-const TOM_SITUACAO: Record<SituacaoEfetiva, string> = {
-  contratada: "var(--cop-ink-success)",
-  provavel: "var(--cop-ink-warning)",
-  possivel: "var(--cop-ink-warning)",
-  fora: "var(--liff-text-faint)",
+// A situação usa a mesma marca do gráfico: contratada na cor da série, provável em cheio e
+// possível hachurado. O texto fica na tinta comum; quem carrega a cor é a marca.
+const MARCA_SITUACAO: Record<SituacaoEfetiva, CSSProperties> = {
+  contratada: fundoSerie(S_CONTRATADA),
+  provavel: fundoSerie(S_PROVAVEL),
+  possivel: fundoSerie(S_POSSIVEL),
+  fora: { boxShadow: "inset 0 0 0 1px var(--liff-text-faint)" },
 };
 
 export default function Receita({
@@ -553,7 +555,8 @@ function TabelaContratos({
                 </div>
               </div>
               <div style={{ padding: "12px 14px", fontSize: 13, color: C.body }}>{a.label}</div>
-              <div style={{ padding: "12px 14px", fontFamily: MONO, fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase", color: TOM_SITUACAO[efetiva] }}>
+              <div style={{ padding: "12px 14px", fontFamily: MONO, fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase", color: efetiva === "fora" ? C.faint : C.body, display: "flex", alignItems: "center", gap: 8 }}>
+                <span aria-hidden className="rec-legenda__marca" style={MARCA_SITUACAO[efetiva]} />
                 {ROTULO_SITUACAO[efetiva]}
               </div>
               <div style={{ padding: "12px 14px", fontFamily: MONO, fontSize: 12, color: C.body }}>{`${mes}/${ano}`}</div>
