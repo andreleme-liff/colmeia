@@ -34,6 +34,34 @@ import type { ClienteLido, EventoCliente } from "@/lib/clientes-db";
 /** Em negociação = no funil, depois da prospecção e antes do ganho. */
 const emNegociacao = (estagio: string) => estagioEmAberto(estagio) && estagio !== "prospeccao";
 
+/**
+ * Peso do estágio para escolher a oportunidade que representa a organização na lista: primeiro
+ * a mais adiantada em negociação, depois prospecção, ganho, on hold e lost.
+ */
+const ORDEM_ESTAGIO = ["contrato", "validacao", "proposta", "qualificado", "primeira_reuniao", "prospeccao", "ganho", "on_hold", "lost"];
+const pesoEstagio = (estagio: string) => {
+  const i = ORDEM_ESTAGIO.indexOf(estagio);
+  return i < 0 ? ORDEM_ESTAGIO.length : i;
+};
+
+/**
+ * A coluna Oportunidades da lista: o estágio da oportunidade mais adiantada e, se houver mais,
+ * quantas são as outras. Em negociação sai em tinta forte; prospecção e ganho, normal; on hold
+ * e lost, apagado. O detalhe de todas fica na dica.
+ */
+function Oportunidades({ deals }: { deals: Deal[] }) {
+  if (!deals.length) return <span style={{ color: C.ghost }}>—</span>;
+  const ordenadas = [...deals].sort((a, b) => pesoEstagio(a.estagio) - pesoEstagio(b.estagio));
+  const principal = ordenadas[0].estagio;
+  const cor = emNegociacao(principal) ? C.ink : principal === "prospeccao" || principal === "ganho" ? C.body : C.faint;
+  return (
+    <span title={ordenadas.map((d) => `${d.ref} · ${areaOf(d.area).label} · ${stageLabel(d.estagio)}`).join("\n")}>
+      <span style={{ color: cor, fontWeight: emNegociacao(principal) ? 600 : 400 }}>{stageLabel(principal)}</span>
+      {deals.length > 1 && <span style={{ color: C.faint }}> +{deals.length - 1}</span>}
+    </span>
+  );
+}
+
 type Filtro = "todos" | "prospeccao" | "abertas" | "contrato";
 const FILTROS: { key: Filtro; label: string }[] = [
   { key: "todos", label: "todos" },
@@ -170,7 +198,8 @@ export default function Clientes({
   const ordenada = ord.aplicar(lista, {
     nome: (v) => v.c.nome,
     produtos: (v) => v.areas.map((a) => areaOf(a).label).join(", "),
-    oportunidades: (v) => (v.deals.length ? v.abertas.length * 10000 + v.deals.length : null),
+    // Pelo estágio da oportunidade mais adiantada; no empate, quem tem mais oportunidades.
+    oportunidades: (v) => (v.deals.length ? (ORDEM_ESTAGIO.length - Math.min(...v.deals.map((d) => pesoEstagio(d.estagio)))) * 1000 + v.deals.length : null),
     pipeline: (v) => v.pipeline || null,
     contratos: (v) => fechou(v) || null,
     ultima: (v) => v.ultima,
@@ -322,15 +351,8 @@ export default function Clientes({
                 <div style={{ padding: "12px 14px", display: "flex", flexWrap: "wrap", gap: "4px 10px" }}>
                   {v.areas.length ? v.areas.map((a) => <Produto key={a} area={a} />) : <span style={{ color: C.ghost }}>—</span>}
                 </div>
-                <div style={{ padding: "12px 14px", fontSize: 13, color: C.body }}>
-                  {v.deals.length ? (
-                    <>
-                      <strong style={{ color: C.ink, fontWeight: 600 }}>{v.abertas.length}</strong> em negociação
-                      <span style={{ color: C.faint }}> de {v.deals.length}</span>
-                    </>
-                  ) : (
-                    <span style={{ color: C.ghost }}>—</span>
-                  )}
+                <div style={{ padding: "12px 14px", fontSize: 13, whiteSpace: "nowrap" }}>
+                  <Oportunidades deals={v.deals} />
                 </div>
                 <div style={{ padding: "12px 14px", fontFamily: MONO, fontSize: 12, textAlign: "right", color: v.pipeline ? C.ink : C.ghost }} title={brlExato(v.pipeline)}>
                   {v.pipeline ? brl(v.pipeline) : "—"}
