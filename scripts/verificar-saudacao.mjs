@@ -1,6 +1,6 @@
 // Saudação da Visão geral (lib/saudacao.ts): sem banco.
 // node scripts/verificar-saudacao.mjs
-import { numeroDoDia, saudar } from "../lib/saudacao.ts";
+import { linhaEmTexto, numeroDoDia, saudar } from "../lib/saudacao.ts";
 
 let ok = 0;
 let ruim = 0;
@@ -9,7 +9,7 @@ function checa(nome, deu, esperava) {
   const b = JSON.stringify(esperava);
   if (a === b) { ok++; console.log(`  ✓ ${nome}`); } else { ruim++; console.log(`  ✗ ${nome}\n      deu      ${a}\n      esperava ${b}`); }
 }
-const nada = { ganhosRecentes: [], diasFora: null, meus: { vencidos: 0, hoje: 0, amanha: 0, abertos: 0 }, time: { vencidos: 0, hoje: 0 } };
+const nada = { ganhosRecentes: [], diasFora: null, meus: { vencidos: [], hoje: [], amanha: [], proximo: null, abertos: 0 }, time: { vencidos: [], hoje: [] } };
 const em = (iso) => new Date(iso); // hora local
 const com = (f) => ({ ...nada, ...f, meus: { ...nada.meus, ...(f.meus ?? {}) }, time: { ...nada.time, ...(f.time ?? {}) } });
 
@@ -28,32 +28,31 @@ checa("sexta à tarde varia ao longo das semanas (inclui a saudação simples)",
 const segundas = new Set([...Array(9)].map((_, i) => saudar("André", 1, new Date(2026, 10, 16 + 7 * i, 9), nada).titulo));
 checa("segunda de manhã varia ao longo das semanas", segundas.size >= 2, true);
 
-console.log("\n2. linha do dia: a situação mais importante vence");
-const linha = (f, iso = "2026-11-11T10:00:00", id = 1) => saudar("André", id, em(iso), com(f)).linha;
-checa("ganho vem antes de tudo", /Medley/.test(linha({ ganhosRecentes: ["Medley"], diasFora: 9, meus: { vencidos: 4 } })), true);
-checa("dois ganhos: plural certo", /Medley e Galena (viraram|entraram)|: Medley e Galena\./.test(linha({ ganhosRecentes: ["Medley", "Galena"] })), true);
-checa("mais de dois ganhos resume", /Medley e Galena e mais 1/.test(linha({ ganhosRecentes: ["Medley", "Galena", "Globe"] })), true);
-checa("volta depois de dias fora, com o que espera", /4 dias.*2 itens esperando você/.test(linha({ diasFora: 4, meus: { vencidos: 1, hoje: 1 } })), true);
-checa("dois dias fora não é 'de volta'", /dias/.test(linha({ diasFora: 2, meus: { abertos: 3 } })), false);
-checa("vencido vem antes de 'hoje'", /passaram do prazo/.test(linha({ meus: { vencidos: 2, hoje: 5 } })), true);
-checa("um vencido: singular", /1 item seu passou do prazo/.test(linha({ meus: { vencidos: 1 } })), true);
-checa("vence hoje", /vence(m)? hoje/.test(linha({ meus: { hoje: 3, amanha: 1 } })), true);
-checa("vence amanhã", /amanhã/.test(linha({ meus: { amanha: 1, abertos: 4 } })), true);
-checa("tudo em dia, com itens abertos", /dia|prazo/i.test(linha({ meus: { abertos: 4 } })), true);
-checa("sem nada no nome: fala do time", /time/.test(linha({ time: { vencidos: 3 } })), true);
-checa("nada de nada: frase calma", linha({}).length > 5, true);
+console.log("\n2. linha do dia: a situação mais importante vence, e diz o quê");
+const it = (ref, titulo, prazo = "2026-11-11") => ({ ref, titulo, prazo });
+const T1 = it("T-1045", "Desenvolver POC Vetnil"), T2 = it("T-1050", "Revisar contrato EMS"), C1 = it("C-0325", "Metalinox Cogne: FUP");
+const n = (k) => [...Array(k)].map((_, i) => it(`T-2${i}`, `Item ${i}`));
+const linha = (f) => linhaEmTexto(saudar("André", 1, em("2026-11-11T10:00:00"), com(f)).linha);
+const trechos = (f) => saudar("André", 1, em("2026-11-11T10:00:00"), com(f)).linha;
+checa("ganho vem antes de tudo, pelo nome", linha({ ganhosRecentes: [{ ref: "C-1", conta: "Medley" }], diasFora: 9, meus: { vencidos: [T1] } }), "Virou Ganho: Medley.");
+checa("dois ganhos", linha({ ganhosRecentes: [{ ref: "C-1", conta: "Medley" }, { ref: "C-2", conta: "Galena" }] }), "Viraram Ganho: Medley e Galena.");
+checa("ganho é link para o card", trechos({ ganhosRecentes: [{ ref: "C-1", conta: "Medley" }] })[1], { texto: "Medley", ref: "C-1" });
+checa("volta depois de dias fora, com o que espera", linha({ diasFora: 4, meus: { vencidos: [T1], hoje: [T2] } }), "De volta depois de 4 dias. Esperando você: Desenvolver POC Vetnil e Revisar contrato EMS.");
+checa("dois dias fora não é 'de volta'", /De volta/.test(linha({ diasFora: 2, meus: { hoje: [T1] } })), false);
+checa("vencido vem antes de hoje, e avisa o de hoje", linha({ meus: { vencidos: [T1], hoje: [T2, C1] } }), "Passou do prazo: Desenvolver POC Vetnil. Hoje vencem mais 2.");
+checa("vence hoje: cita o item", linha({ meus: { hoje: [C1] } }), "Vence hoje: Metalinox Cogne: FUP.");
+checa("o item de hoje é link para abrir", trechos({ meus: { hoje: [T1] } })[1], { texto: "Desenvolver POC Vetnil", ref: "T-1045" });
+checa("muitos: dois com link e o resto vai ao cronograma", trechos({ meus: { hoje: n(5) } }).at(-2), { texto: "mais 3", ir: "cronograma" });
+checa("vence amanhã", linha({ meus: { amanha: [T1] } }), "Nada para hoje. Amanhã vence Desenvolver POC Vetnil.");
+checa("em dia: aponta o próximo prazo", linha({ meus: { proximo: it("T-1", "Enviar proposta", "2026-11-18"), abertos: 3 } }), "Nada seu vence hoje nem amanhã. Próximo prazo: Enviar proposta, em 18/11.");
+checa("título longo é cortado", trechos({ meus: { hoje: [it("T-9", "x".repeat(80))] } })[1].texto.length, 48);
+checa("sem nada no nome: fala do time", linha({ time: { vencidos: [T1] } }), "Fora do prazo no time: Desenvolver POC Vetnil.");
+checa("nada de nada: frase calma", linha({}), "Nenhum prazo apertado no time.");
 
-console.log("\n3. não cansa");
-const formas = (f, id = 1) => new Set([...Array(14)].map((_, i) => saudar("André", id, new Date(2026, 10, 2 + i, 10), com(f)).linha));
-checa("mesma situação, formas diferentes ao longo de duas semanas", formas({ meus: { vencidos: 2 } }).size >= 3, true);
-checa("dia livre também varia", formas({ meus: { abertos: 4 } }).size >= 3, true);
-const seguidos = [...Array(30)].map((_, i) => saudar("André", 1, new Date(2026, 10, 2 + i, 10), com({ meus: { hoje: 2 } })).linha);
-checa("dois dias seguidos nunca repetem a mesma forma", seguidos.every((l, i) => i === 0 || l !== seguidos[i - 1]), true);
-const a = saudar("André", 1, em("2026-11-11T09:00:00"), com({ meus: { hoje: 2 } }));
-const b = saudar("André", 1, em("2026-11-11T11:45:00"), com({ meus: { hoje: 2 } }));
+console.log("\n3. estável");
+const a = saudar("André", 1, em("2026-11-11T09:00:00"), com({ meus: { hoje: [T1] } }));
+const b = saudar("André", 1, em("2026-11-11T11:45:00"), com({ meus: { hoje: [T1] } }));
 checa("no mesmo dia a frase não muda a cada recarga", a, b);
-checa("pessoas diferentes não leem todas a mesma forma no mesmo dia",
-  new Set([1, 2, 3, 4].map((id) => saudar("X", id, em("2026-11-11T10:00:00"), com({ meus: { vencidos: 2 } })).linha)).size >= 2, true);
 checa("número do dia muda à meia-noite local", numeroDoDia(new Date(2026, 10, 11, 23, 59)) + 1, numeroDoDia(new Date(2026, 10, 12, 0, 1)));
 
 console.log(`\n${ok} passaram, ${ruim} falharam`);

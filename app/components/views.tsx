@@ -4,6 +4,7 @@
 // devolvem eventos. Quem decide o que pode ser alterado é o servidor — `podeEditar` que
 // chega em cada registro é o eco daquela decisão, usado só para desenhar o estado.
 
+import type { Saudacao } from "@/lib/saudacao";
 import { useEffect, useState, type CSSProperties, type MouseEvent, type ReactNode, type RefObject, useRef } from "react";
 import { Button, Field, Input, Select } from "./ds";
 import { C, GHOST_FIX, MONO, SANS, dot, eyebrow, mesh, statusColor, R } from "./tokens";
@@ -45,7 +46,7 @@ export type LinhaFoco = {
 };
 export type PainelDados = {
   /** "Boa tarde, André!" e a linha do dia (lib/saudacao.ts). */
-  saudacao: { titulo: string; linha: string };
+  saudacao: Saudacao;
   focoComercial: LinhaFoco[];
   focoAtividades: LinhaFoco[];
   logs: LogEntry[];
@@ -503,7 +504,7 @@ export function Atividades({
                 style={{
                   padding: "14px 16px",
                   fontSize: 13,
-                  color: area.color,
+                  color: area.ink,
                   display: "flex",
                   alignItems: "center",
                   gap: 8,
@@ -1548,7 +1549,7 @@ export function Drawer({
         <div style={{ padding: "24px 26px", borderBottom: `1px solid ${C.line}` }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
             <div>
-              <div style={eyebrow(10, a.color)}>{a.label}</div>
+              <div style={eyebrow(10, a.ink)}>{a.label}</div>
               <TituloEditavel titulo={act.titulo} editavel={editavel} onSalvar={onTitulo} />
             </div>
             <span

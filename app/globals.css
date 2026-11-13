@@ -604,6 +604,8 @@ textarea::placeholder {
   --cop-ink-warning: color-mix(in srgb, var(--liff-warning) 50%, var(--liff-obsidiana));
   --cop-ink-bloqueio: color-mix(in srgb, var(--liff-warning) 42%, var(--liff-obsidiana));
 }
+/* A cor do produto chega viva; no claro o texto sobre ela precisa de mais Obsidiana. */
+:root[data-theme="light"] .cop { --cop-area-ink: color-mix(in srgb, var(--cop-area) 45%, var(--liff-text)); }
 .cop {
   --cop-area-ink: color-mix(in srgb, var(--cop-area) 58%, var(--liff-text));
   display: flex; flex-direction: column; gap: 14px; padding: 16px;

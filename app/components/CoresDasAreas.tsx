@@ -4,9 +4,14 @@
 // (`--liff-app-area-<id>`). Fazendo assim, mudar a cor de um produto no cadastro repinta
 // tudo — chip, card, barra, tabela, auditoria — sem que nenhum componente saiba disso.
 //
-// E é o que preserva o comportamento de tema: no claro a cor escolhida é escurecida por
-// mistura com Obsidiana, exatamente como os tons Mid do kit precisavam ser para segurar
-// sobre Floral White.
+// São duas variáveis por produto:
+//   --liff-app-area-<id>      a cor do cadastro, sem mexer. Vale para tudo que é MARCA de
+//                             cor: bolinha, faixa do card, barra de gráfico. É a mesma nos
+//                             dois temas, para o produto ter a cor que foi escolhida.
+//   --liff-app-area-<id>-ink  a mesma cor para TEXTO. No claro é escurecida com Obsidiana,
+//                             porque uma cor viva não segura leitura sobre Floral White.
+// Antes havia uma só, escurecida no claro para servir ao texto — e as marcas pagavam junto:
+// todas ficavam acinzentadas e parecidas entre si.
 
 import type { AreaCadastro } from "./api";
 
@@ -20,8 +25,8 @@ export default function CoresDasAreas({ areas }: { areas: AreaCadastro[] }) {
   const css = validas
     .map(
       (a) =>
-        `:root{--liff-app-area-${a.id}:${a.cor};}` +
-        `:root[data-theme="light"]{--liff-app-area-${a.id}:color-mix(in srgb, ${a.cor} 74%, var(--liff-obsidiana));}`
+        `:root,:root[data-theme="light"]{--liff-app-area-${a.id}:${a.cor};--liff-app-area-${a.id}-ink:${a.cor};}` +
+        `:root[data-theme="light"]{--liff-app-area-${a.id}-ink:color-mix(in srgb, ${a.cor} 62%, var(--liff-obsidiana));}`
     )
     .join("\n");
 

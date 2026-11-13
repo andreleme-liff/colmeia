@@ -227,7 +227,8 @@ export function normalizarTexto(texto: string): string {
     .trim();
 }
 
-export type Area = { id: string; label: string; short: string; color: string };
+/** `color` é a marca (bolinha, faixa, barra); `ink` é a mesma cor para texto, ajustada ao tema. */
+export type Area = { id: string; label: string; short: string; color: string; ink: string };
 
 /**
  * Registro em memória do cadastro de áreas, preenchido pelo cliente com o que vem do banco.
@@ -237,11 +238,11 @@ export type Area = { id: string; label: string; short: string; color: string };
  *
  * O padrão abaixo vale para o servidor e para o primeiro render, antes de o estado carregar.
  */
-let registroAreas: Area[] = AREAS.map((a) => ({ ...a }));
+let registroAreas: Area[] = AREAS.map((a) => ({ ...a, ink: a.color }));
 
 export function setAreas(lista: { id: string; label: string; short: string }[]): void {
   if (!lista?.length) return;
-  registroAreas = lista.map((a) => ({ ...a, color: `var(--liff-app-area-${a.id})` }));
+  registroAreas = lista.map((a) => ({ ...a, color: `var(--liff-app-area-${a.id})`, ink: `var(--liff-app-area-${a.id}-ink, var(--liff-app-area-${a.id}))` }));
 }
 
 export function todasAreas(): Area[] {
@@ -255,6 +256,7 @@ export function areaOf(id: string): Area {
       label: "—",
       short: "—",
       color: "var(--liff-text-faint)",
+      ink: "var(--liff-text-faint)",
     }
   );
 }
