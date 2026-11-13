@@ -28,15 +28,14 @@
      (Charcoal), no claro precisa se separar dela para continuar legível. */
   --liff-app-ghost: var(--liff-charcoal);
 
-  /* Placeholder: um passo abaixo do cinza apagado, misturado com a própria
-     superfície. Derivado de tokens que os dois temas redefinem, então recalcula
-     sozinho no claro e no escuro — não precisa de par no bloco de baixo.
+  /* Placeholder: bem abaixo do cinza apagado, misturado com a própria superfície.
+     Derivado de tokens que os dois temas redefinem, então recalcula sozinho no
+     claro e no escuro — não precisa de par no bloco de baixo.
 
-     A proporção é medida, não estética: 78% dá 3,47:1 sobre a superfície, contra
-     17,2:1 do texto real. Distingue exemplo de conteúdo por um fator de cinco e
-     ainda fica acima de 3:1, o piso abaixo do qual quem enxerga pouco perde os
-     exemplos de vez. Mais claro que isto e o campo fica limpo demais para ajudar. */
-  --liff-app-placeholder: color-mix(in srgb, var(--liff-text-faint) 78%, var(--liff-surface));
+     Em 78% o exemplo ainda era lido como campo preenchido. Em 50% fica perto de
+     2:1 sobre o campo: abaixo do piso de 3:1 de texto, de propósito — placeholder
+     aqui é só exemplo, e a instrução de cada campo está no rótulo e na dica. */
+  --liff-app-placeholder: color-mix(in srgb, var(--liff-text-faint) 50%, var(--liff-surface));
 
   /* Cores de estado como TEXTO. No escuro são as do design system. */
   --liff-app-success-ink: var(--liff-success);
