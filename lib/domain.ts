@@ -144,9 +144,10 @@ export const NAV = [
   // matriz de permissões) virou parte de Cadastros → Pessoas; `/admin` redireciona para lá.
   // Contas a receber: emissão e baixa das faturas que saem dos contratos da receita.
   { key: "faturamento", label: "faturamento", soAdmin: true },
-  // Funding AWS: consumo previsto por oportunidade (conta LIFF e conta do cliente), arquétipos
-  // de implantação com as calculadoras oficiais e os programas (POC, MAP, Sandbox…).
-  { key: "funding", label: "funding", soAdmin: true },
+  // ACE e Funding (AWS): consumo previsto por oportunidade (conta LIFF e conta do cliente),
+  // arquétipos de implantação com as calculadoras oficiais e os programas (POC, MAP, Sandbox…).
+  // A chave e o endereço continuam `funding`, para não quebrar links nem o histórico.
+  { key: "funding", label: "ace e funding", soAdmin: true },
   // Registro de todas as alterações (a antiga Auditoria). Só admin desde nov/2026; o endereço
   // continua /auditoria para não quebrar links. O histórico de cada card segue no próprio card.
   { key: "auditoria", label: "changelog", soAdmin: true },
@@ -162,7 +163,7 @@ export const TITLES: Record<string, string> = {
   clientes: "Organizações",
   receita: "Forecast de receita",
   faturamento: "Faturamento · contas a receber",
-  funding: "Funding AWS",
+  funding: "ACE e Funding",
   auditoria: "Changelog",
   conexoes: "MCP Server",
 };
