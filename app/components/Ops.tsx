@@ -434,44 +434,31 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     const agora = new Date(agoraMs);
     const hojeLocal = diaISO(agora);
     const amanhaLocal = diaISO(new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + 1));
-    // Cada prazo aberto vira um item citável na linha: a tarefa pelo título; a oportunidade pela
-    // conta e pelo próximo passo, que é o que vence. Ordenados pelo prazo, o mais antigo antes.
     const prazos = [
-      ...estado.activities
-        .filter((a) => a.status !== "concluido")
-        .map((a) => ({ meu: a.responsavelId === me.id, ref: a.ref, titulo: a.titulo, prazo: a.prazo?.slice(0, 10) ?? null })),
-      ...estado.deals
-        .filter((d) => estagioEmAberto(d.estagio))
-        .map((d) => ({
-          meu: d.responsavelId === me.id,
-          ref: d.ref,
-          titulo: d.proximoPasso ? `${d.conta}: ${d.proximoPasso}` : d.conta,
-          prazo: d.proximoPassoEm?.slice(0, 10) ?? null,
-        })),
-    ].sort((a, b) => (a.prazo ?? "9999").localeCompare(b.prazo ?? "9999") || a.ref.localeCompare(b.ref));
-    const itens = (meu: boolean | null, teste: (p: string) => boolean) =>
-      prazos.filter((x) => (meu === null || x.meu === meu) && !!x.prazo && teste(x.prazo));
+      ...estado.activities.filter((a) => a.status !== "concluido").map((a) => ({ meu: a.responsavelId === me.id, prazo: a.prazo })),
+      ...estado.deals.filter((d) => estagioEmAberto(d.estagio)).map((d) => ({ meu: d.responsavelId === me.id, prazo: d.proximoPassoEm })),
+    ];
+    const conta = (meu: boolean | null, teste: (p: string) => boolean) =>
+      prazos.filter((x) => (meu === null || x.meu === meu) && !!x.prazo && teste(x.prazo.slice(0, 10))).length;
     const ha48h = agoraMs - 48 * 3600 * 1000;
     const ganhosRecentes = [
-      ...new Map(
+      ...new Set(
         estado.logs
           .filter((l) => / para Ganho$/.test(l.texto) && Date.parse(l.criadoEm) >= ha48h)
-          .map((l) => estado.deals.find((d) => d.ref === l.entidade && d.estagio === "ganho"))
-          .filter((d): d is NonNullable<typeof d> => !!d)
-          .map((d) => [d.ref, { ref: d.ref, conta: d.conta }] as const)
-      ).values(),
+          .map((l) => estado.deals.find((d) => d.ref === l.entidade && d.estagio === "ganho")?.conta)
+          .filter((c): c is string => !!c)
+      ),
     ];
     const saudacao = saudar(me.nome.split(" ")[0], me.id, agora, {
       ganhosRecentes,
       diasFora,
       meus: {
-        vencidos: itens(true, (p) => p < hojeLocal),
-        hoje: itens(true, (p) => p === hojeLocal),
-        amanha: itens(true, (p) => p === amanhaLocal),
-        proximo: itens(true, (p) => p > amanhaLocal)[0] ?? null,
+        vencidos: conta(true, (p) => p < hojeLocal),
+        hoje: conta(true, (p) => p === hojeLocal),
+        amanha: conta(true, (p) => p === amanhaLocal),
         abertos: prazos.filter((x) => x.meu).length,
       },
-      time: { vencidos: itens(null, (p) => p < hojeLocal), hoje: itens(null, (p) => p === hojeLocal) },
+      time: { vencidos: conta(null, (p) => p < hojeLocal), hoje: conta(null, (p) => p === hojeLocal) },
     });
 
     const painel: PainelDados = {

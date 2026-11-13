@@ -4,7 +4,6 @@
 // devolvem eventos. Quem decide o que pode ser alterado é o servidor — `podeEditar` que
 // chega em cada registro é o eco daquela decisão, usado só para desenhar o estado.
 
-import type { Saudacao } from "@/lib/saudacao";
 import { useEffect, useState, type CSSProperties, type MouseEvent, type ReactNode, type RefObject, useRef } from "react";
 import { Button, Field, Input, Select } from "./ds";
 import { C, GHOST_FIX, MONO, SANS, dot, eyebrow, mesh, statusColor, R } from "./tokens";
@@ -46,7 +45,7 @@ export type LinhaFoco = {
 };
 export type PainelDados = {
   /** "Boa tarde, André!" e a linha do dia (lib/saudacao.ts). */
-  saudacao: Saudacao;
+  saudacao: { titulo: string; linha: string };
   focoComercial: LinhaFoco[];
   focoAtividades: LinhaFoco[];
   logs: LogEntry[];
