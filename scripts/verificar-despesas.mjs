@@ -2,7 +2,8 @@
 // faixas de vencimento, validações e CSV. Sem banco. `node scripts/verificar-despesas.mjs`
 import {
   CATEGORIAS_SEMENTE, GRUPO_KEYS, compromissoMensal, contasDoMes, csvDasDespesas, diasVencida, faixasAPagar, lerCategoria, lerDespesa,
-  lerFavorecido, lerPagamento, lerRecorrencia, mediaPaga, porCategoria, recorrenciaAtivaEm, statusDaDespesa, vencimentoDaRecorrencia,
+  faturasAbertas, lerFavorecido, lerPagamento, lerRecorrencia, mediaPaga, porCategoria, recorrenciaAtivaEm, statusDaDespesa,
+  vencimentoDaRecorrencia, vencimentoDoCartao,
 } from "../lib/despesas.ts";
 
 let ok = 0, falhas = 0;
@@ -15,13 +16,14 @@ const cats = [
   { id: 3, nome: "Infraestrutura de nuvem e IA", grupo: "custo", ativo: true },
 ];
 const favs = [
-  { id: 1, nome: "Ana Dev ME", tipo: "colaborador_pj", documento: "", contato: "", pagamento: "", notas: "", ativo: true },
-  { id: 2, nome: "Cartão final 1234", tipo: "cartao", documento: "", contato: "", pagamento: "", notas: "", ativo: true },
+  { id: 1, nome: "Ana Dev ME", tipo: "colaborador_pj", documento: "", contato: "", pagamento: "", diaFechamento: null, diaVencimento: null, notas: "", ativo: true },
+  { id: 2, nome: "Cartão final 1234", tipo: "cartao", documento: "", contato: "", pagamento: "", diaFechamento: 25, diaVencimento: 5, notas: "", ativo: true },
+  { id: 3, nome: "AWS", tipo: "fornecedor", documento: "", contato: "", pagamento: "", diaFechamento: null, diaVencimento: null, notas: "", ativo: true },
 ];
 const rec = (o) => ({ id: 1, favorecidoId: 1, categoriaId: 1, area: null, descricao: "Engenharia", valorCentavos: 1500000, diaVencimento: 5,
-  venceMesSeguinte: true, forma: "pix", inicio: "2026-10", fim: null, notas: "", ...o });
+  venceMesSeguinte: true, forma: "pix", cartaoId: null, inicio: "2026-10", fim: null, notas: "", ...o });
 const desp = (o) => ({ id: 1, ref: "P-0001", favorecidoId: 1, favorecido: "Ana Dev ME", categoriaId: 1, area: null, recorrenciaId: null,
-  competencia: "2026-11", descricao: "", valorCentavos: 100000, vencimento: "2026-11-20", forma: "pix", documento: "", status: "aberta",
+  competencia: "2026-11", descricao: "", valorCentavos: 100000, vencimento: "2026-11-20", forma: "pix", cartaoId: null, documento: "", status: "aberta",
   pagoEm: null, valorPagoCentavos: null, canceladaEm: null, motivoCancelamento: "", notas: "", itens: [], ...o });
 
 console.log("situação");
@@ -38,6 +40,25 @@ checa("PJ vence no mês seguinte", vencimentoDaRecorrencia(rec({}), "2026-11"), 
 checa("dezembro vence em janeiro do outro ano", vencimentoDaRecorrencia(rec({}), "2026-12"), "2027-01-05");
 checa("assinatura vence no próprio mês", vencimentoDaRecorrencia(rec({ venceMesSeguinte: false, diaVencimento: 28 }), "2027-02"), "2027-02-28");
 checa("gasto fixo soma só as ativas", compromissoMensal([rec({}), rec({ id: 2, valorCentavos: 500000, fim: "2026-10" }), rec({ id: 3, valorCentavos: 20000, inicio: "2027-01" })], "2026-11"), 1500000);
+
+console.log("\ncartão");
+const CARTAO = favs[1]; // fecha dia 25, vence dia 5
+checa("compra antes do fechamento cai na fatura que vence no mês seguinte", vencimentoDoCartao(CARTAO, "2026-11-16"), "2026-12-05");
+checa("compra no dia do fechamento ainda entra", vencimentoDoCartao(CARTAO, "2026-11-25"), "2026-12-05");
+checa("compra depois do fechamento vai para a fatura seguinte", vencimentoDoCartao(CARTAO, "2026-11-26"), "2027-01-05");
+checa("vencimento depois do fechamento no mesmo mês", vencimentoDoCartao({ diaFechamento: 3, diaVencimento: 10 }, "2026-11-02"), "2026-11-10");
+checa("idem, compra depois do fechamento", vencimentoDoCartao({ diaFechamento: 3, diaVencimento: 10 }, "2026-11-04"), "2026-12-10");
+checa("cartão sem os dias devolve a própria data", vencimentoDoCartao({ diaFechamento: null, diaVencimento: null }, "2026-11-16"), "2026-11-16");
+checa("recorrência no cartão: o vencimento é o da fatura da cobrança",
+  vencimentoDaRecorrencia(rec({ forma: "cartao", cartaoId: 2, diaVencimento: 3, venceMesSeguinte: false }), "2026-11", CARTAO), "2026-12-05");
+checa("recorrência no banco ignora o cartão", vencimentoDaRecorrencia(rec({}), "2026-11", CARTAO), "2026-12-05");
+const aws = (o) => desp({ favorecidoId: 3, favorecido: "AWS", categoriaId: 3, forma: "cartao", cartaoId: 2, vencimento: "2026-12-05", ...o });
+const fats = faturasAbertas([aws({ id: 20, valorCentavos: 60000 }), aws({ id: 21, valorCentavos: 30000 }), aws({ id: 22, vencimento: "2027-01-05", valorCentavos: 5000 }),
+  aws({ id: 23, status: "paga" }), desp({ id: 24 }), aws({ id: 25, cartaoId: 7, valorCentavos: 100 })]);
+checa("faturas: uma por cartão e vencimento, só o que está em aberto no cartão", fats.map((f) => [f.cartaoId, f.vencimento, f.despesas.length, f.valorCentavos]),
+  [[2, "2026-12-05", 2, 90000], [7, "2026-12-05", 1, 100], [2, "2027-01-05", 1, 5000]]);
+const prevCartao = contasDoMes([rec({ id: 9, favorecidoId: 3, categoriaId: 3, forma: "cartao", cartaoId: 2, diaVencimento: 3, venceMesSeguinte: false })], favs, [], "2026-11", HOJE);
+checa("prevista no cartão já aponta a fatura e o cartão", prevCartao.map((l) => [l.favorecido, l.forma, l.cartaoId, l.vencimento]), [["AWS", "cartao", 2, "2026-12-05"]]);
 
 console.log("\no mês");
 const recs = [rec({}), rec({ id: 2, favorecidoId: 1, descricao: "Encerrada", fim: "2026-10" })];
@@ -78,7 +99,15 @@ checa("conta simples ok", (({ valorCentavos, categoriaId, itens }) => [valorCent
 checa("sem favorecido", lerDespesa({ ...base, favorecidoId: "" }), "Escolha o favorecido.");
 checa("competência no formato errado", lerDespesa({ ...base, competencia: "11/2026" }), "Competência inválida (AAAA-MM).");
 checa("vencimento que não existe", lerDespesa({ ...base, vencimento: "2026-13-40" }), "Informe o vencimento.");
-checa("cartão não é forma de pagamento", lerDespesa({ ...base, forma: "cartao" }), "Escolha a forma de pagamento.");
+checa("forma inventada", lerDespesa({ ...base, forma: "cheque" }), "Escolha a forma de pagamento.");
+checa("cartão sem dizer qual", lerDespesa({ ...base, forma: "cartao" }), "Escolha em qual cartão a despesa é paga.");
+checa("no cartão guarda o cartão", (({ forma, cartaoId }) => [forma, cartaoId])(lerDespesa({ ...base, forma: "cartao", cartaoId: "2" })), ["cartao", 2]);
+checa("pelo banco descarta o cartão que vier", lerDespesa({ ...base, cartaoId: 2 }).cartaoId, null);
+checa("recorrência no cartão sem cartão", lerRecorrencia({ favorecidoId: 3, categoriaId: 3, valorCentavos: 1, diaVencimento: 3, forma: "cartao", inicio: "2026-10" }), "Escolha em qual cartão a despesa é paga.");
+checa("cartão guarda fechamento e vencimento", (({ diaFechamento, diaVencimento }) => [diaFechamento, diaVencimento])(lerFavorecido({ nome: "Cartão", tipo: "cartao", diaFechamento: "25", diaVencimento: 5 })), [25, 5]);
+checa("cartão com um dia só", lerFavorecido({ nome: "Cartão", tipo: "cartao", diaFechamento: 25 }), "Informe o dia de fechamento e o de vencimento do cartão, ou nenhum dos dois.");
+checa("dia 30 não serve", lerFavorecido({ nome: "Cartão", tipo: "cartao", diaFechamento: 30, diaVencimento: 5 }), "Os dias de fechamento e de vencimento vão de 1 a 28.");
+checa("quem não é cartão não guarda os dias", lerFavorecido({ nome: "AWS", tipo: "fornecedor", diaFechamento: 25, diaVencimento: 5 }).diaFechamento, null);
 checa("sem categoria", lerDespesa({ ...base, categoriaId: null }), "Escolha a categoria.");
 checa("valor zero", lerDespesa({ ...base, valorCentavos: 0 }), "Informe o valor.");
 checa("valor quebrado", lerDespesa({ ...base, valorCentavos: 10.5 }), "Informe o valor.");

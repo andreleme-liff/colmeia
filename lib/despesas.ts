@@ -21,10 +21,17 @@
 // novembro); vencimento é quando o dinheiro sai (5 de dezembro). A tela do mês organiza por
 // competência, que é o que a DRE vai usar; a aba "a pagar" organiza por vencimento, que é o caixa.
 //
-// CARTÃO CORPORATIVO: a fatura do cartão é UMA conta a pagar (o favorecido é o cartão), e as
-// compras entram como ITENS dela, cada uma com a sua categoria. Assim o caixa enxerga um
-// pagamento só e o resumo por categoria enxerga cada compra. Por isso "cartão" não é forma
-// de pagamento aqui: uma compra no cartão é item da fatura, nunca uma conta separada.
+// COMO SE PAGA: toda despesa diz por onde o dinheiro sai. Pelo BANCO (PIX, boleto,
+// transferência, débito automático) ela é uma conta a pagar sozinha. No CARTÃO corporativo
+// ela continua sendo uma despesa própria (AWS, com a sua categoria e a sua competência), mas
+// quem se paga é a fatura: o vencimento da despesa é o da fatura em que ela cai, e a aba "a
+// pagar" junta as despesas do mesmo cartão e do mesmo vencimento numa linha só, paga de uma vez.
+// O cartão é um favorecido do tipo "cartao", com dia de fechamento e de vencimento, que é de
+// onde sai a sugestão de em qual fatura cada compra entra.
+//
+// ITENS: uma conta ainda pode ser detalhada em itens com categorias diferentes. Foi o
+// primeiro jeito de lançar a fatura do cartão (uma conta, compras como itens); continua
+// lido e corrigível para o que já existe, mas a tela não oferece mais para conta nova.
 
 import { mesDe, somarMeses } from "./forecast.ts";
 
@@ -57,7 +64,10 @@ export const FORMAS_PAGAMENTO = [
   { key: "boleto", label: "Boleto" },
   { key: "transferencia", label: "Transferência" },
   { key: "debito", label: "Débito automático" },
+  { key: "cartao", label: "Cartão corporativo" },
 ] as const;
+/** As formas que saem direto da conta do banco (todas menos o cartão). */
+export const FORMAS_BANCO = FORMAS_PAGAMENTO.filter((f) => f.key !== "cartao");
 export type FormaPagamento = (typeof FORMAS_PAGAMENTO)[number]["key"];
 export const FORMA_PAGAMENTO_KEYS = FORMAS_PAGAMENTO.map((f) => f.key) as readonly string[];
 export const rotuloFormaPagamento = (k: string | null | undefined) => FORMAS_PAGAMENTO.find((f) => f.key === k)?.label ?? "—";
@@ -92,6 +102,9 @@ export type Favorecido = {
   contato: string;
   /** Como pagar: chave PIX, banco e conta. Texto livre. */
   pagamento: string;
+  /** Só para cartão: dia em que a fatura fecha e dia em que vence (1 a 28). */
+  diaFechamento: number | null;
+  diaVencimento: number | null;
   notas: string;
   ativo: boolean;
 };
@@ -109,6 +122,8 @@ export type Recorrencia = {
   /** PJ costuma receber no mês seguinte ao do serviço. */
   venceMesSeguinte: boolean;
   forma: FormaPagamento;
+  /** O cartão em que é cobrada, quando a forma é cartão. */
+  cartaoId: number | null;
   /** Primeira e última competência ("YYYY-MM"). `fim` nulo = sem data para acabar. */
   inicio: string;
   fim: string | null;
@@ -149,8 +164,11 @@ export type Despesa = {
   competencia: string;
   descricao: string;
   valorCentavos: number;
+  /** Quando o dinheiro sai: o vencimento da conta ou, no cartão, o da fatura em que ela cai. */
   vencimento: string;
   forma: FormaPagamento;
+  /** O cartão em que foi paga, quando a forma é cartão. */
+  cartaoId: number | null;
   /** Número da nota fiscal, do boleto ou da fatura. */
   documento: string;
   status: StatusGravado;
@@ -188,10 +206,35 @@ export function recorrenciaAtivaEm(r: Pick<Recorrencia, "inicio" | "fim">, compe
   return competencia >= r.inicio && (r.fim == null || competencia <= r.fim);
 }
 
-/** Vencimento da conta de uma competência: o dia combinado, no próprio mês ou no seguinte. */
-export function vencimentoDaRecorrencia(r: Pick<Recorrencia, "diaVencimento" | "venceMesSeguinte">, competencia: string): string {
+type DiasDoCartao = Pick<Favorecido, "diaFechamento" | "diaVencimento">;
+
+/**
+ * Vencimento da fatura em que cai uma compra feita em `dataCompra`. Compra até o dia do
+ * fechamento entra na fatura que fecha naquele mês; depois dele, na do mês seguinte. A fatura
+ * vence no primeiro dia de vencimento depois do fechamento. Cartão sem os dois dias
+ * cadastrados não tem como sugerir: devolve a própria data.
+ */
+export function vencimentoDoCartao(cartao: DiasDoCartao | null | undefined, dataCompra: string): string {
+  if (!cartao?.diaFechamento || !cartao.diaVencimento) return dataCompra;
+  const mesCompra = mesDe(dataCompra);
+  const fecha = Number(dataCompra.slice(8, 10)) <= cartao.diaFechamento ? mesCompra : somarMeses(mesCompra, 1);
+  const vence = cartao.diaVencimento > cartao.diaFechamento ? fecha : somarMeses(fecha, 1);
+  return `${vence}-${String(cartao.diaVencimento).padStart(2, "0")}`;
+}
+
+/**
+ * Vencimento da conta de uma competência: o dia combinado, no próprio mês ou no seguinte.
+ * Recorrência cobrada no cartão: o dia combinado é o da cobrança, e o vencimento é o da
+ * fatura em que essa cobrança cai.
+ */
+export function vencimentoDaRecorrencia(
+  r: Pick<Recorrencia, "diaVencimento" | "venceMesSeguinte"> & Partial<Pick<Recorrencia, "forma">>,
+  competencia: string,
+  cartao?: DiasDoCartao | null
+): string {
   const mes = r.venceMesSeguinte ? somarMeses(competencia, 1) : competencia;
-  return `${mes}-${String(r.diaVencimento).padStart(2, "0")}`;
+  const dia = `${mes}-${String(r.diaVencimento).padStart(2, "0")}`;
+  return r.forma === "cartao" ? vencimentoDoCartao(cartao, dia) : dia;
 }
 
 /** Quanto as recorrências comprometem numa competência: o gasto fixo do mês. */
@@ -214,6 +257,8 @@ export type ContaDoMes = {
   /** Valor lançado, ou o da recorrência enquanto é previsão. */
   valorCentavos: number;
   vencimento: string;
+  forma: FormaPagamento;
+  cartaoId: number | null;
   status: StatusDespesa;
   despesa: Despesa | null;
   /** Contas canceladas desta mesma linha (histórico de relançamento). */
@@ -233,6 +278,7 @@ export function contasDoMes(
 ): ContaDoMes[] {
   const doMes = despesas.filter((d) => d.competencia === competencia);
   const nome = new Map(favorecidos.map((f) => [f.id, f.nome]));
+  const porId = new Map(favorecidos.map((f) => [f.id, f]));
   const usadas = new Set<number>();
   const linhas: ContaDoMes[] = [];
 
@@ -252,7 +298,9 @@ export function contasDoMes(
       descricao: viva?.descricao || r.descricao,
       competencia,
       valorCentavos: viva ? viva.valorCentavos : r.valorCentavos,
-      vencimento: viva ? viva.vencimento : vencimentoDaRecorrencia(r, competencia),
+      vencimento: viva ? viva.vencimento : vencimentoDaRecorrencia(r, competencia, r.cartaoId == null ? null : porId.get(r.cartaoId)),
+      forma: viva ? viva.forma : r.forma,
+      cartaoId: viva ? viva.cartaoId : r.cartaoId,
       status: viva ? statusDaDespesa(viva, hoje) : "prevista",
       despesa: viva,
       canceladas: mesmas.filter((d) => d.status === "cancelada"),
@@ -272,6 +320,8 @@ export function contasDoMes(
       competencia,
       valorCentavos: d.valorCentavos,
       vencimento: d.vencimento,
+      forma: d.forma,
+      cartaoId: d.cartaoId,
       status: statusDaDespesa(d, hoje),
       despesa: d,
       canceladas: [],
@@ -336,6 +386,25 @@ export function faixasAPagar(despesas: Despesa[], hoje: string): { key: string; 
   });
 }
 
+export type FaturaCartao = { chave: string; cartaoId: number; vencimento: string; despesas: Despesa[]; valorCentavos: number };
+
+/**
+ * As despesas em aberto pagas no cartão, juntas por cartão e por vencimento: cada grupo é uma
+ * fatura a pagar. É o que a aba "a pagar" mostra no lugar das despesas soltas.
+ */
+export function faturasAbertas(despesas: Despesa[]): FaturaCartao[] {
+  const grupos = new Map<string, FaturaCartao>();
+  for (const d of despesas) {
+    if (d.status !== "aberta" || d.forma !== "cartao" || d.cartaoId == null) continue;
+    const chave = `${d.cartaoId}|${d.vencimento}`;
+    const g = grupos.get(chave) ?? { chave, cartaoId: d.cartaoId, vencimento: d.vencimento, despesas: [], valorCentavos: 0 };
+    g.despesas.push(d);
+    g.valorCentavos += d.valorCentavos;
+    grupos.set(chave, g);
+  }
+  return [...grupos.values()].sort((a, b) => a.vencimento.localeCompare(b.vencimento) || a.cartaoId - b.cartaoId);
+}
+
 /** Média do que foi efetivamente pago nos `meses` meses fechados antes de `hoje` (o "burn"). */
 export function mediaPaga(despesas: Despesa[], hoje: string, meses = 3): number {
   const atual = mesDe(hoje);
@@ -361,6 +430,22 @@ const idDe = (v: unknown): number | null => {
   const n = typeof v === "number" ? v : typeof v === "string" && v.trim() !== "" ? Number(v) : NaN;
   return Number.isInteger(n) && n > 0 ? n : null;
 };
+/** Dia do mês de 1 a 28 (existe em todo mês), ou nulo se vier vazio. `false` = inválido. */
+const diaDoMes = (v: unknown): number | null | false => {
+  if (v == null || v === "") return null;
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isInteger(n) && n >= 1 && n <= 28 ? n : false;
+};
+/**
+ * Forma de pagamento e, se for cartão, qual. Fora do cartão o id é descartado. Se o id é
+ * mesmo de um cartão, quem confere é o banco.
+ */
+function lerForma(body: Record<string, unknown>): { forma: FormaPagamento; cartaoId: number | null } | string {
+  if (typeof body.forma !== "string" || !FORMA_PAGAMENTO_KEYS.includes(body.forma)) return "Escolha a forma de pagamento.";
+  if (body.forma !== "cartao") return { forma: body.forma as FormaPagamento, cartaoId: null };
+  const cartaoId = idDe(body.cartaoId);
+  return cartaoId ? { forma: "cartao", cartaoId } : "Escolha em qual cartão a despesa é paga.";
+}
 /** Produto opcional: vazio vira nulo. Se o id existe, quem confere é o banco. */
 const areaDe = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v.trim().slice(0, 60) : null);
 type Corpo = Record<string, unknown> | null;
@@ -380,8 +465,16 @@ export function lerFavorecido(body: Corpo): EntradaFavorecido | string {
   const nome = texto(body.nome, LIMITES_DESPESA.nome);
   if (!nome) return "Informe o nome do favorecido.";
   if (typeof body.tipo !== "string" || !TIPO_FAVORECIDO_KEYS.includes(body.tipo)) return "Escolha o tipo do favorecido.";
+  // Fechamento e vencimento só fazem sentido no cartão, e só os dois juntos.
+  const cartao = body.tipo === "cartao";
+  const diaFechamento = cartao ? diaDoMes(body.diaFechamento) : null;
+  const diaVencimento = cartao ? diaDoMes(body.diaVencimento) : null;
+  if (diaFechamento === false || diaVencimento === false) return "Os dias de fechamento e de vencimento vão de 1 a 28.";
+  if ((diaFechamento == null) !== (diaVencimento == null)) return "Informe o dia de fechamento e o de vencimento do cartão, ou nenhum dos dois.";
   return {
     nome,
+    diaFechamento,
+    diaVencimento,
     tipo: body.tipo as TipoFavorecido,
     documento: texto(body.documento, 30),
     contato: texto(body.contato, 200),
@@ -402,7 +495,8 @@ export function lerRecorrencia(body: Corpo): EntradaRecorrencia | string {
   if (!valor) return "Informe o valor mensal.";
   const dia = typeof body.diaVencimento === "number" ? body.diaVencimento : Number(body.diaVencimento);
   if (!Number.isInteger(dia) || dia < 1 || dia > 28) return "O dia de vencimento vai de 1 a 28.";
-  if (typeof body.forma !== "string" || !FORMA_PAGAMENTO_KEYS.includes(body.forma)) return "Escolha a forma de pagamento.";
+  const como = lerForma(body);
+  if (typeof como === "string") return como;
   const inicio = mes(body.inicio);
   if (!inicio) return "Início inválido (AAAA-MM).";
   const fim = body.fim == null || body.fim === "" ? null : mes(body.fim);
@@ -416,7 +510,8 @@ export function lerRecorrencia(body: Corpo): EntradaRecorrencia | string {
     valorCentavos: valor,
     diaVencimento: dia,
     venceMesSeguinte: body.venceMesSeguinte === true,
-    forma: body.forma as FormaPagamento,
+    forma: como.forma,
+    cartaoId: como.cartaoId,
     inicio,
     fim,
     notas: texto(body.notas, LIMITES_DESPESA.notas),
@@ -433,6 +528,7 @@ export type EntradaDespesa = {
   valorCentavos: number;
   vencimento: string;
   forma: FormaPagamento;
+  cartaoId: number | null;
   documento: string;
   notas: string;
   itens: EntradaItem[];
@@ -450,7 +546,8 @@ export function lerDespesa(body: Corpo): EntradaDespesa | string {
   if (!competencia) return "Competência inválida (AAAA-MM).";
   const vencimento = data(body.vencimento);
   if (!vencimento) return "Informe o vencimento.";
-  if (typeof body.forma !== "string" || !FORMA_PAGAMENTO_KEYS.includes(body.forma)) return "Escolha a forma de pagamento.";
+  const como = lerForma(body);
+  if (typeof como === "string") return como;
 
   const brutos = Array.isArray(body.itens) ? body.itens : [];
   if (brutos.length > LIMITES_DESPESA.itens) return `Uma conta aceita até ${LIMITES_DESPESA.itens} itens.`;
@@ -490,7 +587,8 @@ export function lerDespesa(body: Corpo): EntradaDespesa | string {
     descricao: texto(body.descricao, LIMITES_DESPESA.descricao),
     valorCentavos,
     vencimento,
-    forma: body.forma as FormaPagamento,
+    forma: como.forma,
+    cartaoId: como.cartaoId,
     documento: texto(body.documento, 60),
     notas: texto(body.notas, LIMITES_DESPESA.notas),
     itens,

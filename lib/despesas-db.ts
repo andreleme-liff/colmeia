@@ -24,7 +24,7 @@ export type DadosDespesas = { categorias: Categoria[]; favorecidos: Favorecido[]
 type LinhaDespesa = {
   id: number; ref: string; favorecido_id: number; favorecido: string; categoria_id: number | null; area: string | null;
   recorrencia_id: number | null; competencia: string; descricao: string; valor_centavos: string; vencimento: Date; forma: Despesa["forma"];
-  documento: string; status: Despesa["status"]; pago_em: Date | null; valor_pago_centavos: string | null; cancelada_em: Date | null;
+  cartao_id: number | null; documento: string; status: Despesa["status"]; pago_em: Date | null; valor_pago_centavos: string | null; cancelada_em: Date | null;
   motivo_cancelamento: string; notas: string;
 };
 type LinhaItem = { id: number; despesa_id: number; data: Date | null; descricao: string; categoria_id: number; area: string | null; valor_centavos: string };
@@ -43,6 +43,7 @@ function deLinha(r: LinhaDespesa, itens: ItemDespesa[]): Despesa {
     valorCentavos: Number(r.valor_centavos),
     vencimento: dia(r.vencimento) ?? "",
     forma: r.forma,
+    cartaoId: r.cartao_id,
     documento: r.documento,
     status: r.status,
     pagoEm: dia(r.pago_em),
@@ -60,9 +61,11 @@ const deItem = (i: LinhaItem): ItemDespesa => ({
 export async function lerDespesas(sql: Queryable): Promise<DadosDespesas> {
   const [cats, favs, recs, desp, itens] = await Promise.all([
     sql<Categoria[]>`SELECT id, nome, grupo, ativo FROM despesa_categorias ORDER BY ordem, nome`,
-    sql<Favorecido[]>`SELECT id, nome, tipo, documento, contato, pagamento, notas, ativo FROM despesa_favorecidos ORDER BY nome`,
+    sql<Favorecido[]>`
+      SELECT id, nome, tipo, documento, contato, pagamento, dia_fechamento AS "diaFechamento", dia_vencimento AS "diaVencimento", notas, ativo
+      FROM despesa_favorecidos ORDER BY nome`,
     sql<{ id: number; favorecido_id: number; categoria_id: number; area: string | null; descricao: string; valor_centavos: string;
-      dia_vencimento: number; vence_mes_seguinte: boolean; forma: Recorrencia["forma"]; inicio: string; fim: string | null; notas: string }[]>`
+      dia_vencimento: number; vence_mes_seguinte: boolean; forma: Recorrencia["forma"]; cartao_id: number | null; inicio: string; fim: string | null; notas: string }[]>`
       SELECT * FROM despesa_recorrencias ORDER BY id`,
     sql<LinhaDespesa[]>`SELECT * FROM despesas ORDER BY vencimento DESC, id DESC`,
     sql<LinhaItem[]>`SELECT * FROM despesa_itens ORDER BY despesa_id, ordem, id`,
@@ -75,6 +78,7 @@ export async function lerDespesas(sql: Queryable): Promise<DadosDespesas> {
     recorrencias: recs.map((r) => ({
       id: r.id, favorecidoId: r.favorecido_id, categoriaId: r.categoria_id, area: r.area, descricao: r.descricao,
       valorCentavos: Number(r.valor_centavos), diaVencimento: r.dia_vencimento, venceMesSeguinte: r.vence_mes_seguinte, forma: r.forma,
+      cartaoId: r.cartao_id,
       inicio: r.inicio, fim: r.fim, notas: r.notas,
     })),
     despesas: desp.map((d) => deLinha(d, porDespesa.get(d.id) ?? [])),
@@ -104,6 +108,16 @@ async function areaExiste(tx: Queryable, area: string | null): Promise<boolean> 
   return !!a;
 }
 
+/** O cartão escolhido existe e é mesmo um cartão? Devolve o nome dele, ou a mensagem de erro. */
+async function conferirCartao(tx: Queryable, cartaoId: number | null): Promise<{ nome: string | null } | { erro: string }> {
+  if (cartaoId == null) return { nome: null };
+  const [c] = await tx<{ nome: string; tipo: string }[]>`SELECT nome, tipo FROM despesa_favorecidos WHERE id = ${cartaoId}`;
+  if (!c || c.tipo !== "cartao") return { erro: "Cartão não encontrado. Cadastre o cartão corporativo em Cadastros, como favorecido do tipo cartão." };
+  return { nome: c.nome };
+}
+/** "PIX", "Boleto"… ou "cartão <nome do cartão>". */
+const comoPaga = (forma: string, cartao: string | null) => (forma === "cartao" ? `no cartão ${cartao ?? ""}`.trim() : rotuloFormaPagamento(forma));
+
 /** Confere as referências de uma conta (categoria e produto, da conta e de cada item). */
 async function conferirDespesa(tx: Queryable, e: EntradaDespesa): Promise<string | null> {
   const cats = new Set<number>([...(e.categoriaId != null ? [e.categoriaId] : []), ...e.itens.map((i) => i.categoriaId)]);
@@ -130,9 +144,12 @@ type Resultado = { ok: true; id: number; ref?: string } | { erro: string; status
 
 const autoria = (autor: Autor) => ({ actorUserId: autor.userId, origem: autor.origem, concessaoId: autor.concessaoId, area: null });
 
-function resumoRecorrencia(r: { valorCentavos: number; diaVencimento: number; venceMesSeguinte: boolean; inicio: string; fim: string | null; forma: string }): string {
-  return `${reais(r.valorCentavos)}/mês, vence dia ${r.diaVencimento}${r.venceMesSeguinte ? " do mês seguinte" : ""}, ` +
-    `${rotuloFormaPagamento(r.forma)}, de ${mesBR(r.inicio)}${r.fim ? ` até ${mesBR(r.fim)}` : " em diante"}`;
+function resumoRecorrencia(
+  r: { valorCentavos: number; diaVencimento: number; venceMesSeguinte: boolean; inicio: string; fim: string | null; forma: string },
+  cartao: string | null
+): string {
+  return `${reais(r.valorCentavos)}/mês, ${r.forma === "cartao" ? "cobrada" : "vence"} dia ${r.diaVencimento}${r.venceMesSeguinte ? " do mês seguinte" : ""}, ` +
+    `${comoPaga(r.forma, cartao)}, de ${mesBR(r.inicio)}${r.fim ? ` até ${mesBR(r.fim)}` : " em diante"}`;
 }
 
 /** Cria ou altera um cadastro. `id` nulo cria. */
@@ -161,14 +178,23 @@ export async function salvarCadastro(tx: Queryable, autor: Autor, tipo: TipoCada
       if (typeof f === "string") return { erro: f, status: 400 };
       if (id == null) {
         const [n] = await tx<{ id: number }[]>`
-          INSERT INTO despesa_favorecidos (nome, tipo, documento, contato, pagamento, notas, ativo)
-          VALUES (${f.nome}, ${f.tipo}, ${f.documento}, ${f.contato}, ${f.pagamento}, ${f.notas}, ${f.ativo}) RETURNING id`;
+          INSERT INTO despesa_favorecidos (nome, tipo, documento, contato, pagamento, dia_fechamento, dia_vencimento, notas, ativo)
+          VALUES (${f.nome}, ${f.tipo}, ${f.documento}, ${f.contato}, ${f.pagamento}, ${f.diaFechamento}, ${f.diaVencimento}, ${f.notas}, ${f.ativo})
+          RETURNING id`;
         await log(`FAV-${n.id}`, `Cadastrou o favorecido ${f.nome} (${rotuloTipoFavorecido(f.tipo)})`);
         return { ok: true, id: n.id };
       }
+      // Cartão que já tem despesa paga nele não deixa de ser cartão: as despesas ficariam sem fatura.
+      if (f.tipo !== "cartao") {
+        const [{ usos }] = await tx<{ usos: number }[]>`
+          SELECT (SELECT count(*) FROM despesas WHERE cartao_id = ${id})::int
+               + (SELECT count(*) FROM despesa_recorrencias WHERE cartao_id = ${id})::int AS usos`;
+        if (usos) return { erro: `Este cartão já tem ${usos} despesa(s) paga(s) nele; o tipo não pode mudar.`, status: 409 };
+      }
       const r = await tx`
         UPDATE despesa_favorecidos SET nome = ${f.nome}, tipo = ${f.tipo}, documento = ${f.documento}, contato = ${f.contato},
-               pagamento = ${f.pagamento}, notas = ${f.notas}, ativo = ${f.ativo}
+               pagamento = ${f.pagamento}, dia_fechamento = ${f.diaFechamento}, dia_vencimento = ${f.diaVencimento},
+               notas = ${f.notas}, ativo = ${f.ativo}
         WHERE id = ${id}`;
       if (!r.count) return { erro: "Favorecido não encontrado.", status: 404 };
       await log(`FAV-${id}`, `Alterou o favorecido ${f.nome} (${rotuloTipoFavorecido(f.tipo)})${f.ativo ? "" : ", inativo"}`);
@@ -181,22 +207,24 @@ export async function salvarCadastro(tx: Queryable, autor: Autor, tipo: TipoCada
       if (!fav) return { erro: "Favorecido não encontrado.", status: 400 };
       if (!(await nomeDaCategoria(tx, r.categoriaId))) return { erro: "Categoria não encontrada.", status: 400 };
       if (!(await areaExiste(tx, r.area))) return { erro: "Produto não encontrado.", status: 400 };
+      const cartao = await conferirCartao(tx, r.cartaoId);
+      if ("erro" in cartao) return { erro: cartao.erro, status: 400 };
       if (id == null) {
         const [n] = await tx<{ id: number }[]>`
           INSERT INTO despesa_recorrencias (favorecido_id, categoria_id, area, descricao, valor_centavos, dia_vencimento, vence_mes_seguinte,
-                                            forma, inicio, fim, notas)
+                                            forma, cartao_id, inicio, fim, notas)
           VALUES (${r.favorecidoId}, ${r.categoriaId}, ${r.area}, ${r.descricao}, ${r.valorCentavos}, ${r.diaVencimento}, ${r.venceMesSeguinte},
-                  ${r.forma}, ${r.inicio}, ${r.fim}, ${r.notas}) RETURNING id`;
-        await log(`REC-${n.id}`, `Cadastrou a despesa recorrente de ${fav}${r.descricao ? ` (${r.descricao})` : ""}: ${resumoRecorrencia(r)}`);
+                  ${r.forma}, ${r.cartaoId}, ${r.inicio}, ${r.fim}, ${r.notas}) RETURNING id`;
+        await log(`REC-${n.id}`, `Cadastrou a despesa recorrente de ${fav}${r.descricao ? ` (${r.descricao})` : ""}: ${resumoRecorrencia(r, cartao.nome)}`);
         return { ok: true, id: n.id };
       }
       const u = await tx`
         UPDATE despesa_recorrencias SET favorecido_id = ${r.favorecidoId}, categoria_id = ${r.categoriaId}, area = ${r.area},
                descricao = ${r.descricao}, valor_centavos = ${r.valorCentavos}, dia_vencimento = ${r.diaVencimento},
-               vence_mes_seguinte = ${r.venceMesSeguinte}, forma = ${r.forma}, inicio = ${r.inicio}, fim = ${r.fim}, notas = ${r.notas}
+               vence_mes_seguinte = ${r.venceMesSeguinte}, forma = ${r.forma}, cartao_id = ${r.cartaoId}, inicio = ${r.inicio}, fim = ${r.fim}, notas = ${r.notas}
         WHERE id = ${id}`;
       if (!u.count) return { erro: "Recorrência não encontrada.", status: 404 };
-      await log(`REC-${id}`, `Alterou a despesa recorrente de ${fav}${r.descricao ? ` (${r.descricao})` : ""}: ${resumoRecorrencia(r)}`);
+      await log(`REC-${id}`, `Alterou a despesa recorrente de ${fav}${r.descricao ? ` (${r.descricao})` : ""}: ${resumoRecorrencia(r, cartao.nome)}`);
       return { ok: true, id };
     }
   }
@@ -221,8 +249,8 @@ export async function excluirCadastro(tx: Queryable, autor: Autor, tipo: TipoCad
     }
     case "favorecidos": {
       const [{ usos }] = await tx<{ usos: number }[]>`
-        SELECT (SELECT count(*) FROM despesas WHERE favorecido_id = ${id})::int
-             + (SELECT count(*) FROM despesa_recorrencias WHERE favorecido_id = ${id})::int AS usos`;
+        SELECT (SELECT count(*) FROM despesas WHERE favorecido_id = ${id} OR cartao_id = ${id})::int
+             + (SELECT count(*) FROM despesa_recorrencias WHERE favorecido_id = ${id} OR cartao_id = ${id})::int AS usos`;
       if (usos) return { erro: `O favorecido tem ${usos} conta(s) ou recorrência(s). Desative em vez de excluir.`, status: 409 };
       const [f] = await tx<{ nome: string }[]>`DELETE FROM despesa_favorecidos WHERE id = ${id} RETURNING nome`;
       if (!f) return { erro: "Favorecido não encontrado.", status: 404 };
@@ -274,12 +302,14 @@ export async function lancarDespesa(tx: Queryable, autor: Autor, body: Record<st
   if (!fav) return { erro: "Favorecido não encontrado.", status: 400 };
   const ruim = await conferirDespesa(tx, e);
   if (ruim) return { erro: ruim, status: 400 };
+  const cartao = await conferirCartao(tx, e.cartaoId);
+  if ("erro" in cartao) return { erro: cartao.erro, status: 400 };
 
   const [nova] = await tx<{ id: number }[]>`
     INSERT INTO despesas (favorecido_id, favorecido, categoria_id, area, recorrencia_id, competencia, descricao, valor_centavos,
-                          vencimento, forma, documento, status, notas)
+                          vencimento, forma, cartao_id, documento, status, notas)
     VALUES (${e.favorecidoId}, ${fav}, ${e.categoriaId}, ${e.area}, ${recorrenciaId}, ${e.competencia}, ${e.descricao}, ${e.valorCentavos},
-            ${e.vencimento}, ${e.forma}, ${e.documento}, 'aberta', ${e.notas})
+            ${e.vencimento}, ${e.forma}, ${e.cartaoId}, ${e.documento}, 'aberta', ${e.notas})
     RETURNING id`;
   const ref = `P-${String(nova.id).padStart(4, "0")}`;
   await tx`UPDATE despesas SET ref = ${ref} WHERE id = ${nova.id}`;
@@ -293,7 +323,8 @@ export async function lancarDespesa(tx: Queryable, autor: Autor, body: Record<st
     texto:
       `Lançou a conta a pagar ${ref} de ${fav}${e.descricao ? ` (${e.descricao})` : ""}, competência ${mesBR(e.competencia)}: ` +
       `${reais(e.valorCentavos)}${e.itens.length ? ` em ${e.itens.length} ${e.itens.length === 1 ? "item" : "itens"}` : ""}, ` +
-      `vence ${br(e.vencimento)}, ${rotuloFormaPagamento(e.forma)}${e.documento ? `, documento ${e.documento}` : ""}`,
+      `${comoPaga(e.forma, cartao.nome)}, ${e.forma === "cartao" ? "fatura que vence" : "vence"} ${br(e.vencimento)}` +
+      `${e.documento ? `, documento ${e.documento}` : ""}`,
   });
   return { ok: true, id: nova.id, ref };
 }
@@ -339,15 +370,17 @@ export async function agirNaDespesa(tx: Queryable, autor: Autor, id: number, bod
       if (!fav) return { erro: "Favorecido não encontrado.", status: 400 };
       const ruim = await conferirDespesa(tx, e);
       if (ruim) return { erro: ruim, status: 400 };
+      const cartao = await conferirCartao(tx, e.cartaoId);
+      if ("erro" in cartao) return { erro: cartao.erro, status: 400 };
       await tx`
         UPDATE despesas SET favorecido_id = ${e.favorecidoId}, favorecido = ${fav}, categoria_id = ${e.categoriaId}, area = ${e.area},
                competencia = ${e.competencia}, descricao = ${e.descricao}, valor_centavos = ${e.valorCentavos}, vencimento = ${e.vencimento},
-               forma = ${e.forma}, documento = ${e.documento}, notas = ${e.notas}, atualizado_em = now()
+               forma = ${e.forma}, cartao_id = ${e.cartaoId}, documento = ${e.documento}, notas = ${e.notas}, atualizado_em = now()
         WHERE id = ${id}`;
       await gravarItens(tx, id, e);
       await log(
         `Corrigiu a conta ${d.ref} de ${fav}: ${reais(e.valorCentavos)}${e.itens.length ? ` em ${e.itens.length} ${e.itens.length === 1 ? "item" : "itens"}` : ""}, ` +
-          `competência ${mesBR(e.competencia)}, vence ${br(e.vencimento)}, ${rotuloFormaPagamento(e.forma)}${e.documento ? `, documento ${e.documento}` : ""}`,
+          `competência ${mesBR(e.competencia)}, ${comoPaga(e.forma, cartao.nome)}, vence ${br(e.vencimento)}${e.documento ? `, documento ${e.documento}` : ""}`,
         null,
         null
       );
@@ -367,4 +400,43 @@ export async function agirNaDespesa(tx: Queryable, autor: Autor, id: number, bod
     default:
       return { erro: "Ação inválida.", status: 400 };
   }
+}
+
+/**
+ * Paga de uma vez a fatura de um cartão: todas as despesas em aberto daquele cartão com aquele
+ * vencimento, cada uma pelo valor lançado. Cada despesa ganha a sua linha de auditoria, para o
+ * histórico dela ficar completo. Diferença de valor (juros, multa, IOF) entra como despesa
+ * própria no cartão, que é o que ela é.
+ */
+export async function pagarFatura(tx: Queryable, autor: Autor, body: Record<string, unknown> | null): Promise<{ ok: true; pagas: number; valorCentavos: number } | { erro: string; status: number }> {
+  if (!body) return { erro: "Requisição inválida.", status: 400 };
+  const cartaoId = Number(body.cartaoId);
+  const DATA = /^\d{4}-\d{2}-\d{2}$/;
+  const valida = (v: unknown): v is string => typeof v === "string" && DATA.test(v) && !Number.isNaN(Date.parse(v + "T00:00:00Z"));
+  if (!Number.isInteger(cartaoId) || cartaoId <= 0) return { erro: "Cartão inválido.", status: 400 };
+  if (!valida(body.vencimento)) return { erro: "Vencimento da fatura inválido.", status: 400 };
+  if (!valida(body.pagoEm)) return { erro: "Informe a data do pagamento.", status: 400 };
+  const cartao = await conferirCartao(tx, cartaoId);
+  if ("erro" in cartao) return { erro: "Cartão não encontrado.", status: 404 };
+
+  const abertas = await tx<{ id: number; ref: string; favorecido: string; valor_centavos: string }[]>`
+    SELECT id, ref, favorecido, valor_centavos FROM despesas
+    WHERE cartao_id = ${cartaoId} AND forma = 'cartao' AND vencimento = ${body.vencimento} AND status = 'aberta'
+    ORDER BY id FOR UPDATE`;
+  if (!abertas.length) return { erro: "Esta fatura não tem despesa em aberto.", status: 409 };
+  let total = 0;
+  for (const d of abertas) {
+    const valor = Number(d.valor_centavos);
+    total += valor;
+    await tx`UPDATE despesas SET status = 'paga', pago_em = ${body.pagoEm}, valor_pago_centavos = ${valor}, atualizado_em = now() WHERE id = ${d.id}`;
+    await registrar(tx, {
+      ...autoria(autor),
+      entidade: d.ref,
+      campo: "despesa",
+      de: "aberta",
+      para: "paga",
+      texto: `Pagamento da conta ${d.ref} de ${d.favorecido}: ${reais(valor)} em ${br(body.pagoEm)}, na fatura do cartão ${cartao.nome} que vencia ${br(body.vencimento)}`,
+    });
+  }
+  return { ok: true, pagas: abertas.length, valorCentavos: total };
 }

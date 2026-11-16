@@ -960,6 +960,34 @@ async function migrate(): Promise<void> {
       WHERE recorrencia_id IS NOT NULL AND status <> 'cancelada'
     `;
     await sql`CREATE INDEX IF NOT EXISTS despesa_itens_despesa ON despesa_itens (despesa_id)`;
+    // Como se paga (nov/2026): a despesa passa a dizer se sai pelo banco ou pelo cartão
+    // corporativo, e por qual cartão. O cartão é um favorecido do tipo "cartao", agora com dia
+    // de fechamento e de vencimento. A forma "cartao" entra nas duas restrições; trocar a
+    // restrição só acontece uma vez, enquanto a coluna nova ainda não existe.
+    const [{ semCartao }] = await sql<{ semCartao: boolean }[]>`
+      SELECT NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'despesas' AND column_name = 'cartao_id'
+      ) AS "semCartao"
+    `;
+    if (semCartao) {
+      await sql`ALTER TABLE despesa_favorecidos ADD COLUMN IF NOT EXISTS dia_fechamento INTEGER CHECK (dia_fechamento BETWEEN 1 AND 28)`;
+      await sql`ALTER TABLE despesa_favorecidos ADD COLUMN IF NOT EXISTS dia_vencimento INTEGER CHECK (dia_vencimento BETWEEN 1 AND 28)`;
+      await sql`ALTER TABLE despesa_recorrencias ADD COLUMN IF NOT EXISTS cartao_id INTEGER REFERENCES despesa_favorecidos(id)`;
+      await sql`ALTER TABLE despesa_recorrencias DROP CONSTRAINT IF EXISTS despesa_recorrencias_forma_check`;
+      await sql`
+        ALTER TABLE despesa_recorrencias ADD CONSTRAINT despesa_recorrencias_forma_check
+        CHECK (forma IN ('pix', 'boleto', 'transferencia', 'debito', 'cartao') AND ((forma = 'cartao') = (cartao_id IS NOT NULL)))
+      `;
+      await sql`ALTER TABLE despesas DROP CONSTRAINT IF EXISTS despesas_forma_check`;
+      // A coluna da conta entra por último: é ela que marca a migração como feita.
+      await sql`ALTER TABLE despesas ADD COLUMN cartao_id INTEGER REFERENCES despesa_favorecidos(id)`;
+      await sql`
+        ALTER TABLE despesas ADD CONSTRAINT despesas_forma_check
+        CHECK (forma IN ('pix', 'boleto', 'transferencia', 'debito', 'cartao') AND ((forma = 'cartao') = (cartao_id IS NOT NULL)))
+      `;
+      await sql`CREATE INDEX IF NOT EXISTS despesas_fatura ON despesas (cartao_id, vencimento) WHERE cartao_id IS NOT NULL`;
+    }
     // As categorias da semente entram SÓ quando a tabela nasce (mesma regra das áreas): o que
     // a administração excluir depois não volta.
     if (despesasNovas) {

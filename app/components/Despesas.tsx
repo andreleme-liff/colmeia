@@ -11,8 +11,10 @@
 //  · RECORRENTES: os compromissos mensais e o gasto fixo que eles somam.
 //  · CADASTROS: favorecidos (quem recebe) e categorias (o plano de contas).
 //
-// A fatura do cartão corporativo é uma conta só, com as compras como itens, cada uma na sua
-// categoria. As regras moram em `lib/despesas.ts`.
+// Toda despesa diz COMO VAMOS PAGAR: pelo banco (PIX, boleto, transferência, débito) ou num
+// cartão corporativo. Pelo banco ela é uma conta a pagar sozinha; no cartão, ela entra na
+// fatura daquele cartão, e a aba "a pagar" mostra a fatura inteira numa linha, paga de uma vez.
+// As regras moram em `lib/despesas.ts`.
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useOrdem } from "./ordenacao";
@@ -24,10 +26,10 @@ import { aplicarBusca, areaOf, brl, brlExato, hojeISO, prepararBusca, porTexto, 
 import { mesDe, rotuloMes, somarMeses } from "@/lib/forecast";
 import type { DadosDespesas } from "@/lib/despesas-db";
 import {
-  FORMAS_PAGAMENTO, GRUPOS, ROTULO_STATUS_DESPESA, TIPOS_FAVORECIDO, compromissoMensal, contasDoMes, csvDasDespesas, diasVencida,
-  faixasAPagar, mediaPaga, porCategoria, recorrenciaAtivaEm, rotuloFormaPagamento, rotuloGrupo, rotuloTipoFavorecido, statusDaDespesa,
-  vencimentoDaRecorrencia,
-  type Categoria, type ContaDoMes, type Despesa, type Favorecido, type Recorrencia, type StatusDespesa,
+  FORMAS_BANCO, GRUPOS, ROTULO_STATUS_DESPESA, TIPOS_FAVORECIDO, compromissoMensal, contasDoMes, csvDasDespesas, diasVencida,
+  faixasAPagar, faturasAbertas, mediaPaga, porCategoria, recorrenciaAtivaEm, rotuloFormaPagamento, rotuloGrupo, rotuloTipoFavorecido, statusDaDespesa,
+  vencimentoDaRecorrencia, vencimentoDoCartao,
+  type Categoria, type ContaDoMes, type Despesa, type FaturaCartao, type Favorecido, type Recorrencia, type StatusDespesa,
 } from "@/lib/despesas";
 
 const TOM: Record<StatusDespesa, string> = {
@@ -56,6 +58,22 @@ const br = (iso: string | null) => (iso ? iso.split("-").reverse().join("/") : "
 const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
 const rotuloArea = (id: string | null) => (id ? areaOf(id).label : "");
 
+/* "Como vamos pagar" é um campo só: uma das formas do banco, ou um dos cartões cadastrados.
+   No <select> o valor é a chave da forma ("pix") ou "cartao:<id do cartão>". */
+const valorComo = (forma: string, cartaoId: number | null) => (forma === "cartao" ? (cartaoId ? `cartao:${cartaoId}` : "") : forma);
+const deComo = (v: string): { forma: string; cartaoId: number | null } =>
+  v.startsWith("cartao:") ? { forma: "cartao", cartaoId: Number(v.slice(7)) } : { forma: v, cartaoId: null };
+function opcoesComo(favorecidos: Favorecido[], atual: number | null) {
+  const cartoes = favorecidos.filter((f) => f.tipo === "cartao" && (f.ativo || f.id === atual));
+  return [
+    ...FORMAS_BANCO.map((f) => ({ value: f.key as string, label: `Banco · ${f.label}` })),
+    ...cartoes.map((c) => ({ value: `cartao:${c.id}`, label: `Cartão · ${c.nome}` })),
+  ];
+}
+/** "PIX", "Boleto"… ou o nome do cartão. */
+const rotuloComo = (forma: string, cartaoId: number | null, favPorId: Map<number, Favorecido>) =>
+  forma === "cartao" ? favPorId.get(cartaoId ?? 0)?.nome ?? "Cartão" : rotuloFormaPagamento(forma);
+
 type Aba = "mes" | "pagar" | "recorrentes" | "cadastros";
 type Filtro = "todas" | "previstas" | "a_pagar" | "vencidas" | "pagas";
 const FILTROS: { key: Filtro; label: string; casa: (s: StatusDespesa) => boolean }[] = [
@@ -71,6 +89,7 @@ type Acao =
   | { tipo: "lancar"; linha: ContaDoMes }
   | { tipo: "corrigir"; despesa: Despesa }
   | { tipo: "pagar"; despesa: Despesa }
+  | { tipo: "fatura"; cartaoId: number; vencimento: string }
   | { tipo: "detalhe"; despesa: Despesa }
   | { tipo: "recorrencia"; recorrencia: Recorrencia | null }
   | { tipo: "favorecido"; favorecido: Favorecido | null }
@@ -128,6 +147,10 @@ export default function Despesas({ area, busca, gatilho }: { area: string; busca
   const despesasDoProduto = despesas.filter((d) => doProduto(d.area, d.itens));
   const abertas = despesasDoProduto.filter((d) => d.status === "aberta").sort((a, b) => a.vencimento.localeCompare(b.vencimento));
   const abertasBuscadas = aplicarBusca(abertas, termo, (d) => [d.favorecido, d.ref, d.descricao, d.documento, nomeCat(d.categoriaId), ...d.itens.map((i) => i.descricao)]);
+  const noCartao = (d: Despesa) => d.forma === "cartao" && d.cartaoId != null;
+  const faturas = faturasAbertas(abertasBuscadas);
+  const contasDoBanco = abertasBuscadas.filter((d) => !noCartao(d));
+  const linhasAPagar = faturasAbertas(abertas).length + abertas.filter((d) => !noCartao(d)).length;
   const vencidas = abertas.filter((d) => statusDaDespesa(d, hoje) === "vencida");
   const pagasNoMes = despesasDoProduto.filter((d) => d.status === "paga" && d.pagoEm && mesDe(d.pagoEm) === mesAtual);
   const fixo = compromissoMensal(recorrencias.filter((r) => doProduto(r.area)), mesAtual);
@@ -189,7 +212,7 @@ export default function Despesas({ area, busca, gatilho }: { area: string; busca
             por mês
           </button>
           <button type="button" aria-pressed={aba === "pagar"} onClick={() => setAba("pagar")}>
-            a pagar · {abertas.length}
+            a pagar · {linhasAPagar}
           </button>
           <button type="button" aria-pressed={aba === "recorrentes"} onClick={() => setAba("recorrentes")}>
             recorrentes · {recorrencias.filter((r) => recorrenciaAtivaEm(r, mesAtual)).length}
@@ -243,7 +266,7 @@ export default function Despesas({ area, busca, gatilho }: { area: string; busca
 
       {semCadastro && aba !== "cadastros" && (
         <div style={{ fontSize: 14, color: C.body, lineHeight: 1.6, maxWidth: 680 }}>
-          Para começar, cadastre quem recebe: cada colaborador PJ, cada advisor e o cartão corporativo.{" "}
+          Para começar, cadastre quem recebe (cada colaborador PJ, cada advisor, os fornecedores) e o cartão corporativo.{" "}
           <button type="button" className="rec-link" onClick={() => setAba("cadastros")}>
             abrir cadastros
           </button>
@@ -279,7 +302,19 @@ export default function Despesas({ area, busca, gatilho }: { area: string; busca
               </div>
             ))}
           </div>
-          <TabelaAPagar despesas={abertasBuscadas} nomeCat={nomeCat} hoje={hoje} onAcao={setAcao} />
+          {abertasBuscadas.length === 0 && <div style={{ fontSize: 14, color: C.faint }}>Nenhuma conta em aberto.</div>}
+          {faturas.length > 0 && (
+            <section>
+              <div style={{ ...eyebrow(10, C.faint, "0.12em"), marginBottom: 10 }}>Cartão · faturas a pagar</div>
+              <TabelaFaturas faturas={faturas} favPorId={favPorId} hoje={hoje} onAcao={setAcao} />
+            </section>
+          )}
+          {contasDoBanco.length > 0 && (
+            <section>
+              <div style={{ ...eyebrow(10, C.faint, "0.12em"), marginBottom: 10 }}>Banco · contas a pagar</div>
+              <TabelaAPagar despesas={contasDoBanco} nomeCat={nomeCat} hoje={hoje} onAcao={setAcao} />
+            </section>
+          )}
         </>
       )}
 
@@ -294,6 +329,18 @@ export default function Despesas({ area, busca, gatilho }: { area: string; busca
       )}
 
       {aba === "cadastros" && <Cadastros dados={dados} onAcao={setAcao} />}
+
+      {acao?.tipo === "fatura" && (
+        <FormFatura
+          cartao={favPorId.get(acao.cartaoId)}
+          despesas={despesas.filter((d) => d.status === "aberta" && d.forma === "cartao" && d.cartaoId === acao.cartaoId && d.vencimento === acao.vencimento)}
+          vencimento={acao.vencimento}
+          nomeCat={nomeCat}
+          hoje={hoje}
+          onFechar={() => setAcao(null)}
+          onSalvo={mudou}
+        />
+      )}
 
       {/* ---------- modais ---------- */}
       {acao?.tipo === "nova" && (
@@ -331,7 +378,7 @@ export default function Despesas({ area, busca, gatilho }: { area: string; busca
       )}
       {acao?.tipo === "pagar" && <FormPagamento despesa={acao.despesa} hoje={hoje} onFechar={() => setAcao(null)} onSalvo={mudou} />}
       {acao?.tipo === "detalhe" && (
-        <Detalhe despesa={acao.despesa} nomeCat={nomeCat} favorecido={favPorId.get(acao.despesa.favorecidoId)} hoje={hoje} onFechar={() => setAcao(null)} onAcao={setAcao} onMudou={mudou} />
+        <Detalhe despesa={acao.despesa} nomeCat={nomeCat} favorecido={favPorId.get(acao.despesa.favorecidoId)} favPorId={favPorId} hoje={hoje} onFechar={() => setAcao(null)} onAcao={setAcao} onMudou={mudou} />
       )}
       {acao?.tipo === "recorrencia" && <FormRecorrencia recorrencia={acao.recorrencia} dados={dados} hoje={hoje} onFechar={() => setAcao(null)} onSalvo={mudou} />}
       {acao?.tipo === "favorecido" && <FormFavorecido favorecido={acao.favorecido} onFechar={() => setAcao(null)} onSalvo={mudou} />}
@@ -360,7 +407,11 @@ function oQue(descricao: string, categoria: string, itens: number): string {
   return itens ? `${base} · ${plural(itens, "item", "itens")}` : base;
 }
 
-const COLS_MES = "1.5fr 1.4fr 1.1fr 0.8fr 0.8fr 0.9fr 110px";
+const COLS_MES = "1.5fr 1.3fr 1fr 1fr 0.8fr 0.8fr 0.9fr 120px";
+
+/** Abre o pagamento certo: a fatura inteira, se a despesa foi no cartão; a conta, se foi no banco. */
+const pagarDe = (d: Despesa): Acao => (d.forma === "cartao" && d.cartaoId != null ? { tipo: "fatura", cartaoId: d.cartaoId, vencimento: d.vencimento } : { tipo: "pagar", despesa: d });
+const rotuloPagar = (d: Despesa) => (d.forma === "cartao" && d.cartaoId != null ? "pagar fatura" : "pagar");
 
 function TabelaMes({
   linhas,
@@ -382,10 +433,10 @@ function TabelaMes({
   const categoriaDe = (l: ContaDoMes) => (l.despesa?.itens.length ? "Várias" : nomeCat(l.categoriaId) || "—");
   return (
     <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
-      <div style={{ minWidth: 940 }}>
+      <div style={{ minWidth: 1080 }}>
         <div className="fat-linha fat-linha--cab" style={{ gridTemplateColumns: COLS_MES }}>
           {(
-            [["favorecido", "FAVORECIDO"], ["oque", "O QUE"], ["categoria", "CATEGORIA"], ["valor", "VALOR"], ["vencimento", "VENCIMENTO"], ["situacao", "SITUAÇÃO"], [null, ""]] as const
+            [["favorecido", "FAVORECIDO"], ["oque", "O QUE"], ["categoria", "CATEGORIA"], ["como", "PAGA COM"], ["valor", "VALOR"], ["vencimento", "VENCIMENTO"], ["situacao", "SITUAÇÃO"], [null, ""]] as const
           ).map(([chave, h], k) => ord.th(chave, h, { ...eyebrow(10, C.faint), textAlign: h === "VALOR" ? "right" : "left" }, k))}
         </div>
         {ord
@@ -393,6 +444,7 @@ function TabelaMes({
             favorecido: (l) => l.favorecido,
             oque: (l) => l.descricao,
             categoria: categoriaDe,
+            como: (l) => rotuloComo(l.forma, l.cartaoId, favPorId),
             valor: (l) => l.valorCentavos,
             vencimento: (l) => l.vencimento,
             situacao: (l) => l.status,
@@ -418,8 +470,11 @@ function TabelaMes({
                   {oQue(l.descricao, "", d?.itens.length ?? 0)}
                 </div>
                 <div style={{ fontSize: 12.5, color: C.body }}>{categoriaDe(l)}</div>
+                <div style={{ fontSize: 12.5, color: C.body, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={l.forma === "cartao" ? "Entra na fatura deste cartão" : "Sai direto do banco"}>
+                  {rotuloComo(l.forma, l.cartaoId, favPorId)}
+                </div>
                 <div className="fat-num">{brlExato(l.valorCentavos)}</div>
-                <div className="fat-meta" style={{ fontSize: 12 }}>
+                <div className="fat-meta" style={{ fontSize: 12 }} title={l.forma === "cartao" ? "Vencimento da fatura do cartão" : undefined}>
                   {br(l.vencimento)}
                 </div>
                 <div>
@@ -432,8 +487,8 @@ function TabelaMes({
                     </Button>
                   )}
                   {d && (l.status === "aberta" || l.status === "vencida") && (
-                    <Button variant="outline" size="xs" onClick={() => onAcao({ tipo: "pagar", despesa: d })}>
-                      pagar
+                    <Button variant="outline" size="xs" onClick={() => onAcao(pagarDe(d))}>
+                      {rotuloPagar(d)}
                     </Button>
                   )}
                 </div>
@@ -477,11 +532,53 @@ function ResumoCategorias({ linhas, categorias, mes }: { linhas: ContaDoMes[]; c
   );
 }
 
+const COLS_FATURA = "1.6fr 2fr 0.9fr 0.8fr 0.9fr 120px";
+
+/** Uma linha por fatura de cartão: o cartão, o que tem dentro, o total e o vencimento. */
+function TabelaFaturas({ faturas, favPorId, hoje, onAcao }: { faturas: FaturaCartao[]; favPorId: Map<number, Favorecido>; hoje: string; onAcao: (a: Acao) => void }) {
+  return (
+    <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
+      <div style={{ minWidth: 940 }}>
+        <div className="fat-linha fat-linha--cab" style={{ gridTemplateColumns: COLS_FATURA }}>
+          {["CARTÃO", "DESPESAS NA FATURA", "VALOR", "VENCIMENTO", "SITUAÇÃO", ""].map((h, k) => (
+            <div key={k} style={{ ...eyebrow(10, C.faint), textAlign: h === "VALOR" ? "right" : "left" }}>
+              {h}
+            </div>
+          ))}
+        </div>
+        {faturas.map((f) => {
+          const abrir = () => onAcao({ tipo: "fatura", cartaoId: f.cartaoId, vencimento: f.vencimento });
+          const nomes = [...new Set(f.despesas.map((d) => d.favorecido))];
+          return (
+            <div key={f.chave} className="fat-linha liff-hover-row" style={{ gridTemplateColumns: COLS_FATURA, cursor: "pointer" }} onClick={abrir}>
+              <div style={{ minWidth: 0 }}>
+                <div className="fat-cliente">{favPorId.get(f.cartaoId)?.nome ?? "Cartão"}</div>
+                <div className="fat-meta">fatura · {plural(f.despesas.length, "despesa", "despesas")}</div>
+              </div>
+              <div style={{ fontSize: 13, color: C.body, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nomes.join(", ")}</div>
+              <div className="fat-num">{brlExato(f.valorCentavos)}</div>
+              <div className="fat-meta" style={{ fontSize: 12 }}>{br(f.vencimento)}</div>
+              <div>
+                <Status s={f.vencimento < hoje ? "vencida" : "aberta"} dias={diasVencida(f.vencimento, hoje)} />
+              </div>
+              <div style={{ textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
+                <Button variant="outline" size="xs" onClick={abrir}>
+                  pagar fatura
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 const COLS_PAGAR = "1.5fr 1.5fr 0.9fr 0.9fr 0.8fr 0.9fr 110px";
 
 function TabelaAPagar({ despesas, nomeCat, hoje, onAcao }: { despesas: Despesa[]; nomeCat: (id: number | null) => string; hoje: string; onAcao: (a: Acao) => void }) {
   const ord = useOrdem();
-  if (!despesas.length) return <div style={{ fontSize: 14, color: C.faint }}>Nenhuma conta em aberto.</div>;
+  if (!despesas.length) return null;
   return (
     <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
       <div style={{ minWidth: 940 }}>
@@ -584,7 +681,7 @@ function TabelaRecorrencias({
                 <div className="fat-num">{brlExato(r.valorCentavos)}</div>
                 <div className="fat-meta" style={{ fontSize: 12 }}>
                   dia {r.diaVencimento}
-                  {r.venceMesSeguinte ? " do mês seguinte" : ""} · {rotuloFormaPagamento(r.forma)}
+                  {r.venceMesSeguinte ? " do mês seguinte" : ""} · {rotuloComo(r.forma, r.cartaoId, favPorId)}
                 </div>
                 <div className="fat-meta" style={{ fontSize: 12 }}>
                   {rotuloMes(r.inicio)} {r.fim ? `a ${rotuloMes(r.fim)}` : "em diante"}
@@ -620,7 +717,7 @@ function Cadastros({ dados, onAcao }: { dados: DadosDespesas; onAcao: (a: Acao) 
       <section>
         {cab(
           "Favorecidos",
-          "Quem recebe: cada colaborador PJ, cada advisor, o cartão corporativo e os fornecedores. Quem saiu se desativa, para o histórico continuar inteiro.",
+          "Quem recebe (cada colaborador PJ, cada advisor, os fornecedores) e os cartões corporativos, que são um dos jeitos de pagar. Quem saiu se desativa, para o histórico continuar inteiro.",
           "+ favorecido",
           () => onAcao({ tipo: "favorecido", favorecido: null })
         )}
@@ -630,7 +727,7 @@ function Cadastros({ dados, onAcao }: { dados: DadosDespesas; onAcao: (a: Acao) 
           <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
             <div style={{ minWidth: 820 }}>
               <div className="fat-linha fat-linha--cab" style={{ gridTemplateColumns: COLS_FAV }}>
-                {["NOME", "TIPO", "CNPJ / CPF", "COMO PAGAR", "SITUAÇÃO"].map((h) => (
+                {["NOME", "TIPO", "CNPJ / CPF", "DADOS PARA PAGAR", "SITUAÇÃO"].map((h) => (
                   <div key={h} style={eyebrow(10, C.faint)}>
                     {h}
                   </div>
@@ -644,7 +741,9 @@ function Cadastros({ dados, onAcao }: { dados: DadosDespesas; onAcao: (a: Acao) 
                   </div>
                   <div style={{ fontSize: 12.5, color: C.body }}>{rotuloTipoFavorecido(f.tipo)}</div>
                   <div className="fat-meta" style={{ fontSize: 12 }}>{f.documento || "—"}</div>
-                  <div style={{ fontSize: 12.5, color: C.body, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.pagamento || "—"}</div>
+                  <div style={{ fontSize: 12.5, color: C.body, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {[f.diaFechamento && `fecha dia ${f.diaFechamento}, vence dia ${f.diaVencimento}`, f.pagamento].filter(Boolean).join(" · ") || "—"}
+                  </div>
                   <div>
                     <span className={`cop-tag cop-tag--${f.ativo ? "sucesso" : "neutro"}`}>{f.ativo ? "ativo" : "inativo"}</span>
                   </div>
@@ -703,11 +802,12 @@ function opcoesCategoria(categorias: Categoria[], atual?: number | null, curto =
       .map((c) => ({ value: String(c.id), label: curto ? c.nome : `${rotuloGrupo(c.grupo)} · ${c.nome}` })),
   ];
 }
+/** Quem recebe. O cartão não entra: ele é o meio de pagar, não quem recebe (salvo registro antigo). */
 function opcoesFavorecido(favorecidos: Favorecido[], atual?: number | null) {
   return [
     { value: "", label: "— escolha —" },
     ...favorecidos
-      .filter((f) => f.ativo || f.id === atual)
+      .filter((f) => (f.ativo && f.tipo !== "cartao") || f.id === atual)
       .map((f) => ({ value: String(f.id), label: `${f.nome} · ${rotuloTipoFavorecido(f.tipo)}` })),
   ];
 }
@@ -806,7 +906,9 @@ function FormConta({
   const [area, setArea] = useState(despesa?.area ?? linha?.area ?? "");
   const [valor, setValor] = useState(deCentavos(despesa?.valorCentavos ?? linha?.valorCentavos ?? 0));
   const [vencimento, setVencimento] = useState(despesa?.vencimento ?? linha?.vencimento ?? "");
-  const [forma, setForma] = useState<string>(despesa?.forma ?? rec?.forma ?? "pix");
+  const [como, setComo] = useState(valorComo(despesa?.forma ?? linha?.forma ?? rec?.forma ?? "pix", despesa?.cartaoId ?? linha?.cartaoId ?? null));
+  const { forma, cartaoId } = deComo(como);
+  const cartao = cartaoId == null ? undefined : dados.favorecidos.find((f) => f.id === cartaoId);
   const [documento, setDocumento] = useState(despesa?.documento ?? "");
   const [notas, setNotas] = useState(despesa?.notas ?? "");
   const [itens, setItens] = useState<ItemForm[]>(
@@ -815,17 +917,14 @@ function FormConta({
   const [comItens, setComItens] = useState((despesa?.itens.length ?? 0) > 0);
   const { salvando, erro, enviar } = useEnvio();
 
-  const fav = dados.favorecidos.find((f) => String(f.id) === favorecidoId);
-  const escolherFavorecido = (id: string) => {
-    setFavorecidoId(id);
-    // Fatura de cartão nasce já no modo de itens, com a primeira linha aberta.
-    const novo = dados.favorecidos.find((f) => String(f.id) === id);
-    if (novo?.tipo === "cartao" && !comItens) {
-      setComItens(true);
-      setItens((l) => (l.length ? l : [itemVazio()]));
-      if (!descricao) setDescricao("Fatura do cartão");
-      setForma("boleto");
-    }
+  // Detalhar em itens só continua para a conta que já foi lançada assim.
+  const tinhaItens = (despesa?.itens.length ?? 0) > 0;
+  const escolherComo = (v: string) => {
+    setComo(v);
+    // No cartão, o vencimento é o da fatura em que a compra cai: sugere pelo fechamento.
+    const novo = deComo(v);
+    const c = novo.cartaoId == null ? undefined : dados.favorecidos.find((f) => f.id === novo.cartaoId);
+    if (c?.diaFechamento && c.diaVencimento) setVencimento(vencimentoDoCartao(c, competencia === mesDe(hoje) ? hoje : `${competencia}-01`));
   };
   const alternarItens = (ligado: boolean) => {
     setComItens(ligado);
@@ -835,7 +934,7 @@ function FormConta({
 
   const usados = comItens ? itens.filter((i) => i.descricao.trim() || i.valor.trim() || i.categoriaId) : [];
   const total = comItens ? usados.reduce((t, i) => t + paraCentavos(i.valor), 0) : paraCentavos(valor);
-  const podeSalvar = !!favorecidoId && !!vencimento && total > 0 && (comItens ? usados.length > 0 : !!categoriaId);
+  const podeSalvar = !!favorecidoId && !!como && !!vencimento && total > 0 && (comItens ? usados.length > 0 : !!categoriaId);
 
   const salvar = () =>
     enviar(() =>
@@ -846,6 +945,7 @@ function FormConta({
         area,
         vencimento,
         forma,
+        cartaoId,
         documento,
         notas,
         ...(comItens
@@ -859,19 +959,21 @@ function FormConta({
       <div className="rec-form">
         <div className="rec-form__duas">
           <Field label="Favorecido" required hint={travada ? "Vem da recorrência." : undefined}>
-            <Select value={favorecidoId} onChange={escolherFavorecido} disabled={travada} options={opcoesFavorecido(dados.favorecidos, despesa?.favorecidoId ?? linha?.favorecidoId)} />
+            <Select value={favorecidoId} onChange={setFavorecidoId} disabled={travada} options={opcoesFavorecido(dados.favorecidos, despesa?.favorecidoId ?? linha?.favorecidoId)} />
           </Field>
           <Field label="Competência" required hint="Mês a que a despesa se refere, não o do pagamento.">
             <Input value={competencia} onChange={setCompetencia} placeholder="AAAA-MM" disabled={travada} />
           </Field>
         </div>
         <Field label="O que é">
-          <Input value={descricao} onChange={setDescricao} placeholder={fav?.tipo === "cartao" ? "Ex.: Fatura do cartão" : "Ex.: Prestação de serviços de novembro"} />
+          <Input value={descricao} onChange={setDescricao} placeholder="Ex.: Prestação de serviços de novembro, consumo de nuvem" />
         </Field>
 
-        <Alternar ligado={comItens} onChange={alternarItens}>
-          Detalhar em itens (fatura de cartão, nota com mais de uma categoria)
-        </Alternar>
+        {tinhaItens && (
+          <Alternar ligado={comItens} onChange={alternarItens}>
+            Detalhar em itens (conta lançada assim antes de existir o pagamento por cartão)
+          </Alternar>
+        )}
 
         {comItens ? (
           <div>
@@ -909,11 +1011,25 @@ function FormConta({
         )}
 
         <div className="rec-form__duas">
-          <Field label="Vencimento" required>
-            <CampoData valor={vencimento} onChange={setVencimento} />
+          <Field
+            label="Como vamos pagar"
+            required
+            hint={forma === "cartao" ? "Entra na fatura deste cartão; o que se paga é a fatura." : "Sai direto do banco: vira uma conta a pagar sozinha."}
+          >
+            <Select value={como} onChange={escolherComo} options={opcoesComo(dados.favorecidos, despesa?.cartaoId ?? linha?.cartaoId ?? null)} />
           </Field>
-          <Field label="Forma de pagamento" required hint="Compra feita no cartão corporativo entra como item da fatura do cartão.">
-            <Select value={forma} onChange={setForma} options={FORMAS_PAGAMENTO.map((f) => ({ value: f.key, label: f.label }))} />
+          <Field
+            label={forma === "cartao" ? "Vencimento da fatura" : "Vencimento"}
+            required
+            hint={
+              forma !== "cartao"
+                ? undefined
+                : cartao?.diaFechamento
+                  ? `Sugerido pelo cartão: fecha dia ${cartao.diaFechamento}, vence dia ${cartao.diaVencimento}. Confira.`
+                  : "Cadastre o fechamento e o vencimento do cartão para a data vir sugerida."
+            }
+          >
+            <CampoData valor={vencimento} onChange={setVencimento} />
           </Field>
         </div>
         <div className="rec-form__duas">
@@ -928,7 +1044,7 @@ function FormConta({
           <textarea value={notas} onChange={(e) => setNotas(e.target.value)} rows={2} className="rec-notas" placeholder="Observação para a contabilidade, link da nota…" />
         </Field>
         <div className="fat-resumo">
-          <span>{comItens ? `Total · ${plural(usados.length, "item", "itens")}` : "Total a pagar"}</span>
+          <span>{comItens ? `Total · ${plural(usados.length, "item", "itens")}` : forma === "cartao" ? "Total na fatura do cartão" : "Total a pagar"}</span>
           <strong>{brlExato(total)}</strong>
         </div>
         <Rodape erro={erro} salvando={salvando} podeSalvar={podeSalvar} rotulo={despesa ? "salvar correção" : "lançar conta"} onFechar={onFechar} onSalvar={() => void salvar()} />
@@ -980,10 +1096,68 @@ function FormPagamento({ despesa, hoje, onFechar, onSalvo }: { despesa: Despesa;
   );
 }
 
+/** Pagamento da fatura de um cartão: lista o que tem dentro e paga tudo de uma vez. */
+function FormFatura({
+  cartao,
+  despesas,
+  vencimento,
+  nomeCat,
+  hoje,
+  onFechar,
+  onSalvo,
+}: {
+  cartao?: Favorecido;
+  despesas: Despesa[];
+  vencimento: string;
+  nomeCat: (id: number | null) => string;
+  hoje: string;
+  onFechar: () => void;
+  onSalvo: () => void;
+}) {
+  const [pagoEm, setPagoEm] = useState(hoje);
+  const { salvando, erro, enviar } = useEnvio();
+  const total = despesas.reduce((t, d) => t + d.valorCentavos, 0);
+  return (
+    <Modal titulo={`Fatura · ${cartao?.nome ?? "Cartão"}`} eyebrowTexto={`LIFF/ DESPESAS · FATURA QUE VENCE ${br(vencimento)}`} onFechar={onFechar} largura={600}>
+      <div className="rec-form">
+        {cartao?.pagamento && <div className="fat-meta">{cartao.pagamento}</div>}
+        <div className="fat-detalhe">
+          {despesas.map((d) => (
+            <div key={d.id} className="desp-item-lido" style={{ gridTemplateColumns: "64px minmax(0, 1fr) auto" }}>
+              <span className="fat-meta" style={{ fontSize: 12 }}>{d.ref}</span>
+              <span style={{ minWidth: 0 }}>
+                <span style={{ color: C.ink }}>{d.favorecido}</span>
+                <span className="fat-meta"> · {[d.descricao, nomeCat(d.categoriaId), rotuloMes(d.competencia)].filter(Boolean).join(" · ")}</span>
+              </span>
+              <span className="fat-num">{brlExato(d.valorCentavos)}</span>
+            </div>
+          ))}
+        </div>
+        <div className="fat-resumo">
+          <span>Total da fatura · {plural(despesas.length, "despesa", "despesas")}</span>
+          <strong>{brlExato(total)}</strong>
+        </div>
+        <Field label="Data do pagamento" required hint="Todas as despesas da fatura ficam pagas nesta data. Juros, multa ou IOF entram como despesa própria no cartão.">
+          <CampoData valor={pagoEm} onChange={setPagoEm} />
+        </Field>
+        <Rodape
+          erro={erro}
+          salvando={salvando}
+          podeSalvar={despesas.length > 0 && !!pagoEm && !!cartao}
+          rotulo="registrar pagamento da fatura"
+          onFechar={onFechar}
+          onSalvar={() => void enviar(() => api.pagarFaturaCartao({ cartaoId: cartao!.id, vencimento, pagoEm }).then(onSalvo))}
+        />
+      </div>
+    </Modal>
+  );
+}
+
 function Detalhe({
   despesa: d,
   nomeCat,
   favorecido,
+  favPorId,
   hoje,
   onFechar,
   onAcao,
@@ -992,6 +1166,7 @@ function Detalhe({
   despesa: Despesa;
   nomeCat: (id: number | null) => string;
   favorecido?: Favorecido;
+  favPorId: Map<number, Favorecido>;
   hoje: string;
   onFechar: () => void;
   onAcao: (a: Acao) => void;
@@ -1024,13 +1199,13 @@ function Detalhe({
         <div className="fat-detalhe">
           {d.descricao && linha("O que", d.descricao)}
           {favorecido && linha("Favorecido", `${rotuloTipoFavorecido(favorecido.tipo)}${favorecido.documento ? ` · ${favorecido.documento}` : ""}`)}
-          {favorecido?.pagamento && s !== "paga" && s !== "cancelada" && linha("Como pagar", favorecido.pagamento)}
+          {favorecido?.pagamento && d.forma !== "cartao" && s !== "paga" && s !== "cancelada" && linha("Dados para pagar", favorecido.pagamento)}
           {linha("Competência", rotuloMes(d.competencia))}
           {d.categoriaId != null && linha("Categoria", nomeCat(d.categoriaId))}
           {d.area && linha("Produto", rotuloArea(d.area))}
           {linha("Valor", brlExato(d.valorCentavos))}
-          {linha("Vencimento", br(d.vencimento))}
-          {linha("Forma", rotuloFormaPagamento(d.forma))}
+          {linha("Paga com", d.forma === "cartao" ? `Cartão · ${rotuloComo(d.forma, d.cartaoId, favPorId)}` : `Banco · ${rotuloFormaPagamento(d.forma)}`)}
+          {linha(d.forma === "cartao" ? "Vencimento da fatura" : "Vencimento", br(d.vencimento))}
           {linha("Documento", d.documento || "—")}
           {d.recorrenciaId != null && linha("Origem", "Despesa recorrente")}
           {d.status === "paga" && linha("Pago em", br(d.pagoEm))}
@@ -1089,8 +1264,8 @@ function Detalhe({
               </Button>
             )}
             {d.status === "aberta" && (
-              <Button variant="solid" size="xs" onClick={() => onAcao({ tipo: "pagar", despesa: d })}>
-                pagar
+              <Button variant="solid" size="xs" onClick={() => onAcao(pagarDe(d))}>
+                {rotuloPagar(d)}
               </Button>
             )}
           </span>
@@ -1108,16 +1283,23 @@ function FormRecorrencia({ recorrencia: r, dados, hoje, onFechar, onSalvo }: { r
   const [valor, setValor] = useState(deCentavos(r?.valorCentavos ?? 0));
   const [dia, setDia] = useState(String(r?.diaVencimento ?? 5));
   const [seguinte, setSeguinte] = useState(r?.venceMesSeguinte ?? true);
-  const [forma, setForma] = useState<string>(r?.forma ?? "pix");
+  const [como, setComo] = useState(valorComo(r?.forma ?? "pix", r?.cartaoId ?? null));
+  const { forma, cartaoId } = deComo(como);
+  const cartao = cartaoId == null ? undefined : dados.favorecidos.find((f) => f.id === cartaoId);
+  const escolherComo = (v: string) => {
+    setComo(v);
+    // Assinatura no cartão é cobrada no próprio mês; "mês seguinte" é o costume do PJ pago pelo banco.
+    if (deComo(v).forma === "cartao") setSeguinte(false);
+  };
   const [inicio, setInicio] = useState(r?.inicio ?? mesDe(hoje));
   const [fim, setFim] = useState(r?.fim ?? "");
   const [notas, setNotas] = useState(r?.notas ?? "");
   const { salvando, erro, enviar } = useEnvio();
   const centavos = paraCentavos(valor);
   const diaN = Number(dia);
-  const exemplo = /^\d{4}-\d{2}$/.test(inicio) && diaN >= 1 && diaN <= 28 ? vencimentoDaRecorrencia({ diaVencimento: diaN, venceMesSeguinte: seguinte }, inicio) : null;
+  const exemplo = /^\d{4}-\d{2}$/.test(inicio) && diaN >= 1 && diaN <= 28 ? vencimentoDaRecorrencia({ diaVencimento: diaN, venceMesSeguinte: seguinte, forma: forma as Recorrencia["forma"] }, inicio, cartao) : null;
 
-  const corpo = { favorecidoId: Number(favorecidoId), categoriaId: Number(categoriaId), area, descricao, valorCentavos: centavos, diaVencimento: diaN, venceMesSeguinte: seguinte, forma, inicio, fim, notas };
+  const corpo = { favorecidoId: Number(favorecidoId), categoriaId: Number(categoriaId), area, descricao, valorCentavos: centavos, diaVencimento: diaN, venceMesSeguinte: seguinte, forma, cartaoId, inicio, fim, notas };
   const nome = dados.favorecidos.find((f) => f.id === r?.favorecidoId)?.nome;
 
   return (
@@ -1140,18 +1322,18 @@ function FormRecorrencia({ recorrencia: r, dados, hoje, onFechar, onSalvo }: { r
           </Field>
         </div>
         <div className="rec-form__duas">
-          <Field label="Dia do vencimento" required hint="De 1 a 28, para existir em todo mês.">
-            <Input value={dia} onChange={setDia} placeholder="5" />
+          <Field label="Como vamos pagar" required hint={forma === "cartao" ? "Cada cobrança entra na fatura deste cartão." : "Sai direto do banco."}>
+            <Select value={como} onChange={escolherComo} options={opcoesComo(dados.favorecidos, r?.cartaoId ?? null)} />
           </Field>
-          <Field label="Forma de pagamento" required>
-            <Select value={forma} onChange={setForma} options={FORMAS_PAGAMENTO.map((f) => ({ value: f.key, label: f.label }))} />
+          <Field label={forma === "cartao" ? "Dia da cobrança no cartão" : "Dia do vencimento"} required hint="De 1 a 28, para existir em todo mês.">
+            <Input value={dia} onChange={setDia} placeholder="5" />
           </Field>
         </div>
         <Alternar ligado={seguinte} onChange={setSeguinte}>
-          Paga no mês seguinte ao do serviço (o usual para PJ)
+          {forma === "cartao" ? "Cobrada no mês seguinte ao da competência" : "Paga no mês seguinte ao do serviço (o usual para PJ)"}
         </Alternar>
         <div className="rec-form__duas">
-          <Field label="Primeira competência" required hint={exemplo ? `A conta de ${rotuloMes(inicio)} vence em ${br(exemplo)}.` : "AAAA-MM"}>
+          <Field label="Primeira competência" required hint={exemplo ? (forma === "cartao" ? `A de ${rotuloMes(inicio)} entra na fatura que vence em ${br(exemplo)}.` : `A conta de ${rotuloMes(inicio)} vence em ${br(exemplo)}.`) : "AAAA-MM"}>
             <Input value={inicio} onChange={setInicio} placeholder="AAAA-MM" />
           </Field>
           <Field label="Última competência" hint="Deixe vazio enquanto o contrato valer. Preencha para encerrar.">
@@ -1167,7 +1349,7 @@ function FormRecorrencia({ recorrencia: r, dados, hoje, onFechar, onSalvo }: { r
         <Rodape
           erro={erro}
           salvando={salvando}
-          podeSalvar={!!favorecidoId && !!categoriaId && centavos > 0}
+          podeSalvar={!!favorecidoId && !!categoriaId && !!como && centavos > 0}
           rotulo={r ? "salvar" : "cadastrar"}
           onFechar={onFechar}
           onSalvar={() => void enviar(() => api.despesaCadastroSalvar("recorrencias", r?.id ?? null, corpo).then(onSalvo))}
@@ -1196,6 +1378,8 @@ function FormFavorecido({ favorecido: f, onFechar, onSalvo }: { favorecido: Favo
   const [documento, setDocumento] = useState(f?.documento ?? "");
   const [contato, setContato] = useState(f?.contato ?? "");
   const [pagamento, setPagamento] = useState(f?.pagamento ?? "");
+  const [fechamento, setFechamento] = useState(f?.diaFechamento ? String(f.diaFechamento) : "");
+  const [vencimento, setVencimento] = useState(f?.diaVencimento ? String(f.diaVencimento) : "");
   const [notas, setNotas] = useState(f?.notas ?? "");
   const [ativo, setAtivo] = useState(f?.ativo ?? true);
   const { salvando, erro, enviar } = useEnvio();
@@ -1222,7 +1406,17 @@ function FormFavorecido({ favorecido: f, onFechar, onSalvo }: { favorecido: Favo
             </Field>
           </div>
         )}
-        <Field label="Como pagar" hint={cartao ? "Ex.: boleto que chega por e-mail, débito automático na conta tal." : "Chave PIX ou banco, agência e conta. Aparece na conta enquanto ela está a pagar."}>
+        {cartao && (
+          <div className="rec-form__duas">
+            <Field label="Dia do fechamento" hint="Compra até este dia entra na fatura do mês; depois, na seguinte.">
+              <Input value={fechamento} onChange={setFechamento} placeholder="Ex.: 25" />
+            </Field>
+            <Field label="Dia do vencimento" hint="Com os dois dias, o sistema sugere em qual fatura cada despesa cai.">
+              <Input value={vencimento} onChange={setVencimento} placeholder="Ex.: 5" />
+            </Field>
+          </div>
+        )}
+        <Field label={cartao ? "Como a fatura é paga" : "Dados para pagar"} hint={cartao ? "Ex.: boleto que chega por e-mail, débito automático na conta tal." : "Chave PIX ou banco, agência e conta. Aparece na conta enquanto ela está a pagar."}>
           <Input value={pagamento} onChange={setPagamento} placeholder={cartao ? "Débito automático" : "PIX: CNPJ"} />
         </Field>
         <Field label="Notas">
@@ -1239,7 +1433,7 @@ function FormFavorecido({ favorecido: f, onFechar, onSalvo }: { favorecido: Favo
           podeSalvar={!!nome.trim()}
           rotulo={f ? "salvar" : "cadastrar"}
           onFechar={onFechar}
-          onSalvar={() => void enviar(() => api.despesaCadastroSalvar("favorecidos", f?.id ?? null, { nome, tipo, documento, contato, pagamento, notas, ativo }).then(onSalvo))}
+          onSalvar={() => void enviar(() => api.despesaCadastroSalvar("favorecidos", f?.id ?? null, { nome, tipo, documento, contato, pagamento, diaFechamento: fechamento, diaVencimento: vencimento, notas, ativo }).then(onSalvo))}
           esquerda={
             f && (
               <button

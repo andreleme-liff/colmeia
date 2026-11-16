@@ -131,6 +131,47 @@ checa("cancelar de novo: 409", (await acao(conta1.id, { acao: "cancelar", motivo
 const p3 = await A("POST", "/api/despesas", { ...lanc, recorrenciaId: rec.id });
 checa("depois de cancelada, a competência pode ser relançada", p3.status, 200);
 
+console.log("\ncomo vamos pagar: cartão ou banco");
+const fat = (corpo) => A("POST", "/api/despesas/fatura", corpo);
+const aws = (await A("POST", "/api/despesas/cadastros/favorecidos", { nome: "AWS", tipo: "fornecedor" })).corpo;
+checa("cartão com um dia só: 400", (await A("PATCH", `/api/despesas/cadastros/favorecidos/${cartao.id}`, { nome: "Cartão corporativo final 1234", tipo: "cartao", diaFechamento: 25 })).status, 400);
+checa("cartão ganha fechamento e vencimento", (await A("PATCH", `/api/despesas/cadastros/favorecidos/${cartao.id}`, { nome: "Cartão corporativo final 1234", tipo: "cartao", diaFechamento: 25, diaVencimento: 5 })).status, 200);
+checa("os dias voltam na leitura", (({ diaFechamento, diaVencimento }) => [diaFechamento, diaVencimento])((await ler()).favorecidos.find((f) => f.id === cartao.id)), [25, 5]);
+const noCartao = { favorecidoId: aws.id, competencia: "2026-11", categoriaId: cat("Infraestrutura de nuvem e IA"), descricao: "Consumo de nuvem", valorCentavos: 420000, vencimento: "2026-12-05", forma: "cartao", cartaoId: cartao.id };
+checa("no cartão sem dizer qual: 400", (await A("POST", "/api/despesas", { ...noCartao, cartaoId: null })).status, 400);
+checa("cartão que não é cartão: 400", (await A("POST", "/api/despesas", { ...noCartao, cartaoId: pj.id })).status, 400);
+const a1 = (await A("POST", "/api/despesas", noCartao)).corpo;
+const a2 = (await A("POST", "/api/despesas", { ...noCartao, descricao: "Suporte", valorCentavos: 30000 })).corpo;
+const a3 = (await A("POST", "/api/despesas", { ...noCartao, descricao: "Outra fatura", valorCentavos: 9900, vencimento: "2027-01-05" })).corpo;
+const b1 = (await A("POST", "/api/despesas", { ...noCartao, descricao: "Pelo banco", forma: "boleto", cartaoId: cartao.id, valorCentavos: 5000 })).corpo;
+let dx = await ler();
+const de1 = (ref) => dx.despesas.find((d) => d.ref === ref);
+checa("a despesa é da AWS, paga no cartão", [de1(a1.ref).favorecido, de1(a1.ref).forma, de1(a1.ref).cartaoId, de1(a1.ref).status], ["AWS", "cartao", cartao.id, "aberta"]);
+checa("pelo banco não guarda cartão", [de1(b1.ref).forma, de1(b1.ref).cartaoId], ["boleto", null]);
+checa("cartão em uso não troca de tipo: 409", (await A("PATCH", `/api/despesas/cadastros/favorecidos/${cartao.id}`, { nome: "X", tipo: "fornecedor" })).status, 409);
+checa("recorrência no cartão", (await A("POST", "/api/despesas/cadastros/recorrencias",
+  { favorecidoId: aws.id, categoriaId: cat("Software e assinaturas"), valorCentavos: 9900, diaVencimento: 3, forma: "cartao", cartaoId: cartao.id, inicio: "2027-06" })).status, 200);
+checa("recorrência no cartão sem cartão: 400", (await A("POST", "/api/despesas/cadastros/recorrencias",
+  { favorecidoId: aws.id, categoriaId: cat("Software e assinaturas"), valorCentavos: 9900, diaVencimento: 3, forma: "cartao", inicio: "2027-06" })).status, 400);
+checa("fatura sem data de pagamento: 400", (await fat({ cartaoId: cartao.id, vencimento: "2026-12-05" })).status, 400);
+checa("fatura de cartão inexistente: 404", (await fat({ cartaoId: 99999, vencimento: "2026-12-05", pagoEm: "2026-12-05" })).status, 404);
+checa("fatura sem nada em aberto: 409", (await fat({ cartaoId: cartao.id, vencimento: "2030-01-05", pagoEm: "2026-12-05" })).status, 409);
+const pg = await fat({ cartaoId: cartao.id, vencimento: "2026-12-05", pagoEm: "2026-12-04" });
+checa("paga a fatura inteira: as duas despesas, pelo total", [pg.status, pg.corpo.pagas, pg.corpo.valorCentavos], [200, 2, 450000]);
+dx = await ler();
+checa("as duas ficaram pagas na data", [a1.ref, a2.ref].map((r) => [de1(r).status, de1(r).pagoEm, de1(r).valorPagoCentavos]), [["paga", "2026-12-04", 420000], ["paga", "2026-12-04", 30000]]);
+checa("a da outra fatura e a do banco continuam em aberto", [de1(a3.ref).status, de1(b1.ref).status], ["aberta", "aberta"]);
+checa("pagar a mesma fatura de novo: 409", (await fat({ cartaoId: cartao.id, vencimento: "2026-12-05", pagoEm: "2026-12-04" })).status, 409);
+checa("estorna uma despesa da fatura", (await acao(de1(a2.ref).id, { acao: "estornar" })).status, 200);
+checa("trocar do cartão para o banco limpa o cartão", (await acao(de1(a2.ref).id, { acao: "editar", ...noCartao, forma: "pix", valorCentavos: 30000 })).status, 200);
+checa("ficou no banco", (({ forma, cartaoId }) => [forma, cartaoId])((await ler()).despesas.find((d) => d.ref === a2.ref)), ["pix", null]);
+const [linhaFat] = await sql`SELECT texto FROM audit_log WHERE entidade = ${a1.ref} AND valor_novo = 'paga'`;
+checa("a auditoria diz em que fatura foi paga", /na fatura do cartão Cartão corporativo final 1234 que vencia 05\/12\/2026$/.test(linhaFat.texto), true);
+for (const papel of ["gestor", "leitura"]) {
+  const [existe] = await sql`SELECT 1 FROM users WHERE papel = ${papel} AND ativo LIMIT 1`;
+  if (existe) checa(`${papel} não paga fatura: 403`, (await chamar(await sessaoDe(papel), "POST", "/api/despesas/fatura", {})).status, 403);
+}
+
 console.log("\ncadastros em uso");
 checa("desativa o favorecido", (await A("PATCH", `/api/despesas/cadastros/favorecidos/${pj.id}`, { nome: "Ana Dev LTDA", tipo: "colaborador_pj", ativo: false })).status, 200);
 const d9 = await ler();
@@ -145,7 +186,7 @@ const logs = await sql`SELECT entidade, texto, valor_anterior AS de, valor_novo 
 const de = (ref) => logs.filter((l) => l.entidade === ref).map((l) => [l.de, l.para]);
 checa("cada ação da conta deixou a sua linha", de(p1.corpo.ref), [[null, "aberta"], ["aberta", "paga"], ["paga", "aberta"], [null, null], ["aberta", "cancelada"]]);
 checa("o lançamento diz valor, vencimento e documento", logs.find((l) => l.entidade === p1.corpo.ref).texto.replace(/\u00a0/g, " "),
-  `Lançou a conta a pagar ${p1.corpo.ref} de Ana Dev ME (Engenharia), competência 11/2026: R$ 15.500,00, vence 05/12/2026, PIX, documento NF 152`);
+  `Lançou a conta a pagar ${p1.corpo.ref} de Ana Dev ME (Engenharia), competência 11/2026: R$ 15.500,00, PIX, vence 05/12/2026, documento NF 152`);
 checa("cadastros auditados", [logs.some((l) => l.entidade === `FAV-${pj.id}`), logs.some((l) => l.entidade === `REC-${rec.id}`), logs.some((l) => l.entidade === `CAT-${nova.id}` && l.texto.startsWith("Excluiu"))], [true, true, true]);
 // O histórico de uma conta mora no Changelog (só admin), como o das faturas: a rota de
 // histórico por registro é a dos cards (C- e T-) e não conhece P-.

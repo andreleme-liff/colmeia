@@ -261,6 +261,8 @@ export const api = {
     req<{ ok: boolean; id: number; ref: string }>("/api/despesas", { method: "POST", body: JSON.stringify(corpo) }),
   acaoDespesa: (id: number, corpo: Record<string, unknown>) =>
     req<{ ok: boolean }>(`/api/despesas/${id}`, { method: "PATCH", body: JSON.stringify(corpo) }),
+  pagarFaturaCartao: (corpo: { cartaoId: number; vencimento: string; pagoEm: string }) =>
+    req<{ ok: boolean; pagas: number; valorCentavos: number }>("/api/despesas/fatura", { method: "POST", body: JSON.stringify(corpo) }),
   despesaCadastroSalvar: (tipo: string, id: number | null, corpo: Record<string, unknown>) =>
     req<{ ok: boolean; id: number }>(`/api/despesas/cadastros/${tipo}${id == null ? "" : `/${id}`}`, {
       method: id == null ? "POST" : "PATCH",
