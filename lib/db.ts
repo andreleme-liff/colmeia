@@ -9,6 +9,7 @@ import {
 } from "./domain";
 import { ARQUETIPOS_SEMENTE, PROGRAMAS_SEMENTE } from "./funding";
 import { ligarPendentes } from "./clientes-db";
+import { CATEGORIAS_SEMENTE } from "./despesas";
 
 export type Db = ReturnType<typeof postgres>;
 
@@ -866,6 +867,107 @@ async function migrate(): Promise<void> {
       WHERE contrato_id IS NOT NULL AND tipo <> 'avulsa' AND status <> 'cancelada'
     `;
 
+    // Despesas (contas a pagar), nov/2026, só admin. Espelho do faturamento: categorias (o
+    // plano de contas, com o grupo que a DRE vai usar), favorecidos (PJ, advisor, cartão,
+    // fornecedor), recorrências (o que se repete todo mês e gera a conta PREVISTA, sem gravar)
+    // e as contas lançadas, com itens opcionais (as compras de uma fatura de cartão). O nome
+    // do favorecido vai copiado na conta: renomear o cadastro não reescreve o que foi pago.
+    // Cadastro em uso não se exclui (sem CASCADE de propósito): desativa-se. Ver lib/despesas.ts.
+    const [{ despesasNovas }] = await sql<{ despesasNovas: boolean }[]>`
+      SELECT to_regclass('public.despesa_categorias') IS NULL AS "despesasNovas"
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS despesa_categorias (
+        id     SERIAL PRIMARY KEY,
+        nome   TEXT NOT NULL,
+        grupo  TEXT NOT NULL CHECK (grupo IN ('pessoal', 'custo', 'operacional', 'imposto', 'financeira')),
+        ativo  BOOLEAN NOT NULL DEFAULT TRUE,
+        ordem  INTEGER NOT NULL DEFAULT 0
+      )
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS despesa_favorecidos (
+        id         SERIAL PRIMARY KEY,
+        nome       TEXT NOT NULL,
+        tipo       TEXT NOT NULL CHECK (tipo IN ('colaborador_pj', 'advisor_pj', 'cartao', 'fornecedor', 'governo')),
+        documento  TEXT NOT NULL DEFAULT '',
+        contato    TEXT NOT NULL DEFAULT '',
+        pagamento  TEXT NOT NULL DEFAULT '',
+        notas      TEXT NOT NULL DEFAULT '',
+        ativo      BOOLEAN NOT NULL DEFAULT TRUE,
+        criado_em  TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS despesa_recorrencias (
+        id                  SERIAL PRIMARY KEY,
+        favorecido_id       INTEGER NOT NULL REFERENCES despesa_favorecidos(id),
+        categoria_id        INTEGER NOT NULL REFERENCES despesa_categorias(id),
+        area                TEXT REFERENCES areas(id) ON DELETE SET NULL,
+        descricao           TEXT NOT NULL DEFAULT '',
+        valor_centavos      BIGINT NOT NULL CHECK (valor_centavos > 0),
+        dia_vencimento      INTEGER NOT NULL CHECK (dia_vencimento BETWEEN 1 AND 28),
+        vence_mes_seguinte  BOOLEAN NOT NULL DEFAULT FALSE,
+        forma               TEXT NOT NULL CHECK (forma IN ('pix', 'boleto', 'transferencia', 'debito')),
+        inicio              TEXT NOT NULL,
+        fim                 TEXT,
+        notas               TEXT NOT NULL DEFAULT '',
+        criado_em           TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS despesas (
+        id                   SERIAL PRIMARY KEY,
+        ref                  TEXT UNIQUE,
+        favorecido_id        INTEGER NOT NULL REFERENCES despesa_favorecidos(id),
+        favorecido           TEXT NOT NULL,
+        categoria_id         INTEGER REFERENCES despesa_categorias(id),
+        area                 TEXT REFERENCES areas(id) ON DELETE SET NULL,
+        recorrencia_id       INTEGER REFERENCES despesa_recorrencias(id),
+        competencia          TEXT NOT NULL,
+        descricao            TEXT NOT NULL DEFAULT '',
+        valor_centavos       BIGINT NOT NULL CHECK (valor_centavos > 0),
+        vencimento           DATE NOT NULL,
+        forma                TEXT NOT NULL CHECK (forma IN ('pix', 'boleto', 'transferencia', 'debito')),
+        documento            TEXT NOT NULL DEFAULT '',
+        status               TEXT NOT NULL CHECK (status IN ('aberta', 'paga', 'cancelada')),
+        pago_em              DATE,
+        valor_pago_centavos  BIGINT,
+        cancelada_em         DATE,
+        motivo_cancelamento  TEXT NOT NULL DEFAULT '',
+        notas                TEXT NOT NULL DEFAULT '',
+        criado_em            TIMESTAMPTZ NOT NULL DEFAULT now(),
+        atualizado_em        TIMESTAMPTZ
+      )
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS despesa_itens (
+        id              SERIAL PRIMARY KEY,
+        despesa_id      INTEGER NOT NULL REFERENCES despesas(id) ON DELETE CASCADE,
+        data            DATE,
+        descricao       TEXT NOT NULL,
+        categoria_id    INTEGER NOT NULL REFERENCES despesa_categorias(id),
+        area            TEXT REFERENCES areas(id) ON DELETE SET NULL,
+        valor_centavos  BIGINT NOT NULL CHECK (valor_centavos > 0),
+        ordem           INTEGER NOT NULL DEFAULT 0
+      )
+    `;
+    // Uma conta viva por recorrência e competência: lançar duas vezes o mesmo mês de um PJ é
+    // erro que a tela não deve conseguir cometer. Cancelada sai da regra (relançamento).
+    await sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS despesas_recorrencia_viva
+      ON despesas (recorrencia_id, competencia)
+      WHERE recorrencia_id IS NOT NULL AND status <> 'cancelada'
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS despesa_itens_despesa ON despesa_itens (despesa_id)`;
+    // As categorias da semente entram SÓ quando a tabela nasce (mesma regra das áreas): o que
+    // a administração excluir depois não volta.
+    if (despesasNovas) {
+      for (const [i, c] of CATEGORIAS_SEMENTE.entries()) {
+        await sql`INSERT INTO despesa_categorias (nome, grupo, ordem) VALUES (${c.nome}, ${c.grupo}, ${i})`;
+      }
+    }
+
     // A Supabase expõe o schema `public` pela API REST (PostgREST), que atende usando os
     // papéis `anon` e `authenticated` — e concede privilégios a eles por padrão em tabelas
     // novas. A chave anon é pública por definição (nasceu para ir em código de navegador),
@@ -893,7 +995,8 @@ async function migrate(): Promise<void> {
               'REVOKE ALL ON users, user_area_perms, activities, deals, sessions, audit_log, areas, produtos, '
               'oauth_concessoes, oauth_codigos, oauth_tokens, mcp_chamadas, origens, oportunidade_modulos, oportunidade_aws, '
               'contratos, contrato_receitas, faturas, funding_programas, funding_arquetipos, funding_calculadoras, '
-              'funding_estimativas, funding_linhas, funding_pastas, clientes, cliente_chaves, cliente_contatos FROM %I',
+              'funding_estimativas, funding_linhas, funding_pastas, clientes, cliente_chaves, cliente_contatos, '
+              'despesa_categorias, despesa_favorecidos, despesa_recorrencias, despesas, despesa_itens FROM %I',
               papel
             );
             EXECUTE format('REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM %I', papel);

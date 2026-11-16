@@ -144,6 +144,9 @@ export const NAV = [
   // matriz de permissões) virou parte de Cadastros → Pessoas; `/admin` redireciona para lá.
   // Contas a receber: emissão e baixa das faturas que saem dos contratos da receita.
   { key: "faturamento", label: "faturamento", soAdmin: true },
+  // Contas a pagar: PJ, advisors, cartão corporativo e o que mais sair do caixa. Fica logo
+  // depois do faturamento porque é o par dele (o que entra, o que sai).
+  { key: "despesas", label: "despesas", soAdmin: true },
   // ACE e Funding (AWS): consumo previsto por oportunidade (conta LIFF e conta do cliente),
   // arquétipos de implantação com as calculadoras oficiais e os programas (POC, MAP, Sandbox…).
   // A chave e o endereço continuam `funding`, para não quebrar links nem o histórico.
@@ -163,6 +166,7 @@ export const TITLES: Record<string, string> = {
   clientes: "Organizações",
   receita: "Forecast de receita",
   faturamento: "Faturamento · contas a receber",
+  despesas: "Despesas · contas a pagar",
   funding: "ACE e Funding",
   auditoria: "Changelog",
   conexoes: "MCP Server",
@@ -171,7 +175,7 @@ export const TITLES: Record<string, string> = {
 export const ADMIN_CARDS = [
   {
     title: "PAPÉIS",
-    body: "Leitura vê tudo e não edita. Membro e Gestor editam os cards de todos os produtos. Admin também administra cadastros, receita, faturamento e funding.",
+    body: "Leitura vê tudo e não edita. Membro e Gestor editam os cards de todos os produtos. Admin também administra cadastros, receita, faturamento, despesas e funding.",
   },
   {
     title: "SSO GOOGLE",

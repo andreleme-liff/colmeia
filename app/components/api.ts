@@ -255,6 +255,18 @@ export const api = {
     req<{ ok: boolean; ref: string }>("/api/faturamento", { method: "POST", body: JSON.stringify(corpo) }),
   acaoFatura: (id: number, corpo: Record<string, unknown>) =>
     req<{ ok: boolean }>(`/api/faturamento/${id}`, { method: "PATCH", body: JSON.stringify(corpo) }),
+  /** Despesas, contas a pagar (só admin). */
+  despesas: () => req<import("@/lib/despesas-db").DadosDespesas>("/api/despesas"),
+  lancarDespesa: (corpo: Record<string, unknown>) =>
+    req<{ ok: boolean; id: number; ref: string }>("/api/despesas", { method: "POST", body: JSON.stringify(corpo) }),
+  acaoDespesa: (id: number, corpo: Record<string, unknown>) =>
+    req<{ ok: boolean }>(`/api/despesas/${id}`, { method: "PATCH", body: JSON.stringify(corpo) }),
+  despesaCadastroSalvar: (tipo: string, id: number | null, corpo: Record<string, unknown>) =>
+    req<{ ok: boolean; id: number }>(`/api/despesas/cadastros/${tipo}${id == null ? "" : `/${id}`}`, {
+      method: id == null ? "POST" : "PATCH",
+      body: JSON.stringify(corpo),
+    }),
+  despesaCadastroExcluir: (tipo: string, id: number) => req<{ ok: boolean }>(`/api/despesas/cadastros/${tipo}/${id}`, { method: "DELETE" }),
   /** Funding AWS (só admin). */
   funding: () =>
     req<{

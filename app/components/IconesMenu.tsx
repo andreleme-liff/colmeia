@@ -90,6 +90,14 @@ const DESENHOS: Record<string, ReactNode> = {
       <path d="M12 10v7M14 11.3c-.4-.6-1.1-.9-2-.9-1.2 0-2 .6-2 1.4 0 1.9 4 1 4 2.9 0 .8-.9 1.5-2 1.5-.9 0-1.7-.4-2.1-1" />
     </>
   ),
+  // Despesas: carteira (o que sai do caixa).
+  despesas: (
+    <>
+      <path d="M4 7.5h14.5a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H5.5A1.5 1.5 0 0 1 4 18Z" />
+      <path d="M4 7.5V6a1.5 1.5 0 0 1 1.5-1.5H16v3" />
+      <path d="M20 11.5h-3.5a2 2 0 0 0 0 4H20" />
+    </>
+  ),
   // Funding: nuvem com seta para cima (crédito entrando na conta).
   funding: (
     <>

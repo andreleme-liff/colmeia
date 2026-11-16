@@ -20,7 +20,7 @@ const PAPEIS_TELA: { key: string; nome: string; faz: string }[] = [
   { key: "leitura", nome: "leitura", faz: "vê os cards de todos os produtos, não edita; não vê receita" },
   { key: "membro", nome: "membro", faz: "vê e edita cards em todos os produtos; não vê receita" },
   { key: "gestor", nome: "gestor", faz: "como o membro, e também vê a receita" },
-  { key: "admin", nome: "admin", faz: "edita tudo e administra cadastros, receita, faturamento e funding" },
+  { key: "admin", nome: "admin", faz: "edita tudo e administra cadastros, receita, faturamento, despesas e funding" },
 ];
 
 const campo: CSSProperties = {
