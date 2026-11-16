@@ -1,8 +1,8 @@
-// Cadastros das despesas: altera ou exclui um registro. Só administração; auditado.
+// Cadastros das despesas: altera ou exclui um registro. Só financeiro e administração; auditado.
 // Excluir só vale para o que nunca foi usado: o resto se desativa (ver lib/despesas-db.ts).
 
 import { getDb } from "@/lib/db";
-import { requireAdmin } from "@/lib/perms";
+import { requireFinanceiro } from "@/lib/perms";
 import { err, json, lerCorpo } from "@/lib/http";
 import { TIPOS_CADASTRO, excluirCadastro, salvarCadastro, type TipoCadastro } from "@/lib/despesas-db";
 
@@ -16,7 +16,7 @@ async function alvo(ctxRoute: Rota): Promise<{ tipo: TipoCadastro; id: number } 
 }
 
 export async function PATCH(req: Request, ctxRoute: Rota) {
-  const ctx = await requireAdmin();
+  const ctx = await requireFinanceiro();
   if (ctx instanceof Response) return ctx;
   const a = await alvo(ctxRoute);
   if (!a) return err("Registro inválido.", 404);
@@ -28,7 +28,7 @@ export async function PATCH(req: Request, ctxRoute: Rota) {
 }
 
 export async function DELETE(_req: Request, ctxRoute: Rota) {
-  const ctx = await requireAdmin();
+  const ctx = await requireFinanceiro();
   if (ctx instanceof Response) return ctx;
   const a = await alvo(ctxRoute);
   if (!a) return err("Registro inválido.", 404);

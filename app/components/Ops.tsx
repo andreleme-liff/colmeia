@@ -870,6 +870,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
   const soAdminSemPermissao =
     !!estado &&
     ((!estado.isAdmin && NAV.some((n) => n.key === view && "soAdmin" in n)) ||
+      (!estado.podeFinanceiro && NAV.some((n) => n.key === view && "soFinanceiro" in n)) ||
       (!estado.podeVerReceita && NAV.some((n) => n.key === view && "soReceita" in n)));
   // Só troca a URL (sistema externo); a tela acompanha a rota pelo ajuste feito no render.
   useEffect(() => {
@@ -924,8 +925,9 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
   // Cadastros (que inclui pessoas e permissões) é configuração do sistema — as rotas já exigem
   // admin, e deixar a tela à vista só oferecia caminhos que terminam em 403. No menu, o que é
   // só de admin fica num grupo à parte, no fim.
-  const navComum = NAV.filter((n) => !("soAdmin" in n) && (estado.podeVerReceita || !("soReceita" in n)));
-  const navAdmin = estado.isAdmin ? NAV.filter((n) => "soAdmin" in n) : [];
+  const navComum = NAV.filter((n) => !("soAdmin" in n) && !("soFinanceiro" in n) && (estado.podeVerReceita || !("soReceita" in n)));
+  // O grupo do fim: faturamento e despesas para financeiro e admin; o resto, só para admin.
+  const navAdmin = NAV.filter((n) => ("soFinanceiro" in n && estado.podeFinanceiro) || ("soAdmin" in n && estado.isAdmin));
   const chips = [{ id: "all", label: "Todas", color: C.dust }, ...dados.areasVisiveis];
   // Só oferece criar nas áreas onde a pessoa realmente escreve.
   const areasEditaveis = dados.areasVisiveis.filter((a) => estado.perms[a.id] === "edit");
@@ -972,6 +974,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           meId={me.id}
           isAdmin={estado.isAdmin}
           podeVerReceita={estado.podeVerReceita}
+          podeFinanceiro={estado.podeFinanceiro}
           area={areaEfetiva}
           gatilho={estado.logs[0]?.id}
           onAbrirAtividade={(ref) => navegar({ view: "operacoes", ref })}
@@ -1115,7 +1118,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             deals={estado.deals}
             area={areaEfetiva}
             gatilho={estado.logs[0]?.id}
-            podeEditar={estado.isAdmin}
+            podeEditar={estado.podeFinanceiro}
             onAbrirDeal={(ref) => navegar({ view: "comercial", ref })}
           />
         );
@@ -1128,6 +1131,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             gatilho={estado.logs[0]?.id}
             isAdmin={estado.isAdmin}
             podeVerReceita={estado.podeVerReceita}
+            podeFinanceiro={estado.podeFinanceiro}
             podeCriar={estado.isAdmin || areasEditaveis.length > 0}
             onAbrirDeal={(ref) => navegar({ view: "comercial", ref })}
           />
@@ -1158,6 +1162,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           meId={me.id}
           isAdmin={estado.isAdmin}
           podeVerReceita={estado.podeVerReceita}
+          podeFinanceiro={estado.podeFinanceiro}
           area={areaEfetiva}
           gatilho={estado.logs[0]?.id}
           onAbrirAtividade={(ref) => navegar({ view: "operacoes", ref })}
@@ -1205,7 +1210,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
               <Fragment key={gi}>
                 {gi > 0 && (
                   <div className="liff-nav-grupo" aria-hidden>
-                    <span className="liff-so-expandida" style={eyebrow(9, C.faint, "0.16em")}>só admin</span>
+                    <span className="liff-so-expandida" style={eyebrow(9, C.faint, "0.16em")}>{estado.isAdmin ? "só admin e financeiro" : "financeiro"}</span>
                   </div>
                 )}
                 {grupo.map((n) => {
@@ -1319,6 +1324,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
                     paraCima
                     opcoes={[
                       { id: "admin", label: "admin" },
+                      { id: "financeiro", label: "financeiro" },
                       { id: "gestor", label: "gestor" },
                       { id: "membro", label: "membro" },
                       { id: "leitura", label: "leitura" },

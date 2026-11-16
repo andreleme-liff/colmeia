@@ -1,9 +1,9 @@
-// Alteração e exclusão de um contrato de receita. Só administração. A alteração substitui o
+// Alteração e exclusão de um contrato de receita. Só financeiro e administração. A alteração substitui o
 // contrato inteiro (cabeçalho e linhas): é um formulário só, e o histórico guarda o antes e
 // o depois resumidos.
 
 import { getDb } from "@/lib/db";
-import { requireAdmin } from "@/lib/perms";
+import { requireFinanceiro } from "@/lib/perms";
 import { err, json, lerCorpo } from "@/lib/http";
 import { registrar } from "@/lib/log";
 import { lerContrato } from "@/lib/forecast";
@@ -16,7 +16,7 @@ async function idDe(ctxRoute: RouteContext<"/api/receita/[id]">): Promise<number
 }
 
 export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/receita/[id]">) {
-  const ctx = await requireAdmin();
+  const ctx = await requireFinanceiro();
   if (ctx instanceof Response) return ctx;
   const id = await idDe(ctxRoute);
   if (id == null) return err("Receita inválida.", 400);
@@ -30,7 +30,7 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/receita/[
 }
 
 export async function DELETE(_req: Request, ctxRoute: RouteContext<"/api/receita/[id]">) {
-  const ctx = await requireAdmin();
+  const ctx = await requireFinanceiro();
   if (ctx instanceof Response) return ctx;
   const id = await idDe(ctxRoute);
   if (id == null) return err("Receita inválida.", 400);

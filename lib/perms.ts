@@ -8,7 +8,7 @@ import { carregarUsuario, getSessionUser, type SessionUser } from "./auth";
 import { cookies } from "next/headers";
 import { getDb } from "./db";
 import { err } from "./http";
-import type { Nivel } from "./domain";
+import { PAPEIS_FINANCEIROS, type Nivel } from "./domain";
 
 export type Ctx = {
   user: SessionUser;
@@ -25,8 +25,10 @@ export type Ctx = {
    */
   labelArea: (area: string) => string;
   isAdmin: boolean;
-  /** Receita (forecast e contratos): só gestor e admin enxergam; membro e leitura, não. */
+  /** Receita (forecast e contratos): gestor, financeiro e admin enxergam; membro e leitura, não. */
   podeVerReceita: boolean;
+  /** Opera o dinheiro: edita a receita e usa faturamento e despesas. Financeiro e admin. */
+  podeFinanceiro: boolean;
   podeVer: (area: string) => boolean;
   podeEditar: (area: string) => boolean;
 };
@@ -36,6 +38,7 @@ export type Ctx = {
  * - leitura          → vê os cards de todos os produtos, não edita
  * - membro           → vê e edita os cards de todos os produtos
  * - gestor           → como o membro, e também vê a receita (forecast e contratos)
+ * - financeiro       → como o gestor, e também edita a receita e opera faturamento e despesas
  * - admin            → idem, e administra (o que é só de admin passa por `requireAdmin`)
  */
 export async function carregarPerms(user: SessionUser, areasExistentes: string[]): Promise<Record<string, Nivel>> {
@@ -64,7 +67,8 @@ export function montarCtx(
     areasExistentes,
     labelArea: (area) => cadastro.find((a) => a.id === area)?.label ?? area,
     isAdmin: user.papel === "admin",
-    podeVerReceita: user.papel === "admin" || user.papel === "gestor",
+    podeVerReceita: user.papel === "admin" || user.papel === "financeiro" || user.papel === "gestor",
+    podeFinanceiro: PAPEIS_FINANCEIROS.includes(user.papel),
     podeVer: (area) => !!perms[area],
     podeEditar: (area) => perms[area] === "edit",
   };
@@ -89,7 +93,7 @@ export async function requireCtx(): Promise<Ctx | Response> {
 /** Cookie do modo "ver como" (ver app/api/me/ver-como). */
 export const COOKIE_VER_COMO = "ver_como";
 /** Papéis que um admin pode simular: todos têm menos acesso que o dele. */
-export const PAPEIS_SIMULAVEIS = ["gestor", "membro", "leitura"] as const;
+export const PAPEIS_SIMULAVEIS = ["financeiro", "gestor", "membro", "leitura"] as const;
 
 /**
  * Modo "ver como": admin com o cookie ligado é tratado, nesta requisição, como se tivesse o
@@ -114,11 +118,22 @@ export async function ctxDoUsuario(userId: number): Promise<Ctx | null> {
   return user ? ctxDe(user) : null;
 }
 
-/** Receita é de gestor e admin: membro e leitura não leem forecast nem contratos. */
+/** Ler a receita é de gestor, financeiro e admin: membro e leitura não leem forecast nem contratos. */
 export async function requireReceita(): Promise<Ctx | Response> {
   const ctx = await requireCtx();
   if (ctx instanceof Response) return ctx;
   if (!ctx.podeVerReceita) return err("Receita restrita a gestores e à administração.", 403);
+  return ctx;
+}
+
+/**
+ * O dinheiro (editar a receita, faturamento, despesas) é do financeiro e da administração.
+ * O que continua só de admin (pessoas, cadastros, funding, changelog) passa por `requireAdmin`.
+ */
+export async function requireFinanceiro(): Promise<Ctx | Response> {
+  const ctx = await requireCtx();
+  if (ctx instanceof Response) return ctx;
+  if (!ctx.podeFinanceiro) return err("Ação restrita ao financeiro e à administração.", 403);
   return ctx;
 }
 

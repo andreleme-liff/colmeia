@@ -1,20 +1,20 @@
 // Despesas (contas a pagar): tudo de uma vez (categorias, favorecidos, recorrências e contas
-// com os itens) e o lançamento de uma conta. Só administração; toda gravação é auditada na
+// com os itens) e o lançamento de uma conta. Só financeiro e administração; toda gravação é auditada na
 // mesma transação.
 
 import { getDb } from "@/lib/db";
-import { requireAdmin } from "@/lib/perms";
+import { requireFinanceiro } from "@/lib/perms";
 import { err, json, lerCorpo } from "@/lib/http";
 import { lancarDespesa, lerDespesas } from "@/lib/despesas-db";
 
 export async function GET() {
-  const ctx = await requireAdmin();
+  const ctx = await requireFinanceiro();
   if (ctx instanceof Response) return ctx;
   return json(await lerDespesas(await getDb()));
 }
 
 export async function POST(req: Request) {
-  const ctx = await requireAdmin();
+  const ctx = await requireFinanceiro();
   if (ctx instanceof Response) return ctx;
   const body = await lerCorpo(req);
   const sql = await getDb();

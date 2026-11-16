@@ -913,7 +913,7 @@ function NovaPessoa({
       <Field label="E-mail" required hint={`Precisa ser @${dominio} — é o domínio aceito no login.`}>
         <Input placeholder={`larissa@${dominio}`} value={email} onChange={setEmail} />
       </Field>
-      <Field label="Papel" hint="Leitura só vê. Membro e gestor editam os cards de todos os produtos; só o gestor vê a receita. Admin também administra.">
+      <Field label="Papel" hint="Leitura só vê. Membro e gestor editam os cards de todos os produtos; o gestor também vê a receita. Financeiro edita a receita e opera faturamento e despesas. Admin também administra.">
         <Select options={[...PAPEIS]} value={papel} onChange={setPapel} />
       </Field>
       <Button

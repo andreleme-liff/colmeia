@@ -119,7 +119,12 @@ export function porTexto(a: string, b: string): number {
 export type Nivel = "view" | "edit";
 
 /** O papel define o teto de permissão; a matriz por área refina dentro dele. */
-export const PAPEIS = ["admin", "gestor", "membro", "leitura"] as const;
+// Do maior para o menor acesso. `financeiro` (nov/2026) fica entre gestor e admin: é o gestor
+// que também cuida do dinheiro (edita a receita, opera faturamento e despesas), sem administrar
+// pessoas, cadastros, funding nem ver o changelog.
+export const PAPEIS = ["admin", "financeiro", "gestor", "membro", "leitura"] as const;
+/** Quem opera o dinheiro: edita a receita e usa faturamento e despesas. */
+export const PAPEIS_FINANCEIROS: readonly string[] = ["admin", "financeiro"];
 export type Papel = (typeof PAPEIS)[number];
 
 // "atividades" saiu: era a mesma coleção de Operações em forma de tabela plana. Duas
@@ -134,19 +139,20 @@ export const NAV = [
   { key: "clientes", label: "organizações" },
   { key: "operacoes", label: "operações" },
   { key: "cronograma", label: "cronograma" },
-  // Forecast de receita: gestor e admin veem; só admin decide o que entra e altera valores.
+  // Forecast de receita: gestor, financeiro e admin veem; financeiro e admin alteram.
   { key: "receita", label: "receita", soReceita: true },
   // Aplicativos externos (o Claude) que alguém autorizou a agir em seu nome pelo MCP. Para
   // TODOS, não só admin: cada pessoa revoga as próprias conexões — por isso não mora em
   // Cadastros, que é só da administração.
   { key: "conexoes", label: "mcp server" },
-  // Só admin, e por isso no fim do menu, num grupo separado. A antiga "administração" (a
-  // matriz de permissões) virou parte de Cadastros → Pessoas; `/admin` redireciona para lá.
+  // Do financeiro e do admin (`soFinanceiro`), e por isso no fim do menu, num grupo separado.
   // Contas a receber: emissão e baixa das faturas que saem dos contratos da receita.
-  { key: "faturamento", label: "faturamento", soAdmin: true },
+  { key: "faturamento", label: "faturamento", soFinanceiro: true },
   // Contas a pagar: PJ, advisors, cartão corporativo e o que mais sair do caixa. Fica logo
   // depois do faturamento porque é o par dele (o que entra, o que sai).
-  { key: "despesas", label: "despesas", soAdmin: true },
+  { key: "despesas", label: "despesas", soFinanceiro: true },
+  // Daqui para baixo, só admin. A antiga "administração" (a matriz de permissões) virou parte
+  // de Cadastros → Pessoas; `/admin` redireciona para lá.
   // ACE e Funding (AWS): consumo previsto por oportunidade (conta LIFF e conta do cliente),
   // arquétipos de implantação com as calculadoras oficiais e os programas (POC, MAP, Sandbox…).
   // A chave e o endereço continuam `funding`, para não quebrar links nem o histórico.
@@ -175,7 +181,7 @@ export const TITLES: Record<string, string> = {
 export const ADMIN_CARDS = [
   {
     title: "PAPÉIS",
-    body: "Leitura vê tudo e não edita. Membro e Gestor editam os cards de todos os produtos. Admin também administra cadastros, receita, faturamento, despesas e funding.",
+    body: "Leitura vê tudo e não edita. Membro e Gestor editam os cards de todos os produtos. Financeiro edita a receita e opera faturamento e despesas. Admin também administra cadastros e funding.",
   },
   {
     title: "SSO GOOGLE",

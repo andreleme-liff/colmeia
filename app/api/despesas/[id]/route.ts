@@ -1,4 +1,4 @@
-// Ações sobre uma conta a pagar lançada. Só administração.
+// Ações sobre uma conta a pagar lançada. Só financeiro e administração.
 //   pagar    — registra o pagamento: data e valor que saiu (aberta → paga);
 //   estornar — desfaz o pagamento (paga → aberta), para corrigir um lançamento errado;
 //   editar   — corrige a conta: valor, vencimento, categoria, itens, documento (só aberta);
@@ -6,12 +6,12 @@
 //              uma recorrência, a linha do mês volta a ficar prevista.
 
 import { getDb } from "@/lib/db";
-import { requireAdmin } from "@/lib/perms";
+import { requireFinanceiro } from "@/lib/perms";
 import { err, json, lerCorpo } from "@/lib/http";
 import { agirNaDespesa } from "@/lib/despesas-db";
 
 export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/despesas/[id]">) {
-  const ctx = await requireAdmin();
+  const ctx = await requireFinanceiro();
   if (ctx instanceof Response) return ctx;
   const { id: bruto } = await ctxRoute.params;
   const id = Number(bruto);

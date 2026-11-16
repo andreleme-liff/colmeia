@@ -367,6 +367,8 @@ async function migrate(): Promise<void> {
       ["deals", "estagio", STAGE_KEYS],
       ["activities", "status", STATUS_KEYS],
       ["activities", "prioridade", PRIORIDADES as readonly string[]],
+      // O papel `financeiro` entrou em nov/2026: a base que já existe precisa aceitá-lo.
+      ["users", "papel", PAPEIS as readonly string[]],
     ] as const) {
       const nome = `${tabela}_${coluna}_check`;
       const [atual] = await sql<{ def: string }[]>`

@@ -1,16 +1,16 @@
-// Forecast de receita: lista (gestor e admin) e cadastro (só administração).
+// Forecast de receita: lista (gestor, financeiro e admin) e cadastro (financeiro e administração).
 //
 // Toda gravação passa por `lerContrato` (lib/forecast.ts) e entra na auditoria na mesma
 // transação.
 
 import { getDb } from "@/lib/db";
-import { requireAdmin, requireReceita } from "@/lib/perms";
+import { requireFinanceiro, requireReceita } from "@/lib/perms";
 import { err, json, lerCorpo } from "@/lib/http";
 import { lerContrato } from "@/lib/forecast";
 import { criarContrato, lerContratos } from "@/lib/receita";
 
 export async function GET() {
-  // Ver o forecast é de gestor e admin; membro e leitura não. Gravar é só da administração.
+  // Ver o forecast é de gestor, financeiro e admin; membro e leitura não. Gravar é do financeiro e da administração.
   const ctx = await requireReceita();
   if (ctx instanceof Response) return ctx;
   const sql = await getDb();
@@ -18,7 +18,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const ctx = await requireAdmin();
+  const ctx = await requireFinanceiro();
   if (ctx instanceof Response) return ctx;
   const c = lerContrato(await lerCorpo(req));
   if (typeof c === "string") return err(c, 400);

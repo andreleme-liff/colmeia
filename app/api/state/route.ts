@@ -218,6 +218,7 @@ export async function GET() {
     produtos,
     isAdmin: ctx.isAdmin,
     podeVerReceita: ctx.podeVerReceita,
+    podeFinanceiro: ctx.podeFinanceiro,
     // O formulário de pré-cadastro precisa dizer qual domínio o login aceita, e a fonte
     // dessa verdade é uma variável de ambiente do servidor.
     dominioLogin: DOMINIO_PERMITIDO,

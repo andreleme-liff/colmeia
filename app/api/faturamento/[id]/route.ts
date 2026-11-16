@@ -1,4 +1,4 @@
-// Ações sobre uma fatura emitida. Só administração.
+// Ações sobre uma fatura emitida. Só financeiro e administração.
 //   pagar    — baixa: data e valor recebido (emitida → paga);
 //   estornar — desfaz a baixa (paga → emitida), para corrigir um lançamento errado;
 //   editar   — corrige dados da emissão: NF, vencimento, forma, retenções, valor (só emitida);
@@ -6,12 +6,12 @@
 //              cronograma volta a ficar a emitir, para a reemissão.
 
 import { getDb } from "@/lib/db";
-import { requireAdmin } from "@/lib/perms";
+import { requireFinanceiro } from "@/lib/perms";
 import { err, json, lerCorpo } from "@/lib/http";
 import { agirNaFatura } from "@/lib/faturas";
 
 export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/faturamento/[id]">) {
-  const ctx = await requireAdmin();
+  const ctx = await requireFinanceiro();
   if (ctx instanceof Response) return ctx;
   const { id: bruto } = await ctxRoute.params;
   const id = Number(bruto);

@@ -144,8 +144,10 @@ export type State = {
   origens: Origem[];
   arquetipos: ArquetipoResumo[];
   isAdmin: boolean;
-  /** Gestor e admin: veem o menu Receita e o resumo de receita na Visão geral. */
+  /** Gestor, financeiro e admin: veem o menu Receita e o resumo de receita na Visão geral. */
   podeVerReceita: boolean;
+  /** Financeiro e admin: editam a receita e usam faturamento e despesas. */
+  podeFinanceiro: boolean;
   /** Domínio aceito no login — vem do servidor, alimenta o cadastro de pessoa. */
   dominioLogin: string;
   /** Se o servidor MCP está ligado (MCP_HABILITADO=1) neste ambiente. */

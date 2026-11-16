@@ -103,6 +103,7 @@ export default function Clientes({
   gatilho,
   isAdmin,
   podeVerReceita,
+  podeFinanceiro,
   podeCriar,
   onAbrirDeal,
 }: {
@@ -112,8 +113,10 @@ export default function Clientes({
   gatilho: number | undefined;
   /** Admin vê também receita, faturas e cobrança, e pode cadastrar, mesclar e excluir. */
   isAdmin: boolean;
-  /** Gestor e admin: sem isso a ficha não busca nem mostra receita. */
+  /** Gestor, financeiro e admin: sem isso a ficha não busca nem mostra receita. */
   podeVerReceita: boolean;
+  /** Financeiro e admin: a ficha busca e mostra também as faturas. */
+  podeFinanceiro: boolean;
   /** Cadastra organização quem edita algum produto (ou é admin). */
   podeCriar: boolean;
   onAbrirDeal: (ref: string) => void;
@@ -129,16 +132,16 @@ export default function Clientes({
 
   useEffect(() => {
     let vivo = true;
-    // Faturamento é rota só da administração e receita só de gestor e admin: os demais nem perguntam.
+    // Faturamento é rota do financeiro e da administração, e receita exclui membro e leitura: os demais nem perguntam.
     const vazio = <T,>(v: T) => Promise.resolve(v);
-    Promise.all([api.clientes(), podeVerReceita ? api.receitas() : vazio({ contratos: [] as Contrato[] }), isAdmin ? api.faturas() : vazio({ faturas: [] })]).then(
+    Promise.all([api.clientes(), podeVerReceita ? api.receitas() : vazio({ contratos: [] as Contrato[] }), podeFinanceiro ? api.faturas() : vazio({ faturas: [] })]).then(
       ([c, r, f]) => vivo && (setDados({ clientes: c.clientes, contratos: r.contratos, faturas: f.faturas }), setFalha(null)),
       (e: unknown) => vivo && setFalha(e instanceof Error ? e.message : "Não foi possível carregar as organizações.")
     );
     return () => {
       vivo = false;
     };
-  }, [gatilho, versao, isAdmin, podeVerReceita]);
+  }, [gatilho, versao, podeFinanceiro, podeVerReceita]);
 
   if (falha && !dados) return <div style={{ fontSize: 14, color: C.error }}>{falha}</div>;
   if (!dados) return <div style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>carregando organizações…</div>;
@@ -375,6 +378,7 @@ export default function Clientes({
           visao={aberto === "novo" ? null : visaoAberta!}
           isAdmin={isAdmin}
           podeVerReceita={podeVerReceita}
+          podeFinanceiro={podeFinanceiro}
           outros={dados.clientes.filter((c) => c.id !== aberto)}
           deals={deals}
           onFechar={() => setAberto(null)}
@@ -425,6 +429,7 @@ function Ficha({
   visao,
   isAdmin,
   podeVerReceita,
+  podeFinanceiro,
   outros,
   deals,
   onFechar,
@@ -437,6 +442,7 @@ function Ficha({
   visao: Visao | null;
   isAdmin: boolean;
   podeVerReceita: boolean;
+  podeFinanceiro: boolean;
   outros: ClienteLido[];
   deals: Deal[];
   onFechar: () => void;
@@ -772,7 +778,7 @@ function Ficha({
             </div>
           )}
 
-          {isAdmin && (
+          {podeFinanceiro && (
             <>
           {bloco(`FATURAS · ${visao.faturas.length}`)}
           {visao.faturas.length === 0 ? (

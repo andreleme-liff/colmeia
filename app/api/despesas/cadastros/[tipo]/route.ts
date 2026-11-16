@@ -1,13 +1,13 @@
 // Cadastros das despesas: cria um registro do tipo da URL (categorias, favorecidos,
-// recorrencias). Só administração; auditado.
+// recorrencias). Só financeiro e administração; auditado.
 
 import { getDb } from "@/lib/db";
-import { requireAdmin } from "@/lib/perms";
+import { requireFinanceiro } from "@/lib/perms";
 import { err, json, lerCorpo } from "@/lib/http";
 import { TIPOS_CADASTRO, salvarCadastro, type TipoCadastro } from "@/lib/despesas-db";
 
 export async function POST(req: Request, ctxRoute: RouteContext<"/api/despesas/cadastros/[tipo]">) {
-  const ctx = await requireAdmin();
+  const ctx = await requireFinanceiro();
   if (ctx instanceof Response) return ctx;
   const { tipo } = await ctxRoute.params;
   if (!(TIPOS_CADASTRO as readonly string[]).includes(tipo)) return err("Tipo inválido.", 404);

@@ -35,6 +35,7 @@ export default function Painel({
   meId,
   isAdmin,
   podeVerReceita,
+  podeFinanceiro,
   area,
   gatilho,
   onAbrirAtividade,
@@ -51,6 +52,8 @@ export default function Painel({
   isAdmin: boolean;
   /** Gestor e admin veem o resumo de receita; o faturamento ao lado é só de admin. */
   podeVerReceita: boolean;
+  /** Financeiro e admin: o resumo traz também o faturamento do mês. */
+  podeFinanceiro: boolean;
   area: string;
   gatilho: number | undefined;
   onAbrirAtividade: (ref: string) => void;
@@ -159,8 +162,8 @@ export default function Painel({
         </section>
       </div>
 
-      {/* ---------- 3 · receita (gestor e admin) e faturamento (só admin) ---------- */}
-      {podeVerReceita && <Financeiro comFaturamento={isAdmin} area={area} oportunidades={todasOportunidades} hoje={hoje} gatilho={gatilho} onIr={onIr} />}
+      {/* ---------- 3 · receita (gestor, financeiro e admin) e faturamento (financeiro e admin) ---------- */}
+      {podeVerReceita && <Financeiro comFaturamento={podeFinanceiro} area={area} oportunidades={todasOportunidades} hoje={hoje} gatilho={gatilho} onIr={onIr} />}
 
       {/* ---------- 4 · foco e alterações, como antes ---------- */}
       <section className="pn-painel">

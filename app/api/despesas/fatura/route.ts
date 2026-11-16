@@ -1,13 +1,13 @@
 // Paga a fatura de um cartão corporativo: todas as despesas em aberto daquele cartão com
-// aquele vencimento, de uma vez. Só administração; cada despesa fica auditada.
+// aquele vencimento, de uma vez. Só financeiro e administração; cada despesa fica auditada.
 
 import { getDb } from "@/lib/db";
-import { requireAdmin } from "@/lib/perms";
+import { requireFinanceiro } from "@/lib/perms";
 import { err, json, lerCorpo } from "@/lib/http";
 import { pagarFatura } from "@/lib/despesas-db";
 
 export async function POST(req: Request) {
-  const ctx = await requireAdmin();
+  const ctx = await requireFinanceiro();
   if (ctx instanceof Response) return ctx;
   const body = await lerCorpo(req);
   const sql = await getDb();

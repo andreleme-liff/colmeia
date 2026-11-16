@@ -3,8 +3,9 @@
 // Cadastros → Pessoas: quem pode o quê.
 //
 // Não existe mais permissão por produto (nov/2026): todo mundo vê todos os produtos, e o que
-// separa as pessoas é o PAPEL — leitura só vê; membro e gestor editam tudo; admin edita tudo e
-// administra (cadastros, faturamento, funding, valores de receita). Antes havia uma matriz de
+// separa as pessoas é o PAPEL — leitura só vê; membro e gestor editam tudo; financeiro também
+// cuida do dinheiro (valores de receita, faturamento, despesas); admin administra (pessoas,
+// cadastros, funding). Antes havia uma matriz de
 // pessoas × produtos; a pedido, ela saiu.
 //
 // O papel é escolhido direto na linha, e marcando pessoas aparece a ação em lote.
@@ -20,7 +21,8 @@ const PAPEIS_TELA: { key: string; nome: string; faz: string }[] = [
   { key: "leitura", nome: "leitura", faz: "vê os cards de todos os produtos, não edita; não vê receita" },
   { key: "membro", nome: "membro", faz: "vê e edita cards em todos os produtos; não vê receita" },
   { key: "gestor", nome: "gestor", faz: "como o membro, e também vê a receita" },
-  { key: "admin", nome: "admin", faz: "edita tudo e administra cadastros, receita, faturamento, despesas e funding" },
+  { key: "financeiro", nome: "financeiro", faz: "como o gestor, e também edita a receita e opera faturamento e despesas" },
+  { key: "admin", nome: "admin", faz: "como o financeiro, e administra pessoas, cadastros, funding e o changelog" },
 ];
 
 const campo: CSSProperties = {
