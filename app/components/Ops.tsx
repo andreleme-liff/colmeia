@@ -1234,7 +1234,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
                       style={{
                         ...eyebrow(12, on ? C.ink : C.dust, "0.1em"),
                         borderLeft: `2px solid ${on ? C.accent : "transparent"}`,
-                        background: on ? C.panel : "transparent",
+                        background: on ? "var(--liff-app-aside-ativo)" : "transparent",
                         color: on ? C.ink : C.dust,
                       }}
                     >

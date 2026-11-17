@@ -61,6 +61,12 @@
   --liff-app-raia:       var(--liff-cell);
   --liff-app-card:       var(--liff-panel-2);
   --liff-app-card-hover: color-mix(in srgb, var(--liff-floral) 6%, var(--liff-panel-2));
+
+  /* Menu lateral: um passo fora do canvas, para se separar do conteúdo sem depender só do
+     fio. No escuro ele clareia de leve (um véu de Floral); no claro, escurece (mais Dust). */
+  --liff-app-aside: color-mix(in srgb, var(--liff-floral) 5%, var(--liff-canvas));
+  /* O item aberto avança sobre o menu nos dois temas: mais um véu no escuro, Floral no claro. */
+  --liff-app-aside-ativo: color-mix(in srgb, var(--liff-floral) 7%, var(--liff-app-aside));
 }
 
 :root[data-theme="light"] {
@@ -78,6 +84,9 @@
   --liff-app-raia:       color-mix(in srgb, var(--liff-dust) 36%, var(--liff-floral));
   --liff-app-card:       var(--liff-floral);
   --liff-app-card-hover: color-mix(in srgb, var(--liff-dust) 10%, var(--liff-floral));
+  /* O canvas claro leva 24% de Dust; o menu, 40%. */
+  --liff-app-aside:      color-mix(in srgb, var(--liff-dust) 40%, var(--liff-floral));
+  --liff-app-aside-ativo: var(--liff-floral);
 
   /* A hairline clareia; o cinza apagado escurece — no escuro os dois são
      Charcoal, aqui precisam ir para lados opostos. */
@@ -382,7 +391,7 @@ body { background: var(--liff-canvas); color: var(--liff-text); }
   overflow: hidden;
 }
 .liff-aside {
-  background: var(--liff-canvas);
+  background: var(--liff-app-aside);
   display: flex;
   flex-direction: column;
   padding: 26px 0;
