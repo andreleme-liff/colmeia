@@ -53,10 +53,12 @@ function Oportunidades({ deals }: { deals: Deal[] }) {
   if (!deals.length) return <span style={{ color: C.ghost }}>—</span>;
   const ordenadas = [...deals].sort((a, b) => pesoEstagio(a.estagio) - pesoEstagio(b.estagio));
   const principal = ordenadas[0].estagio;
-  const cor = emNegociacao(principal) ? C.ink : principal === "prospeccao" || principal === "ganho" ? C.body : C.faint;
+  // O destaque é de quem está andando agora: On hold conta no pipeline, mas segue apagado aqui.
+  const andando = emNegociacao(principal) && principal !== "on_hold";
+  const cor = andando ? C.ink : principal === "prospeccao" || principal === "ganho" ? C.body : C.faint;
   return (
     <span title={ordenadas.map((d) => `${d.ref} · ${areaOf(d.area).label} · ${stageLabel(d.estagio)}`).join("\n")}>
-      <span style={{ color: cor, fontWeight: emNegociacao(principal) ? 600 : 400 }}>{stageLabel(principal)}</span>
+      <span style={{ color: cor, fontWeight: andando ? 600 : 400 }}>{stageLabel(principal)}</span>
       {deals.length > 1 && <span style={{ color: C.faint }}> +{deals.length - 1}</span>}
     </span>
   );
@@ -75,8 +77,8 @@ type Visao = {
   c: ClienteLido;
   deals: Deal[];
   /**
-   * Oportunidades em negociação: da 1ª Reunião ao Contrato. Prospecção fica de fora (ainda não
-   * houve conversa), assim como Lost e On hold (não há conversa agora) e Ganho (já fechou).
+   * Oportunidades em negociação (o pipeline): da 1ª Reunião ao Contrato, mais On hold. Prospecção fica de fora (ainda não
+   * houve conversa), assim como Lost (acabou) e Ganho (já fechou).
    * Com um produto escolhido no cabeçalho, só as daquele produto.
    */
   abertas: Deal[];
@@ -251,8 +253,8 @@ export default function Clientes({
         <Numero
           rotulo="EM NEGOCIAÇÃO"
           valor={String(naArea.filter((v) => v.abertas.length).length)}
-          titulo="Organizações distintas com ao menos uma oportunidade da 1ª Reunião ao Contrato. Cada organização conta uma vez, mesmo com oportunidades em vários produtos. Prospecção, On hold, Lost e Ganho não entram."
-          detalhe={`Organizações distintas, da 1ª Reunião ao Contrato · ${brl(naArea.reduce((t, v) => t + v.pipeline, 0))}`}
+          titulo="Organizações distintas com ao menos uma oportunidade no pipeline: da 1ª Reunião ao Contrato, ou em On hold. Cada organização conta uma vez, mesmo com oportunidades em vários produtos. Prospecção, Lost e Ganho não entram."
+          detalhe={`Organizações distintas, da 1ª Reunião ao Contrato e On hold · ${brl(naArea.reduce((t, v) => t + v.pipeline, 0))}`}
         />
         <Numero
           rotulo="COM CONTRATO"

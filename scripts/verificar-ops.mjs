@@ -328,9 +328,10 @@ checa("pelo formulário vai para On hold", planejarAtualizacaoOportunidade(OPOR,
 checa("…e volta para o funil", planejarAtualizacaoOportunidade({ ...OPOR, estagio: "on_hold" }, { estagio: "proposta" }, perm, fatos).sets, { estagio: "proposta" });
 checa("em aberto: do início ao Contrato", FUNIL.slice(0, 6).every(estagioEmAberto), true);
 checa("fora do aberto: Ganho, On hold, Lost", ["ganho", "on_hold", "lost"].some(estagioEmAberto), false);
-checa("pipeline: da 1ª Reunião ao Contrato", STAGE_KEYS.filter(estagioNoPipeline), ["primeira_reuniao", "qualificado", "proposta", "validacao", "contrato"]);
-checa("fora do pipeline: Prospecção, Ganho, On hold, Lost", ["prospeccao", "ganho", "on_hold", "lost"].some(estagioNoPipeline), false);
-checa("o pipeline é o funil sem a primeira e a última casa", PIPELINE, FUNIL.slice(1, -1));
+checa("pipeline: da 1ª Reunião ao Contrato, mais On hold", STAGE_KEYS.filter(estagioNoPipeline), ["primeira_reuniao", "qualificado", "proposta", "validacao", "contrato", "on_hold"]);
+checa("fora do pipeline: Prospecção, Ganho, Lost", ["prospeccao", "ganho", "lost"].some(estagioNoPipeline), false);
+checa("o pipeline é o funil sem a primeira e a última casa, mais On hold", PIPELINE, [...FUNIL.slice(1, -1), "on_hold"]);
+checa("On hold é pipeline mas não está em aberto (não cobra prazo)", [estagioNoPipeline("on_hold"), estagioEmAberto("on_hold")], [true, false]);
 
 // Composição da proposta (assinatura mensal, implantação e customização com parcelas) e arquétipo.
 const fatosArq = { ...fatos, arquetipos: [{ id: 1, nome: "Compartilhado", ativo: true, pasta: "Tax", area: "tax" }, { id: 2, nome: "Geral", ativo: true, pasta: null, area: null }, { id: 3, nome: "Velho", ativo: false, pasta: "Tax", area: "tax" }] };

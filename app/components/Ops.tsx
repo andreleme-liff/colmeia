@@ -814,9 +814,9 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     const reportados = deals.filter((x) => waEtapas.includes(x.estagio));
     if (reportados.length) {
       const abertos = reportados.filter((x) => estagioEmAberto(x.estagio));
-      // O número chamado de pipeline soma só o pipeline (da 1ª Reunião ao Contrato), mesmo que
-      // a Prospecção esteja entre as etapas escolhidas: ela ganha a sua própria linha. Com as
-      // cinco etapas é o pipeline inteiro; com menos, o rótulo diz quais, para não enganar.
+      // O número chamado de pipeline soma só o pipeline (da 1ª Reunião ao Contrato, mais On
+      // hold), mesmo que a Prospecção esteja entre as etapas escolhidas: ela ganha a sua própria
+      // linha. Com todas as etapas é o pipeline inteiro; com menos, o rótulo diz quais.
       const noPipeline = reportados.filter((x) => estagioNoPipeline(x.estagio));
       const etapasDoPipeline = STAGE_KEYS.filter((k) => estagioNoPipeline(k));
       const escolhidas = etapasDoPipeline.filter((k) => waEtapas.includes(k));
@@ -828,7 +828,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
       if (prospectando.length) L.push(`- Prospecção (fora do pipeline): ${total(prospectando)}`);
       const ganhos = reportados.filter((x) => x.estagio === "ganho");
       if (ganhos.length) L.push(`- Ganhos no período: ${ganhos.map((g) => g.conta).join(", ")}`);
-      // On hold não é pipeline, mas não pode sumir do resumo: foi decisão de esperar,
+      // On hold conta no total do pipeline, e ainda ganha a lista de nomes: foi decisão de esperar,
       // e quem lê precisa saber o que está esperando.
       const emEspera = reportados.filter((x) => x.estagio === "on_hold");
       if (emEspera.length) L.push(`- On hold: ${emEspera.map((x) => x.conta).join(", ")}`);

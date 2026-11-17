@@ -3,7 +3,7 @@
 // Visão geral em forma de cockpit.
 //
 // De cima para baixo:
-//  1. grandes números — comercial (pipeline aberto = da 1ª Reunião ao Contrato, fase final, ganho) e operação (abertas,
+//  1. grandes números — comercial (pipeline aberto = da 1ª Reunião ao Contrato mais On hold, fase final, ganho) e operação (abertas,
 //     em atraso, próximos 7 dias);
 //  2. gráficos — funil comercial por etapa, pipeline aberto por produto, atividades por
 //     status e por prazo;
@@ -63,7 +63,7 @@ export default function Painel({
   const hoje = hojeISO();
 
   // ---------- comercial ----------
-  // Pipeline = da 1ª Reunião ao Contrato (lib/domain.ts). `abertas` inclui a Prospecção e só
+  // Pipeline = da 1ª Reunião ao Contrato, mais On hold (lib/domain.ts). `abertas` inclui a Prospecção e só
   // serve ao aviso de oportunidade parada, que não é número de pipeline.
   const pipeline = oportunidades.filter((d) => estagioNoPipeline(d.estagio));
   const abertas = oportunidades.filter((d) => estagioEmAberto(d.estagio));
@@ -105,7 +105,7 @@ export default function Painel({
 
       {/* ---------- 1 · grandes números ---------- */}
       <div className="pn-kpis">
-        <Kpi grupo="Comercial" rotulo="Pipeline aberto" valor={brl(soma(pipeline))} detalhe={`${pipeline.length} ${pipeline.length === 1 ? "oportunidade" : "oportunidades"}, da 1ª Reunião ao Contrato`} onClick={() => onIr("comercial")} />
+        <Kpi grupo="Comercial" rotulo="Pipeline aberto" valor={brl(soma(pipeline))} detalhe={`${pipeline.length} ${pipeline.length === 1 ? "oportunidade" : "oportunidades"}, da 1ª Reunião ao Contrato e On hold`} onClick={() => onIr("comercial")} />
         <Kpi grupo="Comercial" rotulo="Fase final" valor={brl(soma(finais))} detalhe={`${finais.length} em proposta, validação ou contrato`} onClick={() => onIr("comercial")} />
         <Kpi grupo="Comercial" rotulo="Ganho" valor={brl(soma(ganhas))} detalhe={`${ganhas.length} fechadas`} tom="ok" onClick={() => onIr("comercial")} />
         <Kpi grupo="Operação" rotulo="Atividades abertas" valor={String(emAberto.length)} detalhe={`${minhas.length} com você`} onClick={() => onIr("operacoes")} />

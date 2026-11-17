@@ -387,7 +387,7 @@ export const CATALOGO = [
     name: "listar_organizacoes",
     title: "Listar organizações",
     description:
-      "O cadastro de organizações (refs CLI-0000): as empresas com que a LIFF fala, com ou sem oportunidade. Cada uma traz os produtos, quantas oportunidades tem e em que ponto está (so_prospeccao, em_negociacao = da 1ª Reunião ao Contrato, com_venda_ganha).",
+      "O cadastro de organizações (refs CLI-0000): as empresas com que a LIFF fala, com ou sem oportunidade. Cada uma traz os produtos, quantas oportunidades tem e em que ponto está (so_prospeccao, em_negociacao = no pipeline: da 1ª Reunião ao Contrato ou em On hold, com_venda_ganha).",
     escrita: false,
     inputSchema: objeto({
       busca: { type: "string", maxLength: 100, description: "Texto contido no nome, razão social, outro nome, CNPJ ou contato." },

@@ -50,18 +50,18 @@ export const ESTAGIO_INICIAL: StageKey = "prospeccao";
 export const FUNIL: readonly StageKey[] = ["prospeccao", "primeira_reuniao", "qualificado", "proposta", "validacao", "contrato", "ganho"];
 /**
  * PIPELINE (regra de nov/2026, uma só para o sistema inteiro): o que está em negociação, um
- * passo adiante da Prospecção e antes do desfecho. Prospecção ainda não é pipeline; Ganho já
- * não é; Lost e On hold não são. Todo número ou contagem que a tela, o resumo ou o MCP chamam
- * de "pipeline" sai daqui.
+ * passo adiante da Prospecção e antes do desfecho, MAIS o On hold (a negociação existe, só
+ * está esperando). Prospecção ainda não é pipeline; Ganho já não é; Lost não é. Todo número
+ * ou contagem que a tela, o resumo ou o MCP chamam de "pipeline" sai daqui.
  */
-export const PIPELINE: readonly StageKey[] = ["primeira_reuniao", "qualificado", "proposta", "validacao", "contrato"];
+export const PIPELINE: readonly StageKey[] = ["primeira_reuniao", "qualificado", "proposta", "validacao", "contrato", "on_hold"];
 export function estagioNoPipeline(k: string): boolean {
   return (PIPELINE as readonly string[]).includes(k);
 }
 /**
- * Em aberto = ainda sem desfecho: o pipeline MAIS a Prospecção. Serve para o que não é número
- * de pipeline: prazo e próximo passo valem também para quem está sendo prospectado. Não use
- * para somar "pipeline".
+ * Em aberto = andando no funil, ainda sem desfecho: da Prospecção ao Contrato. Serve para o
+ * que não é número de pipeline: prazo e próximo passo valem para quem está sendo prospectado
+ * e não valem para quem está em On hold. Não use para somar "pipeline".
  */
 export function estagioEmAberto(k: string): boolean {
   return (FUNIL as readonly string[]).includes(k) && k !== "ganho";
