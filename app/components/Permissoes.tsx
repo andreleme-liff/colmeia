@@ -117,7 +117,9 @@ export default function Permissoes({
     onPapel(selecao, papel);
   };
 
-  const colunas = "34px minmax(200px, 1.4fr) 300px 60px";
+  // A coluna do papel tem largura fixa (cabeçalho e linhas são grades separadas) e precisa
+  // caber o seletor inteiro: com o financeiro são cinco papéis, perto de 350px.
+  const colunas = "34px minmax(200px, 1.4fr) 368px 60px";
 
   return (
     <div>
@@ -161,7 +163,7 @@ export default function Permissoes({
       </div>
 
       <div className="liff-scroll-x">
-        <div style={{ minWidth: 620 }}>
+        <div style={{ minWidth: 690 }}>
           <div style={{ display: "grid", gridTemplateColumns: colunas, alignItems: "end", borderBottom: `1px solid ${C.line}`, background: C.canvas }}>
             <div style={{ padding: "10px 0 10px 12px" }}>
               <input
