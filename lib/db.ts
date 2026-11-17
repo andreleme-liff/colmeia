@@ -116,9 +116,66 @@ const AREAS_SEMENTE = [
  * (no modo transaction a conexão volta para o pool a cada commit, e um lock de sessão
  * ficaria preso numa conexão que não é mais nossa).
  */
+/**
+ * O deploy em que este processo roda. A migração roda UMA vez por deploy, não a cada partida
+ * a frio (ver `jaMigrado`). Sem a variável (ambiente local, teste) ela roda sempre, como antes.
+ */
+const DEPLOY = process.env.VERCEL_DEPLOYMENT_ID || process.env.VERCEL_GIT_COMMIT_SHA || null;
+
+/**
+ * Este deploy já migrou a base? Uma consulta só, sem lock de tabela.
+ *
+ * Por que existe (incidente de 17/11/2026): a migração inteira rodava em TODA partida a frio.
+ * Ela é idempotente, mas dezenas dos seus `ALTER TABLE` pedem AccessExclusiveLock mesmo quando
+ * não mudam nada, e todos ficam presos até o commit. Com o app no ar, uma partida a frio
+ * cruzava com uma requisição comum (que lê uma tabela e grava em outra) e o Postgres matava
+ * uma das duas por deadlock. Marcando o deploy, só a primeira partida de cada versão paga esse
+ * custo; as demais fazem um SELECT.
+ */
+async function jaMigrado(sql: Queryable): Promise<boolean> {
+  if (!DEPLOY) return false;
+  const [{ existe }] = await sql<{ existe: boolean }[]>`SELECT to_regclass('public.schema_migracoes') IS NOT NULL AS existe`;
+  if (!existe) return false;
+  const [feita] = await sql`SELECT 1 FROM schema_migracoes WHERE deploy = ${DEPLOY}`;
+  return !!feita;
+}
+
+/** Deadlock ou espera de lock estourada: outra transação estava no caminho. Vale tentar de novo. */
+const ehConflitoDeLock = (e: unknown) =>
+  typeof e === "object" && e !== null && "code" in e && ((e as { code: unknown }).code === "40P01" || (e as { code: unknown }).code === "55P03");
+
+/**
+ * Roda a migração se este deploy ainda não rodou, tentando de novo quando o Postgres a aborta
+ * por conflito de lock com o tráfego (a transação inteira desfaz, então repetir é seguro).
+ */
+async function garantirMigracao(): Promise<void> {
+  if (await jaMigrado(rawSql())) return;
+  for (let tentativa = 1; ; tentativa++) {
+    try {
+      await migrate();
+      return;
+    } catch (e) {
+      if (!ehConflitoDeLock(e) || tentativa >= 4) throw e;
+      console.warn(`[db] migração abortada por conflito de lock (tentativa ${tentativa}); tentando de novo`);
+      await new Promise((r) => setTimeout(r, 300 * tentativa + Math.random() * 300));
+    }
+  }
+}
+
 async function migrate(): Promise<void> {
   await rawSql().begin(async (sql) => {
     await sql`SELECT pg_advisory_xact_lock(${MIGRATION_LOCK})`;
+    // Outra instância deste mesmo deploy pode ter migrado enquanto esta esperava o lock.
+    if (await jaMigrado(sql)) return;
+    // Não esperar para sempre por um lock de tabela: desistir em 5 s devolve a vez ao tráfego
+    // e a migração tenta de novo (garantirMigracao), em vez de travar as requisições atrás dela.
+    await sql`SET LOCAL lock_timeout = '5s'`;
+    await sql`
+      CREATE TABLE IF NOT EXISTS schema_migracoes (
+        deploy    TEXT PRIMARY KEY,
+        feito_em  TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `;
 
     // Cadastro dos produtos. Vem primeiro porque as demais tabelas apontam para ela: o
     // conjunto de áreas é aberto, e quem garante que um registro não aponte para área
@@ -1026,7 +1083,7 @@ async function migrate(): Promise<void> {
               'oauth_concessoes, oauth_codigos, oauth_tokens, mcp_chamadas, origens, oportunidade_modulos, oportunidade_aws, '
               'contratos, contrato_receitas, faturas, funding_programas, funding_arquetipos, funding_calculadoras, '
               'funding_estimativas, funding_linhas, funding_pastas, clientes, cliente_chaves, cliente_contatos, '
-              'despesa_categorias, despesa_favorecidos, despesa_recorrencias, despesas, despesa_itens FROM %I',
+              'despesa_categorias, despesa_favorecidos, despesa_recorrencias, despesas, despesa_itens, schema_migracoes FROM %I',
               papel
             );
             EXECUTE format('REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM %I', papel);
@@ -1074,6 +1131,12 @@ async function migrate(): Promise<void> {
     // Por último, com as oportunidades (inclusive as do seed) já no lugar: extrai os clientes
     // do que ainda não tem cadastro. Só toca o que está sem vínculo.
     await ligarPendentes(sql);
+
+    // A marca entra na mesma transação: ou a base ficou migrada E marcada, ou nenhuma das duas.
+    if (DEPLOY) {
+      await sql`INSERT INTO schema_migracoes (deploy) VALUES (${DEPLOY}) ON CONFLICT (deploy) DO NOTHING`;
+      console.log(`[db] migração concluída para o deploy ${DEPLOY.slice(0, 16)}`);
+    }
   });
 }
 
@@ -1189,8 +1252,21 @@ async function reiniciarPipeline(sql: Queryable): Promise<void> {
     console.log(`[db] limpeza do pipeline: ${alvos.length} oportunidade(s) excluída(s)`);
   }
 
-  await sql`ALTER TABLE deals DROP CONSTRAINT IF EXISTS deals_estagio_check`;
-  await sql`ALTER TABLE deals ALTER COLUMN estagio SET DEFAULT 'prospeccao'`;
+  // O CHECK só cai se ainda for o antigo, e o padrão só muda se ainda não for o novo. Antes
+  // os dois ALTER rodavam sempre: o CHECK caía e era recriado em toda migração, com
+  // AccessExclusiveLock em `deals` e revalidação da tabela, sem nada ter mudado.
+  const [checkAtual] = await sql<{ def: string }[]>`
+    SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint
+    WHERE conrelid = 'deals'::regclass AND conname = 'deals_estagio_check'
+  `;
+  if (checkAtual && !STAGE_KEYS.every((v) => checkAtual.def.includes(`'${v}'`))) {
+    await sql`ALTER TABLE deals DROP CONSTRAINT deals_estagio_check`;
+  }
+  const [padrao] = await sql<{ padrao: string | null }[]>`
+    SELECT column_default AS padrao FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'deals' AND column_name = 'estagio'
+  `;
+  if (!padrao?.padrao?.includes("'prospeccao'")) await sql`ALTER TABLE deals ALTER COLUMN estagio SET DEFAULT 'prospeccao'`;
 
   const restos = await sql<{ id: number; ref: string; area: string; estagio: string; pausado: boolean }[]>`
     SELECT id, ref, area, estagio, pausado FROM deals
@@ -1310,7 +1386,15 @@ async function seed(sql: Queryable): Promise<void> {
 
 /** Garante a migração (uma vez por processo) e devolve o client. */
 export async function getDb(): Promise<Db> {
-  if (!_migrated) _migrated = migrate();
+  if (!_migrated) {
+    // Falha não fica guardada: se a migração der errado, a próxima requisição tenta de novo.
+    // Guardar a promessa rejeitada deixava a instância respondendo o mesmo erro para sempre.
+    const tentativa = garantirMigracao();
+    _migrated = tentativa;
+    tentativa.catch(() => {
+      if (_migrated === tentativa) _migrated = null;
+    });
+  }
   await _migrated;
   return rawSql();
 }
