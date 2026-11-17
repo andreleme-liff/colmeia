@@ -3,7 +3,7 @@
 // Visão geral em forma de cockpit.
 //
 // De cima para baixo:
-//  1. grandes números — comercial (pipeline aberto, fase final, ganho) e operação (abertas,
+//  1. grandes números — comercial (pipeline aberto = da 1ª Reunião ao Contrato, fase final, ganho) e operação (abertas,
 //     em atraso, próximos 7 dias);
 //  2. gráficos — funil comercial por etapa, pipeline aberto por produto, atividades por
 //     status e por prazo;
@@ -19,7 +19,7 @@ import { api, type Activity, type Deal } from "./api";
 import { CabecalhoSecao, ListaFoco, type PainelDados } from "./views";
 import ViaConexao from "./ViaConexao";
 import { Grafico, S_CONTRATADA, S_PROVAVEL } from "./Receita";
-import { FUNIL, STATUS, areaOf, brl, brlExato, estagioEmAberto, hojeISO, stamp, stageLabel } from "@/lib/domain";
+import { FUNIL, STATUS, areaOf, brl, brlExato, estagioEmAberto, estagioNoPipeline, hojeISO, stamp, stageLabel } from "@/lib/domain";
 import { ETAPAS_FINAIS, contratadaDoMes, mesDe, rotuloMes, serieMensal, situacaoEfetiva, type Contrato } from "@/lib/forecast";
 import { itensDoMes, liquidoEsperado, statusDe, type Fatura } from "@/lib/faturamento";
 
@@ -63,9 +63,12 @@ export default function Painel({
   const hoje = hojeISO();
 
   // ---------- comercial ----------
+  // Pipeline = da 1ª Reunião ao Contrato (lib/domain.ts). `abertas` inclui a Prospecção e só
+  // serve ao aviso de oportunidade parada, que não é número de pipeline.
+  const pipeline = oportunidades.filter((d) => estagioNoPipeline(d.estagio));
   const abertas = oportunidades.filter((d) => estagioEmAberto(d.estagio));
   const soma = (l: Deal[]) => l.reduce((t, d) => t + d.valorCentavos, 0);
-  const finais = abertas.filter((d) => (ETAPAS_FINAIS as readonly string[]).includes(d.estagio));
+  const finais = pipeline.filter((d) => (ETAPAS_FINAIS as readonly string[]).includes(d.estagio));
   const ganhas = oportunidades.filter((d) => d.estagio === "ganho");
   const paradas = abertas.filter((d) => diasEntreHoje(d.atualizadoEm, hoje) <= -DIAS_SEM_MOVIMENTO);
   const funil = FUNIL.map((k) => {
@@ -74,7 +77,7 @@ export default function Painel({
   });
   const foraDoFunil = oportunidades.filter((d) => d.estagio === "on_hold" || d.estagio === "lost");
   const porVertical = Object.entries(
-    abertas.reduce<Record<string, Deal[]>>((acc, d) => ((acc[d.area] ??= []).push(d), acc), {})
+    pipeline.reduce<Record<string, Deal[]>>((acc, d) => ((acc[d.area] ??= []).push(d), acc), {})
   )
     .map(([id, l]) => ({ id, label: areaOf(id).label, cor: areaOf(id).color, qtd: l.length, valor: soma(l) }))
     .sort((a, b) => b.valor - a.valor);
@@ -102,7 +105,7 @@ export default function Painel({
 
       {/* ---------- 1 · grandes números ---------- */}
       <div className="pn-kpis">
-        <Kpi grupo="Comercial" rotulo="Pipeline aberto" valor={brl(soma(abertas))} detalhe={`${abertas.length} oportunidades`} onClick={() => onIr("comercial")} />
+        <Kpi grupo="Comercial" rotulo="Pipeline aberto" valor={brl(soma(pipeline))} detalhe={`${pipeline.length} ${pipeline.length === 1 ? "oportunidade" : "oportunidades"}, da 1ª Reunião ao Contrato`} onClick={() => onIr("comercial")} />
         <Kpi grupo="Comercial" rotulo="Fase final" valor={brl(soma(finais))} detalhe={`${finais.length} em proposta, validação ou contrato`} onClick={() => onIr("comercial")} />
         <Kpi grupo="Comercial" rotulo="Ganho" valor={brl(soma(ganhas))} detalhe={`${ganhas.length} fechadas`} tom="ok" onClick={() => onIr("comercial")} />
         <Kpi grupo="Operação" rotulo="Atividades abertas" valor={String(emAberto.length)} detalhe={`${minhas.length} com você`} onClick={() => onIr("operacoes")} />
@@ -143,7 +146,7 @@ export default function Painel({
           <CabecalhoSecao titulo="PIPELINE ABERTO POR PRODUTO" />
           <Barras
             itens={porVertical.map((v) => ({ chave: v.id, rotulo: v.label, valor: v.valor, texto: brl(v.valor), qtd: v.qtd, cor: v.cor }))}
-            vazio="Nada em aberto no recorte."
+            vazio="Nada no pipeline no recorte."
           />
         </section>
       </div>
@@ -168,7 +171,7 @@ export default function Painel({
       {/* ---------- 4 · foco e alterações, como antes ---------- */}
       <section className="pn-painel">
         <CabecalhoSecao titulo="COMERCIAL · FOCO DA SEMANA" acao={{ texto: "ver pipeline →", onClick: () => onIr("comercial") }} />
-        <ListaFoco linhas={dados.focoComercial} vazio="Nada exigindo atenção no pipeline esta semana." onAbrir={onAbrirDeal} />
+        <ListaFoco linhas={dados.focoComercial} vazio="Nada exigindo atenção no comercial esta semana." onAbrir={onAbrirDeal} />
       </section>
       <section className="pn-painel">
         <CabecalhoSecao titulo="OPERAÇÃO · FOCO DA SEMANA" acao={{ texto: "ver quadro →", onClick: () => onIr("operacoes") }} />

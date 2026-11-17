@@ -13,7 +13,7 @@
 //     das rotas como estavam antes da refatoração (git) e exige que todas continuem existindo.
 
 import { execSync } from "node:child_process";
-import { ESTAGIO_INICIAL, FUNIL, STAGE_KEYS, estagioEmAberto, formatarRef, previaDaProposta, refCanonica, tipoDaRef, urlDaProposta } from "../lib/domain.ts";
+import { ESTAGIO_INICIAL, FUNIL, PIPELINE, STAGE_KEYS, estagioEmAberto, estagioNoPipeline, formatarRef, previaDaProposta, refCanonica, tipoDaRef, urlDaProposta } from "../lib/domain.ts";
 import { readFileSync } from "node:fs";
 import {
   planejarAtualizacaoAtividade, planejarCriacaoAtividade,
@@ -328,6 +328,9 @@ checa("pelo formulário vai para On hold", planejarAtualizacaoOportunidade(OPOR,
 checa("…e volta para o funil", planejarAtualizacaoOportunidade({ ...OPOR, estagio: "on_hold" }, { estagio: "proposta" }, perm, fatos).sets, { estagio: "proposta" });
 checa("em aberto: do início ao Contrato", FUNIL.slice(0, 6).every(estagioEmAberto), true);
 checa("fora do aberto: Ganho, On hold, Lost", ["ganho", "on_hold", "lost"].some(estagioEmAberto), false);
+checa("pipeline: da 1ª Reunião ao Contrato", STAGE_KEYS.filter(estagioNoPipeline), ["primeira_reuniao", "qualificado", "proposta", "validacao", "contrato"]);
+checa("fora do pipeline: Prospecção, Ganho, On hold, Lost", ["prospeccao", "ganho", "on_hold", "lost"].some(estagioNoPipeline), false);
+checa("o pipeline é o funil sem a primeira e a última casa", PIPELINE, FUNIL.slice(1, -1));
 
 // Composição da proposta (assinatura mensal, implantação e customização com parcelas) e arquétipo.
 const fatosArq = { ...fatos, arquetipos: [{ id: 1, nome: "Compartilhado", ativo: true, pasta: "Tax", area: "tax" }, { id: 2, nome: "Geral", ativo: true, pasta: null, area: null }, { id: 3, nome: "Velho", ativo: false, pasta: "Tax", area: "tax" }] };

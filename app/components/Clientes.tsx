@@ -23,7 +23,7 @@ import { C, GHOST_FIX, MONO, dot, eyebrow, R } from "./tokens";
 import { api, type Deal } from "./api";
 import { Modal } from "./views";
 import { useOrdem } from "./ordenacao";
-import { areaOf, brl, brlExato, estagioEmAberto, porTexto, stageLabel } from "@/lib/domain";
+import { areaOf, brl, brlExato, estagioEmAberto, estagioNoPipeline, porTexto, stageLabel } from "@/lib/domain";
 import { FORMAS_COBRANCA, ROTULO_SITUACAO, situacaoEfetiva, type Contrato } from "@/lib/forecast";
 import type { Fatura } from "@/lib/faturamento";
 import {
@@ -31,8 +31,8 @@ import {
 } from "@/lib/cliente";
 import type { ClienteLido, EventoCliente } from "@/lib/clientes-db";
 
-/** Em negociação = no funil, depois da prospecção e antes do ganho. */
-const emNegociacao = (estagio: string) => estagioEmAberto(estagio) && estagio !== "prospeccao";
+/** Em negociação é o pipeline: a regra é uma só, em lib/domain.ts. */
+const emNegociacao = estagioNoPipeline;
 
 /**
  * Peso do estágio para escolher a oportunidade que representa a organização na lista: primeiro

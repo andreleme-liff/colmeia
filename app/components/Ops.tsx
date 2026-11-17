@@ -41,7 +41,7 @@ import { EditarPessoa, EditarProduto } from "./EditarCadastro";
 import { api, type State } from "./api";
 import type { LinhaAuditoria } from "./views";
 import {
-  NAV, STAGES, STAGE_KEYS, STATUS, STATUS_KEYS, TITLES, areaOf, brl, daISO, ddmm, diaISO, ehDoResponsavel, estagioEmAberto,
+  NAV, STAGES, STAGE_KEYS, STATUS, STATUS_KEYS, TITLES, areaOf, brl, daISO, ddmm, diaISO, ehDoResponsavel, estagioEmAberto, estagioNoPipeline,
   escreverSelecaoDeResponsaveis, inicioDaSemana, lerSelecaoDeResponsaveis,
   CHAVE_SEM_RESPONSAVEL, aplicarBusca, opcoesDeResponsavel, porTexto, prepararBusca, rotuloDaSemana, setAreas, stageLabel, statusLabel, todasAreas,
   type RegistroComResponsavel,
@@ -611,7 +611,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           key: o.id,
           a: o.label,
           b: o.ativo ? "ativa" : "arquivada",
-          c: estado.deals.filter((d) => d.origemId === o.id).length + " no pipeline",
+          c: estado.deals.filter((d) => d.origemId === o.id && estagioNoPipeline(d.estagio)).length + " no pipeline",
           // Arquivar, não excluir: as oportunidades que já apontam para ela continuam
           // mostrando de onde vieram. Só a administração mexe no cadastro.
           abrir: estado.isAdmin
@@ -646,7 +646,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         arquivado: !p.ativo,
         // Na oportunidade o produto virou "módulo de interesse" — uma pode ter vários.
         qtd: estado.deals.filter((d) => d.modulos.includes(p.id)).length,
-        c: estado.deals.filter((d) => d.modulos.includes(p.id)).length + " no pipeline",
+        c: estado.deals.filter((d) => d.modulos.includes(p.id) && estagioNoPipeline(d.estagio)).length + " no pipeline",
         abrir: estado.isAdmin ? () => setCadEditando({ tipo: "produto", id: p.id }) : undefined,
       })),
       ph: "Nome do módulo",
@@ -814,23 +814,21 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     const reportados = deals.filter((x) => waEtapas.includes(x.estagio));
     if (reportados.length) {
       const abertos = reportados.filter((x) => estagioEmAberto(x.estagio));
-      const todasAbertas = STAGE_KEYS.filter((k) => estagioEmAberto(k));
-      const fora = todasAbertas.filter((k) => !waEtapas.includes(k));
-      // Sem nenhuma de fora é o pipeline aberto inteiro; só sem Prospecção é o que está em
-      // negociação; qualquer outro recorte diz as etapas, para o número não enganar.
-      const recorte =
-        fora.length === 0
-          ? "Pipeline aberto"
-          : fora.length === 1 && fora[0] === "prospeccao"
-            ? "Pipeline em negociação"
-            : `Pipeline (${todasAbertas.filter((k) => waEtapas.includes(k)).map(stageLabel).join(", ")})`;
+      // O número chamado de pipeline soma só o pipeline (da 1ª Reunião ao Contrato), mesmo que
+      // a Prospecção esteja entre as etapas escolhidas: ela ganha a sua própria linha. Com as
+      // cinco etapas é o pipeline inteiro; com menos, o rótulo diz quais, para não enganar.
+      const noPipeline = reportados.filter((x) => estagioNoPipeline(x.estagio));
+      const etapasDoPipeline = STAGE_KEYS.filter((k) => estagioNoPipeline(k));
+      const escolhidas = etapasDoPipeline.filter((k) => waEtapas.includes(k));
+      const recorte = escolhidas.length === etapasDoPipeline.length ? "Pipeline aberto" : `Pipeline (${escolhidas.map(stageLabel).join(", ")})`;
+      const total = (l: typeof reportados) => `${brl(l.reduce((s, x) => s + x.valorCentavos, 0))} em ${l.length} ${l.length === 1 ? "oportunidade" : "oportunidades"}`;
       L.push("*Comercial*");
-      if (abertos.length) {
-        L.push(`- ${recorte}: ${brl(abertos.reduce((s, x) => s + x.valorCentavos, 0))} em ${abertos.length} oportunidades`);
-      }
+      if (noPipeline.length) L.push(`- ${recorte}: ${total(noPipeline)}`);
+      const prospectando = reportados.filter((x) => x.estagio === "prospeccao");
+      if (prospectando.length) L.push(`- Prospecção (fora do pipeline): ${total(prospectando)}`);
       const ganhos = reportados.filter((x) => x.estagio === "ganho");
       if (ganhos.length) L.push(`- Ganhos no período: ${ganhos.map((g) => g.conta).join(", ")}`);
-      // On hold saiu do pipeline aberto, mas não pode sumir do resumo: foi decisão de esperar,
+      // On hold não é pipeline, mas não pode sumir do resumo: foi decisão de esperar,
       // e quem lê precisa saber o que está esperando.
       const emEspera = reportados.filter((x) => x.estagio === "on_hold");
       if (emEspera.length) L.push(`- On hold: ${emEspera.map((x) => x.conta).join(", ")}`);

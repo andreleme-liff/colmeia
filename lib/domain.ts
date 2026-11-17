@@ -48,7 +48,21 @@ export type StageKey = (typeof STAGES)[number]["key"];
 export const ESTAGIO_INICIAL: StageKey = "prospeccao";
 /** As casas por onde as setas andam, em ordem. On hold e Lost ficam de fora. */
 export const FUNIL: readonly StageKey[] = ["prospeccao", "primeira_reuniao", "qualificado", "proposta", "validacao", "contrato", "ganho"];
-/** Em aberto = no funil e ainda não ganha. On hold e Lost não contam no pipeline aberto. */
+/**
+ * PIPELINE (regra de nov/2026, uma só para o sistema inteiro): o que está em negociação, um
+ * passo adiante da Prospecção e antes do desfecho. Prospecção ainda não é pipeline; Ganho já
+ * não é; Lost e On hold não são. Todo número ou contagem que a tela, o resumo ou o MCP chamam
+ * de "pipeline" sai daqui.
+ */
+export const PIPELINE: readonly StageKey[] = ["primeira_reuniao", "qualificado", "proposta", "validacao", "contrato"];
+export function estagioNoPipeline(k: string): boolean {
+  return (PIPELINE as readonly string[]).includes(k);
+}
+/**
+ * Em aberto = ainda sem desfecho: o pipeline MAIS a Prospecção. Serve para o que não é número
+ * de pipeline: prazo e próximo passo valem também para quem está sendo prospectado. Não use
+ * para somar "pipeline".
+ */
 export function estagioEmAberto(k: string): boolean {
   return (FUNIL as readonly string[]).includes(k) && k !== "ganho";
 }

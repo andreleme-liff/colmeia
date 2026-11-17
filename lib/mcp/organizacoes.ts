@@ -4,7 +4,7 @@
 //  - cadastra e altera quem tem papel que edita (membro, gestor, admin);
 //  - sem mescla e sem exclusão: apagam um registro, e nada é excluído por aqui.
 
-import { estagioEmAberto, refCanonica, stageLabel } from "../domain";
+import { estagioNoPipeline, refCanonica, stageLabel } from "../domain";
 import { caminhoDe } from "../rotas";
 import { chaveCliente, cnpjFormatado, lerCliente, papelContatoLabel, type Contato } from "../cliente";
 import {
@@ -17,7 +17,8 @@ type Oportunidade = { ref: string; cliente_id: number; area: string; estagio: st
 
 const areasDe = (c: Contexto) => (c.ctx.isAdmin ? undefined : c.ctx.areasVisiveis);
 const autorDe = (c: Contexto) => ({ userId: c.ctx.user.userId, origem: "mcp" as const, concessaoId: c.acesso.concessaoId });
-const emNegociacao = (estagio: string) => estagioEmAberto(estagio) && estagio !== "prospeccao";
+/** Em negociação é o pipeline: a regra é uma só, em lib/domain.ts. */
+const emNegociacao = estagioNoPipeline;
 
 /** As oportunidades que a conexão enxerga, por organização. */
 async function oportunidadesVisiveis(c: Contexto, clienteId?: number): Promise<Oportunidade[]> {
