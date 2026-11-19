@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
-// As duas famílias (Rethink Sans para leitura humana, JetBrains Mono para linguagem
+// As duas famílias (Rethink Sans para leitura humana, Roboto Mono para linguagem
 // técnica) vêm do `fonts.css` do design system, importado em globals.css — não de
 // `next/font`. Ver o comentário lá: o next/font baixa os woff2 durante o build e um 404
 // do fonts.gstatic.com derrubava o deploy inteiro.

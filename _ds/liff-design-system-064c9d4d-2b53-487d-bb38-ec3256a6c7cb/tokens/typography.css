@@ -2,12 +2,12 @@
    LIFF — Typography tokens (AI-BRAND-GUIDE.md §6)
    Two fonts, fixed roles:
    · Rethink Sans — all human reading (display, body, product names, nav)
-   · JetBrains Mono — technical language only (eyebrows, paths, tokens, HEX)
+   · Roboto Mono — technical language only (eyebrows, paths, tokens, HEX)
    Safety rule: never track a large Rethink title tighter than -0.04em.
    ========================================================= */
 :root {
   --liff-font-body: "Rethink Sans", Arial, sans-serif;
-  --liff-font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --liff-font-mono: "Roboto Mono", ui-monospace, monospace;
 
   /* Weights */
   --liff-w-regular: 400; /* @kind font */

@@ -12,7 +12,7 @@
 
 import { useState, type CSSProperties, type ReactNode } from "react";
 
-const MONO = 'var(--liff-font-mono, "JetBrains Mono", monospace)';
+const MONO = 'var(--liff-font-mono, "Roboto Mono", monospace)';
 const SANS = 'var(--liff-font-body, "Rethink Sans", sans-serif)';
 const R = "var(--liff-radius-sm)";
 

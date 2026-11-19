@@ -150,7 +150,7 @@ function Badge({
     style: {
       display: "inline-flex",
       alignItems: "center",
-      fontFamily: 'var(--liff-font-mono, "JetBrains Mono", monospace)',
+      fontFamily: 'var(--liff-font-mono, "Roboto Mono", monospace)',
       fontSize: 12,
       letterSpacing: "0.08em",
       textTransform: "uppercase",
@@ -199,7 +199,7 @@ function Button({
     display: "inline-flex",
     alignItems: "center",
     gap: 8,
-    fontFamily: 'var(--liff-font-mono, "JetBrains Mono", monospace)',
+    fontFamily: 'var(--liff-font-mono, "Roboto Mono", monospace)',
     fontSize: fonts[size],
     letterSpacing: "0.08em",
     textTransform: "uppercase",
@@ -275,7 +275,7 @@ function Callout({
     }
   }, rest), title && /*#__PURE__*/React.createElement("div", {
     style: {
-      fontFamily: 'var(--liff-font-mono, "JetBrains Mono", monospace)',
+      fontFamily: 'var(--liff-font-mono, "Roboto Mono", monospace)',
       fontSize: 11,
       letterSpacing: "0.14em",
       textTransform: "uppercase",
@@ -343,7 +343,7 @@ function CodeBlock({
   }, rest), label && /*#__PURE__*/React.createElement("div", {
     style: {
       display: "inline-flex",
-      fontFamily: 'var(--liff-font-mono, "JetBrains Mono", monospace)',
+      fontFamily: 'var(--liff-font-mono, "Roboto Mono", monospace)',
       fontSize: 12,
       letterSpacing: "0.08em",
       textTransform: "uppercase",
@@ -362,7 +362,7 @@ function CodeBlock({
       padding: 20,
       overflow: "auto",
       color: "#E8E0D2",
-      font: '12px/1.55 var(--liff-font-mono, "JetBrains Mono", monospace)',
+      font: '12px/1.55 var(--liff-font-mono, "Roboto Mono", monospace)',
       margin: 0,
       whiteSpace: "pre"
     }
@@ -388,7 +388,7 @@ function Eyebrow({
 }) {
   return /*#__PURE__*/React.createElement("div", _extends({
     style: {
-      fontFamily: 'var(--liff-font-mono, "JetBrains Mono", monospace)',
+      fontFamily: 'var(--liff-font-mono, "Roboto Mono", monospace)',
       fontSize: "var(--liff-fs-eyebrow, 12px)",
       letterSpacing: "var(--liff-ls-eyebrow, 0.16em)",
       textTransform: "uppercase",
@@ -432,7 +432,7 @@ function SpecTable({
       background: "var(--liff-panel)",
       color: "var(--liff-dust)",
       textAlign: "left",
-      font: '11px var(--liff-font-mono, "JetBrains Mono", monospace)',
+      font: '11px var(--liff-font-mono, "Roboto Mono", monospace)',
       letterSpacing: "0.12em",
       textTransform: "uppercase",
       padding: "13px 14px",
@@ -488,7 +488,7 @@ function Swatch({
     }
   }, name), hex && /*#__PURE__*/React.createElement("code", {
     style: {
-      fontFamily: 'var(--liff-font-mono, "JetBrains Mono", monospace)',
+      fontFamily: 'var(--liff-font-mono, "Roboto Mono", monospace)',
       fontSize: 12,
       margin: "3px 0 8px"
     }
@@ -541,7 +541,7 @@ function DataGrid({
       background: "var(--liff-panel)",
       color: "var(--liff-dust)",
       textAlign: c.align || "left",
-      font: '11px var(--liff-font-mono, "JetBrains Mono", monospace)',
+      font: '11px var(--liff-font-mono, "Roboto Mono", monospace)',
       letterSpacing: "0.12em",
       textTransform: "uppercase",
       padding: "12px 14px",
@@ -656,7 +656,7 @@ function Field({
   }, rest), label && /*#__PURE__*/React.createElement("label", {
     htmlFor: htmlFor,
     style: {
-      fontFamily: 'var(--liff-font-mono, "JetBrains Mono", monospace)',
+      fontFamily: 'var(--liff-font-mono, "Roboto Mono", monospace)',
       fontSize: 11,
       letterSpacing: "0.14em",
       textTransform: "uppercase",
