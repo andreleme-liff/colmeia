@@ -70,44 +70,53 @@
 }
 
 :root[data-theme="light"] {
-  --liff-app-on-accent: var(--liff-floral);
-  /* Superfícies: a célula de conteúdo é o Floral White puro; o canvas recua
-     com um véu de Dust, e o passo 2 (hover/selecionado) avança sobre ele. */
-  --liff-canvas:       color-mix(in srgb, var(--liff-dust) 24%, var(--liff-floral));
-  --liff-surface:      var(--liff-floral);
-  --liff-surface-cell: var(--liff-floral);
-  --liff-surface-2:    color-mix(in srgb, var(--liff-dust) 42%, var(--liff-floral));
-  --liff-code-bg:      color-mix(in srgb, var(--liff-dust) 16%, var(--liff-floral));
+  /* Neutros do tema claro (nov/2026). Saem o Floral White e o véu de Dust, que deixavam a
+     tela amarelada; entram quatro cinzas quase sem matiz e um fio. O Floral continua sendo
+     texto e logo do tema escuro, e o Paprika não muda. */
+  --liff-claro-1: #FAFAFA;   /* superfície: card, painel, campo, célula */
+  --liff-claro-2: #F7F5F4;   /* canvas da aplicação */
+  --liff-claro-3: #EDEDED;   /* recuo: raia do quadro, menu lateral, bloco de código */
+  --liff-claro-4: #E1E1E1;   /* passo 2: hover, selecionado, avatar */
+  --liff-claro-fio: #D4D4D4; /* fio estrutural de 1px */
 
-  /* Kanban no claro: a raia afunda um passo abaixo do canvas (mais Dust) e o
-     card é o Floral puro — o "branco" do sistema, sem contorno. */
-  --liff-app-raia:       color-mix(in srgb, var(--liff-dust) 36%, var(--liff-floral));
-  --liff-app-card:       var(--liff-floral);
-  --liff-app-card-hover: color-mix(in srgb, var(--liff-dust) 10%, var(--liff-floral));
-  /* O canvas claro leva 24% de Dust; o menu, 40%. */
-  --liff-app-aside:      color-mix(in srgb, var(--liff-dust) 40%, var(--liff-floral));
-  --liff-app-aside-ativo: var(--liff-floral);
+  --liff-app-on-accent: var(--liff-claro-1);
+  /* Superfícies: a célula de conteúdo é o claro-1; o canvas recua um passo
+     e o passo 2 (hover/selecionado) é o mais escuro dos quatro. */
+  --liff-canvas:       var(--liff-claro-2);
+  --liff-surface:      var(--liff-claro-1);
+  --liff-surface-cell: var(--liff-claro-1);
+  --liff-surface-2:    var(--liff-claro-4);
+  --liff-code-bg:      var(--liff-claro-3);
+
+  /* Kanban no claro: a raia afunda um passo abaixo do canvas e o card é o
+     claro-1 — o "branco" do sistema, sem contorno. */
+  --liff-app-raia:       var(--liff-claro-3);
+  --liff-app-card:       var(--liff-claro-1);
+  --liff-app-card-hover: var(--liff-claro-2);
+  /* O menu fica um passo abaixo do canvas; o item ativo volta para a superfície. */
+  --liff-app-aside:      var(--liff-claro-3);
+  --liff-app-aside-ativo: var(--liff-claro-1);
 
   /* A hairline clareia; o cinza apagado escurece — no escuro os dois são
      Charcoal, aqui precisam ir para lados opostos. */
-  --liff-border:    color-mix(in srgb, var(--liff-charcoal) 28%, var(--liff-floral));
-  --liff-app-ghost: color-mix(in srgb, var(--liff-charcoal) 58%, var(--liff-floral));
+  --liff-border:    var(--liff-claro-fio);
+  --liff-app-ghost: #8E8E8E;
 
   /* Texto: a escala de proeminência do escuro, invertida. */
   --liff-text:       var(--liff-obsidiana);
-  --liff-text-body:  color-mix(in srgb, var(--liff-obsidiana) 84%, var(--liff-floral));
-  --liff-text-muted: color-mix(in srgb, var(--liff-obsidiana) 64%, var(--liff-floral));
-  --liff-text-faint: color-mix(in srgb, var(--liff-charcoal) 82%, var(--liff-floral));
+  --liff-text-body:  color-mix(in srgb, var(--liff-obsidiana) 84%, var(--liff-claro-1));
+  --liff-text-muted: color-mix(in srgb, var(--liff-obsidiana) 64%, var(--liff-claro-1));
+  --liff-text-faint: #606060;
 
   /* Estados: os HEX do design system foram calibrados para o canvas escuro e
-     não têm contraste sobre Floral White. Escurecem por mistura com Obsidiana
+     não têm contraste sobre o claro. Escurecem por mistura com Obsidiana
      — o matiz é o mesmo, só a luminância muda. Os tokens originais seguem
      intactos e continuam valendo para preenchimentos. */
   --liff-app-success-ink: color-mix(in srgb, var(--liff-success) 72%, var(--liff-obsidiana));
   --liff-app-warning-ink: color-mix(in srgb, var(--liff-warning) 70%, var(--liff-obsidiana));
   --liff-app-error-ink:   color-mix(in srgb, var(--liff-error) 82%, var(--liff-obsidiana));
   --liff-app-info-ink:    color-mix(in srgb, var(--liff-info) 88%, var(--liff-obsidiana));
-  --liff-app-on-state:    var(--liff-floral);
+  --liff-app-on-state:    var(--liff-claro-1);
 
   /* Verticais: o tom Mid é claro demais para texto sobre Floral White; sobe
      para o Core de cada cascata. Labs é a exceção — seu Core é um teal
