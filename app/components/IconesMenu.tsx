@@ -147,6 +147,21 @@ export function IconeLua() {
   );
 }
 
+/** Misto: a tela clara com a faixa da lateral cheia, como o próprio tema. */
+export function IconeMisto() {
+  return (
+    <Svg size={16}>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="1.5" />
+      <path d="M3.5 6a1.5 1.5 0 0 1 1.5-1.5h4.5v15H5A1.5 1.5 0 0 1 3.5 18Z" fill="currentColor" />
+    </Svg>
+  );
+}
+
+/** Ícone do tema para onde o botão leva. */
+export function IconeTema({ tema }: { tema: "dark" | "light" | "misto" }) {
+  return tema === "light" ? <IconeSol /> : tema === "misto" ? <IconeMisto /> : <IconeLua />;
+}
+
 export function IconeSair() {
   return (
     <Svg size={16}>

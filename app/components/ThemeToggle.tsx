@@ -1,6 +1,6 @@
 "use client";
 
-// Segmentado escuro/claro, na mesma linguagem dos chips de área.
+// Segmentado escuro/misto/claro, na mesma linguagem dos chips de área.
 
 import { C, eyebrow, mesh, type Theme } from "./tokens";
 import type { CSSProperties } from "react";
@@ -16,6 +16,7 @@ export default function ThemeToggle({
 }) {
   const opcoes: { key: Theme; label: string; title: string }[] = [
     { key: "dark", label: "escuro", title: "Fundo escuro" },
+    { key: "misto", label: "misto", title: "Fundo claro com menu escuro" },
     { key: "light", label: "claro", title: "Fundo claro" },
   ];
   return (

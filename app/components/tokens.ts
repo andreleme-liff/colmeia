@@ -79,14 +79,24 @@ export function prioColor(p: string): string {
 }
 
 /* ---------------- tema ----------------
-   A fonte de verdade do tema é o atributo data-theme no <html>, que o script inline do
-   layout já escreveu antes do primeiro paint. O React apenas se inscreve nele via
-   useSyncExternalStore — que é o caminho certo para ler estado que vive fora do React e
-   evita divergência entre o HTML do servidor e a primeira renderização no cliente. */
+   A fonte de verdade do tema é o <html>, que o script inline do layout já escreveu antes
+   do primeiro paint. O React apenas se inscreve nele via useSyncExternalStore — que é o
+   caminho certo para ler estado que vive fora do React e evita divergência entre o HTML do
+   servidor e a primeira renderização no cliente.
+
+   São três temas (nov/2026): escuro, claro e misto. O misto é o conteúdo do claro com o
+   menu lateral em Obsidiana. No <html> ele vira data-theme="light" + data-aside="obsidiana":
+   assim todas as regras do claro continuam valendo no conteúdo, e só a lateral volta aos
+   tokens do escuro (ver globals.css). */
 
 export const THEME_KEY = "liff-tasks-theme";
 export const THEME_EVENT = "liff-tasks-theme-change";
-export type Theme = "dark" | "light";
+export type Theme = "dark" | "light" | "misto";
+export const TEMAS: readonly Theme[] = ["dark", "misto", "light"];
+
+export function eTema(v: unknown): v is Theme {
+  return v === "dark" || v === "light" || v === "misto";
+}
 
 function assinar(cb: () => void): () => void {
   window.addEventListener(THEME_EVENT, cb);
@@ -94,14 +104,19 @@ function assinar(cb: () => void): () => void {
 }
 
 function noCliente(): Theme {
-  return document.documentElement.dataset.theme === "light" ? "light" : "dark";
+  const el = document.documentElement;
+  if (el.dataset.theme !== "light") return "dark";
+  return el.dataset.aside === "obsidiana" ? "misto" : "light";
 }
 
 // No servidor não há tema; "dark" é o padrão do design system.
 const noServidor = (): Theme => "dark";
 
 export function writeTheme(theme: Theme): void {
-  document.documentElement.dataset.theme = theme;
+  const el = document.documentElement;
+  el.dataset.theme = theme === "dark" ? "dark" : "light";
+  if (theme === "misto") el.dataset.aside = "obsidiana";
+  else delete el.dataset.aside;
   try {
     localStorage.setItem(THEME_KEY, theme);
   } catch {
@@ -115,7 +130,21 @@ export function useTheme(): [Theme, (t: Theme) => void] {
   return [theme, writeTheme];
 }
 
-/** O wordmark é monocromático: Floral sobre escuro, Obsidiana sobre claro. */
-export function markTone(theme: Theme): "light" | "dark" {
-  return theme === "light" ? "dark" : "light";
+/** O que o botão de tema faz, dito pelo tema para onde ele leva. */
+export const ROTULO_TEMA: Record<Theme, string> = {
+  dark: "Usar fundo escuro",
+  misto: "Usar fundo claro com menu escuro",
+  light: "Usar fundo claro",
+};
+
+/** Próximo tema no botão da lateral: escuro → misto → claro → escuro. */
+export function proximoTema(t: Theme): Theme {
+  return TEMAS[(TEMAS.indexOf(t) + 1) % TEMAS.length];
+}
+
+/** O wordmark é monocromático: Floral sobre escuro, Obsidiana sobre claro.
+ *  `lateral` = o logo está no menu lateral, que no tema misto é escuro. */
+export function markTone(theme: Theme, lateral = false): "light" | "dark" {
+  const fundoClaro = theme === "light" || (theme === "misto" && !lateral);
+  return fundoClaro ? "dark" : "light";
 }

@@ -16,7 +16,7 @@ import { lerSelecaoDeResponsaveis, MAX_RESPONSAVEIS_NA_SELECAO, STAGE_KEYS, STAT
 
 type Body = { tema?: string; area?: string; responsaveis?: string; densidade?: string; menu?: string; recolhidasComercial?: string; recolhidasOperacoes?: string; resumoEtapas?: string; ordemCards?: string; cronograma?: string; cronogramaTipo?: string };
 
-const TEMAS = ["dark", "light"];
+const TEMAS = ["dark", "light", "misto"];
 const DENSIDADES = ["completo", "compacto"];
 const MENUS = ["expandido", "recolhido"];
 // Ordem dos cards dentro de cada coluna dos kanbans.

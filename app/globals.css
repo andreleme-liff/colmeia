@@ -129,6 +129,55 @@
   --liff-app-area-social:        var(--liff-social-core);
 }
 
+/* ---------- tema misto (nov/2026) ----------
+   Conteúdo do claro, menu lateral em Obsidiana. O <html> fica com data-theme="light" (todas as
+   regras do claro valem) e ganha data-aside="obsidiana"; aqui a lateral redeclara, só para si e
+   para o que está dentro dela, os valores do escuro de cada alias que o claro reescreve.
+   Variáveis que dependem de outras (placeholder, aside) são redeclaradas também, porque
+   a var() é resolvida onde é declarada — herdadas do :root, viriam calculadas com o claro. */
+:root[data-aside="obsidiana"] .liff-aside {
+  color-scheme: dark;
+  --liff-canvas:       var(--liff-obsidiana);
+  --liff-surface:      var(--liff-panel);
+  --liff-surface-2:    var(--liff-panel-2);
+  --liff-surface-cell: var(--liff-cell);
+  --liff-code-bg:      #0B0D10;
+  --liff-border:       var(--liff-charcoal);
+  --liff-app-ghost:    var(--liff-charcoal);
+
+  --liff-text:       var(--liff-floral);
+  --liff-text-body:  var(--liff-body-ink);
+  --liff-text-muted: var(--liff-dust);
+  --liff-text-faint: var(--liff-muted);
+  --liff-app-placeholder: color-mix(in srgb, var(--liff-text-faint) 50%, var(--liff-surface));
+
+  --liff-app-success-ink: var(--liff-success);
+  --liff-app-warning-ink: var(--liff-warning);
+  --liff-app-error-ink:   var(--liff-error);
+  --liff-app-info-ink:    var(--liff-info);
+  --liff-app-on-state:    var(--liff-obsidiana);
+  --liff-app-on-accent:   var(--liff-obsidiana);
+
+  --liff-app-raia:       var(--liff-cell);
+  --liff-app-card:       var(--liff-panel-2);
+  --liff-app-card-hover: color-mix(in srgb, var(--liff-floral) 6%, var(--liff-panel-2));
+
+  /* Obsidiana pura no fundo, como pedido; o ativo é o véu de Floral do escuro. */
+  --liff-app-aside:       var(--liff-obsidiana);
+  --liff-app-aside-ativo: color-mix(in srgb, var(--liff-floral) 7%, var(--liff-app-aside));
+  color: var(--liff-text);
+}
+/* As correções de formulário do claro fixam cor com !important; dentro da lateral escura
+   precisam voltar ao Floral. */
+:root[data-aside="obsidiana"] .liff-aside input,
+:root[data-aside="obsidiana"] .liff-aside select,
+:root[data-aside="obsidiana"] .liff-aside textarea { color: var(--liff-text) !important; }
+:root[data-aside="obsidiana"] .liff-aside label { color: var(--liff-text-muted) !important; }
+:root[data-aside="obsidiana"] .liff-aside select ~ span { color: var(--liff-text-faint) !important; }
+/* O fio entre a lateral e o conteúdo é o gap da casca; no misto ele some contra a Obsidiana
+   de um lado e o canvas claro do outro, então a própria troca de fundo faz a separação. */
+:root[data-aside="obsidiana"] .liff-shell { background: var(--liff-obsidiana); }
+
 /* =========================================================
    Base
    ========================================================= */

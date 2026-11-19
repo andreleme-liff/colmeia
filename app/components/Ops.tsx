@@ -7,7 +7,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LiffSig, Button } from "./ds";
-import { IconeLua, IconeMenu, IconeRecolher, IconeSair, IconeSol } from "./IconesMenu";
+import { IconeMenu, IconeRecolher, IconeSair, IconeTema } from "./IconesMenu";
 import {
   Auditoria,
   Aviso,
@@ -24,7 +24,7 @@ import {
   type ItemCronograma,
   type Semana,
 } from "./views";
-import { C, avatarStyle, eyebrow, markTone, statusColor, useTheme, writeTheme, type Theme, R } from "./tokens";
+import { C, avatarStyle, eyebrow, eTema, markTone, proximoTema, ROTULO_TEMA, statusColor, useTheme, writeTheme, type Theme, R } from "./tokens";
 import CoresDasAreas from "./CoresDasAreas";
 import SeletorArea from "./SeletorArea";
 import SeletorResponsaveis from "./SeletorResponsaveis";
@@ -228,7 +228,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         // como "todos" em vez de virar um filtro que não casa com nada.
         const resp = lerSelecaoDeResponsaveis(respSalvos);
         if (resp.length) setResponsaveis(resp);
-        if (tema === "dark" || tema === "light") writeTheme(tema);
+        if (eTema(tema)) writeTheme(tema);
         // A área só volta se ainda for visível: permissão pode ter mudado desde a última
         // sessão, e restaurar um filtro que não mostra nada pareceria dado sumido.
         if (areaSalva && (areaSalva === "all" || s.areasVisiveis.includes(areaSalva))) setArea(areaSalva);
@@ -1183,7 +1183,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
       <aside className="liff-aside">
         <div className="liff-aside-topo">
           <div className="liff-so-expandida" style={{ minWidth: 0 }}>
-            <LiffSig name="go" size={24} tone={markTone(theme)} />
+            <LiffSig name="go" size={24} tone={markTone(theme, true)} />
             <div style={{ ...eyebrow(10, C.faint, "0.18em"), marginTop: 12 }}>GESTÃO ORGANIZACIONAL</div>
           </div>
           <button
@@ -1254,11 +1254,11 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             <button
               type="button"
               className="liff-recolher"
-              onClick={() => trocarTemaSalvando(theme === "dark" ? "light" : "dark")}
-              aria-label={theme === "dark" ? "Usar fundo claro" : "Usar fundo escuro"}
-              title={theme === "dark" ? "Usar fundo claro" : "Usar fundo escuro"}
+              onClick={() => trocarTemaSalvando(proximoTema(theme))}
+              aria-label={ROTULO_TEMA[proximoTema(theme)]}
+              title={ROTULO_TEMA[proximoTema(theme)]}
             >
-              {theme === "dark" ? <IconeSol /> : <IconeLua />}
+              <IconeTema tema={proximoTema(theme)} />
             </button>
             <div style={avatarStyle(32)} title={`${me.nome} · ${me.papel}`}>
               {me.iniciais}
@@ -1281,7 +1281,8 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           <div className="liff-so-expandida">
             <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 16 }}>
               {/* Pessoa, tema e sair numa linha só: tema e sair são ícones discretos, como no
-                  menu recolhido. O sol aparece no tema escuro (leva ao claro) e a lua no claro. */}
+                  menu recolhido. O botão de tema percorre escuro → misto → claro e mostra o ícone
+                  do PRÓXIMO: meia-lua leva ao misto, sol ao claro, lua ao escuro. */}
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={avatarStyle(32)}>{me.iniciais}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -1291,11 +1292,11 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
                 <button
                   type="button"
                   className="liff-recolher"
-                  onClick={() => trocarTemaSalvando(theme === "dark" ? "light" : "dark")}
-                  aria-label={theme === "dark" ? "Usar fundo claro" : "Usar fundo escuro"}
-                  title={theme === "dark" ? "Usar fundo claro" : "Usar fundo escuro"}
+                  onClick={() => trocarTemaSalvando(proximoTema(theme))}
+                  aria-label={ROTULO_TEMA[proximoTema(theme)]}
+                  title={ROTULO_TEMA[proximoTema(theme)]}
                 >
-                  {theme === "dark" ? <IconeSol /> : <IconeLua />}
+                  <IconeTema tema={proximoTema(theme)} />
                 </button>
                 <button
                   type="button"
