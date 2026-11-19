@@ -75,9 +75,9 @@
      texto e logo do tema escuro, e o Paprika não muda. */
   --liff-claro-1: #FAFAFA;   /* superfície: card, painel, campo, célula */
   --liff-claro-2: #F7F5F4;   /* canvas da aplicação */
-  --liff-claro-3: #EDEDED;   /* recuo: raia do quadro, menu lateral, bloco de código */
-  --liff-claro-4: #E1E1E1;   /* passo 2: hover, selecionado, avatar */
-  --liff-claro-fio: #D4D4D4; /* fio estrutural de 1px */
+  --liff-claro-3: #EDEBE9;   /* recuo: raia do quadro, menu lateral, bloco de código */
+  --liff-claro-4: #E2DFDD;   /* passo 2: hover, selecionado, avatar */
+  --liff-claro-fio: #D6D3D0; /* fio estrutural de 1px */
 
   --liff-app-on-accent: var(--liff-claro-1);
   /* Superfícies: a célula de conteúdo é o claro-1; o canvas recua um passo
