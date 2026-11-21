@@ -1,15 +1,42 @@
 "use client";
 
-// Tela de acesso. No protótipo estático era uma lista de perfis para escolher; agora é o
-// SSO Google de verdade, restrito ao domínio — a lista some porque quem você é passa a ser
-// definido pelo Google, não por um clique.
+// Tela de acesso: a pessoa digita o e-mail cadastrado e entra. Sem senha, por enquanto —
+// ver o aviso em app/api/auth/email/route.ts.
 
-import { LiffSig, Button } from "../components/ds";
+import { useState } from "react";
+import { LiffSig, Button, Input } from "../components/ds";
 import { C, MONO, eyebrow, markTone, useTheme, R } from "../components/tokens";
 import ThemeToggle from "../components/ThemeToggle";
 
-export default function LoginScreen({ erro }: { erro?: string }) {
+export default function LoginScreen({ erro: erroInicial, voltar }: { erro?: string; voltar: string }) {
   const [theme, trocarTema] = useTheme();
+  const [email, setEmail] = useState("");
+  const [erro, setErro] = useState(erroInicial);
+  const [entrando, setEntrando] = useState(false);
+
+  async function entrar(e: React.FormEvent) {
+    e.preventDefault();
+    if (entrando) return;
+    setEntrando(true);
+    setErro(undefined);
+    try {
+      const res = await fetch("/api/auth/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      if (res.ok) {
+        // Navegação inteira, não do router: a página seguinte lê a sessão no servidor.
+        window.location.assign(voltar);
+        return;
+      }
+      const corpo = (await res.json().catch(() => null)) as { error?: string } | null;
+      setErro(corpo?.error ?? "Não foi possível entrar. Tente de novo.");
+    } catch {
+      setErro("Sem conexão com o servidor. Tente de novo.");
+    }
+    setEntrando(false);
+  }
 
   return (
     <div className="liff-login">
@@ -50,10 +77,10 @@ export default function LoginScreen({ erro }: { erro?: string }) {
         <div style={{ width: "100%", maxWidth: 420, background: C.panel, border: `1px solid ${C.line}`, borderRadius: R, padding: 36 }}>
           <div style={{ ...eyebrow(11, C.faint), marginBottom: 8 }}>ACESSO</div>
           <h2 style={{ fontSize: 26, letterSpacing: "-0.02em", fontWeight: 800, color: C.ink, margin: "0 0 6px" }}>
-            Entrar com Google
+            Entrar
           </h2>
           <p style={{ fontSize: 14, lineHeight: 1.6, color: C.faint, margin: "0 0 28px" }}>
-            Acesso só para contas Google cadastradas pela administração.
+            Digite o e-mail cadastrado pela administração.
           </p>
 
           {erro && (
@@ -73,18 +100,17 @@ export default function LoginScreen({ erro }: { erro?: string }) {
             </div>
           )}
 
-          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- não é página: é o
-            route handler que inicia o OAuth, e precisa de navegação do navegador, não do
-            router. O catch-all `[[...rota]]` faz a regra achar que todo caminho é página. */}
-        <a href="/api/auth/google/start" style={{ display: "block" }}>
-            <Button variant="solid" size="lg" style={{ width: "100%", justifyContent: "center" }}>
-              entrar com google
+          <form onSubmit={entrar} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <label style={{ ...eyebrow(10, C.faint, "0.14em") }} htmlFor="login-email">E-MAIL</label>
+            <Input id="login-email" type="email" name="email" autoComplete="email" autoFocus size="lg" placeholder="voce@empresa.com" value={email} onChange={setEmail} disabled={entrando} />
+            <Button type="submit" variant="solid" size="lg" disabled={entrando || !email.trim()} style={{ width: "100%", justifyContent: "center" }}>
+              {entrando ? "entrando…" : "entrar"}
             </Button>
-          </a>
+          </form>
 
           <div style={{ marginTop: 24, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.12em", color: C.ghost }}>
-              LOGIN COM GOOGLE
+              LOGIN POR E-MAIL
             </span>
             <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.12em", color: C.faint }}>
               / acesso por convite

@@ -1,10 +1,10 @@
-// Sessão em cookie httpOnly (30 dias). Sem senha: o único caminho de entrada é o SSO Google
-// restrito ao domínio, como o desenho do sistema define.
+// Sessão em cookie httpOnly (30 dias). O único caminho de entrada é o login por e-mail de
+// pessoa cadastrada (`entrarComEmail`) — provisoriamente sem senha.
 
 import { randomBytes } from "crypto";
 import { cookies } from "next/headers";
 import { getDb } from "./db";
-import { emailsAdmin } from "./google-oauth";
+import { emailsAdmin } from "./acesso";
 import { registrar } from "./log";
 import type { Papel } from "./domain";
 
@@ -143,53 +143,36 @@ export function iniciaisDe(nome: string): string {
 }
 
 /**
- * Login social: só entra quem está na lista. A lista é o cadastro de pessoas (Cadastros →
+ * Login por e-mail: só entra quem está na lista. A lista é o cadastro de pessoas (Cadastros →
  * pessoas, mantido pela administração) mais os e-mails de `ADMIN_EMAIL`.
  *
- * - Pessoa cadastrada e ativa: entra. Na primeira vez a linha é vinculada à conta Google
- *   (google_sub) e assume nome e foto de lá.
- * - E-mail de `ADMIN_EMAIL` ainda sem cadastro: a conta nasce aqui, como admin.
- * - Qualquer outra conta Google: `null`, e nada é gravado. Não existe mais "primeiro acesso
- *   como leitura" — conta desconhecida não entra.
+ * - Pessoa cadastrada e ativa: entra.
+ * - E-mail de `ADMIN_EMAIL` ainda sem cadastro: a conta nasce aqui, como admin, com o nome
+ *   tirado do e-mail (a pessoa corrige depois em Cadastros).
+ * - Qualquer outro e-mail: `null`, e nada é gravado.
  *
- * Depois de vinculada, a linha só aceita a MESMA conta Google: um e-mail reaproveitado por
- * outra conta (endereço reciclado, alias) não herda o acesso.
+ * Não há prova de posse do e-mail — ver o aviso em app/api/auth/email/route.ts.
  */
-export async function entrarComGoogle(
-  email: string,
-  nome: string,
-  googleSub: string,
-  avatarUrl: string | null
-): Promise<number | null> {
+export async function entrarComEmail(email: string): Promise<number | null> {
   const sql = await getDb();
-  const existente = await sql<{ id: number; google_sub: string | null; ativo: boolean; excluido: boolean }[]>`
-    SELECT id, google_sub, ativo, excluido_em IS NOT NULL AS excluido FROM users WHERE lower(email) = lower(${email})
+  const existente = await sql<{ id: number; ativo: boolean; excluido: boolean }[]>`
+    SELECT id, ativo, excluido_em IS NOT NULL AS excluido FROM users WHERE lower(email) = ${email}
   `;
   if (existente.length) {
     const u = existente[0];
-    if (!u.ativo || u.excluido) return null;
-    if (u.google_sub && u.google_sub !== googleSub) return null;
-    if (!u.google_sub) {
-      await sql`
-        UPDATE users SET google_sub = ${googleSub}, avatar_url = ${avatarUrl}, nome = ${nome},
-                         iniciais = ${iniciaisDe(nome)}
-        WHERE id = ${u.id}
-      `;
-    } else {
-      await sql`UPDATE users SET avatar_url = ${avatarUrl} WHERE id = ${u.id}`;
-    }
-    return u.id;
+    return u.ativo && !u.excluido ? u.id : null;
   }
 
-  if (!emailsAdmin().includes(email.toLowerCase())) return null;
+  if (!emailsAdmin().includes(email)) return null;
 
+  const nome = email.split("@")[0].split(/[._-]+/).filter(Boolean).map((p) => p[0].toUpperCase() + p.slice(1)).join(" ") || email;
   const [row] = await sql<{ id: number }[]>`
-    INSERT INTO users (nome, email, papel, iniciais, google_sub, avatar_url)
-    VALUES (${nome}, ${email.toLowerCase()}, 'admin', ${iniciaisDe(nome)}, ${googleSub}, ${avatarUrl})
+    INSERT INTO users (nome, email, papel, iniciais)
+    VALUES (${nome}, ${email}, 'admin', ${iniciaisDe(nome)})
     RETURNING id
   `;
   await registrar(sql, {
-    actorUserId: row.id, area: null, entidade: `U-${row.id}`, campo: "criacao", de: null, para: email.toLowerCase(),
+    actorUserId: row.id, area: null, entidade: `U-${row.id}`, campo: "criacao", de: null, para: email,
     texto: `Primeiro acesso de ${nome}: entrou como admin por estar em ADMIN_EMAIL`,
   });
   return row.id;

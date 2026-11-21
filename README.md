@@ -4,12 +4,12 @@
 > servir a outro negócio e evoluir por conta própria. Repositório, projeto na Vercel e banco
 > Supabase são separados dos da LIFF — nada aqui lê ou grava na base do LIFF go.
 >
-> **Login (mudou em relação ao LIFF go):** login social com Google para contas específicas.
-> Não há restrição de domínio — entra a conta Google cujo e-mail está em Cadastros → pessoas, e
-> mais ninguém; conta desconhecida é recusada sem criar registro. `ADMIN_EMAIL` (um ou mais
-> e-mails, separados por vírgula) entra como admin sem cadastro, para a base vazia ter quem
-> cadastre os demais. `GOOGLE_ALLOWED_DOMAIN` não existe mais. A seção "Acesso" abaixo
-> descreve o modelo antigo.
+> **Login (mudou em relação ao LIFF go):** não há mais Google. A pessoa digita o e-mail
+> cadastrado em Cadastros → pessoas e entra — **sem senha e sem confirmação, provisoriamente**.
+> Isso identifica, não autentica: quem souber o e-mail de alguém cadastrado entra como essa
+> pessoa. `ADMIN_EMAIL` (um ou mais, separados por vírgula) entra como admin sem cadastro, para
+> a base vazia ter quem cadastre os demais. O sistema de senha vem depois. A seção "Acesso"
+> abaixo descreve o modelo antigo.
 >
 > O que mudou na cópia: o nome do sistema; o redirect `tasks.liff.tech` saiu; e a base **nasce
 > vazia** — produtos, origens e arquétipos de funding da LIFF só entram com `SEED_DEMO=1`

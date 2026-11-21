@@ -1,13 +1,7 @@
 // Pré-cadastro de pessoa. Restrito a admin.
 //
-// É este cadastro que dá acesso: só entra pelo Google quem tem o e-mail aqui. O que este
-// cadastro faz é deixar a pessoa PREPARADA antes disso — nome, papel e, logo em seguida, as
-// permissões por área na tela de Administração. Quando ela entrar com a conta Google desse
-// e-mail, `entrarComGoogle` encontra a linha pelo e-mail, adota o registro (preenche
-// google_sub, foto e nome vindos do Google) e a pessoa já entra enxergando o que deve.
-//
-// Sem isto, todo mundo entra sem área nenhuma e precisa de uma segunda passada da
-// administração depois do primeiro login.
+// É este cadastro que dá acesso: só entra quem tem o e-mail aqui (`entrarComEmail`).
+// Cadastrar a pessoa já com nome e papel é o que a deixa pronta para o primeiro login.
 
 import { getDb } from "@/lib/db";
 import { requireAdmin } from "@/lib/perms";
@@ -15,7 +9,7 @@ import { iniciaisDe } from "@/lib/auth";
 import { json, err } from "@/lib/http";
 import { registrar } from "@/lib/log";
 import { PAPEIS } from "@/lib/domain";
-import { emailValido } from "@/lib/google-oauth";
+import { emailValido } from "@/lib/acesso";
 
 type Body = { nome?: string; email?: string; papel?: string };
 
@@ -36,9 +30,8 @@ export async function POST(req: Request) {
 
   const email = String(body.email ?? "").trim().toLowerCase();
   if (!email) return err("A pessoa precisa de um e-mail.", 400);
-  // Este cadastro É a lista de quem pode entrar: o login aceita qualquer conta Google cujo
-  // e-mail esteja aqui, de qualquer domínio (inclusive @gmail.com).
-  if (!emailValido(email)) return err("E-mail inválido. Use o e-mail da conta Google da pessoa.", 400);
+  // Este cadastro É a lista de quem pode entrar, com e-mail de qualquer domínio.
+  if (!emailValido(email)) return err("E-mail inválido. Confira o endereço.", 400);
 
   const papel = String(body.papel ?? "membro");
   if (!(PAPEIS as readonly string[]).includes(papel)) return err("Papel inválido.", 400);
@@ -63,7 +56,6 @@ export async function POST(req: Request) {
   }
   if (jaExiste.length) return err(`${jaExiste[0].nome} já está cadastrado com esse e-mail.`, 409);
 
-  // Sem google_sub de propósito: é o que marca a linha como "convidada, ainda não entrou".
   const [nova] = await sql<{ id: number }[]>`
     INSERT INTO users (nome, email, papel, iniciais)
     VALUES (${nome}, ${email}, ${papel}, ${iniciaisDe(nome)})
@@ -77,7 +69,7 @@ export async function POST(req: Request) {
     campo: "criacao",
     de: null,
     para: email,
-    texto: `Cadastrou ${nome} (${email}) como ${papel}; entra no primeiro login pelo Google`,
+    texto: `Cadastrou ${nome} (${email}) como ${papel}; já pode entrar com esse e-mail`,
   });
 
   return json({ ok: true, id: nova.id }, 201);

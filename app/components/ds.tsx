@@ -216,6 +216,11 @@ export function Input({
   value,
   onChange,
   disabled,
+  id,
+  type = "text",
+  name,
+  autoComplete,
+  autoFocus,
 }: {
   accent?: string;
   invalid?: boolean;
@@ -225,12 +230,22 @@ export function Input({
   value?: string;
   onChange?: (v: string) => void;
   disabled?: boolean;
+  id?: string;
+  type?: "text" | "email";
+  name?: string;
+  autoComplete?: string;
+  autoFocus?: boolean;
 }) {
   const [focus, setFocus] = useState(false);
   const pads = { sm: "8px 10px", md: "11px 13px", lg: "14px 16px" };
   const border = invalid ? "var(--liff-error)" : focus ? accent : "var(--liff-charcoal)";
   return (
     <input
+      id={id}
+      type={type}
+      name={name}
+      autoComplete={autoComplete}
+      autoFocus={autoFocus}
       placeholder={placeholder}
       value={value}
       disabled={disabled}

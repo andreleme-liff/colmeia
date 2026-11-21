@@ -189,7 +189,7 @@ export default function Conexoes({ mcpHabilitado }: { mcpHabilitado: boolean }) 
             </code>
             <div style={{ marginTop: 6, fontSize: 12, color: C.faint }}>
               Deixe os campos de OAuth (client ID, segredo) em branco: o aplicativo se identifica sozinho e o login é o
-              Google de sempre.
+              mesmo da Colméia.
             </div>
           </div>
           <div>

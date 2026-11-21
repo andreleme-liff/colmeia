@@ -253,7 +253,7 @@ export function EditarPessoa({
       <Field label="Nome completo" required>
         <Input value={nome} onChange={setNome} />
       </Field>
-      <Field label="E-mail" required hint="O e-mail da conta Google da pessoa — é por ele que o login a reconhece.">
+      <Field label="E-mail" required hint="É com este e-mail que a pessoa entra.">
         <Input value={email} onChange={setEmail} />
       </Field>
       <Field label="Papel" hint={souEu && pessoa.papel === "admin" ? "Você não pode mudar o próprio papel de admin." : "Leitura só vê; membro e gestor editam os cards de todos os produtos, e o gestor também vê a receita; financeiro edita a receita e opera faturamento e despesas; admin também administra."}>

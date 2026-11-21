@@ -889,8 +889,7 @@ function NovaArea({ salvando, onCriar }: { salvando: boolean; onCriar: (d: { lab
 }
 
 /**
- * Pré-cadastro de pessoa. Não cria acesso: a conta nasce no primeiro login pelo Google, e o
- * que se faz aqui é deixar nome, papel e permissões prontos para quando isso acontecer.
+ * Cadastro de pessoa. É ele que dá acesso: quem está aqui entra digitando o e-mail.
  */
 function NovaPessoa({
   salvando,
@@ -908,8 +907,8 @@ function NovaPessoa({
       <Field label="Nome completo" required>
         <Input placeholder="Larissa Prado" value={nome} onChange={setNome} />
       </Field>
-      <Field label="E-mail" required hint="O e-mail da conta Google da pessoa (qualquer domínio, inclusive Gmail). Só entra quem está cadastrado aqui.">
-        <Input placeholder="larissa@gmail.com" value={email} onChange={setEmail} />
+      <Field label="E-mail" required hint="É com este e-mail que a pessoa entra. Só entra quem está cadastrado aqui.">
+        <Input placeholder="larissa@empresa.com" value={email} onChange={setEmail} />
       </Field>
       <Field label="Papel" hint="Leitura só vê. Membro e gestor editam os cards de todos os produtos; o gestor também vê a receita. Financeiro edita a receita e opera faturamento e despesas. Admin também administra.">
         <Select options={[...PAPEIS]} value={papel} onChange={setPapel} />
@@ -928,8 +927,8 @@ function NovaPessoa({
         {salvando ? "cadastrando…" : "cadastrar pessoa"}
       </Button>
       <div style={{ fontSize: 12, lineHeight: 1.6, color: C.faint }}>
-        A pessoa entra sozinha no primeiro login pelo Google — o cadastro só a espera do outro
-        lado, já com o papel escolhido.
+        Cadastrada, a pessoa já pode entrar na tela de login digitando este e-mail, com o
+        papel escolhido.
       </div>
     </>
   );

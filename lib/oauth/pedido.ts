@@ -40,11 +40,11 @@ export async function prepararPedido(q: URLSearchParams): Promise<Preparo> {
   const v = validarPedido(q, doc, cfg);
   if (!v.ok) return "naTela" in v ? { tipo: "erro", mensagem: v.naTela } : { tipo: "redirecionar", url: v.redirect };
 
-  // Sem sessão: entra pelo SSO Google de sempre e volta para esta mesma tela.
+  // Sem sessão: entra pela tela de login e volta para esta mesma tela.
   const user = await getSessionUser();
   if (!user) {
     const voltar = `/oauth/autorizar?${q.toString()}`;
-    return { tipo: "login", url: `/api/auth/google/start?voltar=${encodeURIComponent(voltar)}` };
+    return { tipo: "login", url: `/login?voltar=${encodeURIComponent(voltar)}` };
   }
 
   const ctx = await requireCtx();

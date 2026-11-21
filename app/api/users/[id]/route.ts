@@ -8,7 +8,7 @@ import { deFalha, err, json, lerCorpo } from "@/lib/http";
 import { registrar } from "@/lib/log";
 import { iniciaisDe } from "@/lib/auth";
 import { PAPEIS } from "@/lib/domain";
-import { emailValido } from "@/lib/google-oauth";
+import { emailValido } from "@/lib/acesso";
 import { ehFalha, falha } from "@/lib/ops/comum";
 import { excluirAtividade, excluirOportunidade, lerDestino } from "@/lib/exclusao";
 
@@ -115,7 +115,7 @@ export async function PATCH(req: Request, ctxRoute: RouteContext<"/api/users/[id
     if (body.email !== undefined) {
       const email = String(body.email).trim().toLowerCase();
       if (!email) return err("A pessoa precisa de um e-mail.", 400);
-      if (!emailValido(email)) return err("E-mail inválido. Use o e-mail da conta Google da pessoa.", 400);
+      if (!emailValido(email)) return err("E-mail inválido. Confira o endereço.", 400);
       if (email !== alvo.email.toLowerCase()) {
         const outro = await sql<{ nome: string }[]>`SELECT nome FROM users WHERE lower(email) = ${email} AND id <> ${userId}`;
         if (outro.length) return err(`${outro[0].nome} já está cadastrado com esse e-mail.`, 409);
