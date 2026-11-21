@@ -149,7 +149,6 @@ export type State = {
   /** Financeiro e admin: editam a receita e usam faturamento e despesas. */
   podeFinanceiro: boolean;
   /** Domínio aceito no login — vem do servidor, alimenta o cadastro de pessoa. */
-  dominioLogin: string;
   /** Se o servidor MCP está ligado (MCP_HABILITADO=1) neste ambiente. */
   mcpHabilitado: boolean;
   activities: Activity[];

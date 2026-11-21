@@ -4,6 +4,7 @@
 import { randomBytes } from "crypto";
 import { cookies } from "next/headers";
 import { getDb } from "./db";
+import { emailsAdmin } from "./google-oauth";
 import { registrar } from "./log";
 import type { Papel } from "./domain";
 
@@ -142,58 +143,54 @@ export function iniciaisDe(nome: string): string {
 }
 
 /**
- * Login via SSO: casa por e-mail. Se a conta já existe (inclusive pré-cadastrada pela
- * administração, sem google_sub), linka e assume nome/foto reais do Google na primeira vez.
- * Conta nova entra como 'leitura': vê todos os produtos e não edita nenhum (nov/2026). A exceção é ADMIN_EMAIL, que entra como admin para
- * a primeira instalação não ficar sem ninguém que possa liberar acesso.
+ * Login social: só entra quem está na lista. A lista é o cadastro de pessoas (Cadastros →
+ * pessoas, mantido pela administração) mais os e-mails de `ADMIN_EMAIL`.
+ *
+ * - Pessoa cadastrada e ativa: entra. Na primeira vez a linha é vinculada à conta Google
+ *   (google_sub) e assume nome e foto de lá.
+ * - E-mail de `ADMIN_EMAIL` ainda sem cadastro: a conta nasce aqui, como admin.
+ * - Qualquer outra conta Google: `null`, e nada é gravado. Não existe mais "primeiro acesso
+ *   como leitura" — conta desconhecida não entra.
+ *
+ * Depois de vinculada, a linha só aceita a MESMA conta Google: um e-mail reaproveitado por
+ * outra conta (endereço reciclado, alias) não herda o acesso.
  */
-export async function findOrCreateGoogleUser(
+export async function entrarComGoogle(
   email: string,
   nome: string,
   googleSub: string,
   avatarUrl: string | null
-): Promise<number> {
+): Promise<number | null> {
   const sql = await getDb();
-  const existente = await sql<{ id: number; google_sub: string | null }[]>`
-    SELECT id, google_sub FROM users WHERE lower(email) = lower(${email})
+  const existente = await sql<{ id: number; google_sub: string | null; ativo: boolean; excluido: boolean }[]>`
+    SELECT id, google_sub, ativo, excluido_em IS NOT NULL AS excluido FROM users WHERE lower(email) = lower(${email})
   `;
   if (existente.length) {
-    if (!existente[0].google_sub) {
+    const u = existente[0];
+    if (!u.ativo || u.excluido) return null;
+    if (u.google_sub && u.google_sub !== googleSub) return null;
+    if (!u.google_sub) {
       await sql`
         UPDATE users SET google_sub = ${googleSub}, avatar_url = ${avatarUrl}, nome = ${nome},
                          iniciais = ${iniciaisDe(nome)}
-        WHERE id = ${existente[0].id}
+        WHERE id = ${u.id}
       `;
     } else {
-      await sql`UPDATE users SET avatar_url = ${avatarUrl} WHERE id = ${existente[0].id}`;
+      await sql`UPDATE users SET avatar_url = ${avatarUrl} WHERE id = ${u.id}`;
     }
-    return existente[0].id;
+    return u.id;
   }
 
-  const adminEmail = (process.env.ADMIN_EMAIL ?? "").trim().toLowerCase();
-  const papel: Papel = adminEmail && email.toLowerCase() === adminEmail ? "admin" : "leitura";
+  if (!emailsAdmin().includes(email.toLowerCase())) return null;
 
-  // Conta nova (primeiro login de alguém do domínio, sem pré-cadastro): entra como `leitura`,
-  // que vê todos os produtos e não edita nenhum. Para editar, a administração muda o papel em
-  // Cadastros → pessoas. (Não há mais permissão por produto: o papel decide tudo.)
-  const id = await sql.begin(async (tx) => {
-    const [row] = await tx<{ id: number }[]>`
-      INSERT INTO users (nome, email, papel, iniciais, google_sub, avatar_url)
-      VALUES (${nome}, ${email}, ${papel}, ${iniciaisDe(nome)}, ${googleSub}, ${avatarUrl})
-      RETURNING id
-    `;
-    if (papel !== "admin") {
-      await registrar(tx, {
-        actorUserId: null,
-        area: null,
-        entidade: `U-${row.id}`,
-        campo: "papel",
-        de: null,
-        para: papel,
-        texto: `Primeiro acesso de ${nome}: entrou com o papel leitura (vê tudo, não edita)`,
-      });
-    }
-    return row.id;
+  const [row] = await sql<{ id: number }[]>`
+    INSERT INTO users (nome, email, papel, iniciais, google_sub, avatar_url)
+    VALUES (${nome}, ${email.toLowerCase()}, 'admin', ${iniciaisDe(nome)}, ${googleSub}, ${avatarUrl})
+    RETURNING id
+  `;
+  await registrar(sql, {
+    actorUserId: row.id, area: null, entidade: `U-${row.id}`, campo: "criacao", de: null, para: email.toLowerCase(),
+    texto: `Primeiro acesso de ${nome}: entrou como admin por estar em ADMIN_EMAIL`,
   });
-  return id;
+  return row.id;
 }

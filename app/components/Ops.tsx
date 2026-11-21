@@ -1058,7 +1058,6 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
               key={pessoaEdit.id}
               pessoa={pessoaEdit}
               meuId={me.id}
-              dominio={estado.dominioLogin}
               onFechar={() => setCadEditando(null)}
               onMudou={carregar}
             />
@@ -1082,7 +1081,6 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             podeEditarAreas={estado.isAdmin}
             salvandoArea={salvando}
             areasEditaveis={dados.areasVisiveis.map((a) => ({ id: a.id, label: a.label }))}
-            dominio={estado.dominioLogin}
             onCriarPessoa={(d) => {
               setSalvando(true);
               void acao(() => api.criarPessoa(d)).finally(() => setSalvando(false));

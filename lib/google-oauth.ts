@@ -1,4 +1,6 @@
-// SSO via Google Workspace — authorization code flow direto com o Google (sem lib externa).
+// Login social com Google — authorization code flow direto com o Google (sem lib externa).
+// Qualquer conta Google serve (Workspace ou @gmail.com): quem decide o acesso NÃO é o domínio,
+// é a lista de pessoas cadastradas — ver `entrarComGoogle` em lib/auth.ts.
 // O id_token vem do token endpoint numa chamada server-to-server autenticada com client_secret,
 // então seu conteúdo já é confiável — não precisa reverificar assinatura JWT.
 // Mesmo desenho usado no mini-todos.
@@ -6,7 +8,18 @@
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 
-export const DOMINIO_PERMITIDO = process.env.GOOGLE_ALLOWED_DOMAIN || "getliff.ai";
+/**
+ * E-mails que entram como admin mesmo sem cadastro: `ADMIN_EMAIL`, um ou mais separados por
+ * vírgula. É o que tira a base vazia do impasse — sem isto ninguém poderia cadastrar ninguém.
+ */
+export function emailsAdmin(): string[] {
+  return (process.env.ADMIN_EMAIL ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+}
+
+/** Formato mínimo de e-mail para o cadastro: é por ele que a conta Google é reconhecida. */
+export function emailValido(email: string): boolean {
+  return email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
 
 export function googleAuthUrl(redirectUri: string, state: string): string {
   const params = new URLSearchParams({
@@ -14,7 +27,6 @@ export function googleAuthUrl(redirectUri: string, state: string): string {
     redirect_uri: redirectUri,
     response_type: "code",
     scope: "openid email profile",
-    hd: DOMINIO_PERMITIDO,
     prompt: "select_account",
     state,
   });
@@ -58,9 +70,4 @@ export async function exchangeGoogleCode(code: string, redirectUri: string): Pro
     name: claims.name || claims.email,
     picture: (claims as { picture?: string }).picture || null,
   };
-}
-
-/** Único ponto de verdade da restrição de domínio — sempre a partir do e-mail verificado. */
-export function dominioPermitido(profile: GoogleProfile): boolean {
-  return profile.email_verified && profile.email.toLowerCase().endsWith(`@${DOMINIO_PERMITIDO.toLowerCase()}`);
 }

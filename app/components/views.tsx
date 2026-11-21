@@ -894,11 +894,9 @@ function NovaArea({ salvando, onCriar }: { salvando: boolean; onCriar: (d: { lab
  */
 function NovaPessoa({
   salvando,
-  dominio,
   onCriar,
 }: {
   salvando: boolean;
-  dominio: string;
   onCriar: (d: { nome: string; email: string; papel: string }) => void;
 }) {
   const [nome, setNome] = useState("");
@@ -910,8 +908,8 @@ function NovaPessoa({
       <Field label="Nome completo" required>
         <Input placeholder="Larissa Prado" value={nome} onChange={setNome} />
       </Field>
-      <Field label="E-mail" required hint={`Precisa ser @${dominio} — é o domínio aceito no login.`}>
-        <Input placeholder={`larissa@${dominio}`} value={email} onChange={setEmail} />
+      <Field label="E-mail" required hint="O e-mail da conta Google da pessoa (qualquer domínio, inclusive Gmail). Só entra quem está cadastrado aqui.">
+        <Input placeholder="larissa@gmail.com" value={email} onChange={setEmail} />
       </Field>
       <Field label="Papel" hint="Leitura só vê. Membro e gestor editam os cards de todos os produtos; o gestor também vê a receita. Financeiro edita a receita e opera faturamento e despesas. Admin também administra.">
         <Select options={[...PAPEIS]} value={papel} onChange={setPapel} />
@@ -1122,7 +1120,6 @@ export function Cadastros({
   onNomeArea,
   salvandoArea,
   areasEditaveis,
-  dominio,
   onCriarPessoa,
   onCriarProduto,
   onCriarOrigem,
@@ -1151,7 +1148,6 @@ export function Cadastros({
   salvandoArea: boolean;
   /** Produto é cadastro de admin, mas a lista respeita quem enxerga o quê. */
   areasEditaveis: { id: string; label: string }[];
-  dominio: string;
   onCriarPessoa: (d: { nome: string; email: string; papel: string }) => void;
   onCriarProduto: (d: { label: string; area: string }) => void;
   onCriarOrigem: (d: { label: string }) => void;
@@ -1256,7 +1252,7 @@ export function Cadastros({
             ) : tab === "areas" ? (
               <NovaArea salvando={salvandoArea} onCriar={onCriarArea} />
             ) : tab === "pessoas" ? (
-              <NovaPessoa salvando={salvandoArea} dominio={dominio} onCriar={onCriarPessoa} />
+              <NovaPessoa salvando={salvandoArea} onCriar={onCriarPessoa} />
             ) : tab === "origens" ? (
               <NovaOrigem salvando={salvandoArea} onCriar={onCriarOrigem} />
             ) : (

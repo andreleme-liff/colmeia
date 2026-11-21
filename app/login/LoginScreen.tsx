@@ -8,7 +8,7 @@ import { LiffSig, Button } from "../components/ds";
 import { C, MONO, eyebrow, markTone, useTheme, R } from "../components/tokens";
 import ThemeToggle from "../components/ThemeToggle";
 
-export default function LoginScreen({ erro, dominio }: { erro?: string; dominio: string }) {
+export default function LoginScreen({ erro }: { erro?: string }) {
   const [theme, trocarTema] = useTheme();
 
   return (
@@ -53,7 +53,7 @@ export default function LoginScreen({ erro, dominio }: { erro?: string; dominio:
             Entrar com Google
           </h2>
           <p style={{ fontSize: 14, lineHeight: 1.6, color: C.faint, margin: "0 0 28px" }}>
-            SSO restrito ao domínio {dominio}. O acesso a cada produto é definido pela administração.
+            Acesso só para contas Google cadastradas pela administração.
           </p>
 
           {erro && (
@@ -84,10 +84,10 @@ export default function LoginScreen({ erro, dominio }: { erro?: string; dominio:
 
           <div style={{ marginTop: 24, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.12em", color: C.ghost }}>
-              GOOGLE WORKSPACE SSO
+              LOGIN COM GOOGLE
             </span>
             <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.12em", color: C.faint }}>
-              / {dominio}
+              / acesso por convite
             </span>
           </div>
 

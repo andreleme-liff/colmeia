@@ -1,9 +1,9 @@
 // Pré-cadastro de pessoa. Restrito a admin.
 //
-// Ninguém "cria uma conta" aqui: a conta nasce no primeiro login pelo Google. O que este
+// É este cadastro que dá acesso: só entra pelo Google quem tem o e-mail aqui. O que este
 // cadastro faz é deixar a pessoa PREPARADA antes disso — nome, papel e, logo em seguida, as
-// permissões por área na tela de Administração. Quando ela entrar com a conta @getliff.ai,
-// `findOrCreateGoogleUser` encontra a linha pelo e-mail, adota o registro (preenche
+// permissões por área na tela de Administração. Quando ela entrar com a conta Google desse
+// e-mail, `entrarComGoogle` encontra a linha pelo e-mail, adota o registro (preenche
 // google_sub, foto e nome vindos do Google) e a pessoa já entra enxergando o que deve.
 //
 // Sem isto, todo mundo entra sem área nenhuma e precisa de uma segunda passada da
@@ -15,7 +15,7 @@ import { iniciaisDe } from "@/lib/auth";
 import { json, err } from "@/lib/http";
 import { registrar } from "@/lib/log";
 import { PAPEIS } from "@/lib/domain";
-import { DOMINIO_PERMITIDO } from "@/lib/google-oauth";
+import { emailValido } from "@/lib/google-oauth";
 
 type Body = { nome?: string; email?: string; papel?: string };
 
@@ -36,11 +36,9 @@ export async function POST(req: Request) {
 
   const email = String(body.email ?? "").trim().toLowerCase();
   if (!email) return err("A pessoa precisa de um e-mail.", 400);
-  // O login só aceita o domínio da casa. Cadastrar outro domínio produziria uma linha que
-  // nunca vira acesso — melhor recusar aqui, onde dá para explicar o motivo.
-  if (!email.endsWith(`@${DOMINIO_PERMITIDO.toLowerCase()}`)) {
-    return err(`O e-mail precisa ser @${DOMINIO_PERMITIDO} — é o domínio aceito no login.`, 400);
-  }
+  // Este cadastro É a lista de quem pode entrar: o login aceita qualquer conta Google cujo
+  // e-mail esteja aqui, de qualquer domínio (inclusive @gmail.com).
+  if (!emailValido(email)) return err("E-mail inválido. Use o e-mail da conta Google da pessoa.", 400);
 
   const papel = String(body.papel ?? "membro");
   if (!(PAPEIS as readonly string[]).includes(papel)) return err("Papel inválido.", 400);

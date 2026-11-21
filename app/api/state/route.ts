@@ -7,7 +7,6 @@ import { getDb } from "@/lib/db";
 import { requireCtx } from "@/lib/perms";
 import { json } from "@/lib/http";
 import { porTexto } from "@/lib/domain";
-import { DOMINIO_PERMITIDO } from "@/lib/google-oauth";
 import { lerConfig } from "@/lib/oauth/protocolo";
 
 export type ActivityDTO = {
@@ -221,7 +220,6 @@ export async function GET() {
     podeFinanceiro: ctx.podeFinanceiro,
     // O formulário de pré-cadastro precisa dizer qual domínio o login aceita, e a fonte
     // dessa verdade é uma variável de ambiente do servidor.
-    dominioLogin: DOMINIO_PERMITIDO,
     // A tela de Conexões só ensina a conectar quando o MCP está ligado neste ambiente.
     mcpHabilitado: lerConfig(process.env).habilitado,
     // Cadastro de origens: todas (as inativas também, para o card mostrar a que já estava).

@@ -198,8 +198,8 @@ export const ADMIN_CARDS = [
     body: "Leitura vê tudo e não edita. Membro e Gestor editam os cards de todos os produtos. Financeiro edita a receita e opera faturamento e despesas. Admin também administra cadastros e funding.",
   },
   {
-    title: "SSO GOOGLE",
-    body: "Login restrito ao domínio getliff.ai. Quem entra pela primeira vez sem pré-cadastro vê tudo e não edita, até a administração mudar o papel.",
+    title: "LOGIN GOOGLE",
+    body: "Só entra quem está cadastrado em pessoas, com a conta Google do e-mail cadastrado. Desativar ou excluir a pessoa corta o acesso na hora.",
   },
   {
     title: "RETENÇÃO DE LOG",
