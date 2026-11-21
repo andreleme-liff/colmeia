@@ -71,7 +71,7 @@ type LinhaOportunidade = {
   responsavel_user_id: number | null; responsavel: string | null; responsavel_texto: string;
   proximo_passo: string; proximo_passo_em: Date | null; situacao: string; situacao_em: Date | null; contato: string;
   atualizado_em: Date | null; criado_em: Date;
-  origem: string | null; ponte: string; contato_operacional: string; dor: string; erp: string; proposta_url: string;
+  origem: string | null; ponte: string; contato_operacional: string; dor: string; proposta_url: string;
   ultima_interacao: Date | null; blocker: string; blocker_tipo: string | null; blocker_dono: string | null;
   motivo_perda: string | null; motivo_perda_detalhe: string; notas: string;
   modulos: string[]; modulos_ids: string[];
@@ -84,7 +84,7 @@ type LinhaOportunidade = {
 const COLUNAS_OPORTUNIDADE = `
   d.ref, d.conta, d.area, d.estagio, d.valor_centavos, d.responsavel_user_id, u.nome AS responsavel,
   d.responsavel_texto, d.proximo_passo, d.proximo_passo_em, d.situacao, d.situacao_em, d.contato,
-  d.atualizado_em, d.criado_em, o.label AS origem, d.ponte, d.contato_operacional, d.dor, d.erp, d.proposta_url,
+  d.atualizado_em, d.criado_em, o.label AS origem, d.ponte, d.contato_operacional, d.dor, d.proposta_url,
   d.ultima_interacao, d.blocker, d.blocker_tipo, bd.nome AS blocker_dono, d.motivo_perda,
   d.motivo_perda_detalhe, d.notas, cl.ref AS org_ref, cl.nome AS org_nome,
   d.prop_assinatura_centavos, d.prop_implantacao_centavos, d.prop_implantacao_parcelas,
@@ -132,7 +132,6 @@ function oportunidadeDto(d: LinhaOportunidade, ctx: Ctx, base: string) {
     dor: d.dor,
     modulos: d.modulos,
     modulos_ids: d.modulos_ids,
-    erp: d.erp,
     proposta_url: d.proposta_url || null,
     ultima_interacao: iso(d.ultima_interacao),
     status_fup: statusFup(d.estagio, iso(d.proximo_passo_em)),

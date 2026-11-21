@@ -121,7 +121,6 @@ const CAMPOS_OPORTUNIDADE: Record<string, Prop> = {
     maxItems: LIMITES.modulos,
     description: "Módulos de interesse: ids dos módulos do produto (ver `listar_cadastros`). Substitui a lista inteira; [] limpa.",
   },
-  erp: { type: "string", maxLength: LIMITES.erp, description: "ERP do cliente, ex.: SAP ECC, SAP S/4HANA, TOTVS Protheus." },
   proposta_url: { type: "string", maxLength: LIMITES.propostaUrl, description: "Link (https) de onde a proposta comercial está, ex.: Google Docs, Slides ou Drive. Vazio remove." },
   situacao: { type: "string", maxLength: LIMITES.situacao, description: "Só a situação de hoje; o histórico guarda as anteriores." },
   proximo_passo: { type: "string", maxLength: LIMITES.proximoPassoOportunidade },

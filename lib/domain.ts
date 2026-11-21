@@ -772,9 +772,6 @@ export const MOTIVOS_PERDA = [
 ] as const;
 export const MOTIVO_PERDA_KEYS = MOTIVOS_PERDA.map((m) => m.key) as readonly string[];
 
-/** Sugestões para o ERP. Campo de texto: a lista ajuda a padronizar, não impede um caso novo. */
-export const ERP_SUGESTOES = ["SAP ECC", "SAP S/4HANA", "TOTVS Protheus", "Oracle", "Senior", "Sankhya", "Outro"] as const;
-
 /** Origens iniciais (aba Listas da planilha). Viram cadastro editável; isto é só o ponto de partida. */
 export const ORIGENS_INICIAIS = [
   "Base própria", "Ponte/parceiro", "Evento", "Outbound", "Indicação", "A definir",

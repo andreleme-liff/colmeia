@@ -22,7 +22,7 @@ const base: Deal = {
   responsavel: "Bruno Santo", responsavelId: 1, responsavelTexto: "", proximoPasso: "Avançar com o contrato",
   situacao: "Validação técnica realizada e valores da proposta aceitos", situacaoEm: "2026-10-19", contato: "",
   proximoPassoEm: "2026-10-23", atualizadoEm: "", criadoEm: "", proposta: { assinaturaCentavos: 0, implantacaoCentavos: 0, implantacaoParcelas: 1, customizacaoCentavos: 0, customizacaoParcelas: 1 }, podeEditar: true, origemId: null, ponte: "",
-  contatoOperacional: "", dor: "", erp: "", clienteId: null, propostaUrl: "https://docs.google.com/presentation/d/1AbCdEfGhIjKlMnOp/edit", ultimaInteracao: null, blocker: "Responder questionário de LGPD e segurança de TI",
+  contatoOperacional: "", dor: "", clienteId: null, propostaUrl: "https://docs.google.com/presentation/d/1AbCdEfGhIjKlMnOp/edit", ultimaInteracao: null, blocker: "Responder questionário de LGPD e segurança de TI",
   blockerTipo: "seguranca", blockerDonoId: null, blockerDono: null, motivoPerda: null, motivoPerdaDetalhe: "", notas: "",
   modulos: ["apuracao", "precificacao", "genius"],
 } as Deal;

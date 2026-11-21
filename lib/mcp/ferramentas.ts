@@ -31,7 +31,7 @@ const MAPA: Record<string, string> = {
   valor_reais: "valorReais", contato: "contato", responsavel_texto: "responsavelTexto",
   oportunidade: "oportunidade",
   origem: "origemId", ponte: "ponte", contato_operacional: "contatoOperacional", dor: "dor", modulos: "modulos",
-  erp: "erp", ultima_interacao: "ultimaInteracao", blocker: "blocker", blocker_tipo: "blockerTipo",
+  ultima_interacao: "ultimaInteracao", blocker: "blocker", blocker_tipo: "blockerTipo",
   blocker_quem_resolve: "blockerDonoId", motivo_perda: "motivoPerda", motivo_perda_detalhe: "motivoPerdaDetalhe",
   notas: "notas", proposta_url: "propostaUrl",
   assinatura_mensal_reais: "propAssinaturaReais", implantacao_reais: "propImplantacaoReais",

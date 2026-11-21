@@ -72,7 +72,7 @@ const OPOR = {
   valor_centavos: "6000000", proximo_passo: "", responsavel_user_id: null, responsavel: null,
   situacao: "", contato: "", responsavel_texto: "Agente 2",
   proximo_passo_em: null,
-  origem_id: null, ponte: "", contato_operacional: "", dor: "", erp: "", proposta_url: "", ultima_interacao: null,
+  origem_id: null, ponte: "", contato_operacional: "", dor: "", proposta_url: "", ultima_interacao: null,
   blocker: "", blocker_tipo: null, blocker_dono_id: null, motivo_perda: null, motivo_perda_detalhe: "", notas: "",
   modulos: ["regtrack"],
 };
@@ -203,19 +203,19 @@ const intruso = planejarAtualizacaoOportunidade(OPOR, { valor_centavos: 1, "area
 checa("chave desconhecida na entrada é ignorada", Object.keys(intruso.sets), []);
 const COLUNAS = new Set(["area", "conta", "estagio", "valor_centavos", "proximo_passo", "situacao", "contato",
   "responsavel_texto", "proximo_passo_em", "responsavel_user_id",
-  "origem_id", "ponte", "contato_operacional", "dor", "erp", "ultima_interacao", "blocker", "blocker_tipo",
+  "origem_id", "ponte", "contato_operacional", "dor", "ultima_interacao", "blocker", "blocker_tipo",
   "blocker_dono_id", "motivo_perda", "motivo_perda_detalhe", "notas", "situacao_em", "proposta_url"]);
 const tudo = planejarAtualizacaoOportunidade(OPOR, {
   area: "tech", conta: "B", escopo: "c", estagio: "prospeccao", valorReais: 1, proximoPasso: "p", situacao: "s",
   contato: "k", responsavelTexto: "r", proximoPassoEm: "2026-12-01", produtoId: "observa", pausado: true,
-  responsavelId: 2, origemId: "parceiro", ponte: "pt", contatoOperacional: "co", dor: "d", erp: "SAP",
+  responsavelId: 2, origemId: "parceiro", ponte: "pt", contatoOperacional: "co", dor: "d",
   ultimaInteracao: "2026-11-01", blocker: "b", blockerTipo: "preco", blockerDonoId: 1, motivoPerda: "outro",
   motivoPerdaDetalhe: "md", notas: "n", modulos: ["observa"], propostaUrl: "https://docs.google.com/document/d/1AbCdEfGhIjKlMnOp/edit",
 }, perm2, fatos);
 checa("pausado (legado) não vira coluna nenhuma", "pausado" in tudo.sets, false);
 checa("todas as colunas possíveis estão na lista conhecida", Object.keys(tudo.sets).every((k) => COLUNAS.has(k)), true);
 checa("escopo e produto_id (removidos) não voltam", "escopo" in tudo.sets || "produto_id" in tudo.sets, false);
-checa("e são todas as 24 da oportunidade", Object.keys(tudo.sets).length, 24);
+checa("e são todas as 23 da oportunidade", Object.keys(tudo.sets).length, 23);
 checa("mudar a situação grava a data dela", typeof tudo.sets.situacao_em, "string");
 checa("a data dita por quem atualiza vale",
   planejarAtualizacaoOportunidade(OPOR, { situacao: "nova", situacaoEm: "2026-10-19" }, perm, fatos).sets.situacao_em, "2026-10-19");

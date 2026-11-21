@@ -5,7 +5,7 @@
 //
 // Card comercial v2 (nov/2026): Escopo e Produto saíram da oportunidade — Dor principal e
 // Módulos de interesse dizem o mesmo com estrutura — e entraram os campos da planilha comercial de origem
-// Tax: origem, ponte, contato operacional, ERP, última interação, blocker (tipo e quem
+// Tax: origem, ponte, contato operacional, última interação, blocker (tipo e quem
 // resolve), motivo da perda e notas. `contato` passou a ser "Contato / sponsor".
 
 import {
@@ -34,7 +34,6 @@ export type OportunidadeNova = {
   ponte: string;
   contatoOperacional: string;
   dor: string;
-  erp: string;
   propostaUrl: string;
   ultimaInteracao: string | null;
   blocker: string;
@@ -68,7 +67,6 @@ export type OportunidadeAtual = {
   ponte: string;
   contato_operacional: string;
   dor: string;
-  erp: string;
   proposta_url: string;
   ultima_interacao: Date | null;
   blocker: string;
@@ -233,7 +231,6 @@ export function planejarCriacaoOportunidade(
     ponte: texto(body.ponte, LIMITES.ponte),
     contatoOperacional: texto(body.contatoOperacional, LIMITES.contatoOperacional),
     dor: texto(body.dor, LIMITES.dor),
-    erp: texto(body.erp, LIMITES.erp),
     propostaUrl,
     ultimaInteracao: dataOuNula(body.ultimaInteracao),
     blocker: texto(body.blocker, LIMITES.blocker),
@@ -262,7 +259,7 @@ export type ColunaOportunidade =
   | "area" | "conta" | "estagio" | "valor_centavos" | "proximo_passo"
   | "situacao" | "situacao_em" | "contato" | "responsavel_texto" | "proximo_passo_em"
   | "responsavel_user_id"
-  | "origem_id" | "ponte" | "contato_operacional" | "dor" | "erp" | "ultima_interacao"
+  | "origem_id" | "ponte" | "contato_operacional" | "dor" | "ultima_interacao"
   | "blocker" | "blocker_tipo" | "blocker_dono_id" | "motivo_perda" | "motivo_perda_detalhe" | "notas" | "proposta_url"
   | "prop_assinatura_centavos" | "prop_implantacao_centavos" | "prop_implantacao_parcelas"
   | "prop_customizacao_centavos" | "prop_customizacao_parcelas";
@@ -431,7 +428,6 @@ export function planejarAtualizacaoOportunidade(
       rotulo: "o contato operacional", max: LIMITES.contatoOperacional,
     },
     { chave: "dor", coluna: "dor", atual: atual.dor, rotulo: "a dor principal", max: LIMITES.dor },
-    { chave: "erp", coluna: "erp", atual: atual.erp, rotulo: "o ERP", max: LIMITES.erp },
     { chave: "blocker", coluna: "blocker", atual: atual.blocker, rotulo: "o blocker", max: LIMITES.blocker },
     {
       chave: "motivoPerdaDetalhe", coluna: "motivo_perda_detalhe", atual: atual.motivo_perda_detalhe,

@@ -413,7 +413,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     const rotuloProduto = (id: string | null) => (id ? estado.produtos.find((p) => p.id === id)?.label ?? id : null);
     const oportunidadesBuscadas = aplicarBusca(oportunidades, termo, (d) => [
       d.ref, d.conta, d.situacao, d.proximoPasso, d.blocker, d.responsavel, d.responsavelTexto, d.contato,
-      d.dor, d.erp, d.notas, d.propostaUrl, ...d.modulos.map(rotuloProduto),
+      d.dor, d.notas, d.propostaUrl, ...d.modulos.map(rotuloProduto),
     ]);
     const atividadesBuscadas = aplicarBusca(atividades, termo, (a) => [
       a.ref, a.titulo, a.situacao, a.proximoPasso, a.responsavel, a.oportunidadeRef, a.oportunidadeConta,

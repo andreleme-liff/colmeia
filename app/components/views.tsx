@@ -17,7 +17,7 @@ import ViaConexao from "./ViaConexao";
 import { CardOportunidade } from "./CardOportunidade";
 import { CardAtividade } from "./CardAtividade";
 import {
-  ADMIN_CARDS, BLOCKER_TIPOS, ERP_SUGESTOES, ESTAGIO_INICIAL, MOTIVOS_PERDA, PAPEIS, STAGES, STATUS, CHAVE_SEM_RESPONSAVEL, aplicarBusca, areaOf, prepararBusca, ddmm, porTexto, stamp, statusLabel, hostDaUrl, previaDaProposta, urlDaProposta,
+  ADMIN_CARDS, BLOCKER_TIPOS, ESTAGIO_INICIAL, MOTIVOS_PERDA, PAPEIS, STAGES, STATUS, CHAVE_SEM_RESPONSAVEL, aplicarBusca, areaOf, prepararBusca, ddmm, porTexto, stamp, statusLabel, hostDaUrl, previaDaProposta, urlDaProposta,
   PROPOSTA_VAZIA, brlExato, estagioTemProposta, temComposicao, totalPrimeiroAno, type ComposicaoProposta,
 } from "@/lib/domain";
 
@@ -2278,7 +2278,6 @@ export function FormOportunidade({
   const [ponte, setPonte] = useState(inicial?.ponte ?? "");
   const [contatoOp, setContatoOp] = useState(inicial?.contatoOperacional ?? "");
   const [dor, setDor] = useState(inicial?.dor ?? "");
-  const [erp, setErp] = useState(inicial?.erp ?? "");
   const [propostaUrl, setPropostaUrl] = useState(inicial?.propostaUrl ?? "");
   const [verProposta, setVerProposta] = useState(false);
   const [ultimaInteracao, setUltimaInteracao] = useState(inicial?.ultimaInteracao ?? "");
@@ -2335,7 +2334,6 @@ export function FormOportunidade({
       ponte,
       contatoOperacional: contatoOp,
       dor,
-      erp,
       propostaUrl,
       ultimaInteracao: ultimaInteracao || null,
       modulos: modulos.filter((id) => modulosDaArea.some((p) => p.id === id)),
@@ -2485,14 +2483,6 @@ export function FormOportunidade({
             </span>
           )}
         </div>
-      </Field>
-      <Field label="ERP" hint="Escolha um ou escreva outro.">
-        <input list="col-erps" value={erp} onChange={(e) => setErp(e.target.value)} placeholder="SAP ECC" style={campoNativo} />
-        <datalist id="col-erps">
-          {ERP_SUGESTOES.map((e) => (
-            <option key={e} value={e} />
-          ))}
-        </datalist>
       </Field>
 
 

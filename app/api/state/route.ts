@@ -100,7 +100,7 @@ export async function GET() {
         valor_centavos: string; responsavel: string | null; responsavel_user_id: number | null;
         proximo_passo: string; situacao: string; situacao_em: Date | null; contato: string; responsavel_texto: string;
         mexido_em: Date; criado_em: Date; proximo_passo_em: Date | null;
-        origem_id: string | null; ponte: string; contato_operacional: string; dor: string; erp: string; proposta_url: string; cliente_id: number | null;
+        origem_id: string | null; ponte: string; contato_operacional: string; dor: string; proposta_url: string; cliente_id: number | null;
         ultima_interacao: Date | null; blocker: string; blocker_tipo: string | null;
         blocker_dono_id: number | null; blocker_dono: string | null; motivo_perda: string | null;
         motivo_perda_detalhe: string; notas: string; modulos: string[];
@@ -111,7 +111,7 @@ export async function GET() {
       SELECT d.id, d.ref, d.conta, d.area, d.estagio, d.valor_centavos,
              u.nome AS responsavel, d.responsavel_user_id, d.proximo_passo,
              d.situacao, d.situacao_em, d.contato, d.responsavel_texto, d.proximo_passo_em,
-             d.origem_id, d.ponte, d.contato_operacional, d.dor, d.erp, d.proposta_url, d.cliente_id, d.ultima_interacao,
+             d.origem_id, d.ponte, d.contato_operacional, d.dor, d.proposta_url, d.cliente_id, d.ultima_interacao,
              d.blocker, d.blocker_tipo, d.blocker_dono_id, bd.nome AS blocker_dono,
              d.motivo_perda, d.motivo_perda_detalhe, d.notas,
              d.prop_assinatura_centavos, d.prop_implantacao_centavos, d.prop_implantacao_parcelas,
@@ -265,7 +265,6 @@ export async function GET() {
       ponte: d.ponte,
       contatoOperacional: d.contato_operacional,
       dor: d.dor,
-      erp: d.erp,
       propostaUrl: d.proposta_url,
       clienteId: d.cliente_id,
       ultimaInteracao: d.ultima_interacao ? d.ultima_interacao.toISOString().slice(0, 10) : null,

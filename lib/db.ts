@@ -485,7 +485,6 @@ async function migrate(): Promise<void> {
     await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS ponte TEXT NOT NULL DEFAULT ''`;
     await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS contato_operacional TEXT NOT NULL DEFAULT ''`;
     await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS dor TEXT NOT NULL DEFAULT ''`;
-    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS erp TEXT NOT NULL DEFAULT ''`;
     // Onde a proposta comercial está (Drive, Docs, PDF). Só o endereço; o arquivo fica onde já mora.
     await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS proposta_url TEXT NOT NULL DEFAULT ''`;
     // Composição da proposta (nov/2026): os mesmos três tipos da receita. Assinatura é o valor

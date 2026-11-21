@@ -34,13 +34,13 @@ export async function criarOportunidade(
   const [nova] = await tx<{ id: number }[]>`
     INSERT INTO deals (ref, conta, area, estagio, valor_centavos, responsavel_user_id,
                        proximo_passo, proximo_passo_em, situacao, situacao_em, contato, responsavel_texto,
-                       origem_id, ponte, contato_operacional, dor, erp, ultima_interacao,
+                       origem_id, ponte, contato_operacional, dor, ultima_interacao,
                        blocker, blocker_tipo, blocker_dono_id, motivo_perda, motivo_perda_detalhe, notas, proposta_url,
                        prop_assinatura_centavos, prop_implantacao_centavos, prop_implantacao_parcelas,
                        prop_customizacao_centavos, prop_customizacao_parcelas)
     VALUES (${ref}, ${l.conta}, ${l.area}, ${l.estagio}, ${l.valorCentavos}, ${l.responsavelId},
             ${l.proximoPasso}, ${l.proximoPassoEm}, ${l.situacao}, ${l.situacaoEm}, ${l.contato}, ${l.responsavelTexto},
-            ${l.origemId}, ${l.ponte}, ${l.contatoOperacional}, ${l.dor}, ${l.erp}, ${l.ultimaInteracao},
+            ${l.origemId}, ${l.ponte}, ${l.contatoOperacional}, ${l.dor}, ${l.ultimaInteracao},
             ${l.blocker}, ${l.blockerTipo}, ${l.blockerDonoId}, ${l.motivoPerda}, ${l.motivoPerdaDetalhe}, ${l.notas}, ${l.propostaUrl},
             ${l.proposta.assinaturaCentavos}, ${l.proposta.implantacaoCentavos}, ${l.proposta.implantacaoParcelas},
             ${l.proposta.customizacaoCentavos}, ${l.proposta.customizacaoParcelas})
@@ -91,7 +91,7 @@ async function lerAtual(tx: Queryable, dealId: number): Promise<OportunidadeAtua
     SELECT d.id, d.ref, d.conta, d.area, d.estagio, d.valor_centavos, d.proximo_passo,
            d.responsavel_user_id, u.nome AS responsavel,
            d.situacao, d.situacao_em, d.contato, d.responsavel_texto, d.proximo_passo_em,
-           d.origem_id, d.ponte, d.contato_operacional, d.dor, d.erp, d.ultima_interacao,
+           d.origem_id, d.ponte, d.contato_operacional, d.dor, d.ultima_interacao,
            d.blocker, d.blocker_tipo, d.blocker_dono_id, d.motivo_perda, d.motivo_perda_detalhe, d.notas, d.proposta_url,
            d.prop_assinatura_centavos, d.prop_implantacao_centavos, d.prop_implantacao_parcelas,
            d.prop_customizacao_centavos, d.prop_customizacao_parcelas,

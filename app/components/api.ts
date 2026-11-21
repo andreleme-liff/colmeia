@@ -61,7 +61,6 @@ export type Deal = {
   ponte: string;
   contatoOperacional: string;
   dor: string;
-  erp: string;
   propostaUrl: string;
   /** Organização a que esta oportunidade pertence. */
   clienteId: number | null;
@@ -183,7 +182,6 @@ export type NovaOportunidade = {
   ponte: string;
   contatoOperacional: string;
   dor: string;
-  erp: string;
   propostaUrl: string;
   ultimaInteracao: string | null;
   blocker: string;
