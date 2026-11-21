@@ -1,0 +1,44 @@
+/* =========================================================
+   Typography tokens (AI-BRAND-GUIDE.md §6)
+   Two fonts, fixed roles:
+   · Rethink Sans — all human reading (display, body, product names, nav)
+   · Roboto Mono — technical language only (eyebrows, paths, tokens, HEX)
+   Safety rule: never track a large Rethink title tighter than -0.04em.
+   ========================================================= */
+:root {
+  --col-font-body: "Rethink Sans", Arial, sans-serif;
+  --col-font-mono: "Roboto Mono", ui-monospace, monospace;
+
+  /* Weights */
+  --col-w-regular: 400; /* @kind font */
+  --col-w-medium:  500; /* @kind font */
+  --col-w-semi:    600; /* @kind font */
+  --col-w-bold:    700; /* @kind font */
+  --col-w-black:   800; /* @kind font */
+
+  /* Fluid display scale */
+  --col-fs-hero: clamp(44px, 6.5vw, 88px); /* @kind font */
+  --col-fs-h2:   clamp(32px, 4vw, 54px); /* @kind font */
+  --col-fs-h3:   30px; /* @kind font */
+  --col-fs-lead: 21px; /* @kind font */
+  --col-fs-body: 16px; /* @kind font */
+  --col-fs-sm:   14px; /* @kind font */
+  --col-fs-eyebrow: 12px; /* @kind font */
+  --col-fs-code: 12.5px; /* @kind font */
+
+  /* Line-heights */
+  --col-lh-hero: 0.94; /* @kind other */
+  --col-lh-h2:   1.0; /* @kind other */
+  --col-lh-h3:   1.08; /* @kind other */
+  --col-lh-lead: 1.5; /* @kind other */
+  --col-lh-body: 1.62; /* @kind other */
+  --col-lh-code: 1.55; /* @kind other */
+
+  /* Letter-spacing */
+  --col-ls-hero:    -0.035em; /* ceiling of compression */
+  --col-ls-h2:      -0.032em;
+  --col-ls-h3:      -0.026em;
+  --col-ls-lead:    -0.005em;
+  --col-ls-eyebrow: 0.16em;   /* mono, uppercase */
+  --col-ls-name:    -0.05em;  /* product name in signature */
+}

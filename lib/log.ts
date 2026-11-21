@@ -24,7 +24,7 @@ export type Mudanca = {
 
 /**
  * Linhas de auditoria que só a administração vê: cadastros (produtos, origens, módulos /
- * produtos, pessoas e permissões), receita (R-), faturamento (F-), funding (E-, ARQ-, PROG-) e despesas
+ * produtos, pessoas e permissões), receita (R-), faturamento (F-) e despesas
  * (P-, CAT-, FAV-, REC-). Casa
  * pela referência gravada em `entidade`. Efeitos desses cadastros nos cards (ex.: responsável
  * trocado ao excluir uma pessoa) ficam com a referência do card e continuam visíveis.

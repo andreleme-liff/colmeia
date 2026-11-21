@@ -1,7 +1,7 @@
 "use client";
 
 // Card da atividade no quadro operacional — o mesmo desenho do card do comercial
-// (`CardOportunidade`), sem o que só existe na venda (valor, ACE, módulos, bloqueio).
+// (`CardOportunidade`), sem o que só existe na venda (valor, módulos, bloqueio).
 //
 // De cima para baixo: identificação (título, oportunidade ligada, e os chips: produto, prioridade e
 // prazo da atividade) → andamento (situação, próximo passo com a data dele) → rodapé (responsável e

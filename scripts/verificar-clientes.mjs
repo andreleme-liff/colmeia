@@ -36,7 +36,7 @@ checa("formata", cnpjFormatado("12ABC34501DE35"), "12.ABC.345/01DE-35");
 console.log("\n3. contatos tirados do texto do card");
 checa("nome — cargo", contatosDoTexto("Fernando — Diretor de Tax", "sponsor").map((c) => [c.nome, c.cargo, c.papel]), [["Fernando", "Diretor de Tax", "sponsor"]]);
 checa("nome (cargo)", contatosDoTexto("Cida (Gerente de Tax)", "operacional").map((c) => [c.nome, c.cargo]), [["Cida", "Gerente de Tax"]]);
-checa("duas pessoas com +", contatosDoTexto("Leo + Fabiana (FIUS)", "sponsor").map((c) => c.nome), ["Leo", "Fabiana"]);
+checa("duas pessoas com +", contatosDoTexto("Leo + Fabiana (parceiro)", "sponsor").map((c) => c.nome), ["Leo", "Fabiana"]);
 checa("e-mail sai do nome", contatosDoTexto("Ana Lima <ana@x.com.br>", "outro").map((c) => [c.nome, c.email]), [["Ana Lima", "ana@x.com.br"]]);
 checa("só nome", contatosDoTexto("Roberto Dias", "sponsor").map((c) => [c.nome, c.cargo]), [["Roberto Dias", ""]]);
 checa("vazio não gera contato", contatosDoTexto("  ", "sponsor"), []);

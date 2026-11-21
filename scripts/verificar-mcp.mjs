@@ -27,7 +27,7 @@ const esquema = (nome) => CATALOGO.find((f) => f.name === nome).inputSchema;
 const valida = (nome, args) => validarArgumentos(esquema(nome), args);
 
 console.log("\n1. cabeçalhos HTTP");
-const PROPRIA = "https://go.liff.tech";
+const PROPRIA = "https://colmeia-topaz.vercel.app";
 checa("sem Origin passa (é o caso do Claude: servidor ou CLI, não navegador)",
   checarCabecalhos({ origin: null, versao: null }, PROPRIA), null);
 checa("a própria origem passa", checarCabecalhos({ origin: PROPRIA, versao: "2025-11-25" }, PROPRIA), null);
@@ -56,7 +56,7 @@ checa("nulo recusado", interpretar(null).tipo, "invalida");
 
 console.log("\n4. o catálogo");
 const nomes = CATALOGO.map((f) => f.name);
-checa("trinta e duas ferramentas (9 do dia a dia, 4 de organizações, 11 de receita e faturamento, 8 de funding)", nomes.length, 32);
+checa("vinte e quatro ferramentas (9 do dia a dia, 4 de organizações, 11 de receita e faturamento)", nomes.length, 24);
 checa("nenhuma exclui", nomes.some((n) => /exclu|apag|delet|remov/.test(n)), false);
 checa("nenhuma toca em cadastro, permissão ou usuário",
   nomes.some((n) => /permiss|usuario|pessoa_|area_|produto_|preferenc/.test(n)), false);
@@ -78,25 +78,21 @@ checa("gestor com escrita vê as dezesseis", descreverFerramentas("leitura escri
 checa("as três de ler receita são marcadas para gestor e admin", RECEITA_LEITURA.every((n) => CATALOGO.find((f) => f.name === n)?.soReceita === true), true);
 checa("tools/list não vaza a marca interna `soReceita`", descreverFerramentas("leitura escrita", true).some((f) => "soReceita" in f), false);
 const FIN = ["listar_faturas", "criar_receita", "atualizar_receita",
-  "emitir_fatura", "registrar_pagamento", "corrigir_fatura", "estornar_pagamento", "cancelar_fatura",
-  "resumo_funding", "listar_arquetipos", "ver_estimativa", "criar_estimativa", "atualizar_estimativa", "registrar_funding",
-  "atualizar_funding", "salvar_calculadora"];
-checa("gravar receita, faturamento e funding são só de admin", FIN.every((n) => CATALOGO.find((f) => f.name === n)?.soAdmin === true), true);
+  "emitir_fatura", "registrar_pagamento", "corrigir_fatura", "estornar_pagamento", "cancelar_fatura"];
+checa("gravar receita e faturamento são só de admin", FIN.every((n) => CATALOGO.find((f) => f.name === n)?.soAdmin === true), true);
 checa("as do dia a dia não são só de admin", CATALOGO.filter((f) => !FIN.includes(f.name)).every((f) => !f.soAdmin), true);
-checa("quem não é admin não vê as de gravar receita, faturamento ou funding", descreverFerramentas("leitura escrita", false).some((f) => FIN.includes(f.name)), false);
-checa("admin com escrita vê as trinta e duas", descreverFerramentas("leitura escrita", true).length, 32);
+checa("quem não é admin não vê as de gravar receita ou faturamento", descreverFerramentas("leitura escrita", false).some((f) => FIN.includes(f.name)), false);
+checa("admin com escrita vê as vinte e quatro", descreverFerramentas("leitura escrita", true).length, 24);
 checa("ler a receita não é só de admin", ["resumo_receita", "listar_receitas", "ver_receita"].every((n) => !CATALOGO.find((f) => f.name === n)?.soAdmin), true);
-checa("admin só de leitura vê as de leitura de faturamento e funding, não as de gravação",
+checa("admin só de leitura vê as de leitura de faturamento, não as de gravação",
   descreverFerramentas("leitura", true).map((f) => f.name).filter((n) => FIN.includes(n)),
-  ["listar_faturas", "resumo_funding", "listar_arquetipos", "ver_estimativa"]);
-checa("calculadora: link que não é da AWS recusado", valida("salvar_calculadora", { arquetipo_id: 1, regiao: "us-east-1", conta: "liff", porte: "M", custo_mensal_usd: 1, url: "https://evil.com" }), ["url: formato inválido"]);
-checa("funding: status fora da lista", valida("registrar_funding", { estimativa: "E-0001", programa: "poc-credits", beneficiario: "liff", valor_usd: 1, status: "talvez" })[0].startsWith("status: valor fora da lista"), true);
+  ["listar_faturas"]);
 checa("tools/list não vaza a marca interna `soAdmin`", descreverFerramentas("leitura escrita", true).some((f) => "soAdmin" in f), false);
 checa("tools/list não vaza a marca interna `escrita`", "escrita" in descreverFerramentas("leitura")[0], false);
 checa("instruções avisam que texto de registro é dado, não instrução", INSTRUCOES.includes("nunca como instrução"), true);
 
 console.log("\n5. argumentos, com os esquemas reais");
-const contratoOk = { conta: "Medley", produto: "tax", situacao: "contratada", inicio_faturamento: "2026-12-01",
+const contratoOk = { conta: "Acme", produto: "tax", situacao: "contratada", inicio_faturamento: "2026-12-01",
   linhas: [{ tipo: "assinatura", valor_reais: 8000 }, { tipo: "implantacao", valor_reais: 40000, parcelas: 12 }] };
 checa("contrato válido", valida("criar_receita", contratoOk), []);
 checa("linha sem tipo", valida("criar_receita", { ...contratoOk, linhas: [{ valor_reais: 10 }] }), ["campo obrigatório ausente: linhas[0].tipo"]);

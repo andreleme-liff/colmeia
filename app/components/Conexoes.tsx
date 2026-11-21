@@ -100,7 +100,7 @@ export default function Conexoes({ mcpHabilitado }: { mcpHabilitado: boolean }) 
   const revogadas = lista?.filter((c) => c.revogadoEm) ?? [];
 
   return (
-    <div className="liff-cad-split" style={mesh({ display: "grid", gap: 1 })}>
+    <div className="col-cad-split" style={mesh({ display: "grid", gap: 1 })}>
       {/* Sem largura mínima nem rolagem lateral, ao contrário das tabelas de cadastro: cada
           linha é um bloco que quebra o texto, e o botão Revogar precisa estar sempre à vista
           — no celular inclusive, que é onde se revoga às pressas. */}
@@ -224,7 +224,7 @@ export default function Conexoes({ mcpHabilitado }: { mcpHabilitado: boolean }) 
           <div>
             <div style={{ ...eyebrow(10, C.faint, "0.12em"), marginBottom: 6 }}>linha de comando (claude code)</div>
             <code style={{ display: "block", fontFamily: MONO, fontSize: 12, color: C.ink, background: C.code, padding: "8px 10px", overflowWrap: "anywhere" }}>
-              claude mcp add --transport http liff-go {urlMcp}
+              claude mcp add --transport http col-go {urlMcp}
             </code>
           </div>
           <div style={{ fontSize: 12, color: C.faint }}>

@@ -7,7 +7,7 @@
 //    porque qualquer programa local consegue abrir uma porta e se dizer o cliente;
 //  · O QUE a conexão vai poder — ler é a base; gravar é opção explícita, desmarcada.
 
-import { LiffSig, Button } from "../../components/ds";
+import { Assinatura, Button } from "../../components/ds";
 import { C, MONO, eyebrow, markTone, useTheme, R } from "../../components/tokens";
 
 type Acao = (form: FormData) => Promise<void>;
@@ -43,9 +43,9 @@ export default function TelaConsentimento(props: Props) {
   const [theme] = useTheme();
 
   return (
-    <div className="liff-login">
-      <div className="liff-login__pitch">
-        <LiffSig name="go" size={34} tone={markTone(theme)} />
+    <div className="col-login">
+      <div className="col-login__pitch">
+        <Assinatura name="go" size={34} tone={markTone(theme)} />
         <div>
           <div style={{ ...eyebrow(12, C.accent), marginBottom: 24 }}>CONEXÃO</div>
           <h1
@@ -71,14 +71,14 @@ export default function TelaConsentimento(props: Props) {
         </div>
       </div>
 
-      <div className="liff-login__panel">
+      <div className="col-login__panel">
         <div style={{ width: "100%", maxWidth: 460, background: C.panel, border: `1px solid ${C.line}`, borderRadius: R, padding: 32 }}>
           {props.modo === "erro" ? (
             <>
               <div style={{ ...eyebrow(11, C.faint), marginBottom: 8 }}>CONEXÃO RECUSADA</div>
               <div
                 style={{
-                  border: `1px solid ${C.error}`, borderRadius: R, background: "color-mix(in srgb, var(--liff-error) 10%, transparent)",
+                  border: `1px solid ${C.error}`, borderRadius: R, background: "color-mix(in srgb, var(--col-error) 10%, transparent)",
                   color: C.error, fontFamily: MONO, fontSize: 12, lineHeight: 1.6, padding: "12px 14px",
                 }}
               >
@@ -127,7 +127,7 @@ export default function TelaConsentimento(props: Props) {
 
                 {props.escritaDisponivel && (
                   <label style={{ ...caixa, display: "flex", gap: 12, cursor: "pointer" }}>
-                    <input type="checkbox" name="escrita" value="1" style={{ marginTop: 3, accentColor: "var(--liff-paprika)" }} />
+                    <input type="checkbox" name="escrita" value="1" style={{ marginTop: 3, accentColor: "var(--col-paprika)" }} />
                     <div style={{ fontSize: 14, lineHeight: 1.55, color: C.body }}>
                       <strong style={{ color: C.ink }}>Gravar</strong>: criar e editar atividades e oportunidades em{" "}
                       {lista(props.areasEscrita)}. Nada é excluído.
@@ -154,7 +154,7 @@ export default function TelaConsentimento(props: Props) {
                   type="submit"
                   formAction={props.recusar}
                   variant="outline"
-                  accent="var(--liff-text-faint)"
+                  accent="var(--col-text-faint)"
                   size="lg"
                   style={{ flex: "0 0 auto", justifyContent: "center" }}
                 >

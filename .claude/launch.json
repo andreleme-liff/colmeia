@@ -2,7 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "liff-tasks-dev",
+      "name": "colmeia-dev",
       "runtimeExecutable": "npm",
       "runtimeArgs": [
         "run",

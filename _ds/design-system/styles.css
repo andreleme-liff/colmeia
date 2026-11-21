@@ -1,4 +1,4 @@
-/* LIFF Design System — global entry point.
+/* Design system — global entry point.
    Consumers link THIS file. Import order: fonts → tokens → base. */
 @import url('./tokens/fonts.css');
 @import url('./tokens/colors.css');

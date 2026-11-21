@@ -6,7 +6,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LiffSig, Button } from "./ds";
+import { Assinatura, Button } from "./ds";
 import { IconeMenu, IconeRecolher, IconeSair, IconeTema } from "./IconesMenu";
 import {
   Auditoria,
@@ -32,7 +32,6 @@ import CampoBusca from "./CampoBusca";
 import Receita from "./Receita";
 import Painel from "./Painel";
 import Faturamento from "./Faturamento";
-import Funding from "./Funding";
 import Despesas from "./Despesas";
 import Clientes from "./Clientes";
 import Conexoes from "./Conexoes";
@@ -55,7 +54,7 @@ import { saudar } from "@/lib/saudacao";
  * dá para saber (primeira vez, navegação privada).
  */
 function diasDesdeAUltimaVisita(userId: number): number | null {
-  const chave = `liff-go-visto-${userId}`;
+  const chave = `colmeia-visto-${userId}`;
   try {
     const antes = Number(window.localStorage.getItem(chave));
     window.localStorage.setItem(chave, String(Date.now()));
@@ -1022,7 +1021,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         if (exibicaoCronograma === "lista") return lista;
         return (
           <>
-            <div className="liff-so-largo">
+            <div className="col-so-largo">
               <Agenda
                 itens={itensAgenda}
                 onAbrir={abrir}
@@ -1035,7 +1034,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
                 }
               />
             </div>
-            <div className="liff-so-estreito">{lista}</div>
+            <div className="col-so-estreito">{lista}</div>
           </>
         );
       }
@@ -1136,8 +1135,6 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         return <Faturamento deals={estado.deals} area={areaEfetiva} busca={busca} gatilho={estado.logs[0]?.id} />;
       case "despesas":
         return <Despesas area={areaEfetiva} busca={busca} gatilho={estado.logs[0]?.id} />;
-      case "funding":
-        return <Funding gatilho={estado.logs[0]?.id} />;
       case "auditoria":
         return <Auditoria
             todas={auditoria.logs}
@@ -1169,24 +1166,24 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
   };
 
   return (
-    <div className="liff-shell" data-menu={menuAberto ? "aberto" : "fechado"} data-lateral={recolhida ? "recolhida" : "expandida"}>
+    <div className="col-shell" data-menu={menuAberto ? "aberto" : "fechado"} data-lateral={recolhida ? "recolhida" : "expandida"}>
       <CoresDasAreas areas={estado.areas} />
 
       {/* Fundo da gaveta: fecha ao tocar fora, que é o gesto esperado no celular. */}
       {menuAberto && (
-        <div className="liff-menu-fundo" onClick={() => setMenuAberto(false)} aria-hidden="true" />
+        <div className="col-menu-fundo" onClick={() => setMenuAberto(false)} aria-hidden="true" />
       )}
 
       {/* ---- barra lateral ---- */}
-      <aside className="liff-aside">
-        <div className="liff-aside-topo">
-          <div className="liff-so-expandida" style={{ minWidth: 0 }}>
-            <LiffSig name="colméia" size={24} tone={markTone(theme, true)} />
+      <aside className="col-aside">
+        <div className="col-aside-topo">
+          <div className="col-so-expandida" style={{ minWidth: 0 }}>
+            <Assinatura name="colméia" size={24} tone={markTone(theme, true)} />
             <div style={{ ...eyebrow(10, C.faint, "0.18em"), marginTop: 12 }}>GESTÃO ORGANIZACIONAL</div>
           </div>
           <button
             type="button"
-            className="liff-recolher"
+            className="col-recolher"
             onClick={() => {
               const nova = !recolhida;
               setRecolhida(nova);
@@ -1205,8 +1202,8 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             grupo.length === 0 ? null : (
               <Fragment key={gi}>
                 {gi > 0 && (
-                  <div className="liff-nav-grupo" aria-hidden>
-                    <span className="liff-so-expandida" style={eyebrow(9, C.faint, "0.16em")}>{estado.isAdmin ? "só admin e financeiro" : "financeiro"}</span>
+                  <div className="col-nav-grupo" aria-hidden>
+                    <span className="col-so-expandida" style={eyebrow(9, C.faint, "0.16em")}>{estado.isAdmin ? "só admin e financeiro" : "financeiro"}</span>
                   </div>
                 )}
                 {grupo.map((n) => {
@@ -1215,7 +1212,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
                     <a
                       key={n.key}
                       href={caminhoDe({ view: n.key, tab: n.key === "cadastros" ? cadTab : undefined })}
-                      className="liff-nav-item"
+                      className="col-nav-item"
                       aria-current={on ? "page" : undefined}
                       // Recolhida, o rótulo some: o nome fica no title (e no aria-label, que o
                       // leitor de tela já leria do texto escondido só por CSS).
@@ -1230,14 +1227,14 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
                       style={{
                         ...eyebrow(12, on ? C.ink : C.dust, "0.1em"),
                         borderLeft: `2px solid ${on ? C.accent : "transparent"}`,
-                        background: on ? "var(--liff-app-aside-ativo)" : "transparent",
+                        background: on ? "var(--col-app-aside-ativo)" : "transparent",
                         color: on ? C.ink : C.dust,
                       }}
                     >
-                      <span className="liff-nav-icone" style={{ color: on ? C.accent : undefined }}>
+                      <span className="col-nav-icone" style={{ color: on ? C.accent : undefined }}>
                         <IconeMenu chave={n.key} />
                       </span>
-                      <span className="liff-nav-rotulo liff-so-expandida">{n.label}</span>
+                      <span className="col-nav-rotulo col-so-expandida">{n.label}</span>
                     </a>
                   );
                 })}
@@ -1246,12 +1243,12 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           )}
         </nav>
 
-        <div className="liff-aside-rodape">
+        <div className="col-aside-rodape">
           {/* Recolhida: tema e sair viram botões de ícone. Expandida, o de sempre. */}
-          <div className="liff-so-recolhida liff-aside-icones">
+          <div className="col-so-recolhida col-aside-icones">
             <button
               type="button"
-              className="liff-recolher"
+              className="col-recolher"
               onClick={() => trocarTemaSalvando(proximoTema(theme))}
               aria-label={ROTULO_TEMA[proximoTema(theme)]}
               title={ROTULO_TEMA[proximoTema(theme)]}
@@ -1263,7 +1260,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             </div>
             <button
               type="button"
-              className="liff-recolher"
+              className="col-recolher"
               onClick={() =>
                 void api.sair().then(() => {
                   window.location.href = "/login";
@@ -1276,7 +1273,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
             </button>
           </div>
 
-          <div className="liff-so-expandida">
+          <div className="col-so-expandida">
             <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 16 }}>
               {/* Pessoa, tema e sair numa linha só: tema e sair são ícones discretos, como no
                   menu recolhido. O botão de tema percorre escuro → misto → claro e mostra o ícone
@@ -1289,7 +1286,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
                 </div>
                 <button
                   type="button"
-                  className="liff-recolher"
+                  className="col-recolher"
                   onClick={() => trocarTemaSalvando(proximoTema(theme))}
                   aria-label={ROTULO_TEMA[proximoTema(theme)]}
                   title={ROTULO_TEMA[proximoTema(theme)]}
@@ -1298,7 +1295,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
                 </button>
                 <button
                   type="button"
-                  className="liff-recolher"
+                  className="col-recolher"
                   onClick={() =>
                     void api.sair().then(() => {
                       window.location.href = "/login";
@@ -1338,10 +1335,10 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
 
       {/* ---- conteúdo ---- */}
       <div style={{ background: C.canvas, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        <header className="liff-header">
+        <header className="col-header">
           <button
             type="button"
-            className="liff-menu-botao"
+            className="col-menu-botao"
             onClick={() => setMenuAberto((v) => !v)}
             aria-label={menuAberto ? "Fechar navegação" : "Abrir navegação"}
             aria-expanded={menuAberto}
@@ -1382,14 +1379,14 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
 
           {/* Os dois filtros do cabeçalho moram juntos: área recorta o produto, "meus"
               recorta a carteira. Separá-los faria parecer que um é filtro e o outro é modo. */}
-          <div className="liff-filtros" style={{ marginLeft: "auto" }}>
+          <div className="col-filtros" style={{ marginLeft: "auto" }}>
             {["comercial", "operacoes", "cronograma", "auditoria", "faturamento", "despesas", "clientes"].includes(view) && (
               <CampoBusca valor={busca} onChange={setBusca} />
             )}
             {/* Conexão não pertence a área nenhuma: na tela delas o recorte por área só
                 confundiria. */}
             {view !== "conexoes" && (
-              <div className="liff-area-chips">
+              <div className="col-area-chips">
                 <SeletorArea opcoes={chips} valor={area} onChange={trocarArea} />
               </div>
             )}
@@ -1401,7 +1398,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
               const opcoes = view === "auditoria" ? opcoesAutores : dados.opcoesResponsavel;
               return (
                 <SeletorResponsaveis
-                  className="liff-filtro-quem"
+                  className="col-filtro-quem"
                   opcoes={opcoes}
                   selecao={responsaveis}
                   onChange={trocarResponsaveis}
@@ -1415,7 +1412,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
               não couber, em vez de uma delas cair sozinha para a linha de baixo. */}
           <div style={{ display: "flex", gap: 10, alignItems: "center", marginLeft: "auto" }}>
             {view === "cronograma" && (
-              <div role="group" aria-label="Tipo de card" className="liff-densidade">
+              <div role="group" aria-label="Tipo de card" className="col-densidade">
                 {([["todos", "Ambos"], ["comercial", "Comercial"], ["operacoes", "Operações"]] as const).map(([t, rotulo]) => (
                   <button
                     key={t}
@@ -1432,7 +1429,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
               </div>
             )}
             {view === "cronograma" && (
-              <div role="group" aria-label="Exibição do cronograma" className="liff-densidade liff-so-largo">
+              <div role="group" aria-label="Exibição do cronograma" className="col-densidade col-so-largo">
                 {(["agenda", "lista"] as const).map((e) => (
                   <button
                     key={e}
@@ -1519,13 +1516,13 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           </div>
         </header>
 
-        <main className="liff-main">
+        <main className="col-main">
           {simulando && (
             <div
               role="status"
               style={{
                 display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 16, padding: "10px 14px",
-                border: `1px solid ${C.warning}`, borderRadius: R, background: "color-mix(in srgb, var(--liff-warning) 10%, transparent)",
+                border: `1px solid ${C.warning}`, borderRadius: R, background: "color-mix(in srgb, var(--col-warning) 10%, transparent)",
                 fontSize: 13, color: C.ink,
               }}
             >
@@ -1544,7 +1541,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
               style={{
                 border: `1px solid ${C.success}`, borderRadius: R,
                 color: C.success,
-                fontFamily: "var(--liff-font-mono)",
+                fontFamily: "var(--col-font-mono)",
                 fontSize: 12,
                 padding: "10px 14px",
                 marginBottom: 18,
@@ -1560,7 +1557,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
               style={{
                 border: `1px solid ${C.warning}`, borderRadius: R,
                 color: C.warning,
-                fontFamily: "var(--liff-font-mono)",
+                fontFamily: "var(--col-font-mono)",
                 fontSize: 12,
                 padding: "10px 14px",
                 marginBottom: 18,
@@ -1576,7 +1573,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
               style={{
                 border: `1px solid ${C.error}`, borderRadius: R,
                 color: C.error,
-                fontFamily: "var(--liff-font-mono)",
+                fontFamily: "var(--col-font-mono)",
                 fontSize: 12,
                 padding: "10px 14px",
                 marginBottom: 18,
@@ -1637,7 +1634,6 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         <FormOportunidade
           origens={estado.origens}
           organizacoes={estado.organizacoes}
-            arquetipos={estado.arquetipos}
           areasEditaveis={areasEditaveis}
           pessoas={pessoasAtivas}
           produtos={estado.produtos}
@@ -1652,7 +1648,6 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         <FormOportunidade
           origens={estado.origens}
           organizacoes={estado.organizacoes}
-            arquetipos={estado.arquetipos}
           inicial={dealEmEdicao}
           tarefas={estado.activities.filter((a) => a.oportunidadeId === dealEmEdicao.id)}
           onAbrirTarefa={(ref) => navegar({ view: "operacoes", ref })}

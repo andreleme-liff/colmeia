@@ -40,7 +40,7 @@ const hClara = (await (await fetch(B + "/api/logs/T-0601", { headers: { cookie: 
 checa("o histórico da tarefa, lido por Clara, só tem a referência", [hClara[0].texto, hClara[0].para], ['Ligou "Convênio com Defensoria — plano piloto" à oportunidade C-0001', "C-0001"]);
 
 console.log("\n3. pelo MCP");
-const acesso = "liff_at_" + randomBytes(32).toString("base64url");
+const acesso = "col_at_" + randomBytes(32).toString("base64url");
 const [k] = await sql`INSERT INTO oauth_concessoes (user_id, client_id, client_nome, redirect_uri, resource, escopos)
   VALUES (1, 'https://claude.ai/oauth/claude-code-client-metadata', 'Claude Code', 'http://localhost/callback', 'http://localhost:3010/api/mcp', 'leitura escrita') RETURNING id`;
 await sql`INSERT INTO oauth_tokens (hash, concessao_id, tipo, expira_em) VALUES (${createHash("sha256").update(acesso).digest("hex")}, ${k.id}, 'acesso', now() + interval '1 hour')`;

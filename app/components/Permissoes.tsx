@@ -5,7 +5,7 @@
 // Não existe mais permissão por produto (nov/2026): todo mundo vê todos os produtos, e o que
 // separa as pessoas é o PAPEL — leitura só vê; membro e gestor editam tudo; financeiro também
 // cuida do dinheiro (valores de receita, faturamento, despesas); admin administra (pessoas,
-// cadastros, funding). Antes havia uma matriz de
+// cadastros). Antes havia uma matriz de
 // pessoas × produtos; a pedido, ela saiu.
 //
 // O papel é escolhido direto na linha, e marcando pessoas aparece a ação em lote.
@@ -22,7 +22,7 @@ const PAPEIS_TELA: { key: string; nome: string; faz: string }[] = [
   { key: "membro", nome: "membro", faz: "vê e edita cards em todos os produtos; não vê receita" },
   { key: "gestor", nome: "gestor", faz: "como o membro, e também vê a receita" },
   { key: "financeiro", nome: "financeiro", faz: "como o gestor, e também edita a receita e opera faturamento e despesas" },
-  { key: "admin", nome: "admin", faz: "como o financeiro, e administra pessoas, cadastros, funding e o changelog" },
+  { key: "admin", nome: "admin", faz: "como o financeiro, e administra pessoas, cadastros e o changelog" },
 ];
 
 const campo: CSSProperties = {
@@ -63,7 +63,7 @@ function Papeis({
             style={
               ativo
                 ? {
-                    background: p.key === "leitura" ? C.panel2 : "color-mix(in srgb, var(--liff-accent) 16%, transparent)",
+                    background: p.key === "leitura" ? C.panel2 : "color-mix(in srgb, var(--col-accent) 16%, transparent)",
                     color: p.key === "leitura" ? C.dust : C.ink,
                     fontWeight: 700,
                   }
@@ -162,7 +162,7 @@ export default function Permissoes({
         )}
       </div>
 
-      <div className="liff-scroll-x">
+      <div className="col-scroll-x">
         <div style={{ minWidth: 690 }}>
           <div style={{ display: "grid", gridTemplateColumns: colunas, alignItems: "end", borderBottom: `1px solid ${C.line}`, background: C.canvas }}>
             <div style={{ padding: "10px 0 10px 12px" }}>
@@ -192,7 +192,7 @@ export default function Permissoes({
                 style={{
                   display: "grid", gridTemplateColumns: colunas, alignItems: "center",
                   borderBottom: `1px solid ${C.line}`,
-                  background: marcado ? "color-mix(in srgb, var(--liff-accent) 8%, var(--liff-surface-cell))" : C.cell,
+                  background: marcado ? "color-mix(in srgb, var(--col-accent) 8%, var(--col-surface-cell))" : C.cell,
                   opacity: p.ativo ? 1 : 0.55,
                 }}
               >

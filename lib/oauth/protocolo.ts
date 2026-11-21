@@ -1,4 +1,4 @@
-// OAuth 2.1 do LIFF tasks — a parte PURA: decisões, sem banco e sem rede.
+// OAuth 2.1 da Colméia — a parte PURA: decisões, sem banco e sem rede.
 //
 // O app é o próprio servidor de autorização do seu MCP. Quem autentica a pessoa é o SSO
 // Google que já existe; aqui só se decide se um pedido de autorização é aceitável, se um
@@ -24,7 +24,7 @@ export type Config = {
   clientesPermitidos: string[];
 };
 
-export const RESOURCE_PADRAO = "https://go.liff.tech/api/mcp";
+export const RESOURCE_PADRAO = "https://colmeia-topaz.vercel.app/api/mcp";
 /**
  * Hosts cujos aplicativos podem pedir acesso, quando `MCP_CLIENTES_PERMITIDOS` não diz outra
  * coisa: Claude (claude.ai, desktop, Claude Code) e ChatGPT. Os dois se identificam por um
@@ -315,7 +315,7 @@ export function pkceConfere(verifier: string, challenge: string): boolean {
   return calculado.length === esperado.length && timingSafeEqual(calculado, esperado);
 }
 
-export const PREFIXO = { codigo: "liff_ac_", acesso: "liff_at_", refresh: "liff_rt_" } as const;
+export const PREFIXO = { codigo: "col_ac_", acesso: "col_at_", refresh: "col_rt_" } as const;
 
 /** 256 bits aleatórios, com prefixo legível para scanners de segredo reconhecerem um vazado. */
 export function gerarSegredo(prefixo: string): string {

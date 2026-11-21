@@ -23,7 +23,7 @@
 //
 // COMO SE PAGA: toda despesa diz por onde o dinheiro sai. Pelo BANCO (PIX, boleto,
 // transferência, débito automático) ela é uma conta a pagar sozinha. No CARTÃO corporativo
-// ela continua sendo uma despesa própria (AWS, com a sua categoria e a sua competência), mas
+// ela continua sendo uma despesa própria (hospedagem, com a sua categoria e a sua competência), mas
 // quem se paga é a fatura: o vencimento da despesa é o da fatura em que ela cai, e a aba "a
 // pagar" junta as despesas do mesmo cartão e do mesmo vencimento numa linha só, paga de uma vez.
 // O cartão é um favorecido do tipo "cartao", com dia de fechamento e de vencimento, que é de

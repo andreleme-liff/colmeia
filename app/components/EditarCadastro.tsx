@@ -94,7 +94,7 @@ function SecaoExclusao({
           <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13, color: C.ink }}>
             {(["migrar", "excluir", "desvincular"] as const).map((a) => (
               <label key={a} style={{ display: "flex", gap: 8, alignItems: "flex-start", cursor: "pointer", lineHeight: 1.45 }}>
-                <input type="radio" name="acao" checked={acao === a} onChange={() => setAcao(a)} style={{ marginTop: 3, accentColor: "var(--liff-paprika)" }} />
+                <input type="radio" name="acao" checked={acao === a} onChange={() => setAcao(a)} style={{ marginTop: 3, accentColor: "var(--col-paprika)" }} />
                 <span>{rotulos[a]}</span>
               </label>
             ))}
@@ -163,7 +163,7 @@ export function EditarProduto({
   });
 
   return (
-    <Modal titulo={produto.label} eyebrowTexto="LIFF/ CADASTROS · MÓDULO" onFechar={onFechar}>
+    <Modal titulo={produto.label} eyebrowTexto="COLMÉIA/ CADASTROS · MÓDULO" onFechar={onFechar}>
       <Field label="Nome do módulo" required>
         <Input value={label} onChange={setLabel} />
       </Field>
@@ -171,7 +171,7 @@ export function EditarProduto({
         <Select options={opcoesArea(areas, area)} value={area} onChange={setArea} />
       </Field>
       <label style={{ display: "flex", gap: 8, fontSize: 13, color: C.ink, cursor: "pointer" }}>
-        <input type="checkbox" checked={!ativo} onChange={(e) => setAtivo(!e.target.checked)} style={{ accentColor: "var(--liff-paprika)" }} />
+        <input type="checkbox" checked={!ativo} onChange={(e) => setAtivo(!e.target.checked)} style={{ accentColor: "var(--col-paprika)" }} />
         Arquivado (some dos seletores, continua nos registros)
       </label>
       {erro && <div style={{ fontSize: 13, color: C.error }}>{erro}</div>}
@@ -249,7 +249,7 @@ export function EditarPessoa({
   });
 
   return (
-    <Modal titulo={pessoa.nome} eyebrowTexto="LIFF/ CADASTROS · PESSOA" onFechar={onFechar}>
+    <Modal titulo={pessoa.nome} eyebrowTexto="COLMÉIA/ CADASTROS · PESSOA" onFechar={onFechar}>
       <Field label="Nome completo" required>
         <Input value={nome} onChange={setNome} />
       </Field>

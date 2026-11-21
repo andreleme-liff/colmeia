@@ -1,0 +1,38 @@
+/* =========================================================
+   Spacing, radii, borders, elevation
+   The surface is flat: 1px charcoal hairlines and 1px
+   grid gaps do the structural work, not drop shadows.
+   ========================================================= */
+:root {
+  /* Spacing scale */
+  --col-space-1: 4px;
+  --col-space-2: 8px;
+  --col-space-3: 12px;
+  --col-space-4: 16px;
+  --col-space-5: 22px;
+  --col-space-6: 28px;
+  --col-space-7: 42px;
+  --col-space-8: 72px;
+  --col-space-9: 88px;
+
+  /* Section rhythm (from real site) */
+  --col-section-pad-y: 88px;
+  --col-section-pad-x: 72px;
+  --col-section-max:   1180px;
+  --col-nav-w:         294px;
+
+  /* Radii — restrained. Most structure is square-cornered. */
+  --col-radius-xs:   3px;  /* chips / dots */
+  --col-radius-sm:   6px;  /* buttons / semantic tiles */
+  --col-radius-md:   8px;  /* code blocks */
+  --col-radius-pill: 999px;
+
+  /* Borders / grid */
+  --col-border-w: 1px;
+  --col-grid-gap: 1px;
+  --col-accent-rule: 3px; /* callout left rule */
+
+  /* Elevation — inset hairline is the only "shadow" motif */
+  --col-inset-hairline: inset 0 0 0 1px rgba(255,255,255,0.18);
+  --col-shadow-soft: 0 1px 0 rgba(0,0,0,0.4);
+}

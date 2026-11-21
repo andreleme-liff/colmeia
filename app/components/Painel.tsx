@@ -132,7 +132,7 @@ export default function Painel({
         <section className="pn-painel">
           <CabecalhoSecao titulo="FUNIL COMERCIAL" acao={{ texto: "pipeline →", onClick: () => onIr("comercial") }} />
           <Barras
-            itens={funil.map((f) => ({ chave: f.key, rotulo: f.label, valor: f.valor, texto: brl(f.valor), qtd: f.qtd, cor: f.key === "ganho" ? "var(--liff-success)" : "var(--liff-accent)" }))}
+            itens={funil.map((f) => ({ chave: f.key, rotulo: f.label, valor: f.valor, texto: brl(f.valor), qtd: f.qtd, cor: f.key === "ganho" ? "var(--col-success)" : "var(--col-accent)" }))}
             vazio="Nenhuma oportunidade no recorte."
           />
           {foraDoFunil.length > 0 && (
@@ -181,7 +181,7 @@ export default function Painel({
         <CabecalhoSecao titulo="ALTERAÇÕES RECENTES" acao={isAdmin ? { texto: "changelog completo →", onClick: () => onIr("auditoria") } : undefined} />
         {dados.logs.length === 0 && <div style={{ fontSize: 14, color: C.faint }}>Nada registrado ainda.</div>}
         {dados.logs.map((l) => (
-          <div key={l.id} className="liff-painel-log" style={{ display: "grid", gap: 20, alignItems: "baseline", padding: "12px 0", borderTop: `1px solid ${C.panel2}` }}>
+          <div key={l.id} className="col-painel-log" style={{ display: "grid", gap: 20, alignItems: "baseline", padding: "12px 0", borderTop: `1px solid ${C.panel2}` }}>
             <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>{stamp(l.criadoEm)}</span>
             <span style={{ fontSize: 14, color: C.dust }}>
               {l.autor}
@@ -241,8 +241,8 @@ function Barras({ itens, vazio }: { itens: { chave: string; rotulo: string; valo
             // Duas colunas de verdade: o valor numa, a quantidade na outra, cada uma com a sua
             // largura — os números ficam um embaixo do outro mesmo sem linha de grade.
             <span className="pn-barra__texto pn-barra__texto--duas">
-              <span style={{ color: i.valor > 0 ? undefined : "var(--liff-text-faint)" }}>{i.texto}</span>
-              <span style={{ color: i.qtd > 0 ? undefined : "var(--liff-text-faint)" }} title={`${i.qtd} ${i.qtd === 1 ? "oportunidade" : "oportunidades"}`}>
+              <span style={{ color: i.valor > 0 ? undefined : "var(--col-text-faint)" }}>{i.texto}</span>
+              <span style={{ color: i.qtd > 0 ? undefined : "var(--col-text-faint)" }} title={`${i.qtd} ${i.qtd === 1 ? "oportunidade" : "oportunidades"}`}>
                 {i.qtd}
               </span>
             </span>

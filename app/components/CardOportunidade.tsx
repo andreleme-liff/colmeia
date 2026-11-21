@@ -7,7 +7,7 @@
 // Estilo em `globals.css` (`.cop-*`): o tema escuro, o foco de teclado e o hover moram lá.
 //
 // Cor de área identifica, nunca indica estado: vai no contorno superior do card (o nome da área fica
-// no aria-label e no title), e estado (prazo, ACE, bloqueio) usa só as cores semânticas.
+// no aria-label e no title), e estado (prazo, bloqueio) usa só as cores semânticas.
 
 import type { CSSProperties, DragEvent, ReactNode } from "react";
 import type { Deal } from "./api";
@@ -82,7 +82,7 @@ const GLIFO = { fill: "none", stroke: "var(--cop-glifo, #fff)", strokeWidth: 2.4
 function Calendario({ tom, semData }: { tom: TomPrazo; semData: boolean }) {
   return (
     // Sem data: cinza mais claro que o texto apagado, que preenchido ficaria quase preto.
-    <svg aria-hidden {...BASE} style={semData ? { color: "color-mix(in srgb, var(--liff-text-faint) 55%, transparent)" } : undefined}>
+    <svg aria-hidden {...BASE} style={semData ? { color: "color-mix(in srgb, var(--col-text-faint) 55%, transparent)" } : undefined}>
       <path d="M8 2.5v4M16 2.5v4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
       <rect x="2.5" y="4.5" width="19" height="17" rx="3" fill="currentColor" />
       {tom === "sucesso" && <path d="M8 13.5l2.8 2.8L16 11" {...GLIFO} />}
@@ -103,16 +103,6 @@ function AlertaCheio() {
     <svg aria-hidden {...BASE}>
       <path d="M10.3 3.9 1.8 18.2A2 2 0 0 0 3.5 21h17a2 2 0 0 0 1.7-2.8L13.7 3.9a2 2 0 0 0-3.4 0Z" fill="currentColor" />
       <path d="M12 9.5v4M12 17v.01" {...GLIFO} />
-    </svg>
-  );
-}
-
-/** ACE (AWS Partner Central): nuvem pintada com o ✓ de registrada. */
-function Nuvem() {
-  return (
-    <svg aria-hidden {...BASE}>
-      <path d="M7 19.5h10a4.5 4.5 0 0 0 .7-8.95A6 6 0 0 0 6.6 9.7 5 5 0 0 0 7 19.5Z" fill="currentColor" />
-      <path d="M9.3 14.2l2 2 3.6-3.6" {...GLIFO} />
     </svg>
   );
 }
@@ -172,7 +162,7 @@ export function CardOportunidade({
     </Etiqueta>
   ) : null;
 
-  const temIcones = compacto && !!(prazo || temBloqueio || d.aceAws);
+  const temIcones = compacto && !!(prazo || temBloqueio);
 
   const pessoa = d.responsavelId ? pessoas.find((p) => p.id === d.responsavelId) : undefined;
   const nomeDono = pessoa?.nome ?? (d.responsavelTexto || "");
@@ -203,13 +193,6 @@ export function CardOportunidade({
       </button>
     );
   };
-
-  // ACE só aparece quando existe: etiqueta azul na mesma linha do bloqueio.
-  const ace = d.aceAws ? (
-    <span className="cop-tag cop-tag--info cop-tag--ace" title="ACE criada no AWS Partner Central">
-      ACE
-    </span>
-  ) : null;
 
   const corArea = { "--cop-area": area.color } as CSSProperties;
 
@@ -263,7 +246,7 @@ export function CardOportunidade({
                 )}
               </div>
             )}
-            {/* Compacto: prazo, bloqueio e ACE só como ícone, na linha dos módulos. A forma muda
+            {/* Compacto: prazo e bloqueio só como ícone, na linha dos módulos. A forma muda
                 junto com a cor (calendário com ✓, ! ou ×), para não depender de enxergar a cor. */}
             {temIcones && (
               <span className="cop-icones">
@@ -277,11 +260,6 @@ export function CardOportunidade({
                     <AlertaCheio />
                   </IconeEstado>
                 )}
-                {d.aceAws && (
-                  <IconeEstado tom="info" rotulo="ACE criada no AWS Partner Central">
-                    <Nuvem />
-                  </IconeEstado>
-                )}
               </span>
             )}
           </div>
@@ -290,7 +268,7 @@ export function CardOportunidade({
       </div>
 
       {/* ---------- 2 · andamento (só no completo) ---------- */}
-      {!compacto && (d.situacao || d.proximoPasso || datado || temBloqueio || ace || lost) && (
+      {!compacto && (d.situacao || d.proximoPasso || datado || temBloqueio || lost) && (
         <div className="cop-bloco cop-bloco--fio">
           {lost ? (
             <div>
@@ -323,10 +301,9 @@ export function CardOportunidade({
                   {d.proximoPasso && <p className="cop-texto cop-texto--forte">{d.proximoPasso}</p>}
                 </div>
               )}
-              {(temBloqueio || ace) && (
+              {temBloqueio && (
                 <div className="cop-tags">
                   {etiquetaBloqueio}
-                  {ace}
                 </div>
               )}
             </>

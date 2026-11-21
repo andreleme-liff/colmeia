@@ -130,7 +130,7 @@ export default function SeletorArea({
                 key={o.id}
                 role="option"
                 aria-selected={on}
-                className="liff-hover-cell"
+                className="col-hover-cell"
                 onClick={() => {
                   onChange(o.id);
                   setAberto(false);

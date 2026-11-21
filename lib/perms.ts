@@ -128,7 +128,7 @@ export async function requireReceita(): Promise<Ctx | Response> {
 
 /**
  * O dinheiro (editar a receita, faturamento, despesas) é do financeiro e da administração.
- * O que continua só de admin (pessoas, cadastros, funding, changelog) passa por `requireAdmin`.
+ * O que continua só de admin (pessoas, cadastros, changelog) passa por `requireAdmin`.
  */
 export async function requireFinanceiro(): Promise<Ctx | Response> {
   const ctx = await requireCtx();

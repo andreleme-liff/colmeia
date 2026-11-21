@@ -1,31 +1,31 @@
 /* =========================================================
-   LIFF — Base element defaults + signature component CSS.
+   Base element defaults + signature component CSS.
    Consumers linking styles.css get the dark canvas, type
    defaults, ::selection, link colors, and the portable
-   .liff-sig signature component (namespaced, from the kit).
+   .col-sig signature component (namespaced, from the kit).
    ========================================================= */
 body {
   margin: 0;
-  background: var(--liff-obsidiana);
-  color: var(--liff-floral);
-  font-family: var(--liff-font-body);
-  font-size: var(--liff-fs-body);
-  line-height: var(--liff-lh-body);
+  background: var(--col-obsidiana);
+  color: var(--col-floral);
+  font-family: var(--col-font-body);
+  font-size: var(--col-fs-body);
+  line-height: var(--col-lh-body);
   -webkit-font-smoothing: antialiased;
 }
 *, *::before, *::after { box-sizing: border-box; }
-::selection { background: var(--liff-paprika); color: var(--liff-obsidiana); }
+::selection { background: var(--col-paprika); color: var(--col-obsidiana); }
 
-a { color: var(--liff-paprika); text-decoration: none; }
+a { color: var(--col-paprika); text-decoration: none; }
 a:hover { color: #F4794A; }
 
-code, pre, kbd, samp { font-family: var(--liff-font-mono); }
+code, pre, kbd, samp { font-family: var(--col-font-mono); }
 
-/* ---------- Signature component (from liff-signature-kit) ---------- */
-.liff-sig {
-  --liff-sig-size: 32px;
-  --liff-sig-mark: var(--liff-floral, #FFFCF2);
-  --liff-sig-product: var(--liff-labs, #00A3B5);
+/* ---------- Signature component (from col-signature-kit) ---------- */
+.col-sig {
+  --col-sig-size: 32px;
+  --col-sig-mark: var(--col-floral, #FFFCF2);
+  --col-sig-product: var(--col-labs, #00A3B5);
   display: inline-flex;
   align-items: baseline;
   justify-content: flex-start;
@@ -34,28 +34,28 @@ code, pre, kbd, samp { font-family: var(--liff-font-mono); }
   margin: 0; padding: 0; border: 0;
   background: transparent;
   font-family: "Rethink Sans", Arial, sans-serif;
-  font-size: var(--liff-sig-size);
+  font-size: var(--col-sig-size);
   font-weight: 400; font-style: normal; font-variant: normal;
   line-height: 1; letter-spacing: normal;
   text-transform: none; text-decoration: none; white-space: nowrap;
-  color: var(--liff-sig-mark);
+  color: var(--col-sig-mark);
   vertical-align: baseline;
   -webkit-font-smoothing: antialiased;
   text-rendering: geometricPrecision;
 }
-.liff-sig__mark {
+.col-sig__mark {
   display: block; height: 1em; width: auto; flex: 0 0 auto;
   margin: 0; padding: 0; border: 0;
   fill: currentColor; color: inherit; overflow: visible;
 }
-.liff-sig__name {
+.col-sig__name {
   display: inline-block;
   margin: 0; padding: 0; border: 0;
   font-family: "Rethink Sans", Arial, sans-serif;
   font-size: 1.16em; font-weight: 400; font-style: normal;
   line-height: 1; letter-spacing: -0.05em;
   text-transform: none; text-decoration: none; white-space: nowrap;
-  color: var(--liff-sig-product);
+  color: var(--col-sig-product);
 }
-.liff-sig--on-light { color: var(--liff-obsidiana, #0E1014); }
-.liff-sig, .liff-sig * { text-align: left; }
+.col-sig--on-light { color: var(--col-obsidiana, #0E1014); }
+.col-sig, .col-sig * { text-align: left; }

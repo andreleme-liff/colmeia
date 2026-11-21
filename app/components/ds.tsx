@@ -1,77 +1,24 @@
 "use client";
 
-// Componentes do design system LIFF.
-//
-// O kit publica `_ds_bundle.js`, um IIFE que pendura os componentes em
-// `window.LIFFDesignSystem_064c9d` e depende de um React global — o que não existe num build
-// de módulos. Os seis componentes usados por este app estão transcritos aqui 1:1 a partir
-// daquele bundle: mesmas props, mesmos valores, mesmos tokens. O bundle original segue no
-// repositório, em `_ds/`, como referência para conferir divergências.
-//
-// Os tokens CSS continuam sendo consumidos direto do kit, sem cópia (ver globals.css).
+// Componentes de interface da Colméia: botão, campos, seletor, interruptor e a assinatura
+// do produto. Os tokens CSS (cores, tipografia, espaçamento) vêm de `_ds/design-system/tokens`,
+// importados em globals.css.
 
 import { useState, type CSSProperties, type ReactNode } from "react";
 
-const MONO = 'var(--liff-font-mono, "Roboto Mono", monospace)';
-const SANS = 'var(--liff-font-body, "Rethink Sans", sans-serif)';
-const R = "var(--liff-radius-sm)";
+const MONO = 'var(--col-font-mono, "Roboto Mono", monospace)';
+const SANS = 'var(--col-font-body, "Rethink Sans", sans-serif)';
+const R = "var(--col-radius-sm)";
 
 /* ---------------------------------------------------------------
-   LiffMark — wordmark monocromático (viewBox 0 0 1000 360).
-   Escala por `height`; a largura deriva da proporção. Nunca redesenhar.
+   Assinatura — o nome do produto como marca: Rethink Sans 800, minúsculas, tracking
+   -0.05em. `size` controla a altura; a cor entra pelo `nameColor`.
    --------------------------------------------------------------- */
-export function LiffMark({
-  height = 40,
-  tone = "light",
-  color,
-  title = "LIFF",
-  style,
-}: {
-  height?: number | string;
-  tone?: "light" | "dark" | "current";
-  color?: string;
-  title?: string;
-  style?: CSSProperties;
-}) {
-  const resolved =
-    color ||
-    (tone === "light"
-      ? "var(--liff-floral, #FFFCF2)"
-      : tone === "dark"
-        ? "var(--liff-obsidiana, #0E1014)"
-        : "currentColor");
-  const h = typeof height === "number" ? `${height}px` : height;
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 1000 360"
-      role="img"
-      aria-label={title}
-      style={{ height: h, width: "auto", display: "block", fill: resolved, ...style }}
-    >
-      <title>{title}</title>
-      <path d="M639.0,0.0 380.0,0.0 380.0,359.0 479.0,359.0 480.0,219.0 609.0,219.0 609.0,140.0 480.0,140.0 479.0,80.0 639.0,79.0Z" />
-      <path d="M949.0,0.0 660.0,0.0 660.0,359.0 759.0,359.0 759.0,220.0 840.0,219.0 879.0,141.0 760.0,140.0 759.0,80.0 910.0,79.0Z" />
-      <path d="M0.0,0.0 0.0,359.0 229.0,359.0 229.0,280.0 99.0,279.0 99.0,0.0Z" />
-      <path d="M250.0,0.0 250.0,359.0 349.0,359.0 349.0,0.0Z" />
-      <path d="M999.0,0.0 979.0,0.0 800.0,359.0 820.0,359.0Z" />
-    </svg>
-  );
-}
-
-/* ---------------------------------------------------------------
-   LiffSig — assinatura de produto, como no Manual de Marca (seção "assinatura"):
-   o LIFF/ monocromático seguido do nome do produto em Rethink Sans 400, minúsculas, 1.16em,
-   tracking -0.05em, alinhado pela linha de base. `size` é a altura do LIFF/ e controla tudo.
-   Na Colméia (fork do LIFF go) o LIFF/ saiu: a assinatura é só o nome, até a marca própria
-   existir. A cor entra só no nome. Este sistema ("go") não é produto do portfólio e não tem cor
-   própria no manual: usa a Spicy Paprika, que é a cor de assinatura da marca-mãe.
-   --------------------------------------------------------------- */
-export function LiffSig({
+export function Assinatura({
   name,
   size = 24,
   tone = "light",
-  nameColor = "var(--liff-paprika, #EB5E28)",
+  nameColor = "var(--col-paprika, #EB5E28)",
   style,
 }: {
   name: string;
@@ -80,7 +27,7 @@ export function LiffSig({
   nameColor?: string;
   style?: CSSProperties;
 }) {
-  const cor = tone === "light" ? "var(--liff-floral, #FFFCF2)" : tone === "dark" ? "var(--liff-obsidiana, #0E1014)" : "currentColor";
+  const cor = tone === "light" ? "var(--col-floral, #FFFCF2)" : tone === "dark" ? "var(--col-obsidiana, #0E1014)" : "currentColor";
   return (
     <span
       role="img"
@@ -101,7 +48,7 @@ export function Button({
   children,
   variant = "solid",
   size = "md",
-  accent = "var(--liff-paprika)",
+  accent = "var(--col-paprika)",
   disabled = false,
   style,
   onClick,
@@ -145,9 +92,9 @@ export function Button({
     whiteSpace: "nowrap",
   };
   const variants: Record<string, CSSProperties> = {
-    solid: { background: accent, color: "var(--liff-app-on-accent, var(--liff-obsidiana))", borderColor: accent },
+    solid: { background: accent, color: "var(--col-app-on-accent, var(--col-obsidiana))", borderColor: accent },
     outline: { background: "transparent", color: accent, borderColor: accent },
-    ghost: { background: "transparent", color: "var(--liff-floral)", borderColor: "var(--liff-charcoal)" },
+    ghost: { background: "transparent", color: "var(--col-floral)", borderColor: "var(--col-charcoal)" },
   };
   return (
     <button
@@ -191,15 +138,15 @@ export function Field({
             fontSize: 11,
             letterSpacing: "0.14em",
             textTransform: "uppercase",
-            color: "var(--liff-dust)",
+            color: "var(--col-dust)",
           }}
         >
           {label}
-          {required && <span style={{ color: "var(--liff-paprika)", marginLeft: 4 }}>*</span>}
+          {required && <span style={{ color: "var(--col-paprika)", marginLeft: 4 }}>*</span>}
         </label>
       )}
       {children}
-      {hint && <div style={{ fontSize: 12.5, lineHeight: 1.45, color: "var(--liff-text-faint, #837E74)" }}>{hint}</div>}
+      {hint && <div style={{ fontSize: 12.5, lineHeight: 1.45, color: "var(--col-text-faint, #837E74)" }}>{hint}</div>}
     </div>
   );
 }
@@ -208,7 +155,7 @@ export function Field({
    Input — campo de uma linha. Borda vira `accent` no foco.
    --------------------------------------------------------------- */
 export function Input({
-  accent = "var(--liff-paprika)",
+  accent = "var(--col-paprika)",
   invalid = false,
   size = "md",
   style,
@@ -238,7 +185,7 @@ export function Input({
 }) {
   const [focus, setFocus] = useState(false);
   const pads = { sm: "8px 10px", md: "11px 13px", lg: "14px 16px" };
-  const border = invalid ? "var(--liff-error)" : focus ? accent : "var(--liff-charcoal)";
+  const border = invalid ? "var(--col-error)" : focus ? accent : "var(--col-charcoal)";
   return (
     <input
       id={id}
@@ -254,10 +201,10 @@ export function Input({
       onBlur={() => setFocus(false)}
       style={{
         width: "100%",
-        background: "var(--liff-code-bg, #0B0D10)",
+        background: "var(--col-code-bg, #0B0D10)",
         border: `1px solid ${border}`,
         borderRadius: R,
-        color: "var(--liff-floral)",
+        color: "var(--col-floral)",
         fontFamily: SANS,
         fontSize: 15,
         padding: pads[size],
@@ -274,7 +221,7 @@ export function Input({
    --------------------------------------------------------------- */
 export function Select({
   options = [],
-  accent = "var(--liff-paprika)",
+  accent = "var(--col-paprika)",
   size = "md",
   style,
   value,
@@ -291,7 +238,7 @@ export function Select({
 }) {
   const [focus, setFocus] = useState(false);
   const pads = { sm: "8px 30px 8px 10px", md: "11px 34px 11px 13px", lg: "14px 38px 14px 16px" };
-  const border = focus ? accent : "var(--liff-charcoal)";
+  const border = focus ? accent : "var(--col-charcoal)";
   return (
     <div style={{ position: "relative", ...style }}>
       <select
@@ -304,10 +251,10 @@ export function Select({
           width: "100%",
           appearance: "none",
           WebkitAppearance: "none",
-          background: "var(--liff-code-bg, #0B0D10)",
+          background: "var(--col-code-bg, #0B0D10)",
           border: `1px solid ${border}`,
           borderRadius: R,
-          color: "var(--liff-floral)",
+          color: "var(--col-floral)",
           fontFamily: SANS,
           fontSize: 15,
           padding: pads[size],
@@ -333,7 +280,7 @@ export function Select({
           top: "50%",
           transform: "translateY(-50%)",
           pointerEvents: "none",
-          color: "var(--liff-dust)",
+          color: "var(--col-dust)",
           fontFamily: MONO,
           fontSize: 11,
         }}
@@ -351,7 +298,7 @@ export function Switch({
   checked = false,
   onChange,
   label,
-  accent = "var(--liff-paprika)",
+  accent = "var(--col-paprika)",
   disabled,
   style,
   title,
@@ -383,8 +330,8 @@ export function Switch({
           height: 22,
           flex: "none",
           borderRadius: 999,
-          background: checked ? accent : "var(--liff-charcoal)",
-          border: "1px solid " + (checked ? accent : "var(--liff-charcoal)"),
+          background: checked ? accent : "var(--col-charcoal)",
+          border: "1px solid " + (checked ? accent : "var(--col-charcoal)"),
           position: "relative",
           transition: "background .15s",
         }}
@@ -397,12 +344,12 @@ export function Switch({
             width: 16,
             height: 16,
             borderRadius: 999,
-            background: "var(--liff-floral)",
+            background: "var(--col-floral)",
             transition: "left .15s",
           }}
         />
       </span>
-      {label && <span style={{ fontSize: 15, color: "var(--liff-body-ink)" }}>{label}</span>}
+      {label && <span style={{ fontSize: 15, color: "var(--col-body-ink)" }}>{label}</span>}
     </label>
   );
 }

@@ -207,7 +207,7 @@ export default function Despesas({ area, busca, gatilho }: { area: string; busca
 
       {/* ---------- barra de controle ---------- */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <div role="group" aria-label="Visão" className="liff-densidade desp-abas">
+        <div role="group" aria-label="Visão" className="col-densidade desp-abas">
           <button type="button" aria-pressed={aba === "mes"} onClick={() => setAba("mes")}>
             por mês
           </button>
@@ -237,7 +237,7 @@ export default function Despesas({ area, busca, gatilho }: { area: string; busca
                 mês atual
               </button>
             )}
-            <div role="group" aria-label="Filtrar por situação" className="liff-densidade desp-abas">
+            <div role="group" aria-label="Filtrar por situação" className="col-densidade desp-abas">
               {FILTROS.map((f) => (
                 <button key={f.key} type="button" aria-pressed={filtro === f.key} onClick={() => setFiltro(f.key)}>
                   {f.label} · {todasDoMes.filter((l) => f.casa(l.status)).length}
@@ -432,7 +432,7 @@ function TabelaMes({
   if (!linhas.length) return <div style={{ fontSize: 14, color: C.faint, lineHeight: 1.6, maxWidth: 680 }}>{vazio}</div>;
   const categoriaDe = (l: ContaDoMes) => (l.despesa?.itens.length ? "Várias" : nomeCat(l.categoriaId) || "—");
   return (
-    <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
+    <div className="col-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
       <div style={{ minWidth: 1080 }}>
         <div className="fat-linha fat-linha--cab" style={{ gridTemplateColumns: COLS_MES }}>
           {(
@@ -455,7 +455,7 @@ function TabelaMes({
             return (
               <div
                 key={l.chave}
-                className={`fat-linha${d ? " liff-hover-row" : ""}`}
+                className={`fat-linha${d ? " col-hover-row" : ""}`}
                 style={{ gridTemplateColumns: COLS_MES, cursor: d ? "pointer" : undefined }}
                 onClick={() => d && onAcao({ tipo: "detalhe", despesa: d })}
               >
@@ -537,7 +537,7 @@ const COLS_FATURA = "1.6fr 2fr 0.9fr 0.8fr 0.9fr 120px";
 /** Uma linha por fatura de cartão: o cartão, o que tem dentro, o total e o vencimento. */
 function TabelaFaturas({ faturas, favPorId, hoje, onAcao }: { faturas: FaturaCartao[]; favPorId: Map<number, Favorecido>; hoje: string; onAcao: (a: Acao) => void }) {
   return (
-    <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
+    <div className="col-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
       <div style={{ minWidth: 940 }}>
         <div className="fat-linha fat-linha--cab" style={{ gridTemplateColumns: COLS_FATURA }}>
           {["CARTÃO", "DESPESAS NA FATURA", "VALOR", "VENCIMENTO", "SITUAÇÃO", ""].map((h, k) => (
@@ -550,7 +550,7 @@ function TabelaFaturas({ faturas, favPorId, hoje, onAcao }: { faturas: FaturaCar
           const abrir = () => onAcao({ tipo: "fatura", cartaoId: f.cartaoId, vencimento: f.vencimento });
           const nomes = [...new Set(f.despesas.map((d) => d.favorecido))];
           return (
-            <div key={f.chave} className="fat-linha liff-hover-row" style={{ gridTemplateColumns: COLS_FATURA, cursor: "pointer" }} onClick={abrir}>
+            <div key={f.chave} className="fat-linha col-hover-row" style={{ gridTemplateColumns: COLS_FATURA, cursor: "pointer" }} onClick={abrir}>
               <div style={{ minWidth: 0 }}>
                 <div className="fat-cliente">{favPorId.get(f.cartaoId)?.nome ?? "Cartão"}</div>
                 <div className="fat-meta">fatura · {plural(f.despesas.length, "despesa", "despesas")}</div>
@@ -580,7 +580,7 @@ function TabelaAPagar({ despesas, nomeCat, hoje, onAcao }: { despesas: Despesa[]
   const ord = useOrdem();
   if (!despesas.length) return null;
   return (
-    <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
+    <div className="col-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
       <div style={{ minWidth: 940 }}>
         <div className="fat-linha fat-linha--cab" style={{ gridTemplateColumns: COLS_PAGAR }}>
           {(
@@ -597,7 +597,7 @@ function TabelaAPagar({ despesas, nomeCat, hoje, onAcao }: { despesas: Despesa[]
             situacao: (d) => statusDaDespesa(d, hoje),
           })
           .map((d) => (
-            <div key={d.id} className="fat-linha liff-hover-row" style={{ gridTemplateColumns: COLS_PAGAR, cursor: "pointer" }} onClick={() => onAcao({ tipo: "detalhe", despesa: d })}>
+            <div key={d.id} className="fat-linha col-hover-row" style={{ gridTemplateColumns: COLS_PAGAR, cursor: "pointer" }} onClick={() => onAcao({ tipo: "detalhe", despesa: d })}>
               <div style={{ minWidth: 0 }}>
                 <div className="fat-cliente">{d.favorecido}</div>
                 <div className="fat-meta">{[d.ref, rotuloFormaPagamento(d.forma), d.documento && `doc. ${d.documento}`].filter(Boolean).join(" · ")}</div>
@@ -650,7 +650,7 @@ function TabelaRecorrencias({
   const situacao = (r: Recorrencia) => (recorrenciaAtivaEm(r, mesAtual) ? "ativa" : r.inicio > mesAtual ? "futura" : "encerrada");
   const nome = (r: Recorrencia) => favPorId.get(r.favorecidoId)?.nome ?? "—";
   return (
-    <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
+    <div className="col-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
       <div style={{ minWidth: 940 }}>
         <div className="fat-linha fat-linha--cab" style={{ gridTemplateColumns: COLS_REC }}>
           {(
@@ -671,7 +671,7 @@ function TabelaRecorrencias({
             const s = situacao(r);
             const tipo = favPorId.get(r.favorecidoId)?.tipo;
             return (
-              <div key={r.id} className="fat-linha liff-hover-row" style={{ gridTemplateColumns: COLS_REC, cursor: "pointer", opacity: s === "encerrada" ? 0.6 : 1 }} onClick={() => onAbrir(r)}>
+              <div key={r.id} className="fat-linha col-hover-row" style={{ gridTemplateColumns: COLS_REC, cursor: "pointer", opacity: s === "encerrada" ? 0.6 : 1 }} onClick={() => onAbrir(r)}>
                 <div style={{ minWidth: 0 }}>
                   <div className="fat-cliente">{nome(r)}</div>
                   <div className="fat-meta">{[tipo && rotuloTipoFavorecido(tipo), rotuloArea(r.area)].filter(Boolean).join(" · ")}</div>
@@ -724,7 +724,7 @@ function Cadastros({ dados, onAcao }: { dados: DadosDespesas; onAcao: (a: Acao) 
         {favorecidos.length === 0 ? (
           <div style={{ fontSize: 14, color: C.faint }}>Nenhum favorecido cadastrado.</div>
         ) : (
-          <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
+          <div className="col-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
             <div style={{ minWidth: 820 }}>
               <div className="fat-linha fat-linha--cab" style={{ gridTemplateColumns: COLS_FAV }}>
                 {["NOME", "TIPO", "CNPJ / CPF", "DADOS PARA PAGAR", "SITUAÇÃO"].map((h) => (
@@ -734,7 +734,7 @@ function Cadastros({ dados, onAcao }: { dados: DadosDespesas; onAcao: (a: Acao) 
                 ))}
               </div>
               {favorecidos.map((f) => (
-                <div key={f.id} className="fat-linha liff-hover-row" style={{ gridTemplateColumns: COLS_FAV, cursor: "pointer", opacity: f.ativo ? 1 : 0.6 }} onClick={() => onAcao({ tipo: "favorecido", favorecido: f })}>
+                <div key={f.id} className="fat-linha col-hover-row" style={{ gridTemplateColumns: COLS_FAV, cursor: "pointer", opacity: f.ativo ? 1 : 0.6 }} onClick={() => onAcao({ tipo: "favorecido", favorecido: f })}>
                   <div style={{ minWidth: 0 }}>
                     <div className="fat-cliente">{f.nome}</div>
                     {f.contato && <div className="fat-meta">{f.contato}</div>}
@@ -955,7 +955,7 @@ function FormConta({
     );
 
   return (
-    <Modal titulo={titulo} eyebrowTexto={`LIFF/ DESPESAS · ${subtitulo.toUpperCase()}`} onFechar={onFechar} largura={comItens ? 820 : 640}>
+    <Modal titulo={titulo} eyebrowTexto={`COLMÉIA/ DESPESAS · ${subtitulo.toUpperCase()}`} onFechar={onFechar} largura={comItens ? 820 : 640}>
       <div className="rec-form">
         <div className="rec-form__duas">
           <Field label="Favorecido" required hint={travada ? "Vem da recorrência." : undefined}>
@@ -987,7 +987,7 @@ function FormConta({
             {itens.map((i) => (
               <div key={i.k} className="desp-itens">
                 <CampoData valor={i.data} onChange={(v) => mudarItem(i.k, "data", v)} />
-                <Input size="sm" value={i.descricao} onChange={(v) => mudarItem(i.k, "descricao", v)} placeholder="Ex.: AWS, Notion, Uber" />
+                <Input size="sm" value={i.descricao} onChange={(v) => mudarItem(i.k, "descricao", v)} placeholder="Ex.: hospedagem, Notion, Uber" />
                 <Select size="sm" value={i.categoriaId} onChange={(v) => mudarItem(i.k, "categoriaId", v)} options={opcoesCategoria(dados.categorias, Number(i.categoriaId) || null, true)} />
                 <Input size="sm" value={i.valor} onChange={(v) => mudarItem(i.k, "valor", v)} placeholder="0,00" style={{ textAlign: "right" }} />
                 <button type="button" className="rec-link" aria-label="Remover item" title="Remover item" style={{ color: C.error, textAlign: "center" }} onClick={() => setItens((l) => l.filter((x) => x.k !== i.k))}>
@@ -1062,7 +1062,7 @@ function FormPagamento({ despesa, hoje, onFechar, onSalvo }: { despesa: Despesa;
   const dif = pago - despesa.valorCentavos;
 
   return (
-    <Modal titulo={`Pagamento · ${despesa.favorecido}`} eyebrowTexto={`LIFF/ DESPESAS · ${despesa.ref}`} onFechar={onFechar} largura={520}>
+    <Modal titulo={`Pagamento · ${despesa.favorecido}`} eyebrowTexto={`COLMÉIA/ DESPESAS · ${despesa.ref}`} onFechar={onFechar} largura={520}>
       <div className="rec-form">
         <div className="fat-meta">
           {[despesa.descricao, `competência ${rotuloMes(despesa.competencia)}`, `vence ${br(despesa.vencimento)}`, rotuloFormaPagamento(despesa.forma)].filter(Boolean).join(" · ")}
@@ -1118,7 +1118,7 @@ function FormFatura({
   const { salvando, erro, enviar } = useEnvio();
   const total = despesas.reduce((t, d) => t + d.valorCentavos, 0);
   return (
-    <Modal titulo={`Fatura · ${cartao?.nome ?? "Cartão"}`} eyebrowTexto={`LIFF/ DESPESAS · FATURA QUE VENCE ${br(vencimento)}`} onFechar={onFechar} largura={600}>
+    <Modal titulo={`Fatura · ${cartao?.nome ?? "Cartão"}`} eyebrowTexto={`COLMÉIA/ DESPESAS · FATURA QUE VENCE ${br(vencimento)}`} onFechar={onFechar} largura={600}>
       <div className="rec-form">
         {cartao?.pagamento && <div className="fat-meta">{cartao.pagamento}</div>}
         <div className="fat-detalhe">
@@ -1191,7 +1191,7 @@ function Detalhe({
   );
 
   return (
-    <Modal titulo={`${d.ref} · ${d.favorecido}`} eyebrowTexto="LIFF/ DESPESAS · CONTA A PAGAR" onFechar={onFechar} largura={600}>
+    <Modal titulo={`${d.ref} · ${d.favorecido}`} eyebrowTexto="COLMÉIA/ DESPESAS · CONTA A PAGAR" onFechar={onFechar} largura={600}>
       <div className="rec-form">
         <div>
           <Status s={s} dias={diasVencida(d.vencimento, hoje)} />
@@ -1303,7 +1303,7 @@ function FormRecorrencia({ recorrencia: r, dados, hoje, onFechar, onSalvo }: { r
   const nome = dados.favorecidos.find((f) => f.id === r?.favorecidoId)?.nome;
 
   return (
-    <Modal titulo={r ? `Recorrente · ${nome ?? ""}` : "Nova despesa recorrente"} eyebrowTexto="LIFF/ DESPESAS · RECORRENTE" onFechar={onFechar} largura={640}>
+    <Modal titulo={r ? `Recorrente · ${nome ?? ""}` : "Nova despesa recorrente"} eyebrowTexto="COLMÉIA/ DESPESAS · RECORRENTE" onFechar={onFechar} largura={640}>
       <div className="rec-form">
         <div className="rec-form__duas">
           <Field label="Favorecido" required>
@@ -1386,7 +1386,7 @@ function FormFavorecido({ favorecido: f, onFechar, onSalvo }: { favorecido: Favo
   const cartao = tipo === "cartao";
 
   return (
-    <Modal titulo={f ? f.nome : "Novo favorecido"} eyebrowTexto="LIFF/ DESPESAS · FAVORECIDO" onFechar={onFechar} largura={600}>
+    <Modal titulo={f ? f.nome : "Novo favorecido"} eyebrowTexto="COLMÉIA/ DESPESAS · FAVORECIDO" onFechar={onFechar} largura={600}>
       <div className="rec-form">
         <div className="rec-form__duas">
           <Field label="Nome" required hint={cartao ? "Ex.: Cartão Itaú final 1234. Só os quatro últimos dígitos, nunca o número inteiro." : "A razão social ou o nome pelo qual todos conhecem."}>
@@ -1460,7 +1460,7 @@ function FormCategoria({ categoria: c, onFechar, onSalvo }: { categoria: Categor
   const { salvando, erro, enviar } = useEnvio();
 
   return (
-    <Modal titulo={c ? c.nome : "Nova categoria"} eyebrowTexto="LIFF/ DESPESAS · CATEGORIA" onFechar={onFechar} largura={520}>
+    <Modal titulo={c ? c.nome : "Nova categoria"} eyebrowTexto="COLMÉIA/ DESPESAS · CATEGORIA" onFechar={onFechar} largura={520}>
       <div className="rec-form">
         <Field label="Nome" required>
           <Input value={nome} onChange={setNome} placeholder="Ex.: Software e assinaturas" />

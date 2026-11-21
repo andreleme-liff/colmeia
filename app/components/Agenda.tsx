@@ -114,7 +114,7 @@ export default function Agenda({
   const card = (i: ItemAgenda, mostrarData = false) => (
     <div
       key={i.ref}
-      className="liff-agenda-card"
+      className="col-agenda-card"
       draggable={i.podeEditar}
       onDragStart={(e) => {
         e.dataTransfer.setData("text/plain", i.ref);
@@ -131,7 +131,7 @@ export default function Agenda({
       <div style={{ fontSize: 13, color: C.ink, lineHeight: 1.35, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {i.titulo}
       </div>
-      <div className="liff-agenda-passo" style={{ color: i.passo ? C.body : C.ghost, fontStyle: i.passo ? "normal" : "italic" }}>
+      <div className="col-agenda-passo" style={{ color: i.passo ? C.body : C.ghost, fontStyle: i.passo ? "normal" : "italic" }}>
         {i.passo || "sem próximo passo escrito"}
       </div>
       <div style={{ fontFamily: MONO, fontSize: 10, color: C.faint, marginTop: 4, display: "flex", gap: 6, minWidth: 0 }}>
@@ -148,7 +148,7 @@ export default function Agenda({
       <>
         {visiveis.map((i) => card(i, chave === "atrasado"))}
         {lista.length > LIMITE_FIXAS && (
-          <button type="button" className="liff-agenda-mais" onClick={() => setAbertas({ ...abertas, [chave]: !aberta })}>
+          <button type="button" className="col-agenda-mais" onClick={() => setAbertas({ ...abertas, [chave]: !aberta })}>
             {aberta ? "mostrar menos" : `mais ${lista.length - LIMITE_FIXAS}`}
           </button>
         )}
@@ -171,14 +171,14 @@ export default function Agenda({
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18, flexWrap: "wrap" }}>
         <button
           type="button"
-          className="liff-agenda-nav"
+          className="col-agenda-nav"
           aria-label="Semana anterior"
           disabled={semana <= segAtual}
           onClick={() => setSemana(somar(semana, -7))}
         >
           ‹
         </button>
-        <button type="button" className="liff-agenda-nav" aria-label="Próxima semana" onClick={() => setSemana(somar(semana, 7))}>
+        <button type="button" className="col-agenda-nav" aria-label="Próxima semana" onClick={() => setSemana(somar(semana, 7))}>
           ›
         </button>
         <span style={{ fontSize: 15, fontWeight: 700, color: C.ink, marginLeft: 6 }}>
@@ -187,14 +187,14 @@ export default function Agenda({
         {semana === segAtual ? (
           <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>esta semana</span>
         ) : (
-          <button type="button" className="liff-agenda-mais" style={{ width: "auto" }} onClick={() => setSemana(segAtual)}>
+          <button type="button" className="col-agenda-mais" style={{ width: "auto" }} onClick={() => setSemana(segAtual)}>
             voltar para esta semana
           </button>
         )}
       </div>
 
       {/* Faixa de carga: onde a agenda está cheia, e atalho para a semana */}
-      <div className="liff-agenda-faixa">
+      <div className="col-agenda-faixa">
         {faixa.semanas.map((s) => {
           const ativa = s.seg === semana;
           return (
@@ -205,7 +205,7 @@ export default function Agenda({
               onClick={() => setSemana(s.seg)}
               title={`Semana de ${ddmm(s.seg)}: ${s.total} ${s.total === 1 ? "item" : "itens"}`}
             >
-              <span className="liff-agenda-barras">
+              <span className="col-agenda-barras">
                 {s.dias.map((d) => (
                   <span
                     key={d.iso}
@@ -231,14 +231,14 @@ export default function Agenda({
       )}
 
       {/* A semana */}
-      <div className="liff-scroll-x" style={{ marginTop: 22 }}>
+      <div className="col-scroll-x" style={{ marginTop: 22 }}>
         <div
-          className="liff-agenda-grade"
+          className="col-agenda-grade"
           style={{ gridTemplateColumns: `minmax(150px, 1.15fr) repeat(5, minmax(112px, 1fr))${temFds ? " repeat(2, minmax(88px, 0.6fr))" : ""} minmax(150px, 1.15fr)` }}
         >
-          <div className="liff-agenda-col liff-agenda-col--atraso">
+          <div className="col-agenda-col col-agenda-col--atraso">
             {cabecalho("Atrasado", atrasados.length, atrasados.length ? C.error : C.dust)}
-            {atrasados.length ? fixa("atrasado", atrasados) : <div className="liff-agenda-vazio">Nada atrasado.</div>}
+            {atrasados.length ? fixa("atrasado", atrasados) : <div className="col-agenda-vazio">Nada atrasado.</div>}
           </div>
 
           {colunas.map((iso, d) => {
@@ -247,7 +247,7 @@ export default function Agenda({
             return (
               <div
                 key={iso}
-                className={"liff-agenda-col" + (alvo === iso ? " liff-agenda-col--alvo" : "") + (iso === hoje ? " liff-agenda-col--hoje" : "")}
+                className={"col-agenda-col" + (alvo === iso ? " col-agenda-col--alvo" : "") + (iso === hoje ? " col-agenda-col--hoje" : "")}
                 {...(passado ? {} : zona(iso, iso))}
                 style={passado ? { opacity: 0.45 } : undefined}
               >
@@ -257,9 +257,9 @@ export default function Agenda({
             );
           })}
 
-          <div className={"liff-agenda-col liff-agenda-col--fixa" + (alvo === "semdata" ? " liff-agenda-col--alvo" : "")} {...zona("semdata", null)}>
+          <div className={"col-agenda-col col-agenda-col--fixa" + (alvo === "semdata" ? " col-agenda-col--alvo" : "")} {...zona("semdata", null)}>
             {cabecalho("Sem data", semData.length)}
-            {semData.length ? fixa("semdata", semData) : <div className="liff-agenda-vazio">Tudo com dia marcado.</div>}
+            {semData.length ? fixa("semdata", semData) : <div className="col-agenda-vazio">Tudo com dia marcado.</div>}
           </div>
         </div>
       </div>

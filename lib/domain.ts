@@ -2,12 +2,12 @@
 // As cores das áreas são tokens do design system — o valor real depende do tema.
 
 export const AREAS = [
-  { id: "law-firms", label: "Law Firms", short: "LAW", color: "var(--liff-app-area-law-firms)" },
-  { id: "corporate", label: "Corporate", short: "CORP", color: "var(--liff-app-area-corporate)" },
-  { id: "public-sector", label: "Public Sector", short: "PUB", color: "var(--liff-app-area-public-sector)" },
-  { id: "tax", label: "Tax", short: "TAX", color: "var(--liff-app-area-tax)" },
-  { id: "labs", label: "Labs", short: "LABS", color: "var(--liff-app-area-labs)" },
-  { id: "social", label: "Social", short: "SOC", color: "var(--liff-app-area-social)" },
+  { id: "law-firms", label: "Law Firms", short: "LAW", color: "var(--col-app-area-law-firms)" },
+  { id: "corporate", label: "Corporate", short: "CORP", color: "var(--col-app-area-corporate)" },
+  { id: "public-sector", label: "Public Sector", short: "PUB", color: "var(--col-app-area-public-sector)" },
+  { id: "tax", label: "Tax", short: "TAX", color: "var(--col-app-area-tax)" },
+  { id: "labs", label: "Labs", short: "LABS", color: "var(--col-app-area-labs)" },
+  { id: "social", label: "Social", short: "SOC", color: "var(--col-app-area-social)" },
 ] as const;
 
 export type AreaId = (typeof AREAS)[number]["id"];
@@ -82,20 +82,6 @@ export type ComposicaoProposta = {
 export const PROPOSTA_VAZIA: ComposicaoProposta = {
   assinaturaCentavos: 0, implantacaoCentavos: 0, implantacaoParcelas: 1, customizacaoCentavos: 0, customizacaoParcelas: 1,
 };
-/** Registro da oportunidade na AWS: uma ACE ou um pedido de funding, com o link do cadastro. */
-export const TIPOS_AWS = [
-  { key: "ace", label: "ACE" },
-  { key: "funding", label: "Funding" },
-] as const;
-export type TipoAws = (typeof TIPOS_AWS)[number]["key"];
-export type RegistroAws = { tipo: TipoAws; descricao: string; url: string };
-export const LIMITES_AWS = { registros: 30, descricao: 160 };
-/** "2 ACE, 1 funding" — para o histórico e para a dica do card. */
-export function resumoAws(lista: RegistroAws[]): string {
-  const n = (t: TipoAws) => lista.filter((r) => r.tipo === t).length;
-  const partes = [n("ace") ? `${n("ace")} ACE` : "", n("funding") ? `${n("funding")} funding` : ""].filter(Boolean);
-  return partes.join(", ") || "—";
-}
 export const PARCELAS_MAX = 60;
 /** A composição vale a partir do estágio Proposta: antes disso não há proposta para detalhar. */
 export function estagioTemProposta(k: string): boolean {
@@ -135,7 +121,7 @@ export type Nivel = "view" | "edit";
 /** O papel define o teto de permissão; a matriz por área refina dentro dele. */
 // Do maior para o menor acesso. `financeiro` (nov/2026) fica entre gestor e admin: é o gestor
 // que também cuida do dinheiro (edita a receita, opera faturamento e despesas), sem administrar
-// pessoas, cadastros, funding nem ver o changelog.
+// pessoas, cadastros nem ver o changelog.
 export const PAPEIS = ["admin", "financeiro", "gestor", "membro", "leitura"] as const;
 /** Quem opera o dinheiro: edita a receita e usa faturamento e despesas. */
 export const PAPEIS_FINANCEIROS: readonly string[] = ["admin", "financeiro"];
@@ -167,10 +153,6 @@ export const NAV = [
   { key: "despesas", label: "despesas", soFinanceiro: true },
   // Daqui para baixo, só admin. A antiga "administração" (a matriz de permissões) virou parte
   // de Cadastros → Pessoas; `/admin` redireciona para lá.
-  // ACE e Funding (AWS): consumo previsto por oportunidade (conta LIFF e conta do cliente),
-  // arquétipos de implantação com as calculadoras oficiais e os programas (POC, MAP, Sandbox…).
-  // A chave e o endereço continuam `funding`, para não quebrar links nem o histórico.
-  { key: "funding", label: "ace e funding", soAdmin: true },
   // Registro de todas as alterações (a antiga Auditoria). Só admin desde nov/2026; o endereço
   // continua /auditoria para não quebrar links. O histórico de cada card segue no próprio card.
   { key: "auditoria", label: "changelog", soAdmin: true },
@@ -187,7 +169,6 @@ export const TITLES: Record<string, string> = {
   receita: "Forecast de receita",
   faturamento: "Faturamento · contas a receber",
   despesas: "Despesas · contas a pagar",
-  funding: "ACE e Funding",
   auditoria: "Changelog",
   conexoes: "MCP Server",
 };
@@ -195,7 +176,7 @@ export const TITLES: Record<string, string> = {
 export const ADMIN_CARDS = [
   {
     title: "PAPÉIS",
-    body: "Leitura vê tudo e não edita. Membro e Gestor editam os cards de todos os produtos. Financeiro edita a receita e opera faturamento e despesas. Admin também administra cadastros e funding.",
+    body: "Leitura vê tudo e não edita. Membro e Gestor editam os cards de todos os produtos. Financeiro edita a receita e opera faturamento e despesas. Admin também administra cadastros.",
   },
   {
     title: "LOGIN",
@@ -257,7 +238,7 @@ export type Area = { id: string; label: string; short: string; color: string; in
 
 /**
  * Registro em memória do cadastro de áreas, preenchido pelo cliente com o que vem do banco.
- * A cor devolvida é sempre a variável CSS `--liff-app-area-<id>` — quem define o valor dela é
+ * A cor devolvida é sempre a variável CSS `--col-app-area-<id>` — quem define o valor dela é
  * o bloco de estilo que o cliente injeta a partir do cadastro, e é por isso que o tema claro
  * continua derivando a variante escurecida sozinho.
  *
@@ -267,7 +248,7 @@ let registroAreas: Area[] = AREAS.map((a) => ({ ...a, ink: a.color }));
 
 export function setAreas(lista: { id: string; label: string; short: string }[]): void {
   if (!lista?.length) return;
-  registroAreas = lista.map((a) => ({ ...a, color: `var(--liff-app-area-${a.id})`, ink: `var(--liff-app-area-${a.id}-ink, var(--liff-app-area-${a.id}))` }));
+  registroAreas = lista.map((a) => ({ ...a, color: `var(--col-app-area-${a.id})`, ink: `var(--col-app-area-${a.id}-ink, var(--col-app-area-${a.id}))` }));
 }
 
 export function todasAreas(): Area[] {
@@ -280,8 +261,8 @@ export function areaOf(id: string): Area {
       id,
       label: "—",
       short: "—",
-      color: "var(--liff-text-faint)",
-      ink: "var(--liff-text-faint)",
+      color: "var(--col-text-faint)",
+      ink: "var(--col-text-faint)",
     }
   );
 }
@@ -402,7 +383,7 @@ export function rotuloDaSemana(segundaISO: string): string {
 /** Teto de parcelas do modelo comercial, nas duas cobranças de uma vez. */
 export const MAX_PARCELAS = 12;
 
-/** Teto de duração do contrato em meses. É o mesmo limite que o ACE aceita. */
+/** Teto de duração do contrato em meses. */
 export const MAX_DURACAO_MESES = 144;
 
 export type ModeloComercial = {
@@ -765,7 +746,7 @@ export function tipoDaRef(ref: string | null | undefined): "oportunidade" | "ati
 }
 
 /* =========================================================
-   Card comercial v2 (nov/2026) — campos vindos da planilha do LIFF Tax
+   Card comercial v2 (nov/2026) — campos vindos da planilha comercial de origem
    ========================================================= */
 
 /** Tipo do que está travando a oportunidade. Lista fechada: é o que permite somar por tipo. */
@@ -796,7 +777,7 @@ export const ERP_SUGESTOES = ["SAP ECC", "SAP S/4HANA", "TOTVS Protheus", "Oracl
 
 /** Origens iniciais (aba Listas da planilha). Viram cadastro editável; isto é só o ponto de partida. */
 export const ORIGENS_INICIAIS = [
-  "Base Fius", "Maluf", "Ponte/parceiro", "AWS", "Evento", "Outbound", "Indicação", "A definir",
+  "Base própria", "Ponte/parceiro", "Evento", "Outbound", "Indicação", "A definir",
 ] as const;
 
 export function blockerTipoLabel(k: string | null | undefined): string {

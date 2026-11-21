@@ -50,10 +50,10 @@ const req = (token, caminho, opts = {}) =>
   });
 
 try {
-  const andre = await sessaoDe("leme@getliff.ai");
-  const marina = await sessaoDe("marina@getliff.ai");
-  const rafael = await sessaoDe("rafael@getliff.ai");
-  const clara = await sessaoDe("clara@getliff.ai");
+  const andre = await sessaoDe("admin@exemplo.com");
+  const marina = await sessaoDe("marina@exemplo.com");
+  const rafael = await sessaoDe("rafael@exemplo.com");
+  const clara = await sessaoDe("clara@exemplo.com");
 
   const estados = {};
   for (const [nome, s] of Object.entries({ andre, marina, rafael, clara })) {
@@ -553,7 +553,7 @@ try {
   );
   checa(
     `a mudança de permissão foi atribuída ao admin`,
-    logs.some((l) => l.campo === "permissao" && l.autor === "André Leme")
+    logs.some((l) => l.campo === "permissao" && l.autor === "Ana Admin")
   );
   for (const l of logs.slice(0, 5)) {
     console.log(`     ${l.autor} · ${l.entidade} · ${l.campo}: ${l.valor_anterior} → ${l.valor_novo}`);

@@ -1,6 +1,6 @@
 // Ponta a ponta do papel FINANCEIRO contra um app e um banco LOCAIS: o que ele ganha sobre o
 // gestor (editar a receita, faturamento e despesas), o que continua só de admin (pessoas,
-// cadastros, funding, changelog) e o modo "ver como".
+// cadastros, changelog) e o modo "ver como".
 //
 //   E2E_BASE=http://localhost:3010 E2E_DB=postgres://postgres:postgres@127.0.0.1:5433/postgres \
 //     node scripts/e2e-financeiro-local.mjs
@@ -94,7 +94,6 @@ checa("a auditoria registra o financeiro como autor", linha.actor_user_id, u.id)
 
 console.log("\no que continua só de admin");
 for (const [nome, metodo, caminho, corpo] of [
-  ["lê funding", "GET", "/api/funding", undefined],
   ["lê o changelog", "GET", "/api/logs", undefined],
   ["cadastra pessoa", "POST", "/api/users", {}],
   ["muda papel de alguém", "PATCH", `/api/users/${u.id}`, { papel: "admin" }],
@@ -108,7 +107,7 @@ console.log("\nver como");
 checa("admin liga o modo financeiro", (await chamar(admin, "POST", "/api/me/ver-como", { papel: "financeiro" })).status, 200);
 const simulado = `${admin}; ver_como=financeiro`;
 checa("simulando: responde como financeiro", await flags(simulado), ["financeiro", false, true, true]);
-checa("simulando: funding fica barrado", (await chamar(simulado, "GET", "/api/funding")).status, 403);
+checa("simulando: changelog fica barrado", (await chamar(simulado, "GET", "/api/logs")).status, 403);
 checa("simulando: despesas abre", (await chamar(simulado, "GET", "/api/despesas")).status, 200);
 checa("quem não é admin não simula pelo cookie", await flags(`${gestor}; ver_como=financeiro`), ["gestor", false, true, false]);
 

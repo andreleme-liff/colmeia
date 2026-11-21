@@ -93,7 +93,7 @@ export default function SeletorResponsaveis({
           background: ativo ? C.panel2 : C.canvas,
           border: `1px solid ${ativo ? C.ink : C.line}`, borderRadius: R,
           whiteSpace: "nowrap",
-          // A largura FIXA mora no CSS (`.liff-filtro-quem > [role="button"]`), não aqui:
+          // A largura FIXA mora no CSS (`.col-filtro-quem > [role="button"]`), não aqui:
           // estilo inline vence media query, e no celular o gatilho ficaria preso nos
           // 165px em vez de ocupar a faixa inteira. Já caí nisto uma vez neste mesmo
           // componente — o `flex: none` estava inline e o celular ignorava a regra.
@@ -125,7 +125,7 @@ export default function SeletorResponsaveis({
           <div style={{ display: "flex", borderBottom: `1px solid ${C.line}` }}>
             <button
               type="button"
-              className="liff-hover-cell"
+              className="col-hover-cell"
               onClick={() => onChange([])}
               style={{
                 flex: 1,
@@ -142,7 +142,7 @@ export default function SeletorResponsaveis({
             {chaveDoUsuario && (
               <button
                 type="button"
-                className="liff-hover-cell"
+                className="col-hover-cell"
                 onClick={soEu}
                 style={{
                   flex: 1,
@@ -171,7 +171,7 @@ export default function SeletorResponsaveis({
                 key={o.chave}
                 role="option"
                 aria-selected={on}
-                className="liff-hover-cell"
+                className="col-hover-cell"
                 onClick={() => alterna(o.chave)}
                 style={{
                   display: "flex",

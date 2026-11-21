@@ -144,7 +144,7 @@ console.log("\n3. autorização com gravação (clique na tela)");
 const r1 = await autorizar("ROUND1", "leitura escrita offline_access");
 checa("o state volta intacto", r1.volta.state, r1.state);
 checa("iss no retorno (RFC 9207)", r1.volta.iss, BASE);
-checa("código com prefixo", (r1.volta.code ?? "").startsWith("liff_ac_"), true);
+checa("código com prefixo", (r1.volta.code ?? "").startsWith("col_ac_"), true);
 
 const errado = await token({ grant_type: "authorization_code", code: r1.volta.code, code_verifier: b64url(randomBytes(32)), redirect_uri: r1.redirectUri });
 checa("verifier errado → invalid_grant", errado.corpo.error, "invalid_grant");

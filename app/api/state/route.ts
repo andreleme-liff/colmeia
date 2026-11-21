@@ -99,26 +99,23 @@ export async function GET() {
         id: number; ref: string; conta: string; area: string; estagio: string;
         valor_centavos: string; responsavel: string | null; responsavel_user_id: number | null;
         proximo_passo: string; situacao: string; situacao_em: Date | null; contato: string; responsavel_texto: string;
-        mexido_em: Date; criado_em: Date; proximo_passo_em: Date | null; ace_aws: boolean;
+        mexido_em: Date; criado_em: Date; proximo_passo_em: Date | null;
         origem_id: string | null; ponte: string; contato_operacional: string; dor: string; erp: string; proposta_url: string; cliente_id: number | null;
         ultima_interacao: Date | null; blocker: string; blocker_tipo: string | null;
         blocker_dono_id: number | null; blocker_dono: string | null; motivo_perda: string | null;
         motivo_perda_detalhe: string; notas: string; modulos: string[];
         prop_assinatura_centavos: string; prop_implantacao_centavos: string; prop_implantacao_parcelas: number;
-        prop_customizacao_centavos: string; prop_customizacao_parcelas: number; arquetipo_id: number | null;
-        aws: { tipo: "ace" | "funding"; descricao: string; url: string }[];
+        prop_customizacao_centavos: string; prop_customizacao_parcelas: number;
       }[]
     >`
       SELECT d.id, d.ref, d.conta, d.area, d.estagio, d.valor_centavos,
              u.nome AS responsavel, d.responsavel_user_id, d.proximo_passo,
-             d.situacao, d.situacao_em, d.contato, d.responsavel_texto, d.proximo_passo_em, d.ace_aws,
+             d.situacao, d.situacao_em, d.contato, d.responsavel_texto, d.proximo_passo_em,
              d.origem_id, d.ponte, d.contato_operacional, d.dor, d.erp, d.proposta_url, d.cliente_id, d.ultima_interacao,
              d.blocker, d.blocker_tipo, d.blocker_dono_id, bd.nome AS blocker_dono,
              d.motivo_perda, d.motivo_perda_detalhe, d.notas,
              d.prop_assinatura_centavos, d.prop_implantacao_centavos, d.prop_implantacao_parcelas,
-             d.prop_customizacao_centavos, d.prop_customizacao_parcelas, d.arquetipo_id,
-             COALESCE((SELECT json_agg(json_build_object('tipo', w.tipo, 'descricao', w.descricao, 'url', w.url) ORDER BY w.id)
-                       FROM oportunidade_aws w WHERE w.deal_id = d.id), '[]'::json) AS aws,
+             d.prop_customizacao_centavos, d.prop_customizacao_parcelas,
              COALESCE((SELECT array_agg(m.produto_id ORDER BY m.produto_id) FROM oportunidade_modulos m
                        WHERE m.deal_id = d.id), '{}') AS modulos,
              -- Card nunca editado tem atualizado_em nulo; nesse caso a idade conta da criação,
@@ -162,9 +159,6 @@ export async function GET() {
   `;
 
   // Produtos de todas as áreas visíveis. O formulário só oferece os da área escolhida.
-  const arquetipos = await sql<{ id: number; nome: string; ativo: boolean; pasta: string | null; area: string | null }[]>`
-    SELECT a.id, a.nome, a.ativo, p.nome AS pasta, COALESCE(m.area, p.area) AS area FROM funding_arquetipos a LEFT JOIN funding_pastas p ON p.id = a.pasta_id LEFT JOIN produtos m ON m.id = p.produto_id ORDER BY p.ordem NULLS LAST, a.ordem, a.nome
-  `;
   const origens = await sql<{ id: string; label: string; ativo: boolean }[]>`
     SELECT id, label, ativo FROM origens ORDER BY ordem, label
   `;
@@ -224,9 +218,6 @@ export async function GET() {
     mcpHabilitado: lerConfig(process.env).habilitado,
     // Cadastro de origens: todas (as inativas também, para o card mostrar a que já estava).
     origens: [...origens],
-    // Arquétipos de funding: só o nome, a pasta e o produto, para o seletor do card comercial.
-    // O resto do Funding (custos, calculadoras) continua só para admin.
-    arquetipos: [...arquetipos],
     // Cadastro de organizações que a pessoa enxerga: é de onde o formulário da oportunidade
     // escolhe a conta. `chaves` são os nomes (normalizados) que caem em cada uma.
     organizacoes: (await lerClientes(sql, undefined, ctx.isAdmin ? undefined : ctx.areasVisiveis)).map((c) => ({
@@ -270,7 +261,6 @@ export async function GET() {
       situacaoEm: d.situacao_em ? d.situacao_em.toISOString().slice(0, 10) : null,
       contato: d.contato,
       proximoPassoEm: d.proximo_passo_em ? d.proximo_passo_em.toISOString().slice(0, 10) : null,
-      aceAws: d.ace_aws,
       origemId: d.origem_id,
       ponte: d.ponte,
       contatoOperacional: d.contato_operacional,
@@ -294,8 +284,6 @@ export async function GET() {
         customizacaoCentavos: Number(d.prop_customizacao_centavos),
         customizacaoParcelas: d.prop_customizacao_parcelas,
       },
-      arquetipoId: d.arquetipo_id,
-      aws: d.aws,
       atualizadoEm: d.mexido_em.toISOString(),
       criadoEm: d.criado_em.toISOString(),
       podeEditar: ctx.podeEditar(d.area),

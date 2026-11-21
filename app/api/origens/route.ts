@@ -1,4 +1,4 @@
-// Cadastro de origens da oportunidade (Base Fius, AWS, Evento…). Restrito a admin, como
+// Cadastro de origens da oportunidade (evento, indicação, outbound…). Restrito a admin, como
 // produtos e áreas: é vocabulário do sistema. Parceiro novo vira origem aqui, sem deploy.
 
 import { getDb } from "@/lib/db";

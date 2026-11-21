@@ -52,10 +52,8 @@ export type Fatos = {
   pessoas: Map<number, string>;
   /** Todo produto: para conferir que pertence à área (final) do registro. */
   produtos: { id: string; area: string; label?: string }[];
-  /** Cadastro de origens da oportunidade (Base Fius, AWS, Evento…). */
+  /** Cadastro de origens da oportunidade (evento, indicação, outbound…). */
   origens?: { id: string; label: string; ativo: boolean }[];
-  /** Arquétipos de funding. `area` = produto da pasta do arquétipo; nulo = pasta sem módulo, vale para todos. */
-  arquetipos?: { id: number; nome: string; ativo: boolean; pasta: string | null; area: string | null }[];
   /** Toda oportunidade: para ligar uma tarefa a ela, por id (tela) ou referência (MCP). */
   oportunidades: { id: number; ref: string; conta: string; area: string }[];
 };

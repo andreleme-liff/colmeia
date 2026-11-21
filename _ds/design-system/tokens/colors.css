@@ -1,0 +1,94 @@
+/* =========================================================
+   Color tokens
+   Source of truth: col-manual-marca + col-signature-kit
+   (AI-BRAND-GUIDE.md §5). Never invent a HEX; derive product
+   colors from the vertical cascade (Core/Dark/Mid/Light/Accent).
+   ========================================================= */
+:root {
+  /* ---- Mother brand ---------------------------------- */
+  --col-obsidiana: #0E1014; /* canvas · base · logo on light */
+  --col-charcoal:  #403D39; /* surfaces · lines · depth */
+  --col-dust:      #CCC5B9; /* support / secondary text */
+  --col-floral:    #FFFCF2; /* text · logo on dark · light surface */
+  --col-paprika:   #EB5E28; /* signature · UI accent · emphasis · action */
+
+  /* Obsidiana-derived surface steps (from real site CSS) */
+  --col-panel:    #15181C;
+  --col-panel-2:  #1B1F24;
+  --col-cell:     #11161A;
+  --col-code-bg:  #0B0D10;
+  --col-hairline: rgba(255,255,255,0.08);
+  --col-body-ink: #DDD5C8; /* body copy on dark */
+  --col-muted:    #837E74; /* footnotes / mono meta */
+
+  /* ---- Global semantic (UI state — NOT product color) */
+  --col-action:  #EB5E28;
+  --col-success: #3BA66B;
+  --col-warning: #D99A21;
+  --col-error:   #C94435;
+  --col-info:    #2E6F95;
+
+  /* ---- Vertical cores -------------------------------- */
+  --col-law-firms:     #344E7A;
+  --col-corporate:     #6B4E8A;
+  --col-public-sector: #4F6F52;
+  --col-tax:           #A6532F;
+  --col-labs:          #00A3B5;
+  --col-social:        #B85C70;
+
+  /* ---- Vertical: Law Firms (operação jurídica · ERP) */
+  --col-law-firms-core:   #344E7A;
+  --col-law-firms-dark:   #17233D;
+  --col-law-firms-mid:    #4B6B9B;
+  --col-law-firms-light:  #E5EBF4;
+  --col-law-firms-accent: #8C6D3F;
+
+  /* ---- Vertical: Corporate (governança · compliance) */
+  --col-corporate-core:   #6B4E8A;
+  --col-corporate-dark:   #2C1F3A;
+  --col-corporate-mid:    #8B6FA8;
+  --col-corporate-light:  #EEE5F7;
+  --col-corporate-accent: #00A3B5;
+
+  /* ---- Vertical: Public Sector (governo · controle) */
+  --col-public-sector-core:   #4F6F52;
+  --col-public-sector-dark:   #243527;
+  --col-public-sector-mid:    #809A6A;
+  --col-public-sector-light:  #E4EDE3;
+  --col-public-sector-accent: #2E6F95;
+
+  /* ---- Vertical: Tax (tributário · custo · DRE) ----- */
+  --col-tax-core:   #A6532F;
+  --col-tax-dark:   #4A2418;
+  --col-tax-mid:    #C4774C;
+  --col-tax-light:  #F1D4C5;
+  --col-tax-accent: #EB5E28;
+
+  /* ---- Vertical: Labs (IA aplicada · agentes) ------- */
+  --col-labs-core:   #00A3B5;
+  --col-labs-dark:   #074B55;
+  --col-labs-mid:    #5E7CE2;
+  --col-labs-light:  #D6F4F6;
+  --col-labs-accent: #7657FF;
+
+  /* ---- Vertical: Social (impacto · acesso à justiça) */
+  --col-social-core:   #B85C70;
+  --col-social-dark:   #4A202B;
+  --col-social-mid:    #D38A9A;
+  --col-social-light:  #F5DCE3;
+  --col-social-accent: #C4875D;
+
+  /* ---- Semantic aliases ------------------------------ */
+  --col-canvas:       var(--col-obsidiana);
+  --col-surface:      var(--col-panel);
+  --col-surface-2:    var(--col-panel-2);
+  --col-surface-cell: var(--col-cell);
+  --col-border:       var(--col-charcoal);
+  --col-text:         var(--col-floral);
+  --col-text-body:    var(--col-body-ink);
+  --col-text-muted:   var(--col-dust);
+  --col-text-faint:   var(--col-muted);
+  --col-accent:       var(--col-paprika);
+  --col-selection-bg: var(--col-paprika);
+  --col-selection-fg: var(--col-obsidiana);
+}

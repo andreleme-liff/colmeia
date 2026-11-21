@@ -6,30 +6,30 @@
 import { useSyncExternalStore, type CSSProperties } from "react";
 
 export const C = {
-  canvas: "var(--liff-canvas)",
-  panel: "var(--liff-surface)",
-  panel2: "var(--liff-surface-2)",
-  cell: "var(--liff-surface-cell)",
-  code: "var(--liff-code-bg)",
-  line: "var(--liff-border)", // hairline estrutural
-  ghost: "var(--liff-app-ghost)", // texto mais apagado da interface
-  ink: "var(--liff-text)",
-  body: "var(--liff-text-body)",
-  dust: "var(--liff-text-muted)",
-  faint: "var(--liff-text-faint)",
-  accent: "var(--liff-accent)",
-  success: "var(--liff-app-success-ink)",
-  warning: "var(--liff-app-warning-ink)",
-  error: "var(--liff-app-error-ink)",
-  info: "var(--liff-app-info-ink)",
-  onState: "var(--liff-app-on-state)", // texto sobre preenchimento de estado
+  canvas: "var(--col-canvas)",
+  panel: "var(--col-surface)",
+  panel2: "var(--col-surface-2)",
+  cell: "var(--col-surface-cell)",
+  code: "var(--col-code-bg)",
+  line: "var(--col-border)", // hairline estrutural
+  ghost: "var(--col-app-ghost)", // texto mais apagado da interface
+  ink: "var(--col-text)",
+  body: "var(--col-text-body)",
+  dust: "var(--col-text-muted)",
+  faint: "var(--col-text-faint)",
+  accent: "var(--col-accent)",
+  success: "var(--col-app-success-ink)",
+  warning: "var(--col-app-warning-ink)",
+  error: "var(--col-app-error-ink)",
+  info: "var(--col-app-info-ink)",
+  onState: "var(--col-app-on-state)", // texto sobre preenchimento de estado
 } as const;
 
 /** Raio dos cantos: um valor só para tudo que tem borda. O número mora em globals.css. */
-export const R = "var(--liff-radius-sm)";
+export const R = "var(--col-radius-sm)";
 
-export const SANS = "var(--liff-font-body)";
-export const MONO = "var(--liff-font-mono)";
+export const SANS = "var(--col-font-body)";
+export const MONO = "var(--col-font-mono)";
 
 /** Eyebrow / rótulo técnico: mono, caixa alta, tracking largo. */
 export function eyebrow(fontSize: number, color: string, letterSpacing = "0.16em"): CSSProperties {
@@ -89,8 +89,8 @@ export function prioColor(p: string): string {
    assim todas as regras do claro continuam valendo no conteúdo, e só a lateral volta aos
    tokens do escuro (ver globals.css). */
 
-export const THEME_KEY = "liff-tasks-theme";
-export const THEME_EVENT = "liff-tasks-theme-change";
+export const THEME_KEY = "colmeia-theme";
+export const THEME_EVENT = "colmeia-theme-change";
 export type Theme = "dark" | "light" | "misto";
 export const TEMAS: readonly Theme[] = ["dark", "misto", "light"];
 

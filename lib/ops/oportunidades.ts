@@ -7,7 +7,7 @@
 import { vincularOportunidade } from "../clientes-db";
 import type { Queryable } from "../db";
 import { registrar } from "../log";
-import { formatarRef, type RegistroAws } from "../domain";
+import { formatarRef } from "../domain";
 import { carregarFatos } from "./atividades";
 import { ehFalha, type Autor, type Falha, type Permissoes } from "./comum";
 import {
@@ -33,21 +33,20 @@ export async function criarOportunidade(
 
   const [nova] = await tx<{ id: number }[]>`
     INSERT INTO deals (ref, conta, area, estagio, valor_centavos, responsavel_user_id,
-                       proximo_passo, proximo_passo_em, situacao, situacao_em, contato, responsavel_texto, ace_aws,
+                       proximo_passo, proximo_passo_em, situacao, situacao_em, contato, responsavel_texto,
                        origem_id, ponte, contato_operacional, dor, erp, ultima_interacao,
                        blocker, blocker_tipo, blocker_dono_id, motivo_perda, motivo_perda_detalhe, notas, proposta_url,
                        prop_assinatura_centavos, prop_implantacao_centavos, prop_implantacao_parcelas,
-                       prop_customizacao_centavos, prop_customizacao_parcelas, arquetipo_id)
+                       prop_customizacao_centavos, prop_customizacao_parcelas)
     VALUES (${ref}, ${l.conta}, ${l.area}, ${l.estagio}, ${l.valorCentavos}, ${l.responsavelId},
-            ${l.proximoPasso}, ${l.proximoPassoEm}, ${l.situacao}, ${l.situacaoEm}, ${l.contato}, ${l.responsavelTexto}, ${l.aceAws},
+            ${l.proximoPasso}, ${l.proximoPassoEm}, ${l.situacao}, ${l.situacaoEm}, ${l.contato}, ${l.responsavelTexto},
             ${l.origemId}, ${l.ponte}, ${l.contatoOperacional}, ${l.dor}, ${l.erp}, ${l.ultimaInteracao},
             ${l.blocker}, ${l.blockerTipo}, ${l.blockerDonoId}, ${l.motivoPerda}, ${l.motivoPerdaDetalhe}, ${l.notas}, ${l.propostaUrl},
             ${l.proposta.assinaturaCentavos}, ${l.proposta.implantacaoCentavos}, ${l.proposta.implantacaoParcelas},
-            ${l.proposta.customizacaoCentavos}, ${l.proposta.customizacaoParcelas}, ${l.arquetipoId})
+            ${l.proposta.customizacaoCentavos}, ${l.proposta.customizacaoParcelas})
     RETURNING id
   `;
   await gravarModulos(tx, nova.id, l.modulos);
-  await gravarAws(tx, nova.id, l.aws);
   // Toda oportunidade referencia uma organização do cadastro: a escolhida, ou (importação, MCP,
   // nome novo digitado) a que responde por aquele nome, criada se for a primeira.
   await vincularOportunidade(tx, nova.id, autor, org?.id);
@@ -87,27 +86,17 @@ async function gravarModulos(tx: Queryable, dealId: number, modulos: string[]): 
   }
 }
 
-/** Troca a lista inteira de registros na AWS da oportunidade. Dentro da transação de quem chama. */
-async function gravarAws(tx: Queryable, dealId: number, lista: RegistroAws[]): Promise<void> {
-  await tx`DELETE FROM oportunidade_aws WHERE deal_id = ${dealId}`;
-  for (const r of lista) {
-    await tx`INSERT INTO oportunidade_aws (deal_id, tipo, descricao, url) VALUES (${dealId}, ${r.tipo}, ${r.descricao}, ${r.url})`;
-  }
-}
-
 async function lerAtual(tx: Queryable, dealId: number): Promise<OportunidadeAtual | null> {
   const linhas = await tx<OportunidadeAtual[]>`
     SELECT d.id, d.ref, d.conta, d.area, d.estagio, d.valor_centavos, d.proximo_passo,
            d.responsavel_user_id, u.nome AS responsavel,
-           d.situacao, d.situacao_em, d.contato, d.responsavel_texto, d.proximo_passo_em, d.ace_aws,
+           d.situacao, d.situacao_em, d.contato, d.responsavel_texto, d.proximo_passo_em,
            d.origem_id, d.ponte, d.contato_operacional, d.dor, d.erp, d.ultima_interacao,
            d.blocker, d.blocker_tipo, d.blocker_dono_id, d.motivo_perda, d.motivo_perda_detalhe, d.notas, d.proposta_url,
            d.prop_assinatura_centavos, d.prop_implantacao_centavos, d.prop_implantacao_parcelas,
-           d.prop_customizacao_centavos, d.prop_customizacao_parcelas, d.arquetipo_id,
+           d.prop_customizacao_centavos, d.prop_customizacao_parcelas,
            COALESCE((SELECT array_agg(m.produto_id ORDER BY m.produto_id) FROM oportunidade_modulos m
-                     WHERE m.deal_id = d.id), '{}') AS modulos,
-           COALESCE((SELECT json_agg(json_build_object('tipo', w.tipo, 'descricao', w.descricao, 'url', w.url) ORDER BY w.id)
-                     FROM oportunidade_aws w WHERE w.deal_id = d.id), '[]'::json) AS aws
+                     WHERE m.deal_id = d.id), '{}') AS modulos
     FROM deals d LEFT JOIN users u ON u.id = d.responsavel_user_id
     WHERE d.id = ${dealId}
     FOR UPDATE OF d
@@ -128,10 +117,6 @@ async function aplicar(
   }
   if (plano.modulos) {
     await gravarModulos(tx, dealId, plano.modulos);
-    if (!Object.keys(plano.sets).length) await tx`UPDATE deals SET atualizado_em = now() WHERE id = ${dealId}`;
-  }
-  if (plano.aws) {
-    await gravarAws(tx, dealId, plano.aws);
     if (!Object.keys(plano.sets).length) await tx`UPDATE deals SET atualizado_em = now() WHERE id = ${dealId}`;
   }
   // A área do registro pode ter acabado de mudar; a auditoria fica na área de destino.

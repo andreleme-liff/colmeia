@@ -67,7 +67,7 @@ const MARCA_SITUACAO: Record<SituacaoEfetiva, CSSProperties> = {
   contratada: fundoSerie(S_CONTRATADA),
   provavel: fundoSerie(S_PROVAVEL),
   possivel: fundoSerie(S_POSSIVEL),
-  fora: { boxShadow: "inset 0 0 0 1px var(--liff-text-faint)" },
+  fora: { boxShadow: "inset 0 0 0 1px var(--col-text-faint)" },
 };
 
 export default function Receita({
@@ -151,7 +151,7 @@ export default function Receita({
     <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <span style={eyebrow(10, C.faint, "0.14em")}>HORIZONTE</span>
-        <div role="group" aria-label="Horizonte do forecast" className="liff-densidade">
+        <div role="group" aria-label="Horizonte do forecast" className="col-densidade">
           {HORIZONTES.map((h) => (
             <button key={h} type="button" aria-pressed={horizonte === h} onClick={() => setHorizonte(h)}>
               {h} meses
@@ -185,7 +185,7 @@ export default function Receita({
           {/* Contratada sempre aparece: um total (Contratado) ou aberta nos três tipos (Ver detalhes).
               Provável (chance alta) e Possível (chance baixa) entram por cima, cada um com o seu botão. */}
           <div className="rec-controles">
-            <div role="group" aria-label="Receita contratada" className="liff-densidade">
+            <div role="group" aria-label="Receita contratada" className="col-densidade">
               {([["consolidada", "Contratado"], ["detalhada", "Ver detalhes"]] as const).map(([v, rotulo]) => (
                 <button key={v} type="button" aria-pressed={visao === v} onClick={() => setVisao(v)}>
                   {rotulo}
@@ -425,7 +425,7 @@ function TabelaMensal({ serie, series }: { serie: MesForecast[]; series: Serie[]
   const comTotal = series.length > 1;
   const cols = `0.8fr repeat(${series.length + (comTotal ? 1 : 0)}, 1fr)`;
   return (
-    <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
+    <div className="col-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
       <div style={{ minWidth: 120 + (series.length + 1) * 130 }}>
         <div style={{ display: "grid", gridTemplateColumns: cols, background: C.canvas, borderBottom: `1px solid ${C.line}` }}>
           {["MÊS", ...series.map((s) => s.label.toUpperCase()), ...(comTotal ? ["TOTAL"] : [])].map((h) => (
@@ -519,7 +519,7 @@ function TabelaContratos({
     total: (i) => (i.efetiva === "fora" ? null : totalNoPeriodo(i.contrato, de, ate)),
   });
   return (
-    <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
+    <div className="col-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
       <div style={{ minWidth: 980 }}>
         <div style={{ display: "grid", gridTemplateColumns: cols, background: C.canvas, borderBottom: `1px solid ${C.line}` }}>
           {(
@@ -539,7 +539,7 @@ function TabelaContratos({
           return (
             <div
               key={c.id}
-              className="liff-hover-row"
+              className="col-hover-row"
               role="button"
               tabIndex={0}
               onClick={() => onAbrir(c)}
@@ -710,7 +710,7 @@ function FormContrato({
   return (
     <Modal
       titulo={editando ? `${inicial.conta} · ${inicial.ref}` : "Nova receita"}
-      eyebrowTexto="LIFF/ RECEITA · CONTRATO"
+      eyebrowTexto="COLMÉIA/ RECEITA · CONTRATO"
       onFechar={onFechar}
       largura={760}
     >
@@ -747,7 +747,7 @@ function FormContrato({
         </div>
         <div className="rec-form__duas">
           <Field label="Situação" hint={ganho ? "O card está em Ganho: a receita é contratada." : undefined}>
-            <div role="group" aria-label="Situação" className="liff-densidade">
+            <div role="group" aria-label="Situação" className="col-densidade">
               {(["contratada", "prevista"] as const).map((s) => (
                 <button key={s} type="button" aria-pressed={sitEfetiva === s} disabled={ganho} onClick={() => setSituacao(s)}>
                   {s}
@@ -757,7 +757,7 @@ function FormContrato({
           </Field>
           {sitEfetiva === "prevista" && (
             <Field label="Chance de fechar" hint="Alta soma como provável; baixa, como possível.">
-              <div role="group" aria-label="Chance de fechar" className="liff-densidade">
+              <div role="group" aria-label="Chance de fechar" className="col-densidade">
                 {(["alta", "baixa"] as const).map((c) => (
                   <button key={c} type="button" aria-pressed={chance === c} onClick={() => setChance(c)}>
                     {c}

@@ -18,7 +18,7 @@ const cats = [
 const favs = [
   { id: 1, nome: "Ana Dev ME", tipo: "colaborador_pj", documento: "", contato: "", pagamento: "", diaFechamento: null, diaVencimento: null, notas: "", ativo: true },
   { id: 2, nome: "Cartão final 1234", tipo: "cartao", documento: "", contato: "", pagamento: "", diaFechamento: 25, diaVencimento: 5, notas: "", ativo: true },
-  { id: 3, nome: "AWS", tipo: "fornecedor", documento: "", contato: "", pagamento: "", diaFechamento: null, diaVencimento: null, notas: "", ativo: true },
+  { id: 3, nome: "Nuvem", tipo: "fornecedor", documento: "", contato: "", pagamento: "", diaFechamento: null, diaVencimento: null, notas: "", ativo: true },
 ];
 const rec = (o) => ({ id: 1, favorecidoId: 1, categoriaId: 1, area: null, descricao: "Engenharia", valorCentavos: 1500000, diaVencimento: 5,
   venceMesSeguinte: true, forma: "pix", cartaoId: null, inicio: "2026-10", fim: null, notas: "", ...o });
@@ -52,20 +52,20 @@ checa("cartão sem os dias devolve a própria data", vencimentoDoCartao({ diaFec
 checa("recorrência no cartão: o vencimento é o da fatura da cobrança",
   vencimentoDaRecorrencia(rec({ forma: "cartao", cartaoId: 2, diaVencimento: 3, venceMesSeguinte: false }), "2026-11", CARTAO), "2026-12-05");
 checa("recorrência no banco ignora o cartão", vencimentoDaRecorrencia(rec({}), "2026-11", CARTAO), "2026-12-05");
-const aws = (o) => desp({ favorecidoId: 3, favorecido: "AWS", categoriaId: 3, forma: "cartao", cartaoId: 2, vencimento: "2026-12-05", ...o });
-const fats = faturasAbertas([aws({ id: 20, valorCentavos: 60000 }), aws({ id: 21, valorCentavos: 30000 }), aws({ id: 22, vencimento: "2027-01-05", valorCentavos: 5000 }),
-  aws({ id: 23, status: "paga" }), desp({ id: 24 }), aws({ id: 25, cartaoId: 7, valorCentavos: 100 })]);
+const nuvem = (o) => desp({ favorecidoId: 3, favorecido: "Nuvem", categoriaId: 3, forma: "cartao", cartaoId: 2, vencimento: "2026-12-05", ...o });
+const fats = faturasAbertas([nuvem({ id: 20, valorCentavos: 60000 }), nuvem({ id: 21, valorCentavos: 30000 }), nuvem({ id: 22, vencimento: "2027-01-05", valorCentavos: 5000 }),
+  nuvem({ id: 23, status: "paga" }), desp({ id: 24 }), nuvem({ id: 25, cartaoId: 7, valorCentavos: 100 })]);
 checa("faturas: uma por cartão e vencimento, só o que está em aberto no cartão", fats.map((f) => [f.cartaoId, f.vencimento, f.despesas.length, f.valorCentavos]),
   [[2, "2026-12-05", 2, 90000], [7, "2026-12-05", 1, 100], [2, "2027-01-05", 1, 5000]]);
 const prevCartao = contasDoMes([rec({ id: 9, favorecidoId: 3, categoriaId: 3, forma: "cartao", cartaoId: 2, diaVencimento: 3, venceMesSeguinte: false })], favs, [], "2026-11", HOJE);
-checa("prevista no cartão já aponta a fatura e o cartão", prevCartao.map((l) => [l.favorecido, l.forma, l.cartaoId, l.vencimento]), [["AWS", "cartao", 2, "2026-12-05"]]);
+checa("prevista no cartão já aponta a fatura e o cartão", prevCartao.map((l) => [l.favorecido, l.forma, l.cartaoId, l.vencimento]), [["Nuvem", "cartao", 2, "2026-12-05"]]);
 
 console.log("\no mês");
 const recs = [rec({}), rec({ id: 2, favorecidoId: 1, descricao: "Encerrada", fim: "2026-10" })];
 const lancada = desp({ id: 5, ref: "P-0005", recorrenciaId: 1, valorCentavos: 1550000, vencimento: "2026-12-05" });
 const cancelada = desp({ id: 4, ref: "P-0004", recorrenciaId: 1, status: "cancelada" });
 const cartao = desp({ id: 6, ref: "P-0006", favorecidoId: 2, favorecido: "Cartão final 1234", categoriaId: null, valorCentavos: 90000, vencimento: "2026-11-10",
-  itens: [{ id: 1, data: "2026-11-02", descricao: "AWS", categoriaId: 3, area: null, valorCentavos: 60000 }, { id: 2, data: null, descricao: "Notion", categoriaId: 2, area: null, valorCentavos: 30000 }] });
+  itens: [{ id: 1, data: "2026-11-02", descricao: "Nuvem", categoriaId: 3, area: null, valorCentavos: 60000 }, { id: 2, data: null, descricao: "Notion", categoriaId: 2, area: null, valorCentavos: 30000 }] });
 const semLanc = contasDoMes(recs, favs, [], "2026-11", HOJE);
 checa("recorrência sem conta aparece prevista", semLanc.map((l) => [l.status, l.valorCentavos, l.vencimento, l.favorecido]), [["prevista", 1500000, "2026-12-05", "Ana Dev ME"]]);
 checa("recorrência encerrada some do mês", semLanc.length, 1);
@@ -107,15 +107,15 @@ checa("recorrência no cartão sem cartão", lerRecorrencia({ favorecidoId: 3, c
 checa("cartão guarda fechamento e vencimento", (({ diaFechamento, diaVencimento }) => [diaFechamento, diaVencimento])(lerFavorecido({ nome: "Cartão", tipo: "cartao", diaFechamento: "25", diaVencimento: 5 })), [25, 5]);
 checa("cartão com um dia só", lerFavorecido({ nome: "Cartão", tipo: "cartao", diaFechamento: 25 }), "Informe o dia de fechamento e o de vencimento do cartão, ou nenhum dos dois.");
 checa("dia 30 não serve", lerFavorecido({ nome: "Cartão", tipo: "cartao", diaFechamento: 30, diaVencimento: 5 }), "Os dias de fechamento e de vencimento vão de 1 a 28.");
-checa("quem não é cartão não guarda os dias", lerFavorecido({ nome: "AWS", tipo: "fornecedor", diaFechamento: 25, diaVencimento: 5 }).diaFechamento, null);
+checa("quem não é cartão não guarda os dias", lerFavorecido({ nome: "Nuvem", tipo: "fornecedor", diaFechamento: 25, diaVencimento: 5 }).diaFechamento, null);
 checa("sem categoria", lerDespesa({ ...base, categoriaId: null }), "Escolha a categoria.");
 checa("valor zero", lerDespesa({ ...base, valorCentavos: 0 }), "Informe o valor.");
 checa("valor quebrado", lerDespesa({ ...base, valorCentavos: 10.5 }), "Informe o valor.");
-const comItens = lerDespesa({ ...base, categoriaId: 1, valorCentavos: 1, itens: [{ descricao: "AWS", categoriaId: "3", valorCentavos: 60000, data: "2026-11-02" }, { descricao: "Notion", categoriaId: 2, valorCentavos: 30000 }] });
+const comItens = lerDespesa({ ...base, categoriaId: 1, valorCentavos: 1, itens: [{ descricao: "Nuvem", categoriaId: "3", valorCentavos: 60000, data: "2026-11-02" }, { descricao: "Notion", categoriaId: 2, valorCentavos: 30000 }] });
 checa("com itens: valor é a soma e a categoria fica nos itens", [comItens.valorCentavos, comItens.categoriaId, comItens.itens.map((i) => i.categoriaId)], [90000, null, [3, 2]]);
-checa("item sem categoria", lerDespesa({ ...base, itens: [{ descricao: "AWS", valorCentavos: 1 }] }), "Item 1: escolha a categoria.");
-checa("item sem valor", lerDespesa({ ...base, itens: [{ descricao: "AWS", categoriaId: 3 }] }), "Item 1: informe o valor.");
-checa("item com data inválida", lerDespesa({ ...base, itens: [{ descricao: "AWS", categoriaId: 3, valorCentavos: 1, data: "ontem" }] }), "Item 1: data inválida.");
+checa("item sem categoria", lerDespesa({ ...base, itens: [{ descricao: "Nuvem", valorCentavos: 1 }] }), "Item 1: escolha a categoria.");
+checa("item sem valor", lerDespesa({ ...base, itens: [{ descricao: "Nuvem", categoriaId: 3 }] }), "Item 1: informe o valor.");
+checa("item com data inválida", lerDespesa({ ...base, itens: [{ descricao: "Nuvem", categoriaId: 3, valorCentavos: 1, data: "ontem" }] }), "Item 1: data inválida.");
 checa("produto vazio vira nulo", lerDespesa({ ...base, area: "  " }).area, null);
 const r0 = { favorecidoId: 1, categoriaId: 1, valorCentavos: 1500000, diaVencimento: 5, forma: "pix", inicio: "2026-10" };
 checa("recorrência ok", (({ venceMesSeguinte, fim }) => [venceMesSeguinte, fim])(lerRecorrencia(r0)), [false, null]);
@@ -132,7 +132,7 @@ checa("semente só usa grupos que existem", CATEGORIAS_SEMENTE.every((c) => GRUP
 console.log("\ncsv");
 const csv = csvDasDespesas(mes, cats, (a) => a ?? "").split("\n");
 checa("uma linha por item do cartão + a conta simples", csv.length, 1 + 2 + 1);
-checa("linha de item", csv[1], "2026-11;P-0006;Cartão final 1234;AWS;Infraestrutura de nuvem e IA;Custo do serviço;;Vencida;600,00;10/11/2026;PIX;;;");
+checa("linha de item", csv[1], "2026-11;P-0006;Cartão final 1234;Nuvem;Infraestrutura de nuvem e IA;Custo do serviço;;Vencida;600,00;10/11/2026;PIX;;;");
 checa("campo com ponto e vírgula vai entre aspas", csvDasDespesas(contasDoMes([], favs, [desp({ descricao: "a;b" })], "2026-11", HOJE), cats, () => "").split("\n")[1].includes('"a;b"'), true);
 
 console.log(`\n${ok} passaram, ${falhas} falharam`);

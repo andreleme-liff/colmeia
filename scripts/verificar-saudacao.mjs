@@ -30,9 +30,9 @@ checa("segunda de manhã varia ao longo das semanas", segundas.size >= 2, true);
 
 console.log("\n2. linha do dia: a situação mais importante vence");
 const linha = (f, iso = "2026-11-11T10:00:00", id = 1) => saudar("André", id, em(iso), com(f)).linha;
-checa("ganho vem antes de tudo", /Medley/.test(linha({ ganhosRecentes: ["Medley"], diasFora: 9, meus: { vencidos: 4 } })), true);
-checa("dois ganhos: plural certo", /Medley e Galena (viraram|entraram)|: Medley e Galena\./.test(linha({ ganhosRecentes: ["Medley", "Galena"] })), true);
-checa("mais de dois ganhos resume", /Medley e Galena e mais 1/.test(linha({ ganhosRecentes: ["Medley", "Galena", "Globe"] })), true);
+checa("ganho vem antes de tudo", /Acme/.test(linha({ ganhosRecentes: ["Acme"], diasFora: 9, meus: { vencidos: 4 } })), true);
+checa("dois ganhos: plural certo", /Acme e Beta (viraram|entraram)|: Acme e Beta\./.test(linha({ ganhosRecentes: ["Acme", "Beta"] })), true);
+checa("mais de dois ganhos resume", /Acme e Beta e mais 1/.test(linha({ ganhosRecentes: ["Acme", "Beta", "Globe"] })), true);
 checa("volta depois de dias fora, com o que espera", /4 dias.*2 itens esperando você/.test(linha({ diasFora: 4, meus: { vencidos: 1, hoje: 1 } })), true);
 checa("dois dias fora não é 'de volta'", /dias/.test(linha({ diasFora: 2, meus: { abertos: 3 } })), false);
 checa("vencido vem antes de 'hoje'", /passaram do prazo/.test(linha({ meus: { vencidos: 2, hoje: 5 } })), true);

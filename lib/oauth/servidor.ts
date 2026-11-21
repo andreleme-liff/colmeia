@@ -1,4 +1,4 @@
-// OAuth 2.1 do LIFF tasks — a parte com banco e rede. As decisões estão em `protocolo.ts`.
+// OAuth 2.1 da Colméia — a parte com banco e rede. As decisões estão em `protocolo.ts`.
 
 import type { Queryable } from "../db";
 import { registrar } from "../log";

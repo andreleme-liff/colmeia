@@ -31,8 +31,7 @@ export type Activity = {
   oportunidadeOculta: boolean;
 };
 
-/** Arquétipo de funding, no que o card comercial precisa. `area` nulo = vale para todo produto. */
-export type ArquetipoResumo = { id: number; nome: string; ativo: boolean; pasta: string | null; area: string | null };
+
 
 export type Deal = {
   id: number;
@@ -53,8 +52,6 @@ export type Deal = {
   contato: string;
   /** Quando o próximo passo acontece. Nulo = sem data; no cronograma fica em "Sem data". */
   proximoPassoEm: string | null;
-  /** Oportunidade já registrada no ACE do AWS Partner Central. */
-  aceAws: boolean;
   /** ISO da última mexida no card — ou da criação, se nunca foi editado. */
   atualizadoEm: string;
   criadoEm: string;
@@ -72,7 +69,7 @@ export type Deal = {
   ultimaInteracao: string | null;
   blocker: string;
   blockerTipo: string | null;
-  /** Quem, do lado da LIFF, resolve o blocker. */
+  /** Quem, do lado de dentro, resolve o blocker. */
   blockerDonoId: number | null;
   blockerDono: string | null;
   motivoPerda: string | null;
@@ -82,10 +79,6 @@ export type Deal = {
   modulos: string[];
   /** Composição da proposta: assinatura por mês, implantação e customização com parcelas. */
   proposta: import("@/lib/domain").ComposicaoProposta;
-  /** Arquétipo de funding escolhido para a proposta; opcional. */
-  arquetipoId: number | null;
-  /** ACEs e pedidos de funding na AWS, cada um com o link do cadastro. */
-  aws: import("@/lib/domain").RegistroAws[];
 };
 
 export type Origem = { id: string; label: string; ativo: boolean };
@@ -142,7 +135,6 @@ export type State = {
   areas: AreaCadastro[];
   produtos: ProdutoCadastro[];
   origens: Origem[];
-  arquetipos: ArquetipoResumo[];
   isAdmin: boolean;
   /** Gestor, financeiro e admin: veem o menu Receita e o resumo de receita na Visão geral. */
   podeVerReceita: boolean;
@@ -187,8 +179,6 @@ export type NovaOportunidade = {
   contato: string;
   responsavelTexto: string;
   proximoPassoEm: string | null;
-  /** Forma antiga ("há ACE"); a tela manda a lista `aws`. */
-  aceAws?: boolean;
   origemId: string | null;
   ponte: string;
   contatoOperacional: string;
@@ -209,8 +199,6 @@ export type NovaOportunidade = {
   propImplantacaoParcelas?: number;
   propCustomizacaoReais?: number;
   propCustomizacaoParcelas?: number;
-  arquetipoId?: number | null;
-  aws?: import("@/lib/domain").RegistroAws[];
 };
 
 async function req<T>(url: string, opts: RequestInit = {}): Promise<T> {
@@ -270,21 +258,6 @@ export const api = {
       body: JSON.stringify(corpo),
     }),
   despesaCadastroExcluir: (tipo: string, id: number) => req<{ ok: boolean }>(`/api/despesas/cadastros/${tipo}/${id}`, { method: "DELETE" }),
-  /** Funding AWS (só admin). */
-  funding: () =>
-    req<{
-      pastas: import("@/lib/funding").Pasta[];
-      produtos: { id: string; label: string; area: string }[];
-      programas: import("@/lib/funding").Programa[];
-      arquetipos: import("@/lib/funding").Arquetipo[];
-      estimativas: import("@/lib/funding").Estimativa[];
-    }>("/api/funding"),
-  fundingCriar: (tipo: string, corpo: Record<string, unknown>) =>
-    req<{ ok: boolean; id: number | string; ref?: string }>(`/api/funding/${tipo}`, { method: "POST", body: JSON.stringify(corpo) }),
-  fundingAlterar: (tipo: string, id: number | string, corpo: Record<string, unknown>) =>
-    req<{ ok: boolean }>(`/api/funding/${tipo}/${encodeURIComponent(String(id))}`, { method: "PATCH", body: JSON.stringify(corpo) }),
-  fundingExcluir: (tipo: string, id: number | string) =>
-    req<{ ok: boolean }>(`/api/funding/${tipo}/${encodeURIComponent(String(id))}`, { method: "DELETE" }),
   auditoria: () => req<{ limite: number; logs: (LogEntry & { autorId: number | null })[] }>("/api/logs"),
 
   criarAtividade: (dados: NovaAtividade) =>

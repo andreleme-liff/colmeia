@@ -63,13 +63,13 @@ export function useOrdem(inicial: Ordem = null) {
       <div key={k} role="columnheader" aria-sort={ativa === 1 ? "ascending" : ativa === -1 ? "descending" : "none"} style={style}>
         <button
           type="button"
-          className="liff-th"
+          className="col-th"
           data-ativa={ativa ? "1" : undefined}
           onClick={() => alternar(chave)}
           title={ativa === 1 ? "Ordenado crescente. Clique para inverter." : ativa === -1 ? "Ordenado decrescente. Clique para voltar à ordem original." : "Clique para ordenar"}
         >
           {rotulo}
-          <span aria-hidden className="liff-th__seta">{ativa === 1 ? "▲" : ativa === -1 ? "▼" : "↕"}</span>
+          <span aria-hidden className="col-th__seta">{ativa === 1 ? "▲" : ativa === -1 ? "▼" : "↕"}</span>
         </button>
       </div>
     );

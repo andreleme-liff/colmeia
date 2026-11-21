@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 // Aplica o tema antes do primeiro paint, senão a página pisca no fundo errado.
 // O misto é o claro com o menu lateral em Obsidiana (data-aside), ver tokens.ts.
-const ANTI_FLASH = `(()=>{let t;try{t=localStorage.getItem("liff-tasks-theme")}catch(e){}
+const ANTI_FLASH = `(()=>{let t;try{t=localStorage.getItem("colmeia-theme")}catch(e){}
 if(t!=="light"&&t!=="dark"&&t!=="misto"){t=window.matchMedia&&window.matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"}
 const h=document.documentElement;h.dataset.theme=t==="dark"?"dark":"light";if(t==="misto")h.dataset.aside="obsidiana"})()`;
 

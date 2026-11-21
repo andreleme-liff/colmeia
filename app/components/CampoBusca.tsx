@@ -5,7 +5,7 @@
 
 export default function CampoBusca({ valor, onChange }: { valor: string; onChange: (v: string) => void }) {
   return (
-    <div className="liff-busca" role="search">
+    <div className="col-busca" role="search">
       <svg aria-hidden width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
         <circle cx="11" cy="11" r="6.5" />
         <path d="M16 16l4.5 4.5" />

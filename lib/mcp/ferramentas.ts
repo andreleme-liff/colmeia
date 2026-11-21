@@ -16,10 +16,6 @@ import {
   atualizarContratoMcp, cancelarFaturaMcp, corrigirFaturaMcp, criarContratoMcp, emitirFaturaMcp, estornarPagamentoMcp,
   listarContratos, listarFaturas, registrarPagamentoMcp, resumoReceita, verContrato,
 } from "./financeiro";
-import {
-  atualizarEstimativa, atualizarFunding, criarEstimativa, listarArquetipos, registrarFunding, resumoFunding, salvarCalculadora,
-  verEstimativa,
-} from "./funding";
 import { atualizarOrganizacao, criarOrganizacao, listarOrganizacoes, organizacaoPorRef, verOrganizacao } from "./organizacoes";
 
 export type Contexto = { sql: Queryable; ctx: Ctx; acesso: Acesso; base: string };
@@ -33,14 +29,14 @@ const MAPA: Record<string, string> = {
   responsavel_id: "responsavelId", situacao: "situacao", proximo_passo: "proximoPasso",
   proximo_passo_em: "proximoPassoEm", produto_id: "produtoId", conta: "conta", estagio: "estagio",
   valor_reais: "valorReais", contato: "contato", responsavel_texto: "responsavelTexto",
-  ace_aws: "aceAws", oportunidade: "oportunidade",
+  oportunidade: "oportunidade",
   origem: "origemId", ponte: "ponte", contato_operacional: "contatoOperacional", dor: "dor", modulos: "modulos",
   erp: "erp", ultima_interacao: "ultimaInteracao", blocker: "blocker", blocker_tipo: "blockerTipo",
   blocker_quem_resolve: "blockerDonoId", motivo_perda: "motivoPerda", motivo_perda_detalhe: "motivoPerdaDetalhe",
   notas: "notas", proposta_url: "propostaUrl",
   assinatura_mensal_reais: "propAssinaturaReais", implantacao_reais: "propImplantacaoReais",
   implantacao_parcelas: "propImplantacaoParcelas", customizacao_reais: "propCustomizacaoReais",
-  customizacao_parcelas: "propCustomizacaoParcelas", arquetipo_id: "arquetipoId", registro_aws: "awsAdicionar",
+  customizacao_parcelas: "propCustomizacaoParcelas",
 };
 
 function paraNucleo(args: Record<string, unknown>): Record<string, unknown> {
@@ -109,10 +105,10 @@ const EXECUTORES: Record<NomeFerramenta, Executor> = {
       organizacoes:
         "Toda oportunidade pertence a uma organização do cadastro (refs CLI-0000): listar_organizacoes, ver_organizacao e, com permissão de gravar, criar_organizacao e atualizar_organizacao. Ao criar oportunidade, prefira `organizacao` a `conta`.",
       receita_e_faturamento: c.ctx.isAdmin
-        ? "Disponível (admin): receita, faturamento e funding AWS — resumo_receita, listar_receitas, ver_receita, listar_faturas, resumo_funding, listar_arquetipos, ver_estimativa e, com permissão de gravar, receitas, faturas, estimativas, funding e calculadoras."
+        ? "Disponível (admin): receita e faturamento — resumo_receita, listar_receitas, ver_receita, listar_faturas e, com permissão de gravar, receitas e faturas."
         : c.ctx.podeVerReceita
-          ? "Receita: só leitura (resumo_receita, listar_receitas, ver_receita). Cadastrar ou alterar receita, faturamento e funding são restritos à administração."
-          : "Receita, faturamento e funding não estão disponíveis para este papel (receita: gestor e admin; o restante: admin).",
+          ? "Receita: só leitura (resumo_receita, listar_receitas, ver_receita). Cadastrar ou alterar receita e faturamento são restritos à administração."
+          : "Receita e faturamento não estão disponíveis para este papel (receita: gestor e admin; o restante: admin).",
       app: c.base,
     },
   }),
@@ -198,16 +194,6 @@ const EXECUTORES: Record<NomeFerramenta, Executor> = {
   corrigir_fatura: corrigirFaturaMcp,
   estornar_pagamento: estornarPagamentoMcp,
   cancelar_fatura: cancelarFaturaMcp,
-
-  // Funding AWS (só admin) — ver `funding.ts`.
-  resumo_funding: resumoFunding,
-  listar_arquetipos: listarArquetipos,
-  ver_estimativa: verEstimativa,
-  criar_estimativa: criarEstimativa,
-  atualizar_estimativa: atualizarEstimativa,
-  registrar_funding: registrarFunding,
-  atualizar_funding: atualizarFunding,
-  salvar_calculadora: salvarCalculadora,
 };
 
 /**

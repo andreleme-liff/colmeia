@@ -7,7 +7,7 @@
 import { useEffect, useState, type CSSProperties, type MouseEvent, type ReactNode, type RefObject, useRef } from "react";
 import { Button, Field, Input, Select } from "./ds";
 import { C, GHOST_FIX, MONO, SANS, dot, eyebrow, mesh, statusColor, R } from "./tokens";
-import { type Activity, type AreaCadastro, type ArquetipoResumo, type Deal, type LogEntry, type NovaOportunidade, type OrganizacaoResumo, type Origem, type Pessoa } from "./api";
+import { type Activity, type AreaCadastro, type Deal, type LogEntry, type NovaOportunidade, type OrganizacaoResumo, type Origem, type Pessoa } from "./api";
 import SeletorArea, { type OpcaoArea } from "./SeletorArea";
 import Historico, { UltimasDoCampo } from "./Historico";
 import { useOrdem } from "./ordenacao";
@@ -18,7 +18,7 @@ import { CardOportunidade } from "./CardOportunidade";
 import { CardAtividade } from "./CardAtividade";
 import {
   ADMIN_CARDS, BLOCKER_TIPOS, ERP_SUGESTOES, ESTAGIO_INICIAL, MOTIVOS_PERDA, PAPEIS, STAGES, STATUS, CHAVE_SEM_RESPONSAVEL, aplicarBusca, areaOf, prepararBusca, ddmm, porTexto, stamp, statusLabel, hostDaUrl, previaDaProposta, urlDaProposta,
-  PROPOSTA_VAZIA, TIPOS_AWS, brlExato, estagioTemProposta, temComposicao, totalPrimeiroAno, type ComposicaoProposta, type RegistroAws, type TipoAws,
+  PROPOSTA_VAZIA, brlExato, estagioTemProposta, temComposicao, totalPrimeiroAno, type ComposicaoProposta,
 } from "@/lib/domain";
 
 /* =========================================================
@@ -90,7 +90,7 @@ export function ListaFoco({
       {linhas.map((l) => (
         <div
           key={l.ref}
-          className={l.podeAbrir ? "liff-hover-row liff-painel-linha" : "liff-painel-linha"}
+          className={l.podeAbrir ? "col-hover-row col-painel-linha" : "col-painel-linha"}
           onClick={() => l.podeAbrir && onAbrir(l.ref)}
           title={l.podeAbrir ? "Abrir" : "Somente leitura neste produto"}
           style={{
@@ -177,7 +177,7 @@ function Raia({
     return (
       <button
         type="button"
-        className="liff-raia liff-raia--recolhida"
+        className="col-raia col-raia--recolhida"
         {...arraste}
         onClick={onAlternar}
         aria-expanded={false}
@@ -193,7 +193,7 @@ function Raia({
 
   return (
     <div
-      className="liff-raia"
+      className="col-raia"
       {...arraste}
       style={{ minWidth: largura, flex: 1, padding: 12, display: "flex", flexDirection: "column", gap: 10, minHeight: alturaMin }}
     >
@@ -203,7 +203,7 @@ function Raia({
         {onAlternar && (
           <button
             type="button"
-            className="liff-raia-recolher"
+            className="col-raia-recolher"
             onClick={onAlternar}
             aria-expanded
             aria-label={`Recolher a coluna ${label}`}
@@ -250,7 +250,7 @@ export function Comercial({
   const [alvo, setAlvo] = useState<string | null>(null);
 
   return (
-    <div className="liff-kanban">
+    <div className="col-kanban">
       {colunas.map((col) => (
         <Raia
           key={col.key}
@@ -349,7 +349,7 @@ export function Cronograma({
               {bloco.itens.map((i) => (
                 <div
                   key={i.ref}
-                  className={i.podeAbrir ? "liff-hover-row liff-cronograma-linha" : "liff-cronograma-linha"}
+                  className={i.podeAbrir ? "col-hover-row col-cronograma-linha" : "col-cronograma-linha"}
                   onClick={() => i.podeAbrir && onAbrir(i.ref, i.tipo)}
                   title={i.podeAbrir ? "Abrir" : "Somente leitura neste produto"}
                   style={{
@@ -412,7 +412,7 @@ export function Operacoes({
 
   return (
     <>
-      <div className="liff-kanban">
+      <div className="col-kanban">
         {colunas.map((col) => (
           <Raia
             key={col.key}
@@ -466,8 +466,8 @@ export function Atividades({
   onAbrir: (id: number) => void;
 }) {
   return (
-    <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
-      <div className="liff-table">
+    <div className="col-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
+      <div className="col-table">
         <div
           style={{
             display: "grid",
@@ -487,7 +487,7 @@ export function Atividades({
           return (
             <div
               key={r.id}
-              className="liff-hover-row"
+              className="col-hover-row"
               onClick={() => onAbrir(r.id)}
               style={{
                 display: "grid",
@@ -538,7 +538,7 @@ export const CAD_TABS = [
   { key: "pessoas", label: "pessoas" },
   { key: "areas", label: "produtos" },
   { key: "produtos", label: "módulos" },
-  // De onde vêm as oportunidades (Base Fius, AWS, Evento…) — o select do card comercial.
+  // De onde vêm as oportunidades (evento, indicação, outbound…) — o select do card comercial.
   { key: "origens", label: "origens" },
 ] as const;
 
@@ -769,7 +769,7 @@ function TabelaAreas({
           style={{ display: "grid", gridTemplateColumns: COLS_AREA, borderBottom: `1px solid ${C.line}`, alignItems: "center" }}
         >
           <div style={{ padding: "9px 16px", display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ ...dot(`var(--liff-app-area-${a.id})`), width: 9, height: 9, flex: "none" }} />
+            <span style={{ ...dot(`var(--col-app-area-${a.id})`), width: 9, height: 9, flex: "none" }} />
             {podeEditar ? (
               <>
                 <TextoEditavel
@@ -787,7 +787,7 @@ function TabelaAreas({
               </>
             ) : (
               <>
-                <span style={{ fontSize: 14, color: C.ink, flex: 1 }}>LIFF {a.label}</span>
+                <span style={{ fontSize: 14, color: C.ink, flex: 1 }}>{a.label}</span>
                 <span style={eyebrow(10, C.faint, "0.1em")}>{a.short}</span>
               </>
             )}
@@ -1050,7 +1050,7 @@ function TabelaModulos({
         )}
       </div>
       {grupos.map((g) => {
-        const cor = `var(--liff-app-area-${g.id}, var(--liff-text-faint))`;
+        const cor = `var(--col-app-area-${g.id}, var(--col-text-faint))`;
         const todos = linhas.filter((l) => l.grupo === g.id);
         const visiveis = todos.filter((l) => verArquivados || !l.arquivado);
         const ativos = todos.filter((l) => !l.arquivado).length;
@@ -1063,14 +1063,14 @@ function TabelaModulos({
                 background: `color-mix(in srgb, ${cor} 9%, transparent)`,
               }}
             >
-              <span style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>LIFF {g.label}</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>{g.label}</span>
               <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint, flex: 1 }}>
                 {ativos === 0 ? "nenhum módulo" : ativos === 1 ? "1 módulo" : `${ativos} módulos`}
               </span>
               {onNovo && (
                 <span
                   onClick={() => onNovo(g.id)}
-                  title={`Cadastrar um módulo em LIFF ${g.label}`}
+                  title={`Cadastrar um módulo em ${g.label}`}
                   style={{ ...eyebrow(10, C.dust, "0.1em"), cursor: "pointer" }}
                 >
                   + módulo
@@ -1080,7 +1080,7 @@ function TabelaModulos({
             {visiveis.map((r) => (
               <div
                 key={r.key}
-                className={r.abrir ? "liff-hover-row" : undefined}
+                className={r.abrir ? "col-hover-row" : undefined}
                 onClick={r.abrir}
                 title={r.abrir ? "Abrir para editar" : undefined}
                 style={{
@@ -1177,8 +1177,8 @@ export function Cadastros({
         ))}
       </div>
 
-      <div className="liff-cad-split" style={mesh({ display: "grid", gap: 1 })}>
-        <div className="liff-scroll-x" style={{ background: C.cell }}>
+      <div className="col-cad-split" style={mesh({ display: "grid", gap: 1 })}>
+        <div className="col-scroll-x" style={{ background: C.cell }}>
           {tab === "pessoas" ? (
             <Permissoes
               pessoas={pessoas}
@@ -1218,7 +1218,7 @@ export function Cadastros({
             {ordCad.aplicar(set.rows, { a: (r) => r.a, b: (r) => r.b, c: (r) => r.c }).map((r) => (
               <div
                 key={r.key}
-                className={r.abrir ? "liff-hover-row" : undefined}
+                className={r.abrir ? "col-hover-row" : undefined}
                 onClick={r.abrir}
                 title={r.abrir ? "Abrir para editar" : undefined}
                 style={{
@@ -1267,7 +1267,7 @@ export function Cadastros({
 
       {/* Referência rápida das regras de acesso, que antes morava na Administração. */}
       {tab === "pessoas" && (
-        <div className="liff-admin-cards" style={mesh({ display: "grid", gap: 1, marginTop: 22 })}>
+        <div className="col-admin-cards" style={mesh({ display: "grid", gap: 1, marginTop: 22 })}>
           {ADMIN_CARDS.map((c) => (
             <div key={c.title} style={{ background: C.cell, padding: 22 }}>
               <div style={{ ...eyebrow(11, C.accent), marginBottom: 10 }}>{c.title}</div>
@@ -1330,7 +1330,7 @@ export function Auditoria({
       {todas.length === 1 ? " linha" : " linhas"}
       {todas.length >= limite ? ` · as ${limite.toLocaleString("pt-BR")} mais recentes` : ""}
     </div>
-    <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
+    <div className="col-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
       <div style={{ minWidth: 760 }}>
         <div
           style={{
@@ -1539,7 +1539,7 @@ export function Drawer({
   return (
     <>
       <div {...fundo} style={{ position: "fixed", inset: 0, background: "rgba(14,16,20,0.72)", zIndex: 40 }} />
-      <div className="liff-drawer">
+      <div className="col-drawer">
         <div style={{ padding: "24px 26px", borderBottom: `1px solid ${C.line}` }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
             <div>
@@ -1805,7 +1805,7 @@ export function WaModal({
   onFechar: () => void;
 }) {
   return (
-    <Modal titulo="Resumo de status" eyebrowTexto="LIFF/ REPORT" onFechar={onFechar} largura={640}>
+    <Modal titulo="Resumo de status" eyebrowTexto="COLMÉIA/ REPORT" onFechar={onFechar} largura={640}>
         <div>
           <SeletorArea opcoes={tabs} valor={areaAtiva} onChange={onArea} larguraTotal />
         </div>
@@ -1829,7 +1829,7 @@ export function WaModal({
                     borderRadius: R,
                     cursor: "pointer",
                     border: `1px solid ${on ? C.accent : C.line}`,
-                    background: on ? "color-mix(in srgb, var(--liff-accent) 12%, transparent)" : "transparent",
+                    background: on ? "color-mix(in srgb, var(--col-accent) 12%, transparent)" : "transparent",
                   }}
                 >
                   {e.label}
@@ -2020,7 +2020,7 @@ export function NovaAtividade({
     });
 
   return (
-    <Modal titulo="Nova atividade" eyebrowTexto="LIFF/ ATIVIDADES" onFechar={onFechar}>
+    <Modal titulo="Nova atividade" eyebrowTexto="COLMÉIA/ ATIVIDADES" onFechar={onFechar}>
       <Field label="Título" required>
         <Input placeholder="O que precisa ser feito" value={titulo} onChange={setTitulo} />
       </Field>
@@ -2185,65 +2185,6 @@ function CampoProposta({
   );
 }
 
-/**
- * Os registros de um tipo (ACE ou funding) do card: uma linha por registro, com a identificação
- * e o link do cadastro na AWS, e o botão de acrescentar. A lista é uma só para os dois tipos,
- * para a ordem de cadastro se manter.
- */
-function RegistrosAws({ tipo, lista, onChange }: { tipo: TipoAws; lista: RegistroAws[]; onChange: (l: RegistroAws[]) => void }) {
-  const ace = tipo === "ace";
-  const mexe = (i: number, campo: "descricao" | "url", v: string) => onChange(lista.map((r, j) => (j === i ? { ...r, [campo]: v } : r)));
-  const doTipo = lista.map((r, i) => ({ r, i })).filter((x) => x.r.tipo === tipo);
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
-        <span style={eyebrow(10, C.faint, "0.12em")}>
-          {ace ? "ACE" : "FUNDING SOLICITADO"}
-          {doTipo.length > 0 && <span style={{ color: C.dust }}> · {doTipo.length}</span>}
-        </span>
-        <button type="button" className="rec-link" onClick={() => onChange([...lista, { tipo, descricao: "", url: "" }])}>
-          + {ace ? "ACE" : "funding"}
-        </button>
-      </div>
-      {doTipo.length === 0 && (
-        <div style={{ fontSize: 12, color: C.faint, lineHeight: 1.5 }}>
-          {ace ? "Nenhuma ACE aberta para esta oportunidade." : "Nenhum funding solicitado para esta oportunidade."}
-        </div>
-      )}
-      {doTipo.map(({ r, i }) => {
-        const url = urlDaProposta(r.url);
-        return (
-          <div key={i} className="cop-aws">
-            <input
-              value={r.descricao}
-              onChange={(e) => mexe(i, "descricao", e.target.value)}
-              placeholder={ace ? "ID ou nome da ACE" : "Programa e valor"}
-              aria-label={ace ? "Identificação da ACE" : "Identificação do funding"}
-              style={campoNativo}
-            />
-            <input
-              value={r.url}
-              onChange={(e) => mexe(i, "url", e.target.value)}
-              placeholder="Link do cadastro na AWS (https://…)"
-              aria-label="Link do cadastro na AWS"
-              inputMode="url"
-              style={{ ...campoNativo, ...(url === null ? { borderColor: C.error } : {}) }}
-            />
-            {url ? (
-              <a href={url} target="_blank" rel="noopener noreferrer" className="cop-aws__acao" title="Abrir o cadastro na AWS em nova aba">↗</a>
-            ) : (
-              <span className="cop-aws__acao" aria-hidden style={{ opacity: 0.3 }}>↗</span>
-            )}
-            <button type="button" className="cop-aws__acao" onClick={() => onChange(lista.filter((_, j) => j !== i))} title="Remover este registro" aria-label="Remover este registro">
-              ×
-            </button>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 /** Centavos → texto do campo, no formato brasileiro ("1.500,5"); zero fica vazio. */
 function reaisParaCampo(centavos: number): string {
   if (!centavos) return "";
@@ -2289,7 +2230,6 @@ export function FormOportunidade({
   onAbrirTarefa,
   origens = [],
   organizacoes = [],
-  arquetipos = [],
 }: {
   areasEditaveis: { id: string; label: string }[];
   pessoas: OpcaoPessoa[];
@@ -2298,8 +2238,6 @@ export function FormOportunidade({
   origens?: Origem[];
   /** Cadastro de organizações que a pessoa enxerga. */
   organizacoes?: OrganizacaoResumo[];
-  /** Arquétipos de funding; o card oferece os do produto escolhido. */
-  arquetipos?: ArquetipoResumo[];
   salvando: boolean;
   erro: string | null;
   /** Ausente = criação. */
@@ -2328,8 +2266,6 @@ export function FormOportunidade({
   const [propImpX, setPropImpX] = useState(p0.implantacaoParcelas);
   const [propCus, setPropCus] = useState(reaisParaCampo(p0.customizacaoCentavos));
   const [propCusX, setPropCusX] = useState(p0.customizacaoParcelas);
-  const [arquetipoId, setArquetipoId] = useState(inicial?.arquetipoId ? String(inicial.arquetipoId) : "");
-  const [aws, setAws] = useState<RegistroAws[]>(inicial?.aws ?? []);
   const [proximo, setProximo] = useState(inicial?.proximoPasso ?? "");
   const [responsavel, setResponsavel] = useState<string>(
     inicial ? String(inicial.responsavelId ?? pessoas.find((p) => p.nome === inicial.responsavel)?.id ?? "") : ""
@@ -2359,7 +2295,7 @@ export function FormOportunidade({
   // Módulos são produtos da área; trocar a área invalida a escolha anterior.
   const modulosDaArea = produtos.filter((p) => p.area === area && (p.ativo || inicial?.modulos.includes(p.id)));
   const origensVisiveis = origens.filter((o) => o.ativo || o.id === inicial?.origemId);
-  // Prospecção ainda não teve reunião: valor, ACE e blocker não existem — a aba Prospecção da
+  // Prospecção ainda não teve reunião: valor e blocker não existem — a aba Prospecção da
   // planilha nem tem essas colunas. Ficam à vista se já estiverem preenchidos.
   const emProspeccao = estagio === "prospeccao";
   const mostraBlocker = !emProspeccao || !!blocker || !!blockerTipo || !!blockerDono;
@@ -2373,12 +2309,7 @@ export function FormOportunidade({
   // Os três valores aparecem a partir do estágio Proposta — ou se já foram preenchidos (um
   // card que voltou para On hold ou foi perdido depois da proposta não esconde o que tinha).
   const comProposta = estagioTemProposta(estagio) || temComposicao(inicial?.proposta ?? PROPOSTA_VAZIA);
-  const mostraNegocio = !emProspeccao || !!valor.replace(/[0.,]/g, "") || aws.length > 0 || comProposta;
-  // Arquétipos do produto do card: os da pasta ligada a um módulo dele, mais os de pasta sem
-  // módulo (valem para qualquer produto). Inativo só aparece se já era o do card.
-  const arquetiposDoProduto = arquetipos.filter(
-    (a) => (!a.area || a.area === area) && (a.ativo || a.id === inicial?.arquetipoId)
-  );
+  const mostraNegocio = !emProspeccao || !!valor.replace(/[0.,]/g, "") || comProposta;
   const alternarModulo = (id: string) =>
     setModulos((m) => (m.includes(id) ? m.filter((x) => x !== id) : [...m, id]));
 
@@ -2394,9 +2325,6 @@ export function FormOportunidade({
       propImplantacaoParcelas: composicao.implantacaoParcelas,
       propCustomizacaoReais: composicao.customizacaoCentavos / 100,
       propCustomizacaoParcelas: composicao.customizacaoParcelas,
-      arquetipoId: arquetiposDoProduto.some((a) => String(a.id) === arquetipoId) ? Number(arquetipoId) : null,
-      // Linha sem identificação nem link também vale: é "há uma ACE (ou um pedido), sem link ainda".
-      aws,
       proximoPasso: proximo,
       responsavelId: responsavel ? Number(responsavel) : null,
       situacao,
@@ -2422,7 +2350,7 @@ export function FormOportunidade({
   const opcoesPessoa = [{ value: "", label: "—" }, ...pessoas.map((p) => ({ value: String(p.id), label: p.nome }))];
   // `primeiro`: o bloco que abre uma coluna não leva o fio de cima — não há o que separar.
   // Os blocos são numerados na ordem em que aparecem: alguns somem conforme o estágio
-  // (valor, AWS, blocker, perda), e um número fixo deixaria buracos na sequência.
+  // (valor, blocker, perda), e um número fixo deixaria buracos na sequência.
   let ordem = 0;
   const bloco = (titulo: string, primeiro = false) => (
     <div className={primeiro ? "cortina-bloco-topo" : undefined} style={{ ...eyebrow(10, C.dust, "0.14em"), ...(primeiro ? {} : { borderTop: `1px solid ${C.line}`, paddingTop: 16, marginTop: 2 }) }}>
@@ -2434,7 +2362,7 @@ export function FormOportunidade({
   return (
     <Modal
       titulo={editando ? `Editar ${inicial.conta}` : "Nova oportunidade"}
-      eyebrowTexto={editando ? `LIFF/ COMERCIAL · ${inicial.ref}` : "LIFF/ COMERCIAL"}
+      eyebrowTexto={editando ? `COLMÉIA/ COMERCIAL · ${inicial.ref}` : "COLMÉIA/ COMERCIAL"}
       onFechar={onFechar}
       largura={1120}
     >
@@ -2458,14 +2386,14 @@ export function FormOportunidade({
     }
   >
     <input
-      list="liff-organizacoes"
+      list="col-organizacoes"
       value={conta}
       onChange={(e) => setConta(e.target.value)}
       placeholder="Nome da organização"
       autoComplete="off"
       style={campoNativo}
     />
-    <datalist id="liff-organizacoes">
+    <datalist id="col-organizacoes">
       {organizacoes.map((o) => (
         <option key={o.id} value={o.nome} />
       ))}
@@ -2508,7 +2436,7 @@ export function FormOportunidade({
           />
         </Field>
         <Field label="Ponte" hint="Quem abre a porta no cliente.">
-          <Input placeholder="Leo + Fabiana (FIUS)" value={ponte} onChange={setPonte} />
+          <Input placeholder="Leo + Fabiana (parceiro)" value={ponte} onChange={setPonte} />
         </Field>
       </div>
 
@@ -2544,7 +2472,7 @@ export function FormOportunidade({
                     borderRadius: R,
                     cursor: "pointer",
                     border: `1px solid ${marcado ? C.accent : C.line}`,
-                    background: marcado ? "color-mix(in srgb, var(--liff-accent) 12%, transparent)" : "transparent",
+                    background: marcado ? "color-mix(in srgb, var(--col-accent) 12%, transparent)" : "transparent",
                   }}
                 >
                   {p.label}
@@ -2559,8 +2487,8 @@ export function FormOportunidade({
         </div>
       </Field>
       <Field label="ERP" hint="Escolha um ou escreva outro.">
-        <input list="liff-erps" value={erp} onChange={(e) => setErp(e.target.value)} placeholder="SAP ECC" style={campoNativo} />
-        <datalist id="liff-erps">
+        <input list="col-erps" value={erp} onChange={(e) => setErp(e.target.value)} placeholder="SAP ECC" style={campoNativo} />
+        <datalist id="col-erps">
           {ERP_SUGESTOES.map((e) => (
             <option key={e} value={e} />
           ))}
@@ -2632,7 +2560,7 @@ export function FormOportunidade({
           rows={3}
           value={notas}
           onChange={(e) => setNotas(e.target.value)}
-          placeholder="AWS: Wilson Mansano é o account manager."
+          placeholder="Parceiro: fulano é o gerente da conta."
           style={{ ...campoNativo, resize: "vertical", lineHeight: 1.5 }}
         />
       </Field>
@@ -2689,7 +2617,7 @@ export function FormOportunidade({
                 onChange={setBlockerTipo}
               />
             </Field>
-            <Field label="Quem resolve na LIFF">
+            <Field label="Quem resolve internamente">
               <Select options={opcoesPessoa} value={blockerDono} onChange={setBlockerDono} />
             </Field>
           </div>
@@ -2697,41 +2625,6 @@ export function FormOportunidade({
       )}
 
 
-
-      {mostraNegocio && (
-        <>
-          {bloco("AWS")}
-          <Field
-            label="Arquétipo"
-            hint={
-              !area
-                ? "Escolha o produto para ver os arquétipos."
-                : arquetiposDoProduto.length
-                  ? "Opcional. É a base para abrir a ACE e pedir funding."
-                  : "Ainda não há arquétipo cadastrado para este produto."
-            }
-          >
-            <Select
-              options={[
-                { value: "", label: "—" },
-                ...arquetiposDoProduto.map((a) => ({ value: String(a.id), label: a.nome + (a.ativo ? "" : " (inativo)") })),
-              ]}
-              value={arquetiposDoProduto.some((a) => String(a.id) === arquetipoId) ? arquetipoId : ""}
-              onChange={setArquetipoId}
-            />
-          </Field>
-          {/* Uma oportunidade pode ter várias ACEs e vários pedidos de funding. Cada linha guarda
-              a identificação e o link do cadastro no Partner Central. */}
-          {TIPOS_AWS.map((t) => (
-            <RegistrosAws
-              key={t.key}
-              tipo={t.key}
-              lista={aws}
-              onChange={setAws}
-            />
-          ))}
-        </>
-      )}
 
       {estagio === "lost" && (
         <>
@@ -2763,7 +2656,7 @@ export function FormOportunidade({
                 <div
                   key={t.ref}
                   role="button"
-                  className="liff-hover-row"
+                  className="col-hover-row"
                   onClick={() => onAbrirTarefa?.(t.ref)}
                   title="Abrir a tarefa"
                   style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", gap: 10, alignItems: "baseline", padding: "6px 8px", cursor: "pointer", borderRadius: R }}
@@ -2787,7 +2680,7 @@ export function FormOportunidade({
 
       {/* Rodapé de consulta: o histórico completo, sob demanda. */}
       {editando && (
-        <div id="liff-historico-completo" style={{ borderTop: `1px solid ${C.line}`, paddingTop: 18, marginTop: 4 }}>
+        <div id="col-historico-completo" style={{ borderTop: `1px solid ${C.line}`, paddingTop: 18, marginTop: 4 }}>
           <div
             role="button"
             onClick={() => setVerHistorico((v) => !v)}

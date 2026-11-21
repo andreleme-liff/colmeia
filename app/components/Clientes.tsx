@@ -298,7 +298,7 @@ export default function Clientes({
       )}
 
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <div role="group" aria-label="Filtro de organizações" className="liff-densidade">
+        <div role="group" aria-label="Filtro de organizações" className="col-densidade">
           {FILTROS.map((f) => (
             <button key={f.key} type="button" aria-pressed={filtro === f.key} onClick={() => setFiltro(f.key)}>
               {f.label}
@@ -324,7 +324,7 @@ export default function Clientes({
             : "Nenhuma organização com esse recorte. Ajuste a busca, o produto ou o filtro."}
         </div>
       ) : (
-        <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
+        <div className="col-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
           <div style={{ minWidth: 1040 }}>
             <div style={{ display: "grid", gridTemplateColumns: cols, background: C.canvas, borderBottom: `1px solid ${C.line}` }}>
               {(
@@ -337,7 +337,7 @@ export default function Clientes({
             {ordenada.map((v) => (
               <div
                 key={v.c.id}
-                className="liff-hover-row"
+                className="col-hover-row"
                 role="button"
                 tabIndex={0}
                 onClick={() => setAberto(v.c.id)}
@@ -692,7 +692,7 @@ function Ficha({
 
   if (!visao || !c) {
     return (
-      <Modal titulo="Nova organização" eyebrowTexto="LIFF/ ORGANIZAÇÕES" onFechar={onFechar} largura={640}>
+      <Modal titulo="Nova organização" eyebrowTexto="COLMÉIA/ ORGANIZAÇÕES" onFechar={onFechar} largura={640}>
         {formulario}
       </Modal>
     );
@@ -704,7 +704,7 @@ function Ficha({
   const eventosVisiveis = verTudo ? (eventos ?? []) : (eventos ?? []).slice(0, 12);
 
   return (
-    <Modal titulo={c.nome} eyebrowTexto={`LIFF/ ORGANIZAÇÕES · ${c.ref}`} onFechar={onFechar} largura={1180}>
+    <Modal titulo={c.nome} eyebrowTexto={`COLMÉIA/ ORGANIZAÇÕES · ${c.ref}`} onFechar={onFechar} largura={1180}>
       <div className="cortina-duas">
         {formulario}
 
@@ -719,7 +719,7 @@ function Ficha({
               {ordenadas.map((d) => (
                 <div
                   key={d.id}
-                  className="liff-hover-row"
+                  className="col-hover-row"
                   role="button"
                   tabIndex={0}
                   onClick={() => onAbrirDeal(d.ref)}

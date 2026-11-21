@@ -1,4 +1,4 @@
-/* LIFF tasks — temas, layout, estados de hover e comportamento responsivo.
+/* Colméia — temas, layout, estados de hover e comportamento responsivo.
    Os cinco token files do design system entram abaixo sem alteração; aqui ficam o tema
    claro, a estrutura da tela e o que não cabe em estilo inline.
 
@@ -7,11 +7,11 @@
    baixa os woff2 em tempo de build e o fonts.gstatic.com devolveu 404, derrubando o
    deploy inteiro. O @import resolve no navegador — o build deixa de depender de rede. */
 
-@import "../_ds/liff-design-system-064c9d4d-2b53-487d-bb38-ec3256a6c7cb/tokens/fonts.css";
-@import "../_ds/liff-design-system-064c9d4d-2b53-487d-bb38-ec3256a6c7cb/tokens/colors.css";
-@import "../_ds/liff-design-system-064c9d4d-2b53-487d-bb38-ec3256a6c7cb/tokens/typography.css";
-@import "../_ds/liff-design-system-064c9d4d-2b53-487d-bb38-ec3256a6c7cb/tokens/spacing.css";
-@import "../_ds/liff-design-system-064c9d4d-2b53-487d-bb38-ec3256a6c7cb/tokens/base.css";
+@import "../_ds/design-system/tokens/fonts.css";
+@import "../_ds/design-system/tokens/colors.css";
+@import "../_ds/design-system/tokens/typography.css";
+@import "../_ds/design-system/tokens/spacing.css";
+@import "../_ds/design-system/tokens/base.css";
 
 /* =========================================================
    Temas
@@ -23,10 +23,10 @@
 :root {
   /* Raio dos cantos de TUDO que tem borda: botões, campos, cards, painéis, menus.
      Um valor só, de propósito: para testar 2px (ou voltar a 0), troque aqui. */
-  --liff-radius-sm: 4px;
+  --col-radius-sm: 4px;
   /* Cinza mais apagado da interface. No escuro coincide com a hairline
      (Charcoal), no claro precisa se separar dela para continuar legível. */
-  --liff-app-ghost: var(--liff-charcoal);
+  --col-app-ghost: var(--col-charcoal);
 
   /* Placeholder: bem abaixo do cinza apagado, misturado com a própria superfície.
      Derivado de tokens que os dois temas redefinem, então recalcula sozinho no
@@ -35,98 +35,98 @@
      Em 78% o exemplo ainda era lido como campo preenchido. Em 50% fica perto de
      2:1 sobre o campo: abaixo do piso de 3:1 de texto, de propósito — placeholder
      aqui é só exemplo, e a instrução de cada campo está no rótulo e na dica. */
-  --liff-app-placeholder: color-mix(in srgb, var(--liff-text-faint) 50%, var(--liff-surface));
+  --col-app-placeholder: color-mix(in srgb, var(--col-text-faint) 50%, var(--col-surface));
 
   /* Cores de estado como TEXTO. No escuro são as do design system. */
-  --liff-app-success-ink: var(--liff-success);
-  --liff-app-warning-ink: var(--liff-warning);
-  --liff-app-error-ink:   var(--liff-error);
-  --liff-app-info-ink:    var(--liff-info);
+  --col-app-success-ink: var(--col-success);
+  --col-app-warning-ink: var(--col-warning);
+  --col-app-error-ink:   var(--col-error);
+  --col-app-info-ink:    var(--col-info);
   /* Texto sobre um preenchimento de estado (pílula de status ativa). */
-  --liff-app-on-state: var(--liff-obsidiana);
+  --col-app-on-state: var(--col-obsidiana);
   /* Texto sobre o botão cheio (Paprika): escuro no tema escuro, claro no tema claro. */
-  --liff-app-on-accent: var(--liff-obsidiana);
+  --col-app-on-accent: var(--col-obsidiana);
 
   /* Cor de cada vertical. No escuro, o tom Mid do cascata. */
-  --liff-app-area-law-firms:     var(--liff-law-firms-mid);
-  --liff-app-area-corporate:     var(--liff-corporate-mid);
-  --liff-app-area-public-sector: var(--liff-public-sector-mid);
-  --liff-app-area-tax:           var(--liff-tax-mid);
-  --liff-app-area-labs:          var(--liff-labs-core);
-  --liff-app-area-social:        var(--liff-social-mid);
+  --col-app-area-law-firms:     var(--col-law-firms-mid);
+  --col-app-area-corporate:     var(--col-corporate-mid);
+  --col-app-area-public-sector: var(--col-public-sector-mid);
+  --col-app-area-tax:           var(--col-tax-mid);
+  --col-app-area-labs:          var(--col-labs-core);
+  --col-app-area-social:        var(--col-social-mid);
 
   /* Kanban: a separação é por PREENCHIMENTO, não por fio. A raia (coluna) recua
      e o card avança sobre ela; nenhum dos dois tem contorno. No escuro a raia é a
      célula e o card é o passo 2 do painel — o degrau que dá para ver. */
-  --liff-app-raia:       var(--liff-cell);
-  --liff-app-card:       var(--liff-panel-2);
-  --liff-app-card-hover: color-mix(in srgb, var(--liff-floral) 6%, var(--liff-panel-2));
+  --col-app-raia:       var(--col-cell);
+  --col-app-card:       var(--col-panel-2);
+  --col-app-card-hover: color-mix(in srgb, var(--col-floral) 6%, var(--col-panel-2));
 
   /* Menu lateral: um passo fora do canvas, para se separar do conteúdo sem depender só do
      fio. No escuro ele clareia de leve (um véu de Floral); no claro, escurece (mais Dust). */
-  --liff-app-aside: color-mix(in srgb, var(--liff-floral) 5%, var(--liff-canvas));
+  --col-app-aside: color-mix(in srgb, var(--col-floral) 5%, var(--col-canvas));
   /* O item aberto avança sobre o menu nos dois temas: mais um véu no escuro, Floral no claro. */
-  --liff-app-aside-ativo: color-mix(in srgb, var(--liff-floral) 7%, var(--liff-app-aside));
+  --col-app-aside-ativo: color-mix(in srgb, var(--col-floral) 7%, var(--col-app-aside));
 }
 
 :root[data-theme="light"] {
   /* Neutros do tema claro (nov/2026). Saem o Floral White e o véu de Dust, que deixavam a
      tela amarelada; entram quatro cinzas quase sem matiz e um fio. O Floral continua sendo
      texto e logo do tema escuro, e o Paprika não muda. */
-  --liff-claro-1: #FAFAFA;   /* superfície: card, painel, campo, célula */
-  --liff-claro-2: #F7F5F4;   /* canvas da aplicação */
-  --liff-claro-3: #EDEBE9;   /* recuo: raia do quadro, menu lateral, bloco de código */
-  --liff-claro-4: #E2DFDD;   /* passo 2: hover, selecionado, avatar */
-  --liff-claro-fio: #D6D3D0; /* fio estrutural de 1px */
+  --col-claro-1: #FAFAFA;   /* superfície: card, painel, campo, célula */
+  --col-claro-2: #F7F5F4;   /* canvas da aplicação */
+  --col-claro-3: #EDEBE9;   /* recuo: raia do quadro, menu lateral, bloco de código */
+  --col-claro-4: #E2DFDD;   /* passo 2: hover, selecionado, avatar */
+  --col-claro-fio: #D6D3D0; /* fio estrutural de 1px */
 
-  --liff-app-on-accent: var(--liff-claro-1);
+  --col-app-on-accent: var(--col-claro-1);
   /* Superfícies: a célula de conteúdo é o claro-1; o canvas recua um passo
      e o passo 2 (hover/selecionado) é o mais escuro dos quatro. */
-  --liff-canvas:       var(--liff-claro-2);
-  --liff-surface:      var(--liff-claro-1);
-  --liff-surface-cell: var(--liff-claro-1);
-  --liff-surface-2:    var(--liff-claro-4);
-  --liff-code-bg:      var(--liff-claro-3);
+  --col-canvas:       var(--col-claro-2);
+  --col-surface:      var(--col-claro-1);
+  --col-surface-cell: var(--col-claro-1);
+  --col-surface-2:    var(--col-claro-4);
+  --col-code-bg:      var(--col-claro-3);
 
   /* Kanban no claro: a raia afunda um passo abaixo do canvas e o card é o
      claro-1 — o "branco" do sistema, sem contorno. */
-  --liff-app-raia:       var(--liff-claro-3);
-  --liff-app-card:       var(--liff-claro-1);
-  --liff-app-card-hover: var(--liff-claro-2);
+  --col-app-raia:       var(--col-claro-3);
+  --col-app-card:       var(--col-claro-1);
+  --col-app-card-hover: var(--col-claro-2);
   /* O menu fica um passo abaixo do canvas; o item ativo volta para a superfície. */
-  --liff-app-aside:      var(--liff-claro-3);
-  --liff-app-aside-ativo: var(--liff-claro-1);
+  --col-app-aside:      var(--col-claro-3);
+  --col-app-aside-ativo: var(--col-claro-1);
 
   /* A hairline clareia; o cinza apagado escurece — no escuro os dois são
      Charcoal, aqui precisam ir para lados opostos. */
-  --liff-border:    var(--liff-claro-fio);
-  --liff-app-ghost: #8E8E8E;
+  --col-border:    var(--col-claro-fio);
+  --col-app-ghost: #8E8E8E;
 
   /* Texto: a escala de proeminência do escuro, invertida. */
-  --liff-text:       var(--liff-obsidiana);
-  --liff-text-body:  color-mix(in srgb, var(--liff-obsidiana) 84%, var(--liff-claro-1));
-  --liff-text-muted: color-mix(in srgb, var(--liff-obsidiana) 64%, var(--liff-claro-1));
-  --liff-text-faint: #606060;
+  --col-text:       var(--col-obsidiana);
+  --col-text-body:  color-mix(in srgb, var(--col-obsidiana) 84%, var(--col-claro-1));
+  --col-text-muted: color-mix(in srgb, var(--col-obsidiana) 64%, var(--col-claro-1));
+  --col-text-faint: #606060;
 
   /* Estados: os HEX do design system foram calibrados para o canvas escuro e
      não têm contraste sobre o claro. Escurecem por mistura com Obsidiana
      — o matiz é o mesmo, só a luminância muda. Os tokens originais seguem
      intactos e continuam valendo para preenchimentos. */
-  --liff-app-success-ink: color-mix(in srgb, var(--liff-success) 72%, var(--liff-obsidiana));
-  --liff-app-warning-ink: color-mix(in srgb, var(--liff-warning) 70%, var(--liff-obsidiana));
-  --liff-app-error-ink:   color-mix(in srgb, var(--liff-error) 82%, var(--liff-obsidiana));
-  --liff-app-info-ink:    color-mix(in srgb, var(--liff-info) 88%, var(--liff-obsidiana));
-  --liff-app-on-state:    var(--liff-claro-1);
+  --col-app-success-ink: color-mix(in srgb, var(--col-success) 72%, var(--col-obsidiana));
+  --col-app-warning-ink: color-mix(in srgb, var(--col-warning) 70%, var(--col-obsidiana));
+  --col-app-error-ink:   color-mix(in srgb, var(--col-error) 82%, var(--col-obsidiana));
+  --col-app-info-ink:    color-mix(in srgb, var(--col-info) 88%, var(--col-obsidiana));
+  --col-app-on-state:    var(--col-claro-1);
 
   /* Verticais: o tom Mid é claro demais para texto sobre Floral White; sobe
      para o Core de cada cascata. Labs é a exceção — seu Core é um teal
      luminoso que também não segura, então usa o Dark. */
-  --liff-app-area-law-firms:     var(--liff-law-firms-core);
-  --liff-app-area-corporate:     var(--liff-corporate-core);
-  --liff-app-area-public-sector: var(--liff-public-sector-core);
-  --liff-app-area-tax:           var(--liff-tax-core);
-  --liff-app-area-labs:          var(--liff-labs-dark);
-  --liff-app-area-social:        var(--liff-social-core);
+  --col-app-area-law-firms:     var(--col-law-firms-core);
+  --col-app-area-corporate:     var(--col-corporate-core);
+  --col-app-area-public-sector: var(--col-public-sector-core);
+  --col-app-area-tax:           var(--col-tax-core);
+  --col-app-area-labs:          var(--col-labs-dark);
+  --col-app-area-social:        var(--col-social-core);
 }
 
 /* ---------- tema misto (nov/2026) ----------
@@ -135,76 +135,76 @@
    para o que está dentro dela, os valores do escuro de cada alias que o claro reescreve.
    Variáveis que dependem de outras (placeholder, aside) são redeclaradas também, porque
    a var() é resolvida onde é declarada — herdadas do :root, viriam calculadas com o claro. */
-:root[data-aside="obsidiana"] .liff-aside {
+:root[data-aside="obsidiana"] .col-aside {
   color-scheme: dark;
-  --liff-canvas:       var(--liff-obsidiana);
-  --liff-surface:      var(--liff-panel);
-  --liff-surface-2:    var(--liff-panel-2);
-  --liff-surface-cell: var(--liff-cell);
-  --liff-code-bg:      #0B0D10;
-  --liff-border:       var(--liff-charcoal);
-  --liff-app-ghost:    var(--liff-charcoal);
+  --col-canvas:       var(--col-obsidiana);
+  --col-surface:      var(--col-panel);
+  --col-surface-2:    var(--col-panel-2);
+  --col-surface-cell: var(--col-cell);
+  --col-code-bg:      #0B0D10;
+  --col-border:       var(--col-charcoal);
+  --col-app-ghost:    var(--col-charcoal);
 
-  --liff-text:       var(--liff-floral);
-  --liff-text-body:  var(--liff-body-ink);
-  --liff-text-muted: var(--liff-dust);
-  --liff-text-faint: var(--liff-muted);
-  --liff-app-placeholder: color-mix(in srgb, var(--liff-text-faint) 50%, var(--liff-surface));
+  --col-text:       var(--col-floral);
+  --col-text-body:  var(--col-body-ink);
+  --col-text-muted: var(--col-dust);
+  --col-text-faint: var(--col-muted);
+  --col-app-placeholder: color-mix(in srgb, var(--col-text-faint) 50%, var(--col-surface));
 
-  --liff-app-success-ink: var(--liff-success);
-  --liff-app-warning-ink: var(--liff-warning);
-  --liff-app-error-ink:   var(--liff-error);
-  --liff-app-info-ink:    var(--liff-info);
-  --liff-app-on-state:    var(--liff-obsidiana);
-  --liff-app-on-accent:   var(--liff-obsidiana);
+  --col-app-success-ink: var(--col-success);
+  --col-app-warning-ink: var(--col-warning);
+  --col-app-error-ink:   var(--col-error);
+  --col-app-info-ink:    var(--col-info);
+  --col-app-on-state:    var(--col-obsidiana);
+  --col-app-on-accent:   var(--col-obsidiana);
 
-  --liff-app-raia:       var(--liff-cell);
-  --liff-app-card:       var(--liff-panel-2);
-  --liff-app-card-hover: color-mix(in srgb, var(--liff-floral) 6%, var(--liff-panel-2));
+  --col-app-raia:       var(--col-cell);
+  --col-app-card:       var(--col-panel-2);
+  --col-app-card-hover: color-mix(in srgb, var(--col-floral) 6%, var(--col-panel-2));
 
   /* Obsidiana pura no fundo, como pedido; o ativo é o véu de Floral do escuro. */
-  --liff-app-aside:       var(--liff-obsidiana);
-  --liff-app-aside-ativo: color-mix(in srgb, var(--liff-floral) 7%, var(--liff-app-aside));
-  color: var(--liff-text);
+  --col-app-aside:       var(--col-obsidiana);
+  --col-app-aside-ativo: color-mix(in srgb, var(--col-floral) 7%, var(--col-app-aside));
+  color: var(--col-text);
 }
 /* As correções de formulário do claro fixam cor com !important; dentro da lateral escura
    precisam voltar ao Floral. */
-:root[data-aside="obsidiana"] .liff-aside input,
-:root[data-aside="obsidiana"] .liff-aside select,
-:root[data-aside="obsidiana"] .liff-aside textarea { color: var(--liff-text) !important; }
-:root[data-aside="obsidiana"] .liff-aside label { color: var(--liff-text-muted) !important; }
-:root[data-aside="obsidiana"] .liff-aside select ~ span { color: var(--liff-text-faint) !important; }
+:root[data-aside="obsidiana"] .col-aside input,
+:root[data-aside="obsidiana"] .col-aside select,
+:root[data-aside="obsidiana"] .col-aside textarea { color: var(--col-text) !important; }
+:root[data-aside="obsidiana"] .col-aside label { color: var(--col-text-muted) !important; }
+:root[data-aside="obsidiana"] .col-aside select ~ span { color: var(--col-text-faint) !important; }
 /* O fio entre a lateral e o conteúdo é o gap da casca; no misto ele some contra a Obsidiana
    de um lado e o canvas claro do outro, então a própria troca de fundo faz a separação. */
-:root[data-aside="obsidiana"] .liff-shell { background: var(--liff-obsidiana); }
+:root[data-aside="obsidiana"] .col-shell { background: var(--col-obsidiana); }
 
 /* =========================================================
    Base
    ========================================================= */
-html, body { margin: 0; padding: 0; background: var(--liff-canvas); }
-body { background: var(--liff-canvas); color: var(--liff-text); }
-#root { font-family: var(--liff-font-body); }
+html, body { margin: 0; padding: 0; background: var(--col-canvas); }
+body { background: var(--col-canvas); color: var(--col-text); }
+#root { font-family: var(--col-font-body); }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-thumb { background: var(--liff-border); }
-::-webkit-scrollbar-track { background: var(--liff-canvas); }
+::-webkit-scrollbar-thumb { background: var(--col-border); }
+::-webkit-scrollbar-track { background: var(--col-canvas); }
 
 /* ---------- login ---------- */
-.liff-login {
+.col-login {
   min-height: 100vh;
-  background: var(--liff-canvas);
+  background: var(--col-canvas);
   display: grid;
   grid-template-columns: 1fr 1fr;
 }
-.liff-login__pitch {
+.col-login__pitch {
   padding: 72px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   gap: 48px;
-  border-right: 1px solid var(--liff-border);
+  border-right: 1px solid var(--col-border);
 }
-.liff-login__panel {
+.col-login__panel {
   padding: 72px;
   display: flex;
   align-items: center;
@@ -213,53 +213,47 @@ body { background: var(--liff-canvas); color: var(--liff-text); }
 
 /* ---------- visão geral (cockpit) ---------- */
 .pn { display: flex; flex-direction: column; gap: 20px; max-width: 1320px; }
-.pn-kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1px; background: var(--liff-border); border: 1px solid var(--liff-border); border-radius: var(--liff-radius-sm); overflow: hidden; }
+.pn-kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1px; background: var(--col-border); border: 1px solid var(--col-border); border-radius: var(--col-radius-sm); overflow: hidden; }
 .pn-kpi { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; gap: 6px; padding: 16px 18px 18px;
-  background: var(--liff-app-card); border-top: 3px solid transparent; min-width: 0; }
-.pn-kpi:hover { background: var(--liff-app-card-hover); }
-.pn-kpi:focus-visible { outline: 2px solid var(--liff-accent); outline-offset: -2px; }
-.pn-kpi[data-tom="ok"] { border-top-color: var(--liff-success); }
-.pn-kpi[data-tom="aviso"] { border-top-color: var(--liff-warning); }
-.pn-kpi[data-tom="erro"] { border-top-color: var(--liff-error); }
-.pn-kpi__valor { font-family: var(--liff-font-mono); font-size: 30px; font-weight: 600; letter-spacing: -0.02em; color: var(--liff-text);
+  background: var(--col-app-card); border-top: 3px solid transparent; min-width: 0; }
+.pn-kpi:hover { background: var(--col-app-card-hover); }
+.pn-kpi:focus-visible { outline: 2px solid var(--col-accent); outline-offset: -2px; }
+.pn-kpi[data-tom="ok"] { border-top-color: var(--col-success); }
+.pn-kpi[data-tom="aviso"] { border-top-color: var(--col-warning); }
+.pn-kpi[data-tom="erro"] { border-top-color: var(--col-error); }
+.pn-kpi__valor { font-family: var(--col-font-mono); font-size: 30px; font-weight: 600; letter-spacing: -0.02em; color: var(--col-text);
   line-height: 1.05; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pn-kpi__detalhe { font-size: 12px; line-height: 1.4; color: var(--liff-text-faint); }
+.pn-kpi__detalhe { font-size: 12px; line-height: 1.4; color: var(--col-text-faint); }
 .pn-linha { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
 .pn-linha--larga { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); }
-.fd-pasta { display: flex; flex-direction: column; gap: 12px; }
-.fd-pasta__topo { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-bottom: 10px; border-bottom: 1px solid var(--liff-border); }
-.fd-pasta__nome { display: inline-flex; align-items: center; gap: 8px; background: none; border: 0; padding: 0; cursor: pointer; font: inherit; font-size: 15px; font-weight: 700; color: var(--liff-text); }
-.fd-pasta__seta { width: 10px; font-size: 11px; color: var(--liff-text-faint); }
-.fd-pasta__desc { font-size: 13px; color: var(--liff-text-faint); line-height: 1.5; padding-left: 26px; max-width: 820px; }
-.fd-pasta > div:last-child:not(.fd-pasta__topo):not(.fd-pasta__desc) { padding-left: 26px; }
-.pn-painel { background: var(--liff-app-card); border: 1px solid var(--liff-border); border-radius: var(--liff-radius-sm); padding: 20px 22px; min-width: 0; }
+.pn-painel { background: var(--col-app-card); border: 1px solid var(--col-border); border-radius: var(--col-radius-sm); padding: 20px 22px; min-width: 0; }
 .pn-painel > div:first-child { margin-bottom: 16px !important; }
-.pn-nota { margin-top: 12px; font-family: var(--liff-font-mono); font-size: 11px; color: var(--liff-text-faint); }
+.pn-nota { margin-top: 12px; font-family: var(--col-font-mono); font-size: 11px; color: var(--col-text-faint); }
 .pn-barras { display: flex; flex-direction: column; gap: 9px; }
 .pn-barra { display: grid; grid-template-columns: 112px minmax(0, 1fr) 118px; gap: 12px; align-items: center; }
-.pn-barra__rotulo { font-size: 13px; color: var(--liff-text-body); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pn-barra__trilho { height: 14px; background: color-mix(in srgb, var(--liff-text) 6%, transparent); border-radius: 0 var(--liff-radius-sm) var(--liff-radius-sm) 0; overflow: hidden; }
-.pn-barra__valor { display: block; height: 100%; min-width: 2px; border-radius: 0 var(--liff-radius-sm) var(--liff-radius-sm) 0; }
-.pn-barra__texto { font-family: var(--liff-font-mono); font-size: 12px; color: var(--liff-text); text-align: right; white-space: nowrap; }
+.pn-barra__rotulo { font-size: 13px; color: var(--col-text-body); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pn-barra__trilho { height: 14px; background: color-mix(in srgb, var(--col-text) 6%, transparent); border-radius: 0 var(--col-radius-sm) var(--col-radius-sm) 0; overflow: hidden; }
+.pn-barra__valor { display: block; height: 100%; min-width: 2px; border-radius: 0 var(--col-radius-sm) var(--col-radius-sm) 0; }
+.pn-barra__texto { font-family: var(--col-font-mono); font-size: 12px; color: var(--col-text); text-align: right; white-space: nowrap; }
 /* Valor e quantidade em colunas fixas: 4 casas para a quantidade, o resto para o valor. */
 .pn-barra__texto--duas { display: grid; grid-template-columns: minmax(0, 1fr) 4ch; column-gap: 14px; font-variant-numeric: tabular-nums; }
 .pn-barra__texto--duas > span { text-align: right; }
 .pn-empilhada { display: flex; gap: 2px; height: 22px; margin: 6px 0 16px; }
 .pn-empilhada span { flex-basis: 0; min-width: 3px; }
-.pn-empilhada span:first-child { border-radius: var(--liff-radius-sm) 0 0 var(--liff-radius-sm); }
-.pn-empilhada span:last-child { border-radius: 0 var(--liff-radius-sm) var(--liff-radius-sm) 0; }
+.pn-empilhada span:first-child { border-radius: var(--col-radius-sm) 0 0 var(--col-radius-sm); }
+.pn-empilhada span:last-child { border-radius: 0 var(--col-radius-sm) var(--col-radius-sm) 0; }
 .pn-legenda { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 20px; }
-.pn-legenda > div { display: grid; grid-template-columns: 12px 1fr auto 40px; gap: 8px; align-items: center; font-size: 13px; color: var(--liff-text-body); }
-.pn-legenda strong { font-family: var(--liff-font-mono); font-size: 16px; color: var(--liff-text); }
+.pn-legenda > div { display: grid; grid-template-columns: 12px 1fr auto 40px; gap: 8px; align-items: center; font-size: 13px; color: var(--col-text-body); }
+.pn-legenda strong { font-family: var(--col-font-mono); font-size: 16px; color: var(--col-text); }
 .pn-legenda__marca { width: 12px; height: 12px; border-radius: 3px; }
-.pn-legenda__pct { font-family: var(--liff-font-mono); font-size: 11px; color: var(--liff-text-faint); text-align: right; }
+.pn-legenda__pct { font-family: var(--col-font-mono); font-size: 11px; color: var(--col-text-faint); text-align: right; }
 .pn-mini { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 14px; }
-.pn-fat { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--liff-border); border: 1px solid var(--liff-border); border-radius: var(--liff-radius-sm); overflow: hidden; }
-.pn-fat .pn-mini__item { background: var(--liff-app-card); padding: 14px 16px; border-top: 3px solid transparent; }
+.pn-fat { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--col-border); border: 1px solid var(--col-border); border-radius: var(--col-radius-sm); overflow: hidden; }
+.pn-fat .pn-mini__item { background: var(--col-app-card); padding: 14px 16px; border-top: 3px solid transparent; }
 .pn-mini__item { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.pn-mini__item[data-tom="erro"] { border-top-color: var(--liff-error); }
-.pn-mini__item[data-tom="ok"] { border-top-color: var(--liff-success); }
-.pn-mini__valor { font-family: var(--liff-font-mono); font-size: 22px; font-weight: 600; color: var(--liff-text); white-space: nowrap; }
+.pn-mini__item[data-tom="erro"] { border-top-color: var(--col-error); }
+.pn-mini__item[data-tom="ok"] { border-top-color: var(--col-success); }
+.pn-mini__valor { font-family: var(--col-font-mono); font-size: 22px; font-weight: 600; color: var(--col-text); white-space: nowrap; }
 .pn .rec-grafico { height: 210px; border: 0; padding: 8px 0 0; background: transparent; }
 @media (max-width: 1200px) { .pn-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 900px) {
@@ -275,76 +269,76 @@ body { background: var(--liff-canvas); color: var(--liff-text); }
 
 /* ---------- forecast de receita ----------
    Cores das séries, por pedido do usuário (nov/2026), amarradas às verticais do cadastro:
-   contratada e assinatura no verde da LIFF Tax, implantação na cor da Regtrack, customização
+   contratada e assinatura no verde de Tax, implantação na cor da Regtrack, customização
    no roxo da Legal Dept, previsão (provável sólida, possível com textura) no paprika da marca.
    Por serem as variáveis das áreas, seguem o cadastro e o escurecimento do tema claro. Ordem de
    empilhamento validada (dataviz): separação e contraste passam nos dois temas; a Regtrack fica
    mais clara que as demais no escuro. O valor depois da vírgula vale se a vertical sumir. */
 :root {
-  --rec-contratada: var(--liff-app-area-tax, #0d9488);
-  --rec-assinatura: var(--liff-app-area-tax, #0d9488);
-  --rec-implantacao: var(--liff-app-area-regtrack, #2ad7d0);
-  --rec-customizacao: var(--liff-app-area-corporate, #7e58df);
-  --rec-prevista: var(--liff-paprika, #EB5E28);
+  --rec-contratada: var(--col-app-area-tax, #0d9488);
+  --rec-assinatura: var(--col-app-area-tax, #0d9488);
+  --rec-implantacao: var(--col-app-area-regtrack, #2ad7d0);
+  --rec-customizacao: var(--col-app-area-corporate, #7e58df);
+  --rec-prevista: var(--col-paprika, #EB5E28);
 }
-.rec-numeros { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--liff-border); border: 1px solid var(--liff-border); border-radius: var(--liff-radius-sm); overflow: hidden; }
-.rec-numero { background: var(--liff-app-card); padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; }
-.rec-numero__valor { font-family: var(--liff-font-mono); font-size: 26px; font-weight: 600; color: var(--liff-text); letter-spacing: -0.01em; }
+.rec-numeros { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--col-border); border: 1px solid var(--col-border); border-radius: var(--col-radius-sm); overflow: hidden; }
+.rec-numero { background: var(--col-app-card); padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; }
+.rec-numero__valor { font-family: var(--col-font-mono); font-size: 26px; font-weight: 600; color: var(--col-text); letter-spacing: -0.01em; }
 @media (max-width: 900px) { .rec-numeros { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
-.rec-legenda { display: flex; flex-wrap: wrap; gap: 6px 16px; list-style: none; margin: 0; padding: 0; font-size: 12px; color: var(--liff-text-body); }
+.rec-legenda { display: flex; flex-wrap: wrap; gap: 6px 16px; list-style: none; margin: 0; padding: 0; font-size: 12px; color: var(--col-text-body); }
 .rec-legenda li { display: inline-flex; align-items: center; gap: 7px; }
 .rec-legenda__marca { display: inline-block; width: 12px; height: 12px; border-radius: 3px; flex: none; }
-.rec-link { all: unset; cursor: pointer; font-family: var(--liff-font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--liff-accent); }
+.rec-link { all: unset; cursor: pointer; font-family: var(--col-font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--col-accent); }
 .rec-link:hover { text-decoration: underline; }
-.rec-link:focus-visible { outline: 2px solid var(--liff-accent); outline-offset: 2px; }
-.rec-link--forte { text-transform: none; letter-spacing: 0; font-family: var(--liff-font-body); font-size: 13px; color: var(--liff-text); font-weight: 600; }
+.rec-link:focus-visible { outline: 2px solid var(--col-accent); outline-offset: 2px; }
+.rec-link--forte { text-transform: none; letter-spacing: 0; font-family: var(--col-font-body); font-size: 13px; color: var(--col-text); font-weight: 600; }
 
 .rec-grafico { display: grid; grid-template-columns: 64px 1fr; gap: 8px; height: 280px; padding: 16px 16px 8px 8px;
-  background: var(--liff-app-card); border: 1px solid var(--liff-border); border-radius: var(--liff-radius-sm); }
+  background: var(--col-app-card); border: 1px solid var(--col-border); border-radius: var(--col-radius-sm); }
 .rec-grafico__eixo { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; padding-bottom: 22px;
-  font-family: var(--liff-font-mono); font-size: 10px; color: var(--liff-text-faint); transform: translateY(6px); }
+  font-family: var(--col-font-mono); font-size: 10px; color: var(--col-text-faint); transform: translateY(6px); }
 .rec-grafico__area { position: relative; padding-bottom: 22px; }
 .rec-grafico__plot { position: absolute; inset: 0 0 22px 0; pointer-events: none; }
-.rec-grafico__grade { position: absolute; left: 0; right: 0; border-top: 1px solid var(--liff-border); }
-.rec-grafico__grade:first-child { border-top-color: var(--liff-text-faint); }
+.rec-grafico__grade { position: absolute; left: 0; right: 0; border-top: 1px solid var(--col-border); }
+.rec-grafico__grade:first-child { border-top-color: var(--col-text-faint); }
 .rec-controles { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .rec-alterna { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 10px; box-sizing: border-box; cursor: pointer;
-  border: 1px solid var(--liff-border); border-radius: var(--liff-radius-sm); background: transparent; color: var(--liff-text-muted);
-  font-family: var(--liff-font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+  border: 1px solid var(--col-border); border-radius: var(--col-radius-sm); background: transparent; color: var(--col-text-muted);
+  font-family: var(--col-font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
 .rec-alterna[aria-pressed="false"] .rec-legenda__marca { opacity: .35; }
-.rec-alterna[aria-pressed="true"] { color: var(--liff-text); border-color: var(--liff-text-faint); background: var(--liff-surface-2); }
-.rec-alterna:focus-visible { outline: 2px solid var(--liff-accent); outline-offset: 2px; }
-.rec-grafico__vazio { position: absolute; inset: 0 0 22px; display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--liff-text-faint); }
+.rec-alterna[aria-pressed="true"] { color: var(--col-text); border-color: var(--col-text-faint); background: var(--col-surface-2); }
+.rec-alterna:focus-visible { outline: 2px solid var(--col-accent); outline-offset: 2px; }
+.rec-grafico__vazio { position: absolute; inset: 0 0 22px; display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--col-text-faint); }
 .rec-grafico__barras { position: absolute; inset: 0; display: flex; gap: 6px; align-items: stretch; }
 .rec-grafico__coluna { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 22px; outline: none; }
-.rec-grafico__coluna[data-foco="1"] { background: color-mix(in srgb, var(--liff-text) 5%, transparent); }
-.rec-grafico__coluna:focus-visible { box-shadow: inset 0 0 0 2px var(--liff-accent); }
+.rec-grafico__coluna[data-foco="1"] { background: color-mix(in srgb, var(--col-text) 5%, transparent); }
+.rec-grafico__coluna:focus-visible { box-shadow: inset 0 0 0 2px var(--col-accent); }
 .rec-grafico__pilha { display: flex; flex-direction: column; gap: 2px; margin: 0 18%; min-height: 0; }
 .rec-grafico__segmento { min-height: 2px; flex-basis: 0; }
-.rec-grafico__segmento[data-topo="1"] { border-radius: var(--liff-radius-sm) var(--liff-radius-sm) 0 0; }
-.rec-grafico__mes { position: absolute; bottom: 0; left: -50%; right: -50%; text-align: center; font-family: var(--liff-font-mono); font-size: 10px; color: var(--liff-text-faint); white-space: nowrap; overflow: hidden; }
-.rec-dica { position: absolute; top: 8px; z-index: 5; min-width: 230px; padding: 12px 14px; background: var(--liff-surface);
-  border: 1px solid var(--liff-border); border-radius: var(--liff-radius-sm); box-shadow: 0 8px 24px rgba(0,0,0,.25); pointer-events: none; }
+.rec-grafico__segmento[data-topo="1"] { border-radius: var(--col-radius-sm) var(--col-radius-sm) 0 0; }
+.rec-grafico__mes { position: absolute; bottom: 0; left: -50%; right: -50%; text-align: center; font-family: var(--col-font-mono); font-size: 10px; color: var(--col-text-faint); white-space: nowrap; overflow: hidden; }
+.rec-dica { position: absolute; top: 8px; z-index: 5; min-width: 230px; padding: 12px 14px; background: var(--col-surface);
+  border: 1px solid var(--col-border); border-radius: var(--col-radius-sm); box-shadow: 0 8px 24px rgba(0,0,0,.25); pointer-events: none; }
 .rec-dica[data-lado="dir"] { left: calc(100% - 8px); }
 .rec-dica[data-lado="esq"] { right: calc(100% - 8px); }
-.rec-dica__linha { display: grid; grid-template-columns: 12px 1fr auto; gap: 8px; align-items: center; font-size: 12px; color: var(--liff-text-body); padding: 2px 0; }
-.rec-dica__valor { font-family: var(--liff-font-mono); color: var(--liff-text); }
-.rec-dica__total { border-top: 1px solid var(--liff-border); margin-top: 6px; padding-top: 6px; font-weight: 600; }
+.rec-dica__linha { display: grid; grid-template-columns: 12px 1fr auto; gap: 8px; align-items: center; font-size: 12px; color: var(--col-text-body); padding: 2px 0; }
+.rec-dica__valor { font-family: var(--col-font-mono); color: var(--col-text); }
+.rec-dica__total { border-top: 1px solid var(--col-border); margin-top: 6px; padding-top: 6px; font-weight: 600; }
 
-.rec-pendencias { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1px; background: var(--liff-border); border: 1px solid var(--liff-border); border-radius: var(--liff-radius-sm); overflow: hidden; }
-.rec-pendencia { background: var(--liff-app-card); padding: 16px 18px; }
-.rec-pendencia__item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--liff-border); }
+.rec-pendencias { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1px; background: var(--col-border); border: 1px solid var(--col-border); border-radius: var(--col-radius-sm); overflow: hidden; }
+.rec-pendencia { background: var(--col-app-card); padding: 16px 18px; }
+.rec-pendencia__item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--col-border); }
 
 .rec-form { display: flex; flex-direction: column; gap: 18px; }
 .rec-form__quatro { display: grid; grid-template-columns: 1.2fr 1.4fr 0.6fr 1fr; gap: 12px; align-items: start; }
 .rec-form__duas { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
-.rec-linhas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--liff-border); border: 1px solid var(--liff-border); border-radius: var(--liff-radius-sm); overflow: hidden; }
-.rec-linha { background: var(--liff-canvas); padding: 14px; display: flex; flex-direction: column; gap: 12px; }
-.rec-notas { width: 100%; box-sizing: border-box; background: var(--liff-code-bg, #0B0D10); border: 1px solid var(--liff-charcoal); border-radius: var(--liff-radius-sm);
-  color: var(--liff-text); font-family: var(--liff-font-body); font-size: 14px; padding: 10px 12px; resize: vertical; }
-.rec-previa { max-height: 220px; overflow: auto; border: 1px solid var(--liff-border); border-radius: var(--liff-radius-sm); }
-.rec-previa__mes { display: grid; grid-template-columns: 60px 1fr auto; gap: 10px; align-items: baseline; padding: 7px 10px; border-bottom: 1px solid var(--liff-border); }
+.rec-linhas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--col-border); border: 1px solid var(--col-border); border-radius: var(--col-radius-sm); overflow: hidden; }
+.rec-linha { background: var(--col-canvas); padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.rec-notas { width: 100%; box-sizing: border-box; background: var(--col-code-bg, #0B0D10); border: 1px solid var(--col-charcoal); border-radius: var(--col-radius-sm);
+  color: var(--col-text); font-family: var(--col-font-body); font-size: 14px; padding: 10px 12px; resize: vertical; }
+.rec-previa { max-height: 220px; overflow: auto; border: 1px solid var(--col-border); border-radius: var(--col-radius-sm); }
+.rec-previa__mes { display: grid; grid-template-columns: 60px 1fr auto; gap: 10px; align-items: baseline; padding: 7px 10px; border-bottom: 1px solid var(--col-border); }
 @media (max-width: 640px) {
   .rec-form__duas, .rec-linhas, .rec-form__quatro { grid-template-columns: 1fr; }
   .rec-grafico { grid-template-columns: 48px 1fr; padding-right: 8px; }
@@ -356,149 +350,130 @@ body { background: var(--liff-canvas); color: var(--liff-text); }
 /* ---------- despesas (contas a pagar) ---------- */
 /* Reaproveita as peças do faturamento (.fat-*) e da receita (.rec-*); aqui só o que é próprio. */
 /* As abas e os filtros não quebram o rótulo em duas linhas no celular: rolam de lado. */
-.liff-densidade.desp-abas { max-width: 100%; overflow-x: auto; }
-.liff-densidade.desp-abas button { white-space: nowrap; flex: none; }
-.desp-cats { border: 1px solid var(--liff-border); border-radius: var(--liff-radius-sm); overflow: hidden; }
+.col-densidade.desp-abas { max-width: 100%; overflow-x: auto; }
+.col-densidade.desp-abas button { white-space: nowrap; flex: none; }
+.desp-cats { border: 1px solid var(--col-border); border-radius: var(--col-radius-sm); overflow: hidden; }
 .desp-cat { display: grid; grid-template-columns: minmax(160px, 1.2fr) minmax(80px, 2fr) 120px 44px; gap: 14px; align-items: center; padding: 10px 14px;
-  background: var(--liff-surface-cell); border-bottom: 1px solid var(--liff-border); }
+  background: var(--col-surface-cell); border-bottom: 1px solid var(--col-border); }
 .desp-cat:last-child { border-bottom: 0; }
-.desp-cat__trilho { height: 8px; border-radius: var(--liff-radius-sm); background: var(--liff-surface-2); overflow: hidden; }
-.desp-cat__barra { height: 100%; border-radius: var(--liff-radius-sm); background: var(--liff-accent); }
+.desp-cat__trilho { height: 8px; border-radius: var(--col-radius-sm); background: var(--col-surface-2); overflow: hidden; }
+.desp-cat__barra { height: 100%; border-radius: var(--col-radius-sm); background: var(--col-accent); }
 .desp-itens { display: grid; grid-template-columns: 150px minmax(0, 1.4fr) minmax(0, 1.2fr) 120px 24px; gap: 8px; align-items: center; padding: 4px 0; }
 .desp-itens--cab { padding-bottom: 6px; }
-.desp-item-lido { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 12px; align-items: baseline; padding: 8px 12px; border-bottom: 1px solid var(--liff-border); font-size: 13px; }
+.desp-item-lido { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 12px; align-items: baseline; padding: 8px 12px; border-bottom: 1px solid var(--col-border); font-size: 13px; }
 .desp-item-lido:last-child { border-bottom: 0; }
-.desp-grupos { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1px; background: var(--liff-border); border: 1px solid var(--liff-border); border-radius: var(--liff-radius-sm); overflow: hidden; }
-.desp-grupo { background: var(--liff-app-card); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
-.desp-grupo__item { all: unset; cursor: pointer; font-size: 13.5px; color: var(--liff-text); }
+.desp-grupos { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1px; background: var(--col-border); border: 1px solid var(--col-border); border-radius: var(--col-radius-sm); overflow: hidden; }
+.desp-grupo { background: var(--col-app-card); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.desp-grupo__item { all: unset; cursor: pointer; font-size: 13.5px; color: var(--col-text); }
 .desp-grupo__item:hover { text-decoration: underline; }
-.desp-grupo__item:focus-visible { outline: 2px solid var(--liff-accent); outline-offset: 2px; }
+.desp-grupo__item:focus-visible { outline: 2px solid var(--col-accent); outline-offset: 2px; }
 @media (max-width: 760px) {
   .desp-cat { grid-template-columns: minmax(0, 1fr) 110px 40px; }
   .desp-cat__trilho { display: none; }
-  .desp-itens { grid-template-columns: 1fr 1fr; padding: 8px 0; border-bottom: 1px solid var(--liff-border); }
+  .desp-itens { grid-template-columns: 1fr 1fr; padding: 8px 0; border-bottom: 1px solid var(--col-border); }
   .desp-itens--cab { display: none; }
 }
 
 /* ---------- faturamento ---------- */
-.fat-mes { display: inline-flex; align-items: center; height: 34px; box-sizing: border-box; border: 1px solid var(--liff-border); border-radius: var(--liff-radius-sm); overflow: hidden; }
-.fat-mes button { all: unset; cursor: pointer; padding: 5px 10px; font-size: 15px; color: var(--liff-text-muted); }
-.fat-mes button:hover { color: var(--liff-text); background: var(--liff-surface-2); }
-.fat-mes button:focus-visible { outline: 2px solid var(--liff-accent); }
-.fat-mes span { font-family: var(--liff-font-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--liff-text);
+.fat-mes { display: inline-flex; align-items: center; height: 34px; box-sizing: border-box; border: 1px solid var(--col-border); border-radius: var(--col-radius-sm); overflow: hidden; }
+.fat-mes button { all: unset; cursor: pointer; padding: 5px 10px; font-size: 15px; color: var(--col-text-muted); }
+.fat-mes button:hover { color: var(--col-text); background: var(--col-surface-2); }
+.fat-mes button:focus-visible { outline: 2px solid var(--col-accent); }
+.fat-mes span { font-family: var(--col-font-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--col-text);
   padding: 0 10px; min-width: 64px; text-align: center; }
-.fat-linha { display: grid; gap: 12px; align-items: center; padding: 11px 14px; background: var(--liff-surface-cell); border-bottom: 1px solid var(--liff-border); }
-.fat-linha--cab { background: var(--liff-canvas); padding-top: 10px; padding-bottom: 10px; }
-.fat-cliente { font-size: 14px; font-weight: 600; color: var(--liff-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.fat-meta { font-family: var(--liff-font-mono); font-size: 10.5px; color: var(--liff-text-faint); }
-.fat-num { font-family: var(--liff-font-mono); font-size: 12.5px; color: var(--liff-text); text-align: right; }
-.fat-aging { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1px; background: var(--liff-border); border: 1px solid var(--liff-border); border-radius: var(--liff-radius-sm); overflow: hidden; }
-.fat-aging__faixa { background: var(--liff-app-card); padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; border-top: 3px solid transparent; }
-.fat-aging__faixa[data-tom="ok"] { border-top-color: var(--liff-success); }
-.fat-aging__faixa[data-tom="aviso"] { border-top-color: var(--liff-warning); }
-.fat-aging__faixa[data-tom="erro"] { border-top-color: var(--liff-error); }
-.fat-aging__valor { font-family: var(--liff-font-mono); font-size: 20px; font-weight: 600; color: var(--liff-text); }
-.fat-resumo { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 14px; border: 1px solid var(--liff-border); border-radius: var(--liff-radius-sm);
-  font-family: var(--liff-font-mono); font-size: 12px; color: var(--liff-text-muted); text-transform: uppercase; letter-spacing: .08em; }
-.fat-resumo strong { font-size: 18px; color: var(--liff-text); letter-spacing: 0; }
-.fat-detalhe { border: 1px solid var(--liff-border); border-radius: var(--liff-radius-sm); overflow: hidden; }
-.fat-detalhe__linha { display: grid; grid-template-columns: 160px 1fr; gap: 12px; padding: 8px 12px; border-bottom: 1px solid var(--liff-border); font-size: 13px; }
+.fat-linha { display: grid; gap: 12px; align-items: center; padding: 11px 14px; background: var(--col-surface-cell); border-bottom: 1px solid var(--col-border); }
+.fat-linha--cab { background: var(--col-canvas); padding-top: 10px; padding-bottom: 10px; }
+.fat-cliente { font-size: 14px; font-weight: 600; color: var(--col-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fat-meta { font-family: var(--col-font-mono); font-size: 10.5px; color: var(--col-text-faint); }
+.fat-num { font-family: var(--col-font-mono); font-size: 12.5px; color: var(--col-text); text-align: right; }
+.fat-aging { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1px; background: var(--col-border); border: 1px solid var(--col-border); border-radius: var(--col-radius-sm); overflow: hidden; }
+.fat-aging__faixa { background: var(--col-app-card); padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; border-top: 3px solid transparent; }
+.fat-aging__faixa[data-tom="ok"] { border-top-color: var(--col-success); }
+.fat-aging__faixa[data-tom="aviso"] { border-top-color: var(--col-warning); }
+.fat-aging__faixa[data-tom="erro"] { border-top-color: var(--col-error); }
+.fat-aging__valor { font-family: var(--col-font-mono); font-size: 20px; font-weight: 600; color: var(--col-text); }
+.fat-resumo { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 14px; border: 1px solid var(--col-border); border-radius: var(--col-radius-sm);
+  font-family: var(--col-font-mono); font-size: 12px; color: var(--col-text-muted); text-transform: uppercase; letter-spacing: .08em; }
+.fat-resumo strong { font-size: 18px; color: var(--col-text); letter-spacing: 0; }
+.fat-detalhe { border: 1px solid var(--col-border); border-radius: var(--col-radius-sm); overflow: hidden; }
+.fat-detalhe__linha { display: grid; grid-template-columns: 160px 1fr; gap: 12px; padding: 8px 12px; border-bottom: 1px solid var(--col-border); font-size: 13px; }
 .fat-detalhe__linha:last-child { border-bottom: 0; }
-.fat-detalhe__linha span:first-child { font-family: var(--liff-font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--liff-text-faint); }
-.fat-detalhe__linha span:last-child { color: var(--liff-text); overflow-wrap: anywhere; }
+.fat-detalhe__linha span:first-child { font-family: var(--col-font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--col-text-faint); }
+.fat-detalhe__linha span:last-child { color: var(--col-text); overflow-wrap: anywhere; }
 @media (max-width: 900px) { .fat-aging { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
-/* ---------- funding ---------- */
-.fd-cobertura { height: 4px; margin-top: 5px; background: color-mix(in srgb, var(--liff-text) 8%, transparent); border-radius: 2px; overflow: hidden; }
-.fd-cobertura span { display: block; height: 100%; background: var(--liff-success); }
-.fd-sugestao { display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; padding: 10px 12px;
-  border: 1px dashed var(--liff-border); font-size: 12.5px; color: var(--liff-text-body); }
-.fd-split { display: flex; justify-content: space-between; font-family: var(--liff-font-mono); font-size: 11px; color: var(--liff-text-faint); margin-top: -8px; }
-.fd-funding-resumo { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--liff-border); border: 1px solid var(--liff-border); border-radius: var(--liff-radius-sm); overflow: hidden; }
-.fd-funding-resumo > div { background: var(--liff-app-card); padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
-.fd-funding-resumo strong { font-family: var(--liff-font-mono); font-size: 15px; color: var(--liff-text); }
-.fd-linha { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center;
-  padding: 10px 12px; border: 1px solid var(--liff-border); border-radius: var(--liff-radius-sm); font-size: 13px; color: var(--liff-text); }
-.fd-linha:hover { background: var(--liff-surface-2); }
-.fd-linha:focus-visible { outline: 2px solid var(--liff-accent); }
-.fd-form-linha { display: flex; flex-direction: column; gap: 14px; padding: 16px; border: 1px solid var(--liff-accent); border-radius: var(--liff-radius-sm); background: var(--liff-canvas); }
-.fd-tres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.fd-calc { grid-template-columns: 170px 130px 70px 130px minmax(0, 1fr) 120px; }
-.fd-prog { grid-template-columns: 200px 110px minmax(0, 1fr) 70px; }
-@media (max-width: 640px) { .fd-tres { grid-template-columns: 1fr; } .fd-calc, .fd-prog { grid-template-columns: 1fr 1fr; } }
-
 /* ---------- busca do cabeçalho ---------- */
-.liff-busca { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 8px 0 10px; box-sizing: border-box;
-  border: 1px solid var(--liff-border); border-radius: var(--liff-radius-sm); background: var(--liff-surface, transparent); color: var(--liff-text-muted); min-width: 200px; }
-.liff-busca:focus-within { border-color: var(--liff-accent); color: var(--liff-text); }
-.liff-busca input { all: unset; flex: 1; min-width: 0; font-family: var(--liff-font-mono); font-size: 12px; color: var(--liff-text); }
-.liff-busca input::placeholder { color: var(--liff-text-faint); text-transform: uppercase; letter-spacing: .1em; font-size: 11px; }
-.liff-busca input::-webkit-search-cancel-button { display: none; }
-.liff-busca button { all: unset; cursor: pointer; font-size: 16px; line-height: 1; padding: 0 4px; color: var(--liff-text-muted); }
-.liff-busca button:hover { color: var(--liff-text); }
-.liff-busca button:focus-visible { outline: 2px solid var(--liff-accent); }
-@media (max-width: 560px) { .liff-busca { min-width: 0; width: 100%; } }
+.col-busca { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 8px 0 10px; box-sizing: border-box;
+  border: 1px solid var(--col-border); border-radius: var(--col-radius-sm); background: var(--col-surface, transparent); color: var(--col-text-muted); min-width: 200px; }
+.col-busca:focus-within { border-color: var(--col-accent); color: var(--col-text); }
+.col-busca input { all: unset; flex: 1; min-width: 0; font-family: var(--col-font-mono); font-size: 12px; color: var(--col-text); }
+.col-busca input::placeholder { color: var(--col-text-faint); text-transform: uppercase; letter-spacing: .1em; font-size: 11px; }
+.col-busca input::-webkit-search-cancel-button { display: none; }
+.col-busca button { all: unset; cursor: pointer; font-size: 16px; line-height: 1; padding: 0 4px; color: var(--col-text-muted); }
+.col-busca button:hover { color: var(--col-text); }
+.col-busca button:focus-visible { outline: 2px solid var(--col-accent); }
+@media (max-width: 560px) { .col-busca { min-width: 0; width: 100%; } }
 
 /* ---------- shell ---------- */
-.liff-shell {
+.col-shell {
   height: 100vh;
   display: grid;
   grid-template-columns: 248px 1fr;
   gap: 1px;
-  background: var(--liff-border);
+  background: var(--col-border);
   overflow: hidden;
 }
-.liff-aside {
-  background: var(--liff-app-aside);
+.col-aside {
+  background: var(--col-app-aside);
   display: flex;
   flex-direction: column;
   padding: 26px 0;
   overflow: auto;
 }
-.liff-header {
-  border-bottom: 1px solid var(--liff-border);
+.col-header {
+  border-bottom: 1px solid var(--col-border);
   padding: 16px 28px;
   display: flex;
   align-items: center;
   gap: 18px;
   flex-wrap: wrap;
-  background: var(--liff-canvas);
+  background: var(--col-canvas);
 }
-.liff-main { flex: 1; overflow: auto; padding: 28px; }
+.col-main { flex: 1; overflow: auto; padding: 28px; }
 
 /* Botão e fundo da gaveta: só existem abaixo de 860px, onde a lateral sai do fluxo.
    O `display: none` aqui não é só estética — segura o fundo escuro caso a janela seja
    alargada com o menu aberto. */
-.liff-menu-botao,
-.liff-menu-fundo { display: none; }
+.col-menu-botao,
+.col-menu-fundo { display: none; }
 
 /* ---------- painel inicial ----------
    A quarta coluna dos números é mais larga: é a do dinheiro, e o valor não quebra
    (`white-space: nowrap` no componente). As linhas das listas são grids próprios em vez de
    tabela — o desenho é documental, sem célula nem borda vertical. */
-.liff-hero { grid-template-columns: repeat(3, 1fr) 1.25fr; }
+.col-hero { grid-template-columns: repeat(3, 1fr) 1.25fr; }
 /* 78px e não 64: o sinal mais longo é "parada 31d", do foco comercial. Em 64 ele quebrava
    em duas linhas contra um título de uma — desalinhava a régua da lista inteira. */
 /* Título e contexto dividem o espaço (o título um pouco mais); a última coluna tem largura
    fixa para todas as linhas alinharem, e cabe "EM ANDAMENTO · 11/11" numa linha só — antes
    eram 110px e quebrava. */
-.liff-painel-linha { grid-template-columns: 78px minmax(0, 1.15fr) minmax(0, 1fr) 170px; }
-.liff-painel-linha > *:last-child { white-space: nowrap; }
-.liff-painel-deal { grid-template-columns: 1fr 150px 130px 100px; }
-.liff-painel-log { grid-template-columns: 86px 200px 1fr; }
+.col-painel-linha { grid-template-columns: 78px minmax(0, 1.15fr) minmax(0, 1fr) 170px; }
+.col-painel-linha > *:last-child { white-space: nowrap; }
+.col-painel-deal { grid-template-columns: 1fr 150px 130px 100px; }
+.col-painel-log { grid-template-columns: 86px 200px 1fr; }
 
 /* ---------- grades das seções ---------- */
-.liff-kpis { grid-template-columns: repeat(4, 1fr); }
-.liff-overview-split { grid-template-columns: 1.35fr 1fr; }
-.liff-cad-split { grid-template-columns: 1fr 340px; }
-.liff-admin-cards { grid-template-columns: repeat(3, 1fr); }
+.col-kpis { grid-template-columns: repeat(4, 1fr); }
+.col-overview-split { grid-template-columns: 1.35fr 1fr; }
+.col-cad-split { grid-template-columns: 1fr 340px; }
+.col-admin-cards { grid-template-columns: repeat(3, 1fr); }
 
 /* Tabelas largas rolam dentro do próprio painel, nunca no body. */
-.liff-scroll-x { overflow-x: auto; }
-.liff-table { min-width: 900px; }
+.col-scroll-x { overflow-x: auto; }
+.col-table { min-width: 900px; }
 
 /* ---------- cortina (painel lateral direito) ----------
-   Todo cadastro e edição abre aqui: o card de Operações (.liff-drawer) e o resto (Modal,
+   Todo cadastro e edição abre aqui: o card de Operações (.col-drawer) e o resto (Modal,
    em views.tsx). Altura toda, cabeçalho fixo, conteúdo rolando. */
 @keyframes cortina-entra { from { transform: translateX(100%); } to { transform: none; } }
 @keyframes cortina-fundo-entra { from { opacity: 0; } to { opacity: 1; } }
@@ -506,55 +481,48 @@ body { background: var(--liff-canvas); color: var(--liff-text); }
 .cortina {
   position: fixed; top: 0; right: 0; bottom: 0; z-index: 51;
   max-width: 100vw; display: flex; flex-direction: column;
-  background: var(--liff-surface); border-left: 1px solid var(--liff-border);
+  background: var(--col-surface); border-left: 1px solid var(--col-border);
   box-shadow: -16px 0 40px rgba(0, 0, 0, 0.18);
   animation: cortina-entra 200ms cubic-bezier(.2, .8, .2, 1);
 }
 .cortina__topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 22px 28px 18px;
-  border-bottom: 1px solid var(--liff-border); flex: none; }
-.cortina__fechar { all: unset; cursor: pointer; font-size: 24px; line-height: 1; color: var(--liff-text-faint); padding: 2px 6px; border-radius: var(--liff-radius-sm); }
-.cortina__fechar:hover { color: var(--liff-text); background: var(--liff-surface-2); }
-.cortina__fechar:focus-visible { outline: 2px solid var(--liff-accent); }
+  border-bottom: 1px solid var(--col-border); flex: none; }
+.cortina__fechar { all: unset; cursor: pointer; font-size: 24px; line-height: 1; color: var(--col-text-faint); padding: 2px 6px; border-radius: var(--col-radius-sm); }
+.cortina__fechar:hover { color: var(--col-text); background: var(--col-surface-2); }
+.cortina__fechar:focus-visible { outline: 2px solid var(--col-accent); }
 .cortina__corpo { flex: 1; overflow: auto; padding: 24px 28px 32px; display: flex; flex-direction: column; gap: 16px; }
 /* Faixa de identidade no topo do card comercial: organização (larga), produto e estágio. */
 .cortina-topo { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap: 14px 32px; align-items: start;
-  padding-bottom: 18px; border-bottom: 1px solid var(--liff-border); }
+  padding-bottom: 18px; border-bottom: 1px solid var(--col-border); }
 .cortina-topo > :first-child { margin-right: -18px; }
 @media (max-width: 900px) { .cortina-topo { grid-template-columns: 1fr 1fr; gap: 14px; } .cortina-topo > :first-child { grid-column: 1 / -1; margin-right: 0; } }
 /* Composição da proposta: três tipos lado a lado, cada um com valor e parcelas. */
-.cop-proposta { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--liff-border);
-  border: 1px solid var(--liff-border); border-radius: var(--liff-radius-sm); overflow: hidden; }
-.cop-proposta > div { background: var(--liff-canvas); padding: 12px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.cop-proposta { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--col-border);
+  border: 1px solid var(--col-border); border-radius: var(--col-radius-sm); overflow: hidden; }
+.cop-proposta > div { background: var(--col-canvas); padding: 12px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 @media (max-width: 560px) { .cop-proposta { grid-template-columns: 1fr; } }
-/* Registro na AWS (ACE ou funding): identificação, link, abrir e remover numa linha só. */
-.cop-aws { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) 34px 34px; gap: 6px; align-items: center; }
-.cop-aws__acao { all: unset; box-sizing: border-box; width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center;
-  cursor: pointer; font-size: 16px; color: var(--liff-text-muted); border: 1px solid var(--liff-border); border-radius: var(--liff-radius-sm); }
-a.cop-aws__acao:hover, button.cop-aws__acao:hover { color: var(--liff-text); background: var(--liff-surface-2); }
-.cop-aws__acao:focus-visible { outline: 2px solid var(--liff-accent); }
-@media (max-width: 560px) { .cop-aws { grid-template-columns: minmax(0, 1fr) 34px 34px; } .cop-aws > input:first-child { grid-column: 1 / -1; } }
 .cop-total { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; padding: 10px 12px;
-  border: 1px solid var(--liff-border); border-radius: var(--liff-radius-sm); background: var(--liff-surface-2); }
-.cop-total strong { font-family: var(--liff-font-mono); font-size: 16px; color: var(--liff-text); font-weight: 600; }
-.cop-total span { font-family: var(--liff-font-mono); font-size: 11px; color: var(--liff-text-faint); }
+  border: 1px solid var(--col-border); border-radius: var(--col-radius-sm); background: var(--col-surface-2); }
+.cop-total strong { font-family: var(--col-font-mono); font-size: 16px; color: var(--col-text); font-weight: 600; }
+.cop-total span { font-family: var(--col-font-mono); font-size: 11px; color: var(--col-text-faint); }
 /* Formulário longo em duas colunas quando a cortina é larga. */
 .cortina-duas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 32px; align-items: start; }
 .cortina-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 @media (max-width: 900px) { .cortina-duas { grid-template-columns: 1fr; gap: 16px; } }
 /* Em uma coluna só (celular), o bloco que abria a coluna da direita passa a vir depois de outro: volta o fio. */
-@media (max-width: 900px) { .cortina-bloco-topo { border-top: 1px solid var(--liff-border); padding-top: 16px; margin-top: 2px; } }
-@media (prefers-reduced-motion: reduce) { .cortina, .cortina-fundo, .liff-drawer { animation: none; } }
+@media (max-width: 900px) { .cortina-bloco-topo { border-top: 1px solid var(--col-border); padding-top: 16px; margin-top: 2px; } }
+@media (prefers-reduced-motion: reduce) { .cortina, .cortina-fundo, .col-drawer { animation: none; } }
 
 /* ---------- drawer ---------- */
-.liff-drawer {
+.col-drawer {
   position: fixed;
   top: 0; right: 0; bottom: 0;
   width: 760px;
   animation: cortina-entra 200ms cubic-bezier(.2, .8, .2, 1);
   box-shadow: -16px 0 40px rgba(0, 0, 0, 0.18);
   max-width: 100%;
-  background: var(--liff-surface);
-  border-left: 1px solid var(--liff-border);
+  background: var(--col-surface);
+  border-left: 1px solid var(--col-border);
   z-index: 41;
   display: flex;
   flex-direction: column;
@@ -568,15 +536,15 @@ a.cop-aws__acao:hover, button.cop-aws__acao:hover { color: var(--liff-text); bac
    Sobre Floral White eles somem. Como o estilo é inline, a correção precisa
    de !important; o bundle continua intocado.
 
-   Sem escopo de contêiner de propósito: os modais renderizam FORA de .liff-main, como
-   sobreposições no nível da casca. Quando isto estava preso a .liff-main, os campos dentro
+   Sem escopo de contêiner de propósito: os modais renderizam FORA de .col-main, como
+   sobreposições no nível da casca. Quando isto estava preso a .col-main, os campos dentro
    dos formulários de criação ficavam com texto Floral White sobre fundo claro — invisíveis. */
 :root[data-theme="light"] input,
 :root[data-theme="light"] select,
-:root[data-theme="light"] textarea { color: var(--liff-text) !important; }
-:root[data-theme="light"] label { color: var(--liff-text-muted) !important; }
+:root[data-theme="light"] textarea { color: var(--col-text) !important; }
+:root[data-theme="light"] label { color: var(--col-text-muted) !important; }
 /* Caret do Select — irmão do <select> dentro do wrapper do componente. */
-:root[data-theme="light"] select ~ span { color: var(--liff-text-faint) !important; }
+:root[data-theme="light"] select ~ span { color: var(--col-text-faint) !important; }
 /* ---------- placeholder ----------
    Placeholder é exemplo, não conteúdo. A regra do tema claro acima fixa a cor do texto no
    elemento, e o placeholder herda dela quando nada mais o alcança — era o que fazia um
@@ -587,47 +555,47 @@ a.cop-aws__acao:hover, button.cop-aws__acao:hover { color: var(--liff-text); bac
    própria, o que empilharia duas atenuações sobre uma cor que já é a mais fraca da escala. */
 input::placeholder,
 textarea::placeholder {
-  color: var(--liff-app-placeholder) !important;
+  color: var(--col-app-placeholder) !important;
   opacity: 1;
 }
 
 /* ---------- hover: só troca de cor, sem transformações ---------- */
-.liff-hover-cell:hover,
-.liff-hover-card:hover,
-.liff-hover-row:hover { background: var(--liff-surface-2) !important; }
+.col-hover-cell:hover,
+.col-hover-card:hover,
+.col-hover-row:hover { background: var(--col-surface-2) !important; }
 /* Título de coluna clicável (app/components/ordenacao.tsx). Herda a tipografia do cabeçalho;
    a seta fica apagada até a coluna ser a da ordenação ou o mouse passar. */
-.liff-th { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; font: inherit; letter-spacing: inherit;
+.col-th { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; font: inherit; letter-spacing: inherit;
   text-transform: inherit; color: inherit; text-align: inherit; }
-.liff-th:hover, .liff-th[data-ativa="1"] { color: var(--liff-text); }
-.liff-th:focus-visible { outline: 2px solid var(--liff-accent); outline-offset: 3px; }
-.liff-th__seta { font-size: 8px; line-height: 1; opacity: 0; letter-spacing: 0; }
-.liff-th:hover .liff-th__seta, .liff-th:focus-visible .liff-th__seta { opacity: .6; }
-.liff-th[data-ativa="1"] .liff-th__seta { opacity: 1; color: var(--liff-accent); }
+.col-th:hover, .col-th[data-ativa="1"] { color: var(--col-text); }
+.col-th:focus-visible { outline: 2px solid var(--col-accent); outline-offset: 3px; }
+.col-th__seta { font-size: 8px; line-height: 1; opacity: 0; letter-spacing: 0; }
+.col-th:hover .col-th__seta, .col-th:focus-visible .col-th__seta { opacity: .6; }
+.col-th[data-ativa="1"] .col-th__seta { opacity: 1; color: var(--col-accent); }
 
 /* ---------- kanban (Comercial e Operações) ----------
    Sem fios: nem entre colunas, nem em volta do card, nem dentro dele. Quem separa é o
    espaço e o degrau de preenchimento raia → card. O fundo de cada peça mora AQUI e não
    em estilo inline — inline vence a classe, e o hover e o "alvo do arraste" não
    apareceriam. */
-.liff-kanban { display: flex; gap: 12px; overflow-x: auto; align-items: stretch; padding-bottom: 4px; }
-.liff-raia { background: var(--liff-app-raia); border-radius: var(--liff-radius-sm); transition: background .15s; }
+.col-kanban { display: flex; gap: 12px; overflow-x: auto; align-items: stretch; padding-bottom: 4px; }
+.col-raia { background: var(--col-app-raia); border-radius: var(--col-radius-sm); transition: background .15s; }
 /* Alvo do arraste: um véu da cor de destaque sobre a raia. Não pode ser o passo 2 da
    superfície — no escuro ele é exatamente a cor do card, e os cards da coluna de destino
    sumiriam no fundo bem na hora em que se está mirando neles. */
-.liff-raia[data-alvo="1"] { background: color-mix(in srgb, var(--liff-accent) 14%, var(--liff-app-raia)); }
+.col-raia[data-alvo="1"] { background: color-mix(in srgb, var(--col-accent) 14%, var(--col-app-raia)); }
 /* Matriz de permissões (Cadastros → Pessoas). */
-.perm-niveis { display: inline-flex; border: 1px solid var(--liff-border); border-radius: var(--liff-radius-sm); overflow: hidden; background: var(--liff-surface-cell); }
+.perm-niveis { display: inline-flex; border: 1px solid var(--col-border); border-radius: var(--col-radius-sm); overflow: hidden; background: var(--col-surface-cell); }
 .perm-niveis button { width: 24px; height: 26px; border: 0; padding: 0; background: transparent; cursor: pointer;
-  font-family: var(--liff-font-mono); font-size: 11px; color: var(--liff-app-ghost); transition: background .12s, color .12s; }
-.perm-niveis button + button { border-left: 1px solid var(--liff-border); }
-.perm-niveis button:not([aria-pressed="true"]):not(:disabled):hover { background: var(--liff-surface-2); color: var(--liff-text); }
+  font-family: var(--col-font-mono); font-size: 11px; color: var(--col-app-ghost); transition: background .12s, color .12s; }
+.perm-niveis button + button { border-left: 1px solid var(--col-border); }
+.perm-niveis button:not([aria-pressed="true"]):not(:disabled):hover { background: var(--col-surface-2); color: var(--col-text); }
 .perm-niveis button[aria-pressed="true"] { cursor: default; }
-.perm-niveis button:focus-visible { outline: 2px solid var(--liff-accent); outline-offset: -2px; }
+.perm-niveis button:focus-visible { outline: 2px solid var(--col-accent); outline-offset: -2px; }
 .perm-niveis[data-travado="1"] button { cursor: not-allowed; }
 .perm-papeis button { width: auto; padding: 0 10px; font-size: 11.5px; }
 .perm-celula { display: flex; justify-content: center; padding: 9px 0; }
-.perm-celula--todos { border-right: 1px solid var(--liff-border); }
+.perm-celula--todos { border-right: 1px solid var(--col-border); }
 .perm-pessoa { padding: 9px 8px; min-width: 0; }
 .perm-fixa { position: sticky; z-index: 1; }
 .perm-pessoa--abre { cursor: pointer; }
@@ -635,48 +603,48 @@ textarea::placeholder {
 
 /* Coluna recolhida: uma faixa com o nome em pé. Não encolhe nem cresce — quem cresce são as
    colunas abertas, que é o motivo de recolher. */
-.liff-raia--recolhida { flex: none; width: 44px; padding: 14px 0; border: 0; cursor: pointer; font: inherit;
+.col-raia--recolhida { flex: none; width: 44px; padding: 14px 0; border: 0; cursor: pointer; font: inherit;
   display: flex; flex-direction: column; align-items: center; gap: 12px; }
-.liff-raia--recolhida:hover { background: color-mix(in srgb, var(--liff-text) 6%, var(--liff-app-raia)); }
-.liff-raia--recolhida:focus-visible, .liff-raia-recolher:focus-visible { outline: 2px solid var(--liff-accent); outline-offset: -2px; }
-.liff-raia-recolher { border: 0; background: transparent; color: var(--liff-text-faint); cursor: pointer; font-size: 13px;
-  line-height: 1; padding: 2px 4px; border-radius: var(--liff-radius-sm); opacity: 0; transition: opacity .15s, color .15s; }
-.liff-raia:hover .liff-raia-recolher, .liff-raia-recolher:focus-visible { opacity: 1; }
-.liff-raia-recolher:hover { color: var(--liff-text); }
-@media (hover: none) { .liff-raia-recolher { opacity: 1; } }
-.liff-card { background: var(--liff-app-card); border-radius: var(--liff-radius-sm); transition: background .15s; }
-.liff-card--ativo:hover { background: var(--liff-app-card-hover); }
-.liff-seta { border-radius: var(--liff-radius-sm); transition: background .15s, color .15s; }
-.liff-seta--ativa:hover { background: var(--liff-surface-2); color: var(--liff-text) !important; }
-.liff-nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 20px; cursor: pointer; text-decoration: none; white-space: nowrap; }
-.liff-nav-item:hover { color: var(--liff-text) !important; }
-.liff-nav-item:focus-visible { outline: 2px solid var(--liff-accent); outline-offset: -2px; }
-.liff-nav-icone { display: inline-flex; flex: none; }
-.liff-aside-topo { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 0 16px 26px 22px; }
-.liff-aside-rodape { margin-top: auto; padding: 26px 22px 0; }
-.liff-aside-icones { flex-direction: column; align-items: center; gap: 12px; border-top: 1px solid var(--liff-border); padding-top: 16px; }
-.liff-recolher { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; flex: none; padding: 0;
-  border: 0; border-radius: var(--liff-radius-sm); background: transparent; color: var(--liff-text-muted); cursor: pointer; }
-.liff-recolher:hover { color: var(--liff-text); background: var(--liff-surface-2); }
-.liff-recolher:focus-visible { outline: 2px solid var(--liff-accent); outline-offset: 2px; }
-.liff-so-recolhida { display: none; }
+.col-raia--recolhida:hover { background: color-mix(in srgb, var(--col-text) 6%, var(--col-app-raia)); }
+.col-raia--recolhida:focus-visible, .col-raia-recolher:focus-visible { outline: 2px solid var(--col-accent); outline-offset: -2px; }
+.col-raia-recolher { border: 0; background: transparent; color: var(--col-text-faint); cursor: pointer; font-size: 13px;
+  line-height: 1; padding: 2px 4px; border-radius: var(--col-radius-sm); opacity: 0; transition: opacity .15s, color .15s; }
+.col-raia:hover .col-raia-recolher, .col-raia-recolher:focus-visible { opacity: 1; }
+.col-raia-recolher:hover { color: var(--col-text); }
+@media (hover: none) { .col-raia-recolher { opacity: 1; } }
+.col-card { background: var(--col-app-card); border-radius: var(--col-radius-sm); transition: background .15s; }
+.col-card--ativo:hover { background: var(--col-app-card-hover); }
+.col-seta { border-radius: var(--col-radius-sm); transition: background .15s, color .15s; }
+.col-seta--ativa:hover { background: var(--col-surface-2); color: var(--col-text) !important; }
+.col-nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 20px; cursor: pointer; text-decoration: none; white-space: nowrap; }
+.col-nav-item:hover { color: var(--col-text) !important; }
+.col-nav-item:focus-visible { outline: 2px solid var(--col-accent); outline-offset: -2px; }
+.col-nav-icone { display: inline-flex; flex: none; }
+.col-aside-topo { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 0 16px 26px 22px; }
+.col-aside-rodape { margin-top: auto; padding: 26px 22px 0; }
+.col-aside-icones { flex-direction: column; align-items: center; gap: 12px; border-top: 1px solid var(--col-border); padding-top: 16px; }
+.col-recolher { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; flex: none; padding: 0;
+  border: 0; border-radius: var(--col-radius-sm); background: transparent; color: var(--col-text-muted); cursor: pointer; }
+.col-recolher:hover { color: var(--col-text); background: var(--col-surface-2); }
+.col-recolher:focus-visible { outline: 2px solid var(--col-accent); outline-offset: 2px; }
+.col-so-recolhida { display: none; }
 
 /* Lateral recolhida (só na tela larga; abaixo de 860px a lateral é gaveta e abre inteira). */
 @media (min-width: 861px) {
-  .liff-shell { transition: grid-template-columns 160ms ease; }
-  .liff-shell[data-lateral="recolhida"] { grid-template-columns: 64px 1fr; }
-  .liff-shell[data-lateral="recolhida"] .liff-so-expandida { display: none !important; }
-  .liff-shell[data-lateral="recolhida"] .liff-so-recolhida { display: flex; }
-  .liff-shell[data-lateral="recolhida"] .liff-aside-topo { justify-content: center; padding: 0 0 22px; }
-  .liff-shell[data-lateral="recolhida"] .liff-nav-item { justify-content: center; padding: 12px 0; }
-  .liff-shell[data-lateral="recolhida"] .liff-nav-grupo { margin: 12px 14px 4px; padding-top: 0; }
-  .liff-shell[data-lateral="recolhida"] .liff-aside-rodape { padding: 22px 0 0; }
+  .col-shell { transition: grid-template-columns 160ms ease; }
+  .col-shell[data-lateral="recolhida"] { grid-template-columns: 64px 1fr; }
+  .col-shell[data-lateral="recolhida"] .col-so-expandida { display: none !important; }
+  .col-shell[data-lateral="recolhida"] .col-so-recolhida { display: flex; }
+  .col-shell[data-lateral="recolhida"] .col-aside-topo { justify-content: center; padding: 0 0 22px; }
+  .col-shell[data-lateral="recolhida"] .col-nav-item { justify-content: center; padding: 12px 0; }
+  .col-shell[data-lateral="recolhida"] .col-nav-grupo { margin: 12px 14px 4px; padding-top: 0; }
+  .col-shell[data-lateral="recolhida"] .col-aside-rodape { padding: 22px 0 0; }
 }
-@media (prefers-reduced-motion: reduce) { .liff-shell { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .col-shell { transition: none; } }
 /* Na gaveta do celular o botão de recolher não tem função. */
-@media (max-width: 860px) { .liff-aside-topo .liff-recolher { display: none; } }
+@media (max-width: 860px) { .col-aside-topo .col-recolher { display: none; } }
 /* Grupo do menu que só admin vê: fio e rótulo discretos separando dos itens de todos. */
-.liff-nav-grupo { margin: 14px 22px 4px; padding-top: 12px; border-top: 1px solid var(--liff-border); }
+.col-nav-grupo { margin: 14px 22px 4px; padding-top: 12px; border-top: 1px solid var(--col-border); }
 
 
 /* ---------- card da oportunidade (v4) ----------
@@ -685,85 +653,84 @@ textarea::placeholder {
    escuras que as do resto do app: aqui elas ficam sobre um fundo já tingido, e 11px pede 4,5:1. */
 :root {
   /* No escuro, info e erro puros não seguram 4,5:1 sobre o card: clareiam para o Floral. */
-  --cop-ink-info: color-mix(in srgb, var(--liff-info) 50%, var(--liff-floral));
-  --cop-ink-error: color-mix(in srgb, var(--liff-error) 62%, var(--liff-floral));
-  --cop-ink-success: var(--liff-success);
-  --cop-ink-warning: var(--liff-warning);
-  --cop-ink-bloqueio: var(--liff-warning);
+  --cop-ink-info: color-mix(in srgb, var(--col-info) 50%, var(--col-floral));
+  --cop-ink-error: color-mix(in srgb, var(--col-error) 62%, var(--col-floral));
+  --cop-ink-success: var(--col-success);
+  --cop-ink-warning: var(--col-warning);
+  --cop-ink-bloqueio: var(--col-warning);
 }
 :root[data-theme="light"] {
-  --cop-ink-info: color-mix(in srgb, var(--liff-info) 85%, var(--liff-obsidiana));
-  --cop-ink-error: color-mix(in srgb, var(--liff-error) 80%, var(--liff-obsidiana));
-  --cop-ink-success: color-mix(in srgb, var(--liff-success) 62%, var(--liff-obsidiana));
-  --cop-ink-warning: color-mix(in srgb, var(--liff-warning) 50%, var(--liff-obsidiana));
-  --cop-ink-bloqueio: color-mix(in srgb, var(--liff-warning) 42%, var(--liff-obsidiana));
+  --cop-ink-info: color-mix(in srgb, var(--col-info) 85%, var(--col-obsidiana));
+  --cop-ink-error: color-mix(in srgb, var(--col-error) 80%, var(--col-obsidiana));
+  --cop-ink-success: color-mix(in srgb, var(--col-success) 62%, var(--col-obsidiana));
+  --cop-ink-warning: color-mix(in srgb, var(--col-warning) 50%, var(--col-obsidiana));
+  --cop-ink-bloqueio: color-mix(in srgb, var(--col-warning) 42%, var(--col-obsidiana));
 }
 /* A cor do produto chega viva; no claro o texto sobre ela precisa de mais Obsidiana. */
-:root[data-theme="light"] .cop { --cop-area-ink: color-mix(in srgb, var(--cop-area) 45%, var(--liff-text)); }
+:root[data-theme="light"] .cop { --cop-area-ink: color-mix(in srgb, var(--cop-area) 45%, var(--col-text)); }
 .cop {
-  --cop-area-ink: color-mix(in srgb, var(--cop-area) 58%, var(--liff-text));
+  --cop-area-ink: color-mix(in srgb, var(--cop-area) 58%, var(--col-text));
   display: flex; flex-direction: column; gap: 14px; padding: 16px;
-  background: var(--liff-app-card); border: 1px solid var(--liff-border); border-top: 3px solid var(--cop-area); border-radius: var(--liff-radius-sm); box-shadow: none;
-  font-family: var(--liff-font-body); color: var(--liff-text); transition: background .15s;
+  background: var(--col-app-card); border: 1px solid var(--col-border); border-top: 3px solid var(--cop-area); border-radius: var(--col-radius-sm); box-shadow: none;
+  font-family: var(--col-font-body); color: var(--col-text); transition: background .15s;
 }
 .cop--ativo { cursor: pointer; }
-.cop--ativo:hover { background: var(--liff-app-card-hover); }
+.cop--ativo:hover { background: var(--col-app-card-hover); }
 .cop p, .cop h3 { margin: 0; }
 .cop-bloco { display: flex; flex-direction: column; gap: 10px; }
-.cop-bloco--fio { border-top: 1px solid var(--liff-border); padding-top: 14px; gap: 12px; }
+.cop-bloco--fio { border-top: 1px solid var(--col-border); padding-top: 14px; gap: 12px; }
 .cop-titulo { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
-.cop-cliente { font-size: 18px; font-weight: 700; line-height: 1.25; color: var(--liff-text); min-width: 0;
+.cop-cliente { font-size: 18px; font-weight: 700; line-height: 1.25; color: var(--col-text); min-width: 0;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .cop-cliente__botao { all: unset; cursor: pointer; border-radius: 2px; }
-.cop-cliente__botao:focus-visible { outline: 2px solid var(--liff-accent); outline-offset: 2px; }
-.cop-valor { font-family: var(--liff-font-mono); font-size: 16px; font-weight: 600; white-space: nowrap; color: var(--liff-text); }
+.cop-cliente__botao:focus-visible { outline: 2px solid var(--col-accent); outline-offset: 2px; }
+.cop-valor { font-family: var(--col-font-mono); font-size: 16px; font-weight: 600; white-space: nowrap; color: var(--col-text); }
 .cop-cliente--atividade { font-size: 16px; }
-.cop-vinculo { font-family: var(--liff-font-mono); font-size: 11px; color: var(--liff-text-muted); overflow-wrap: anywhere; }
+.cop-vinculo { font-family: var(--col-font-mono); font-size: 11px; color: var(--col-text-muted); overflow-wrap: anywhere; }
 .cop-modulos, .cop-tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .cop-pill { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; box-sizing: border-box;
   background: color-mix(in srgb, var(--cop-area) 12%, transparent); border: 1px solid color-mix(in srgb, var(--cop-area) 40%, transparent);
   color: var(--cop-area-ink); font-size: 12px; font-weight: 600; white-space: nowrap; }
 .cop-pill--mais { background: transparent; border-style: dashed; border-color: color-mix(in srgb, var(--cop-area) 55%, transparent);
-  font-family: var(--liff-font-mono); font-size: 11px; padding: 0 8px; }
-.cop-tag { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: var(--liff-radius-sm); box-sizing: border-box;
-  font-family: var(--liff-font-mono); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap;
-  --cop-tom: var(--liff-text-faint); --cop-tom-ink: var(--liff-text-body);
+  font-family: var(--col-font-mono); font-size: 11px; padding: 0 8px; }
+.cop-tag { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: var(--col-radius-sm); box-sizing: border-box;
+  font-family: var(--col-font-mono); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap;
+  --cop-tom: var(--col-text-faint); --cop-tom-ink: var(--col-text-body);
   background: color-mix(in srgb, var(--cop-tom) 10%, transparent); border: 1px solid color-mix(in srgb, var(--cop-tom) 35%, transparent); color: var(--cop-tom-ink); }
 .cop-tag__icone { flex: none; color: var(--cop-tom); }
 .cop-tag__dot { width: 6px; height: 6px; border-radius: 3px; background: var(--cop-tom); flex: none; }
-.cop-tag--info { --cop-tom: var(--liff-info); --cop-tom-ink: var(--cop-ink-info); }
-.cop-tag--erro { --cop-tom: var(--liff-error); --cop-tom-ink: var(--cop-ink-error); }
-.cop-tag--sucesso { --cop-tom: var(--liff-success); --cop-tom-ink: var(--cop-ink-success); }
-.cop-tag--warning { --cop-tom: var(--liff-warning); --cop-tom-ink: var(--cop-ink-warning); }
-.cop-tag--ace { background: color-mix(in srgb, var(--liff-info) 14%, transparent); border-color: color-mix(in srgb, var(--liff-info) 55%, transparent); }
-.cop-tag--neutro { background: transparent; border-color: var(--liff-border); }
-.cop-rotulo { font-family: var(--liff-font-mono); font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
-  color: var(--liff-text-muted); margin-bottom: 4px !important; }
+.cop-tag--info { --cop-tom: var(--col-info); --cop-tom-ink: var(--cop-ink-info); }
+.cop-tag--erro { --cop-tom: var(--col-error); --cop-tom-ink: var(--cop-ink-error); }
+.cop-tag--sucesso { --cop-tom: var(--col-success); --cop-tom-ink: var(--cop-ink-success); }
+.cop-tag--warning { --cop-tom: var(--col-warning); --cop-tom-ink: var(--cop-ink-warning); }
+.cop-tag--neutro { background: transparent; border-color: var(--col-border); }
+.cop-rotulo { font-family: var(--col-font-mono); font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--col-text-muted); margin-bottom: 4px !important; }
 .cop-rotulo-linha { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; margin-bottom: 4px; }
 .cop-rotulo-linha .cop-rotulo { margin: 0 !important; }
-.cop-prazo { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: var(--liff-radius-sm); box-sizing: border-box;
-  font-family: var(--liff-font-mono); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap;
-  background: color-mix(in srgb, var(--cop-tom, var(--liff-text-faint)) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--cop-tom, var(--liff-text-faint)) 35%, transparent); color: var(--cop-tom-ink, var(--liff-text-body)); }
-.cop-prazo.cop-tag--neutro { background: transparent; border-color: var(--liff-border); }
-.cop-texto { font-size: 14px; line-height: 1.5; color: var(--liff-text-body); overflow-wrap: anywhere; }
+.cop-prazo { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: var(--col-radius-sm); box-sizing: border-box;
+  font-family: var(--col-font-mono); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap;
+  background: color-mix(in srgb, var(--cop-tom, var(--col-text-faint)) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--cop-tom, var(--col-text-faint)) 35%, transparent); color: var(--cop-tom-ink, var(--col-text-body)); }
+.cop-prazo.cop-tag--neutro { background: transparent; border-color: var(--col-border); }
+.cop-texto { font-size: 14px; line-height: 1.5; color: var(--col-text-body); overflow-wrap: anywhere; }
 .cop-texto--3l { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.cop-texto--forte { font-weight: 600; color: var(--liff-text); }
-.cop-rodape { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid var(--liff-border); padding-top: 8px; }
+.cop-texto--forte { font-weight: 600; color: var(--col-text); }
+.cop-rodape { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid var(--col-border); padding-top: 8px; }
 .cop-dono { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.cop-dono__nome { font-size: 14px; color: var(--liff-text-body); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cop-dono__nome { font-size: 14px; color: var(--col-text-body); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cop-setas { display: flex; gap: 4px; flex: none; }
 .cop-seta { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; padding: 0;
-  border: 1px solid var(--liff-border); border-radius: var(--liff-radius-sm); background: transparent; color: var(--liff-text-body); cursor: pointer; transition: background .15s; }
-.cop-seta:hover:not(:disabled) { background: var(--liff-surface-2); color: var(--liff-text); }
-.cop-seta:focus-visible { outline: 2px solid var(--liff-accent); outline-offset: 2px; }
+  border: 1px solid var(--col-border); border-radius: var(--col-radius-sm); background: transparent; color: var(--col-text-body); cursor: pointer; transition: background .15s; }
+.cop-seta:hover:not(:disabled) { background: var(--col-surface-2); color: var(--col-text); }
+.cop-seta:focus-visible { outline: 2px solid var(--col-accent); outline-offset: 2px; }
 .cop-seta:disabled { opacity: .45; cursor: not-allowed; }
 /* Atalho para a proposta: mesmo corpo das setas, separado delas e na cor de link. */
-.cop-proposta { color: var(--liff-accent); text-decoration: none; margin-right: 6px; }
+.cop-proposta { color: var(--col-accent); text-decoration: none; margin-right: 6px; }
 /* Pré-visualização da proposta no formulário. */
-.proposta-previa { width: 100%; aspect-ratio: 16 / 10; border: 1px solid var(--liff-border); border-radius: var(--liff-radius-sm); background: var(--liff-surface-2); display: block; }
+.proposta-previa { width: 100%; aspect-ratio: 16 / 10; border: 1px solid var(--col-border); border-radius: var(--col-radius-sm); background: var(--col-surface-2); display: block; }
 /* Compacto de verdade: o objetivo é caber muito card na tela. Sem fio no rodapé, setas menores,
-   e prazo, bloqueio e ACE como ícones ao lado do dono. */
+   e prazo e bloqueio como ícones ao lado do dono. */
 .cop--compacto { gap: 6px; padding: 9px 10px 8px 12px; }
 .cop--compacto .cop-bloco { gap: 6px; }
 .cop--compacto .cop-cliente { font-size: 15px; }
@@ -772,65 +739,65 @@ textarea::placeholder {
 .cop--compacto .cop-rodape { border-top: 0; padding-top: 0; gap: 6px; }
 .cop--compacto .cop-dono__nome { font-size: 12.5px; }
 .cop--compacto .cop-setas { gap: 2px; }
-.cop--compacto .cop-seta { width: 22px; height: 22px; border-radius: var(--liff-radius-sm); }
+.cop--compacto .cop-seta { width: 22px; height: 22px; border-radius: var(--col-radius-sm); }
 .cop--compacto .cop-seta svg { width: 14px; height: 14px; }
 .cop--compacto .cop-proposta { margin-right: 2px; }
 .cop-icones { display: inline-flex; align-items: center; gap: 6px; flex: none; }
 .cop-icones { margin-left: auto; }
-.cop-icone { display: inline-flex; color: var(--cop-tom, var(--liff-text-faint)); --cop-glifo: var(--liff-surface-cell, #fff); }
+.cop-icone { display: inline-flex; color: var(--cop-tom, var(--col-text-faint)); --cop-glifo: var(--col-surface-cell, #fff); }
 /* Amarelo é claro demais para sinal branco: a exclamação vai escura. */
 .cop-icone.cop-tag--warning { --cop-glifo: #2a2110; }
 .cop-linha-modulos { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .cop-linha-modulos .cop-modulos { min-width: 0; }
 
 /* Segmentado (abas e filtros de uma linha). 34px, a altura dos botões e seletores. */
-.liff-densidade { display: inline-flex; height: 34px; box-sizing: border-box; border: 1px solid var(--liff-border); border-radius: var(--liff-radius-sm); overflow: hidden; }
-.liff-densidade button { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; font-family: var(--liff-font-mono); font-size: 11px;
-  letter-spacing: .1em; text-transform: uppercase; color: var(--liff-text-muted); }
-.liff-densidade button[aria-pressed="true"] { background: var(--liff-surface-2); color: var(--liff-text); }
-.liff-densidade button:focus-visible { outline: 2px solid var(--liff-accent); outline-offset: -2px; }
+.col-densidade { display: inline-flex; height: 34px; box-sizing: border-box; border: 1px solid var(--col-border); border-radius: var(--col-radius-sm); overflow: hidden; }
+.col-densidade button { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; font-family: var(--col-font-mono); font-size: 11px;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--col-text-muted); }
+.col-densidade button[aria-pressed="true"] { background: var(--col-surface-2); color: var(--col-text); }
+.col-densidade button:focus-visible { outline: 2px solid var(--col-accent); outline-offset: -2px; }
 
 /* ---------- responsivo ---------- */
 @media (max-width: 1100px) {
-  .liff-kpis { grid-template-columns: repeat(2, 1fr); }
+  .col-kpis { grid-template-columns: repeat(2, 1fr); }
   /* Quatro números de 60px não cabem lado a lado; em dois pares continuam legíveis. */
-  .liff-hero { grid-template-columns: repeat(2, 1fr); gap: 32px; }
-  .liff-overview-split,
-  .liff-cad-split { grid-template-columns: 1fr; }
-  .liff-admin-cards { grid-template-columns: 1fr; }
+  .col-hero { grid-template-columns: repeat(2, 1fr); gap: 32px; }
+  .col-overview-split,
+  .col-cad-split { grid-template-columns: 1fr; }
+  .col-admin-cards { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 860px) {
-  .liff-login { grid-template-columns: 1fr; }
-  .liff-login__pitch,
-  .liff-login__panel { padding: 42px 28px; }
-  .liff-login__pitch { border-right: 0; border-bottom: 1px solid var(--liff-border); }
+  .col-login { grid-template-columns: 1fr; }
+  .col-login__pitch,
+  .col-login__panel { padding: 42px 28px; }
+  .col-login__pitch { border-right: 0; border-bottom: 1px solid var(--col-border); }
   /* O display encolhe, mas o tracking nunca passa de -0.04em. */
-  .liff-login__pitch h1 { font-size: clamp(30px, 8.6vw, 52px) !important; }
+  .col-login__pitch h1 { font-size: clamp(30px, 8.6vw, 52px) !important; }
 
   /* A lateral vira gaveta. Antes ela virava um bloco de largura inteira no topo: navegação,
      seletor de tema, usuário e o botão de sair, tudo empilhado ANTES do conteúdo — no
      celular era preciso rolar a tela inteira para chegar no que importa.
 
      Fora do fluxo, o grid fica com um item só; daí `grid-template-rows: 1fr`. */
-  .liff-shell { grid-template-columns: 1fr; grid-template-rows: 1fr; height: auto; min-height: 100vh; }
-  .liff-aside {
+  .col-shell { grid-template-columns: 1fr; grid-template-rows: 1fr; height: auto; min-height: 100vh; }
+  .col-aside {
     position: fixed;
     top: 0; left: 0; bottom: 0;
     width: min(280px, 82vw);
     padding: 22px 0;
     z-index: 60;
-    border-right: 1px solid var(--liff-border);
+    border-right: 1px solid var(--col-border);
     transform: translateX(-100%);
     transition: transform 160ms ease;
   }
-  .liff-shell[data-menu="aberto"] .liff-aside { transform: none; }
+  .col-shell[data-menu="aberto"] .col-aside { transform: none; }
   @media (prefers-reduced-motion: reduce) {
-    .liff-aside { transition: none; }
+    .col-aside { transition: none; }
   }
 
-  .liff-menu-botao { display: inline-flex; }
-  .liff-menu-fundo {
+  .col-menu-botao { display: inline-flex; }
+  .col-menu-fundo {
     display: block;
     position: fixed;
     inset: 0;
@@ -838,40 +805,40 @@ textarea::placeholder {
     background: rgba(14, 16, 20, 0.72);
   }
 
-  .liff-header { padding: 16px 20px; }
-  .liff-main { padding: 20px; }
+  .col-header { padding: 16px 20px; }
+  .col-main { padding: 20px; }
 
   /* Chips ocupam a linha inteira ao quebrar, senão sobra o fundo da malha. */
-  .liff-filtros { width: 100%; margin-left: 0 !important; }
-  .liff-area-chips { width: 100%; margin-left: 0 !important; }
-  .liff-area-chips > * { flex: 1 1 auto; justify-content: center; }
+  .col-filtros { width: 100%; margin-left: 0 !important; }
+  .col-area-chips { width: 100%; margin-left: 0 !important; }
+  .col-area-chips > * { flex: 1 1 auto; justify-content: center; }
 }
 
 @media (max-width: 860px) {
   /* As linhas do painel viram bloco: título em cima, metadados empilhados embaixo. Uma grade
      de quatro colunas em 375px espremeria cada uma até virar coluna de uma letra. */
-  .liff-painel-linha,
-  .liff-painel-deal,
-  .liff-painel-log {
+  .col-painel-linha,
+  .col-painel-deal,
+  .col-painel-log {
     grid-template-columns: 1fr;
     gap: 4px;
   }
-  .liff-painel-linha > *:last-child,
-  .liff-painel-deal > *:last-child {
+  .col-painel-linha > *:last-child,
+  .col-painel-deal > *:last-child {
     text-align: left !important;
   }
 }
 
 @media (max-width: 560px) {
-  .liff-kpis { grid-template-columns: 1fr; }
-  .liff-hero { grid-template-columns: 1fr; gap: 28px; }
+  .col-kpis { grid-template-columns: 1fr; }
+  .col-hero { grid-template-columns: 1fr; gap: 28px; }
 }
 
 /* Cronograma: data, tipo, título e detalhe. O tipo é uma etiqueta curta porque a linha
    mistura oportunidade e atividade e é preciso saber qual é sem abrir. */
-.liff-cronograma-linha { grid-template-columns: 64px 84px 1.4fr 1fr; }
+.col-cronograma-linha { grid-template-columns: 64px 84px 1.4fr 1fr; }
 @media (max-width: 860px) {
-  .liff-cronograma-linha { grid-template-columns: 1fr; gap: 4px; }
+  .col-cronograma-linha { grid-template-columns: 1fr; gap: 4px; }
 }
 
 /* ---------- campo de data ----------
@@ -897,58 +864,58 @@ input[type="date"]:disabled::-webkit-calendar-picker-indicator {
 
 /* Os dois filtros do cabeçalho — área e responsável. No desktop ficam lado a lado; abaixo
    de 820px a faixa ocupa a largura inteira e cada filtro ganha a própria linha. */
-.liff-filtros {
+.col-filtros {
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
 }
-.liff-filtros > .liff-area-chips { min-width: 0; }
+.col-filtros > .col-area-chips { min-width: 0; }
 /* `flex: none` mora aqui e não no estilo inline: inline vence media query, e o chip ficava
    preso em largura automática no celular, encolhido num canto da própria linha. */
-.liff-filtro-quem { flex: none; }
+.col-filtro-quem { flex: none; }
 /* Largura FIXA do gatilho, e não automática. O cabeçalho cabe por poucos pixels em 1440:
    um gatilho que cresce com o nome escolhido empurra o grupo de ações para a linha de
    baixo no instante do clique, e a tela pula sob o cursor — o clique seguinte cai noutro
    lugar. Nome comprido corta, com o inteiro no `title` e na lista aberta. */
-.liff-filtro-quem > [role="button"] { width: 165px; box-sizing: border-box; }
+.col-filtro-quem > [role="button"] { width: 165px; box-sizing: border-box; }
 @media (max-width: 820px) {
   /* Abaixo de 820px os chips de área já ocupam a largura inteira e quebram em duas linhas.
      Com `nowrap` o seletor de responsável ficava preso ao lado desse bloco de duas linhas,
      centralizado na vertical, e a trilha cinza aparecia nas pontas — parecia defeito de
      render. Cada filtro ganha a própria linha, o padrão que os chips já seguiam. */
-  .liff-filtros { flex-wrap: wrap; }
-  .liff-filtros > .liff-area-chips { flex: 1 1 100%; }
-  .liff-filtro-quem { flex: 1 1 100%; }
+  .col-filtros { flex-wrap: wrap; }
+  .col-filtros > .col-area-chips { flex: 1 1 100%; }
+  .col-filtro-quem { flex: 1 1 100%; }
   /* Na largura inteira a largura fixa do gatilho sai de cena, e `text-align` não
      centralizaria: ele é flex, quem manda é o eixo principal. */
-  .liff-filtro-quem > [role="button"] { width: 100%; justify-content: center; }
+  .col-filtro-quem > [role="button"] { width: 100%; justify-content: center; }
 }
 
 /* ---------- cronograma em agenda ---------- */
-.liff-agenda-grade { display: grid; gap: 8px; align-items: stretch; }
-.liff-agenda-col { min-width: 0; min-height: 260px; padding: 10px 8px; border: 1px solid transparent; border-top: 1px solid var(--liff-border); border-radius: 0; }
-.liff-agenda-col--hoje { border-top: 2px solid var(--liff-accent); padding-top: 9px; }
-.liff-agenda-col--atraso, .liff-agenda-col--fixa { background: var(--liff-app-raia); border: 1px solid transparent; border-radius: var(--liff-radius-sm); }
-.liff-agenda-col--alvo { border: 1px dashed var(--liff-accent); border-radius: var(--liff-radius-sm); }
-.liff-agenda-card { background: var(--liff-surface-cell); border: 1px solid var(--liff-border); border-radius: 0 var(--liff-radius-sm) var(--liff-radius-sm) 0; padding: 8px 10px; margin-bottom: 6px; min-width: 0; }
-.liff-agenda-card:hover { border-color: var(--liff-text-muted); }
-.liff-agenda-card:active { cursor: grabbing; }
-.liff-agenda-passo { font-size: 12px; line-height: 1.4; margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.liff-agenda-vazio { font-size: 12px; color: var(--liff-text-faint); }
-.liff-agenda-mais { all: unset; cursor: pointer; display: block; width: 100%; box-sizing: border-box; padding: 4px 2px; font-family: var(--liff-font-mono); font-size: 11px; color: var(--liff-text-muted); }
-.liff-agenda-mais:hover { color: var(--liff-text); }
-.liff-agenda-mais:focus-visible, .liff-agenda-nav:focus-visible, .liff-agenda-faixa button:focus-visible { outline: 2px solid var(--liff-accent); outline-offset: 2px; }
-.liff-agenda-nav { all: unset; cursor: pointer; width: 34px; height: 34px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--liff-border); border-radius: var(--liff-radius-sm); color: var(--liff-text); font-size: 18px; line-height: 1; }
-.liff-agenda-nav:disabled { opacity: .35; cursor: default; }
-.liff-agenda-faixa { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; max-width: 760px; }
-.liff-agenda-faixa button { all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 4px; padding: 6px 6px 4px; border: 1px solid transparent; border-radius: var(--liff-radius-sm); }
-.liff-agenda-faixa button[aria-pressed="true"] { border-color: var(--liff-border); background: var(--liff-surface-2); }
-.liff-agenda-barras { display: flex; align-items: flex-end; gap: 3px; height: 36px; }
-.liff-agenda-barras > span { flex: 1; border-radius: 2px 2px 0 0; }
+.col-agenda-grade { display: grid; gap: 8px; align-items: stretch; }
+.col-agenda-col { min-width: 0; min-height: 260px; padding: 10px 8px; border: 1px solid transparent; border-top: 1px solid var(--col-border); border-radius: 0; }
+.col-agenda-col--hoje { border-top: 2px solid var(--col-accent); padding-top: 9px; }
+.col-agenda-col--atraso, .col-agenda-col--fixa { background: var(--col-app-raia); border: 1px solid transparent; border-radius: var(--col-radius-sm); }
+.col-agenda-col--alvo { border: 1px dashed var(--col-accent); border-radius: var(--col-radius-sm); }
+.col-agenda-card { background: var(--col-surface-cell); border: 1px solid var(--col-border); border-radius: 0 var(--col-radius-sm) var(--col-radius-sm) 0; padding: 8px 10px; margin-bottom: 6px; min-width: 0; }
+.col-agenda-card:hover { border-color: var(--col-text-muted); }
+.col-agenda-card:active { cursor: grabbing; }
+.col-agenda-passo { font-size: 12px; line-height: 1.4; margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.col-agenda-vazio { font-size: 12px; color: var(--col-text-faint); }
+.col-agenda-mais { all: unset; cursor: pointer; display: block; width: 100%; box-sizing: border-box; padding: 4px 2px; font-family: var(--col-font-mono); font-size: 11px; color: var(--col-text-muted); }
+.col-agenda-mais:hover { color: var(--col-text); }
+.col-agenda-mais:focus-visible, .col-agenda-nav:focus-visible, .col-agenda-faixa button:focus-visible { outline: 2px solid var(--col-accent); outline-offset: 2px; }
+.col-agenda-nav { all: unset; cursor: pointer; width: 34px; height: 34px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--col-border); border-radius: var(--col-radius-sm); color: var(--col-text); font-size: 18px; line-height: 1; }
+.col-agenda-nav:disabled { opacity: .35; cursor: default; }
+.col-agenda-faixa { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; max-width: 760px; }
+.col-agenda-faixa button { all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 4px; padding: 6px 6px 4px; border: 1px solid transparent; border-radius: var(--col-radius-sm); }
+.col-agenda-faixa button[aria-pressed="true"] { border-color: var(--col-border); background: var(--col-surface-2); }
+.col-agenda-barras { display: flex; align-items: flex-end; gap: 3px; height: 36px; }
+.col-agenda-barras > span { flex: 1; border-radius: 2px 2px 0 0; }
 /* No celular sete colunas não cabem: a agenda dá lugar à lista. */
-.liff-so-estreito { display: none; }
+.col-so-estreito { display: none; }
 @media (max-width: 860px) {
-  .liff-so-largo { display: none; }
-  .liff-so-estreito { display: block; }
+  .col-so-largo { display: none; }
+  .col-so-estreito { display: block; }
 }

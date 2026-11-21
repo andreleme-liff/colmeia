@@ -4,7 +4,7 @@
 // ver o aviso em app/api/auth/email/route.ts.
 
 import { useState } from "react";
-import { LiffSig, Button, Input } from "../components/ds";
+import { Assinatura, Button, Input } from "../components/ds";
 import { C, MONO, eyebrow, markTone, useTheme, R } from "../components/tokens";
 import ThemeToggle from "../components/ThemeToggle";
 
@@ -39,9 +39,9 @@ export default function LoginScreen({ erro: erroInicial, voltar }: { erro?: stri
   }
 
   return (
-    <div className="liff-login">
-      <div className="liff-login__pitch">
-        <LiffSig name="colméia" size={34} tone={markTone(theme)} />
+    <div className="col-login">
+      <div className="col-login__pitch">
+        <Assinatura name="colméia" size={34} tone={markTone(theme)} />
         <div>
           <div style={{ ...eyebrow(12, C.accent), marginBottom: 24 }}>GESTÃO ORGANIZACIONAL</div>
           <h1
@@ -73,7 +73,7 @@ export default function LoginScreen({ erro: erroInicial, voltar }: { erro?: stri
         </div>
       </div>
 
-      <div className="liff-login__panel">
+      <div className="col-login__panel">
         <div style={{ width: "100%", maxWidth: 420, background: C.panel, border: `1px solid ${C.line}`, borderRadius: R, padding: 36 }}>
           <div style={{ ...eyebrow(11, C.faint), marginBottom: 8 }}>ACESSO</div>
           <h2 style={{ fontSize: 26, letterSpacing: "-0.02em", fontWeight: 800, color: C.ink, margin: "0 0 6px" }}>
@@ -87,7 +87,7 @@ export default function LoginScreen({ erro: erroInicial, voltar }: { erro?: stri
             <div
               style={{
                 border: `1px solid ${C.error}`, borderRadius: R,
-                background: "color-mix(in srgb, var(--liff-error) 10%, transparent)",
+                background: "color-mix(in srgb, var(--col-error) 10%, transparent)",
                 color: C.error,
                 fontFamily: MONO,
                 fontSize: 12,

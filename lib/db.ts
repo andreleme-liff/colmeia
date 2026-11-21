@@ -7,7 +7,6 @@ import {
   BLOCKER_TIPO_KEYS, MOTIVO_PERDA_KEYS, ORIGENS_INICIAIS, PAPEIS, PRIORIDADES, STAGE_KEYS, STATUS_KEYS,
   hojeISO, refCanonica, separarDataDaSituacao, slugificar,
 } from "./domain";
-import { ARQUETIPOS_SEMENTE, PROGRAMAS_SEMENTE } from "./funding";
 import { ligarPendentes } from "./clientes-db";
 import { CATEGORIAS_SEMENTE } from "./despesas";
 
@@ -87,10 +86,9 @@ const inList = (vals: readonly string[]) => vals.map((v) => `'${v}'`).join(",");
 const MIGRATION_LOCK = 811020261;
 
 /**
- * Colméia nasce vazia. Produtos, origens e arquétipos de funding da semente são dados da
- * LIFF (de onde este sistema foi copiado), então só entram junto com o conjunto de
- * demonstração — `SEED_DEMO=1`, que é o que os testes locais usam. Sem a variável, base limpa:
- * a administração cadastra os produtos do negócio pela tela.
+ * Colméia nasce vazia. Os produtos e as origens da semente são dados fictícios e só entram
+ * junto com o conjunto de demonstração — `SEED_DEMO=1`, que é o que os testes locais usam.
+ * Sem a variável, base limpa: a administração cadastra os produtos do negócio pela tela.
  */
 const COM_DEMO = process.env.SEED_DEMO === "1";
 
@@ -305,10 +303,6 @@ async function migrate(): Promise<void> {
       responsavel_texto   TEXT NOT NULL DEFAULT '',
       produto_id          TEXT REFERENCES produtos(id) ON DELETE SET NULL,
       pausado             BOOLEAN NOT NULL DEFAULT false,
-      -- Oportunidade já registrada no ACE do AWS Partner Central. Vive aqui e não numa
-      -- integração porque o registro é feito à mão no portal da AWS: o sistema só precisa
-      -- lembrar quem já foi, para ninguém registrar duas vezes nem esquecer de registrar.
-      ace_aws             BOOLEAN NOT NULL DEFAULT false,
       criado_em           TIMESTAMPTZ NOT NULL DEFAULT now(),
       atualizado_em       TIMESTAMPTZ
     )
@@ -404,7 +398,6 @@ async function migrate(): Promise<void> {
     // mistura oportunidade e atividade na mesma linha do tempo.
     await sql`ALTER TABLE activities ADD COLUMN IF NOT EXISTS proximo_passo_em DATE`;
     await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS proximo_passo_em DATE`;
-    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS ace_aws BOOLEAN NOT NULL DEFAULT false`;
     await sql.unsafe(`
       DO $$
       BEGIN
@@ -468,7 +461,7 @@ async function migrate(): Promise<void> {
     await sql`ALTER TABLE activities ADD COLUMN IF NOT EXISTS oportunidade_id INTEGER REFERENCES deals(id) ON DELETE SET NULL`;
     await sql`CREATE INDEX IF NOT EXISTS idx_activities_oportunidade ON activities(oportunidade_id)`;
 
-    // ---- Card comercial v2 (nov/2026): os campos da planilha do LIFF Tax ----
+    // ---- Card comercial v2 (nov/2026): os campos da planilha comercial de origem ----
     //
     // Origem é CADASTRO, não lista no código: parceiro e canal novos aparecem o tempo todo, e
     // quem administra cadastra sem esperar deploy. A semente só entra com a tabela vazia —
@@ -508,7 +501,7 @@ async function migrate(): Promise<void> {
     await sql.unsafe(
       `ALTER TABLE deals ADD COLUMN IF NOT EXISTS blocker_tipo TEXT CHECK (blocker_tipo IN (${inList(BLOCKER_TIPO_KEYS)}))`
     );
-    // Quem, do lado da LIFF, resolve o blocker. Na planilha, "Dono interno LIFF" só aparece
+    // Quem, do lado de dentro, resolve o blocker. Na planilha, "Dono interno" só aparece
     // junto de um blocker — não é um segundo dono da oportunidade.
     await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS blocker_dono_id INTEGER REFERENCES users(id) ON DELETE SET NULL`;
     await sql.unsafe(
@@ -562,28 +555,6 @@ async function migrate(): Promise<void> {
         PRIMARY KEY (deal_id, produto_id)
       )
     `;
-
-    // Registros da oportunidade na AWS (nov/2026): N ACEs e N pedidos de funding por card, cada
-    // um com o link do cadastro no Partner Central. Substitui o interruptor "ACE": `ace_aws`
-    // continua na tabela (os cards e filtros leem dele) e passa a significar "há ACE na lista".
-    // Na criação da tabela, cada card que já estava marcado ganha uma ACE sem link.
-    const [{ awsNova }] = await sql<{ awsNova: boolean }[]>`
-      SELECT to_regclass('public.oportunidade_aws') IS NULL AS "awsNova"
-    `;
-    await sql`
-      CREATE TABLE IF NOT EXISTS oportunidade_aws (
-        id        SERIAL PRIMARY KEY,
-        deal_id   INTEGER NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
-        tipo      TEXT NOT NULL CHECK (tipo IN ('ace', 'funding')),
-        descricao TEXT NOT NULL DEFAULT '',
-        url       TEXT NOT NULL DEFAULT '',
-        criado_em TIMESTAMPTZ NOT NULL DEFAULT now()
-      )
-    `;
-    await sql`CREATE INDEX IF NOT EXISTS idx_oportunidade_aws_deal ON oportunidade_aws(deal_id)`;
-    if (awsNova) {
-      await sql`INSERT INTO oportunidade_aws (deal_id, tipo) SELECT id, 'ace' FROM deals WHERE ace_aws ORDER BY id`;
-    }
 
     // ---- Acesso por sistemas externos (MCP + OAuth 2.1) ----
     //
@@ -788,144 +759,6 @@ async function migrate(): Promise<void> {
     await sql`ALTER TABLE contratos ADD COLUMN IF NOT EXISTS cliente_id INTEGER REFERENCES clientes(id) ON DELETE SET NULL`;
     await sql`CREATE INDEX IF NOT EXISTS deals_cliente ON deals (cliente_id)`;
 
-    // Funding AWS (nov/2026, só admin): arquétipos de implantação com as calculadoras oficiais
-    // da AWS, catálogo de programas, e por oportunidade a estimativa de consumo (conta LIFF e
-    // conta do cliente) com as linhas de funding. As sementes entram só quando a tabela nasce,
-    // como os produtos: depois disso o cadastro é de quem administra.
-    const [{ fundingNovo }] = await sql<{ fundingNovo: boolean }[]>`
-      SELECT to_regclass('public.funding_arquetipos') IS NULL AS "fundingNovo"
-    `;
-    await sql`
-      CREATE TABLE IF NOT EXISTS funding_programas (
-        id        TEXT PRIMARY KEY,
-        label     TEXT NOT NULL,
-        forma     TEXT NOT NULL CHECK (forma IN ('credito', 'cash')),
-        descricao TEXT NOT NULL DEFAULT '',
-        ativo     BOOLEAN NOT NULL DEFAULT true,
-        ordem     INTEGER NOT NULL DEFAULT 0
-      )
-    `;
-    await sql`
-      CREATE TABLE IF NOT EXISTS funding_arquetipos (
-        id        SERIAL PRIMARY KEY,
-        nome      TEXT NOT NULL,
-        modelo    TEXT NOT NULL CHECK (modelo IN ('saas_liff', 'dedicado_liff', 'hibrido', 'cliente')),
-        descricao TEXT NOT NULL DEFAULT '',
-        ativo     BOOLEAN NOT NULL DEFAULT true,
-        ordem     INTEGER NOT NULL DEFAULT 0
-      )
-    `;
-    await sql`
-      CREATE TABLE IF NOT EXISTS funding_calculadoras (
-        id                    SERIAL PRIMARY KEY,
-        arquetipo_id          INTEGER NOT NULL REFERENCES funding_arquetipos(id) ON DELETE CASCADE,
-        regiao                TEXT NOT NULL,
-        conta                 TEXT NOT NULL CHECK (conta IN ('liff', 'cliente')),
-        porte                 TEXT NOT NULL DEFAULT '',
-        url                   TEXT NOT NULL DEFAULT '',
-        custo_mensal_centavos BIGINT NOT NULL DEFAULT 0 CHECK (custo_mensal_centavos >= 0),
-        data_preco            DATE,
-        notas                 TEXT NOT NULL DEFAULT ''
-      )
-    `;
-    await sql`
-      CREATE TABLE IF NOT EXISTS funding_estimativas (
-        id                      SERIAL PRIMARY KEY,
-        ref                     TEXT UNIQUE,
-        conta                   TEXT NOT NULL,
-        deal_id                 INTEGER REFERENCES deals(id) ON DELETE SET NULL,
-        arquetipo_id            INTEGER REFERENCES funding_arquetipos(id) ON DELETE SET NULL,
-        regiao                  TEXT NOT NULL,
-        porte                   TEXT NOT NULL DEFAULT '',
-        liff_mensal_centavos    BIGINT NOT NULL DEFAULT 0,
-        cliente_mensal_centavos BIGINT NOT NULL DEFAULT 0,
-        ia_mensal_centavos      BIGINT NOT NULL DEFAULT 0,
-        ia_paga_por             TEXT NOT NULL DEFAULT 'liff' CHECK (ia_paga_por IN ('liff', 'cliente')),
-        inicio                  TEXT,
-        duracao_meses           INTEGER NOT NULL DEFAULT 12,
-        notas                   TEXT NOT NULL DEFAULT '',
-        criado_em               TIMESTAMPTZ NOT NULL DEFAULT now(),
-        atualizado_em           TIMESTAMPTZ
-      )
-    `;
-    await sql`
-      CREATE TABLE IF NOT EXISTS funding_linhas (
-        id             SERIAL PRIMARY KEY,
-        estimativa_id  INTEGER NOT NULL REFERENCES funding_estimativas(id) ON DELETE CASCADE,
-        programa_id    TEXT NOT NULL REFERENCES funding_programas(id),
-        beneficiario   TEXT NOT NULL CHECK (beneficiario IN ('liff', 'cliente')),
-        valor_centavos BIGINT NOT NULL DEFAULT 0 CHECK (valor_centavos >= 0),
-        status         TEXT NOT NULL,
-        aws_id         TEXT NOT NULL DEFAULT '',
-        solicitado_em  DATE,
-        aprovado_em    DATE,
-        expira_em      DATE,
-        notas          TEXT NOT NULL DEFAULT ''
-      )
-    `;
-    if (fundingNovo) {
-      for (const [i, p] of PROGRAMAS_SEMENTE.entries()) {
-        await sql`
-          INSERT INTO funding_programas (id, label, forma, descricao, ordem)
-          VALUES (${p.id}, ${p.label}, ${p.forma}, ${p.descricao}, ${i}) ON CONFLICT (id) DO NOTHING
-        `;
-      }
-      for (const [i, a] of (COM_DEMO ? ARQUETIPOS_SEMENTE : []).entries()) {
-        const [novo] = await sql<{ id: number }[]>`
-          INSERT INTO funding_arquetipos (nome, modelo, descricao, ordem) VALUES (${a.nome}, ${a.modelo}, ${a.descricao}, ${i}) RETURNING id
-        `;
-        for (const c of a.calculadoras) {
-          await sql`
-            INSERT INTO funding_calculadoras (arquetipo_id, regiao, conta, porte, custo_mensal_centavos, data_preco, notas)
-            VALUES (${novo.id}, ${c.regiao}, ${c.conta}, ${c.porte}, ${Math.round(c.usd * 100)}, '2026-10-29', ${c.nota})
-          `;
-        }
-      }
-    }
-
-    // Pastas de arquétipos (nov/2026): um conjunto de arquétipos por Módulo. Na
-    // criação da tabela, os arquétipos que já existem (todos do LIFF Tax Reform) vão para uma
-    // pasta com esse nome. Depois disso as pastas são de quem administra: apagar não volta.
-    const [{ pastasNovas }] = await sql<{ pastasNovas: boolean }[]>`
-      SELECT to_regclass('public.funding_pastas') IS NULL AS "pastasNovas"
-    `;
-    await sql`
-      CREATE TABLE IF NOT EXISTS funding_pastas (
-        id         SERIAL PRIMARY KEY,
-        nome       TEXT NOT NULL,
-        produto_id TEXT REFERENCES produtos(id) ON DELETE SET NULL,
-        descricao  TEXT NOT NULL DEFAULT '',
-        ordem      INTEGER NOT NULL DEFAULT 0
-      )
-    `;
-    await sql`ALTER TABLE funding_arquetipos ADD COLUMN IF NOT EXISTS pasta_id INTEGER REFERENCES funding_pastas(id) ON DELETE SET NULL`;
-    if (pastasNovas && COM_DEMO) {
-      const [pasta] = await sql<{ id: number }[]>`
-        INSERT INTO funding_pastas (nome, descricao, ordem)
-        VALUES ('LIFF Tax Reform', 'Arquétipos do documento "Estimativa de custo AWS · Liff Tax" (porte M, 29/10/2026).', 0)
-        RETURNING id
-      `;
-      await sql`UPDATE funding_arquetipos SET pasta_id = ${pasta.id} WHERE pasta_id IS NULL`;
-    }
-
-    // Arquétipo da proposta no card comercial (nov/2026): opcional, serve depois para abrir a
-    // ACE e pedir funding. Aqui, e não junto das outras colunas de `deals`, porque a tabela de
-    // arquétipos só existe a partir deste ponto da migração.
-    // Produto da pasta de arquétipos. Vale o do módulo ligado à pasta; esta coluna cobre a pasta
-    // sem módulo. Na criação da coluna, a pasta semeada "LIFF Tax Reform" vai para o LIFF Tax:
-    // é o único produto com arquétipo até aqui, e sem isso ela apareceria em todos.
-    const [{ pastaSemArea }] = await sql<{ pastaSemArea: boolean }[]>`
-      SELECT NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'funding_pastas' AND column_name = 'area') AS "pastaSemArea"
-    `;
-    await sql`ALTER TABLE funding_pastas ADD COLUMN IF NOT EXISTS area TEXT REFERENCES areas(id) ON DELETE SET NULL`;
-    if (pastaSemArea) {
-      await sql`
-        UPDATE funding_pastas SET area = 'tax'
-        WHERE produto_id IS NULL AND nome = 'LIFF Tax Reform' AND EXISTS (SELECT 1 FROM areas WHERE id = 'tax')
-      `;
-    }
-    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS arquetipo_id INTEGER REFERENCES funding_arquetipos(id) ON DELETE SET NULL`;
-
     // Uma fatura viva por linha do cronograma: emitir duas vezes a mesma parcela é erro que a
     // tela não deve conseguir cometer. Cancelada sai da regra (reemissão).
     await sql`
@@ -1088,9 +921,8 @@ async function migrate(): Promise<void> {
             -- não cabe a esta migração. TABELA NOVA NESTE APP ENTRA NESTA LISTA.
             EXECUTE format(
               'REVOKE ALL ON users, user_area_perms, activities, deals, sessions, audit_log, areas, produtos, '
-              'oauth_concessoes, oauth_codigos, oauth_tokens, mcp_chamadas, origens, oportunidade_modulos, oportunidade_aws, '
-              'contratos, contrato_receitas, faturas, funding_programas, funding_arquetipos, funding_calculadoras, '
-              'funding_estimativas, funding_linhas, funding_pastas, clientes, cliente_chaves, cliente_contatos, '
+              'oauth_concessoes, oauth_codigos, oauth_tokens, mcp_chamadas, origens, oportunidade_modulos, '
+              'contratos, contrato_receitas, faturas, clientes, cliente_chaves, cliente_contatos, '
               'despesa_categorias, despesa_favorecidos, despesa_recorrencias, despesas, despesa_itens, schema_migracoes FROM %I',
               papel
             );
@@ -1300,7 +1132,7 @@ async function seed(sql: Queryable): Promise<void> {
   const [{ c }] = await sql<{ c: number }[]>`SELECT COUNT(*)::int AS c FROM users`;
   if (Number(c) > 0) return;
 
-  const adminEmail = (process.env.ADMIN_EMAIL ?? "leme@getliff.ai").trim().toLowerCase();
+  const adminEmail = (process.env.ADMIN_EMAIL ?? "admin@exemplo.com").trim().toLowerCase();
 
   const pessoas: {
     nome: string;
@@ -1310,19 +1142,19 @@ async function seed(sql: Queryable): Promise<void> {
     perms: Record<string, "view" | "edit">;
   }[] = [
     {
-      nome: "André Leme", email: "leme@getliff.ai", papel: "admin", iniciais: "AL",
+      nome: "Ana Admin", email: "admin@exemplo.com", papel: "admin", iniciais: "AA",
       perms: {},
     },
     {
-      nome: "Marina Duarte", email: "marina@getliff.ai", papel: "gestor", iniciais: "MD",
+      nome: "Marina Duarte", email: "marina@exemplo.com", papel: "gestor", iniciais: "MD",
       perms: { "law-firms": "edit", corporate: "edit", "public-sector": "view", tax: "view" },
     },
     {
-      nome: "Rafael Nunes", email: "rafael@getliff.ai", papel: "gestor", iniciais: "RN",
+      nome: "Rafael Nunes", email: "rafael@exemplo.com", papel: "gestor", iniciais: "RN",
       perms: { "law-firms": "view", corporate: "view", tax: "edit", labs: "edit" },
     },
     {
-      nome: "Clara Bastos", email: "clara@getliff.ai", papel: "membro", iniciais: "CB",
+      nome: "Clara Bastos", email: "clara@exemplo.com", papel: "membro", iniciais: "CB",
       perms: { "public-sector": "view", social: "view" },
     },
   ];
@@ -1344,22 +1176,22 @@ async function seed(sql: Queryable): Promise<void> {
 
   // ref, título, área, status, e-mail do responsável, prazo, prioridade
   const atividades: [string, string, string, string, string, string, string][] = [
-    ["A-101", "Implantação law-v no escritório Vieira & Costa", "law-firms", "andamento", "marina@getliff.ai", "2026-08-12", "alta"],
-    ["A-102", "Migração de base processual — fase 2", "law-firms", "revisao", "rafael@getliff.ai", "2026-08-09", "alta"],
-    ["A-103", "Proposta comercial Grupo Andrade", "law-firms", "backlog", "marina@getliff.ai", "2026-08-18", "media"],
-    ["A-201", "Rollout Regtrack na área de compliance", "corporate", "andamento", "rafael@getliff.ai", "2026-08-15", "alta"],
-    ["A-202", "Treinamento de governança — turma 3", "corporate", "concluido", "clara@getliff.ai", "2026-08-01", "baixa"],
-    ["A-203", "Revisão de política de retenção documental", "corporate", "backlog", "leme@getliff.ai", "2026-08-22", "media"],
-    ["A-301", "Pregão eletrônico — Tribunal de Contas MG", "public-sector", "andamento", "leme@getliff.ai", "2026-08-11", "alta"],
-    ["A-302", "Integração com sistema de controle interno", "public-sector", "backlog", "rafael@getliff.ai", "2026-08-29", "baixa"],
-    ["A-401", "Motor de cálculo da reforma — CBS/IBS", "tax", "andamento", "rafael@getliff.ai", "2026-08-20", "alta"],
-    ["A-402", "DRE Impact para carteira industrial", "tax", "revisao", "leme@getliff.ai", "2026-08-08", "alta"],
-    ["A-403", "Onboarding tributário — Nutrimax", "tax", "concluido", "marina@getliff.ai", "2026-07-31", "media"],
-    ["A-501", "Deadline Agent — avaliação de precisão", "labs", "andamento", "rafael@getliff.ai", "2026-08-14", "alta"],
-    ["A-502", "Evidence Graph — protótipo de grafo", "labs", "backlog", "leme@getliff.ai", "2026-08-26", "media"],
-    ["A-503", "Benchmark de modelos para extração", "labs", "revisao", "rafael@getliff.ai", "2026-08-10", "media"],
-    ["A-601", "Convênio com Defensoria — plano piloto", "social", "andamento", "clara@getliff.ai", "2026-08-19", "media"],
-    ["A-602", "Relatório de impacto do 1º semestre", "social", "concluido", "clara@getliff.ai", "2026-08-04", "baixa"],
+    ["A-101", "Implantação law-v no escritório Vieira & Costa", "law-firms", "andamento", "marina@exemplo.com", "2026-08-12", "alta"],
+    ["A-102", "Migração de base processual — fase 2", "law-firms", "revisao", "rafael@exemplo.com", "2026-08-09", "alta"],
+    ["A-103", "Proposta comercial Grupo Andrade", "law-firms", "backlog", "marina@exemplo.com", "2026-08-18", "media"],
+    ["A-201", "Rollout Regtrack na área de compliance", "corporate", "andamento", "rafael@exemplo.com", "2026-08-15", "alta"],
+    ["A-202", "Treinamento de governança — turma 3", "corporate", "concluido", "clara@exemplo.com", "2026-08-01", "baixa"],
+    ["A-203", "Revisão de política de retenção documental", "corporate", "backlog", "admin@exemplo.com", "2026-08-22", "media"],
+    ["A-301", "Pregão eletrônico — Tribunal de Contas MG", "public-sector", "andamento", "admin@exemplo.com", "2026-08-11", "alta"],
+    ["A-302", "Integração com sistema de controle interno", "public-sector", "backlog", "rafael@exemplo.com", "2026-08-29", "baixa"],
+    ["A-401", "Motor de cálculo da reforma — CBS/IBS", "tax", "andamento", "rafael@exemplo.com", "2026-08-20", "alta"],
+    ["A-402", "DRE Impact para carteira industrial", "tax", "revisao", "admin@exemplo.com", "2026-08-08", "alta"],
+    ["A-403", "Onboarding tributário — Nutrimax", "tax", "concluido", "marina@exemplo.com", "2026-07-31", "media"],
+    ["A-501", "Deadline Agent — avaliação de precisão", "labs", "andamento", "rafael@exemplo.com", "2026-08-14", "alta"],
+    ["A-502", "Evidence Graph — protótipo de grafo", "labs", "backlog", "admin@exemplo.com", "2026-08-26", "media"],
+    ["A-503", "Benchmark de modelos para extração", "labs", "revisao", "rafael@exemplo.com", "2026-08-10", "media"],
+    ["A-601", "Convênio com Defensoria — plano piloto", "social", "andamento", "clara@exemplo.com", "2026-08-19", "media"],
+    ["A-602", "Relatório de impacto do 1º semestre", "social", "concluido", "clara@exemplo.com", "2026-08-04", "baixa"],
   ];
   for (const [ref, titulo, area, status, email, prazo, prio] of atividades) {
     await sql`
@@ -1370,14 +1202,14 @@ async function seed(sql: Queryable): Promise<void> {
 
   // valor em centavos: 420000 reais → 42000000
   const oportunidades: [string, string, string, string, string, number, string, string][] = [
-    ["D-01", "Vieira & Costa Advogados", "law-v · 80 usuários", "law-firms", "contrato", 420000, "marina@getliff.ai", "Reunião 08/08"],
-    ["D-02", "Grupo Andrade", "law-v + Docflows", "law-firms", "proposta", 260000, "marina@getliff.ai", "Enviar proposta"],
-    ["D-03", "Metalcorp S.A.", "Regtrack corporate", "corporate", "qualificado", 180000, "marina@getliff.ai", "Discovery 12/08"],
-    ["D-04", "Instituto Vega", "Compliance ESG", "corporate", "prospeccao", 95000, "leme@getliff.ai", "Qualificar"],
-    ["D-05", "Tribunal de Contas MG", "Controle interno", "public-sector", "proposta", 610000, "leme@getliff.ai", "Edital 11/08"],
-    ["D-06", "Nutrimax Alimentos", "LIFF Tax · DRE Impact", "tax", "ganho", 340000, "marina@getliff.ai", "Kickoff feito"],
-    ["D-07", "Cimentos Boa Vista", "Reforma tributária", "tax", "contrato", 275000, "leme@getliff.ai", "Ajuste de escopo"],
-    ["D-08", "Rede Solidária Brasil", "Acesso à justiça", "social", "prospeccao", 60000, "clara@getliff.ai", "Primeiro contato"],
+    ["D-01", "Vieira & Costa Advogados", "law-v · 80 usuários", "law-firms", "contrato", 420000, "marina@exemplo.com", "Reunião 08/08"],
+    ["D-02", "Grupo Andrade", "law-v + Docflows", "law-firms", "proposta", 260000, "marina@exemplo.com", "Enviar proposta"],
+    ["D-03", "Metalcorp S.A.", "Regtrack corporate", "corporate", "qualificado", 180000, "marina@exemplo.com", "Discovery 12/08"],
+    ["D-04", "Instituto Vega", "Compliance ESG", "corporate", "prospeccao", 95000, "admin@exemplo.com", "Qualificar"],
+    ["D-05", "Tribunal de Contas MG", "Controle interno", "public-sector", "proposta", 610000, "admin@exemplo.com", "Edital 11/08"],
+    ["D-06", "Nutrimax Alimentos", "Tax · DRE Impact", "tax", "ganho", 340000, "marina@exemplo.com", "Kickoff feito"],
+    ["D-07", "Cimentos Boa Vista", "Reforma tributária", "tax", "contrato", 275000, "admin@exemplo.com", "Ajuste de escopo"],
+    ["D-08", "Rede Solidária Brasil", "Acesso à justiça", "social", "prospeccao", 60000, "clara@exemplo.com", "Primeiro contato"],
   ];
   for (const [ref, conta, escopo, area, estagio, reais, email, prox] of oportunidades) {
     await sql`
@@ -1388,7 +1220,7 @@ async function seed(sql: Queryable): Promise<void> {
 
   await sql`
     INSERT INTO audit_log (actor_user_id, area, entidade, texto)
-    VALUES (${uid(adminEmail) ?? uid("leme@getliff.ai")}, NULL, 'sistema', 'Base criada com o conjunto de demonstração')
+    VALUES (${uid(adminEmail) ?? uid("admin@exemplo.com")}, NULL, 'sistema', 'Base criada com o conjunto de demonstração')
   `;
 }
 

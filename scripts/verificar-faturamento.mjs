@@ -12,7 +12,7 @@ const checa = (nome, real, esperado) => {
 const HOJE = "2026-12-15";
 
 const contrato = {
-  id: 1, ref: "R-0001", conta: "Medley", area: "tax", dealId: null, situacao: "contratada", chance: null,
+  id: 1, ref: "R-0001", conta: "Acme", area: "tax", dealId: null, situacao: "contratada", chance: null,
   inicioFaturamento: "2026-12-01", notas: "",
   linhas: [
     { tipo: "implantacao", valorCentavos: 9000, parcelas: 3, inicioMes: 0, duracaoMeses: null },
@@ -21,7 +21,7 @@ const contrato = {
 };
 const prevista = { ...contrato, id: 2, ref: "R-0002", conta: "Ourofino", situacao: "prevista", chance: "alta" };
 const fatura = (o) => ({
-  id: 10, ref: "F-0010", contratoId: 1, conta: "Medley", area: "tax", tipo: "implantacao", parcela: "1/3", competencia: "2026-12",
+  id: 10, ref: "F-0010", contratoId: 1, conta: "Acme", area: "tax", tipo: "implantacao", parcela: "1/3", competencia: "2026-12",
   descricao: "", valorCentavos: 3000, status: "emitida", emitidaEm: "2026-12-01", vencimento: "2026-12-10", nfNumero: "123",
   forma: "boleto", retencoesCentavos: 0, pagoEm: null, valorPagoCentavos: null, canceladaEm: null, motivoCancelamento: "", notas: "", ...o,
 });
@@ -30,7 +30,7 @@ const contratado = (c) => c.situacao === "contratada";
 console.log("mês");
 let itens = itensDoMes([contrato, prevista], contratado, [], "2026-12", HOJE);
 checa("só contrato contratado gera linha", itens.map((i) => i.conta + " " + i.tipo + " " + i.parcela),
-  ["Medley assinatura mês 1", "Medley implantacao 1/3"]);
+  ["Acme assinatura mês 1", "Acme implantacao 1/3"]);
 checa("sem fatura, tudo a emitir com o valor do cronograma", itens.map((i) => [i.status, i.valorCentavos]), [["a_emitir", 800], ["a_emitir", 3000]]);
 
 itens = itensDoMes([contrato], contratado, [fatura({ valorCentavos: 3100 })], "2026-12", HOJE);

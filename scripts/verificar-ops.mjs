@@ -38,7 +38,7 @@ function checa(descricao, obtido, esperado) {
 const erro = (r) => (r.ok ? "ok" : `${r.status} ${r.erro}`);
 
 // Quem age: edita Tax, só vê Tech, não enxerga Jurídico.
-const LABEL = { tax: "LIFF Tax", tech: "LIFF.tech", jur: "Jurídico" };
+const LABEL = { tax: "Tax", tech: "Tech", jur: "Jurídico" };
 const NIVEL = { tax: "edit", tech: "view" };
 const perm = {
   areasExistentes: ["tax", "tech", "jur"],
@@ -53,7 +53,7 @@ const perm2 = { ...perm, podeVer: (a) => !!NIVEL2[a], podeEditar: (a) => NIVEL2[
 const fatos = {
   pessoas: new Map([[1, "Bruno Santo"], [2, "Bianka Moreira"]]),
   produtos: [{ id: "regtrack", area: "tax" }, { id: "genius", area: "tax" }, { id: "observa", area: "tech" }],
-  origens: [{ id: "aws", label: "AWS", ativo: true }, { id: "evento", label: "Evento", ativo: false }],
+  origens: [{ id: "parceiro", label: "Parceiro", ativo: true }, { id: "evento", label: "Evento", ativo: false }],
   oportunidades: [
     { id: 20, ref: "C-0120", conta: "JBS", area: "tax" },
     { id: 21, ref: "C-0121", conta: "Natura", area: "tech" },
@@ -71,7 +71,7 @@ const OPOR = {
   id: 20, ref: "C-0120", conta: "JBS", area: "tax", estagio: "qualificado",
   valor_centavos: "6000000", proximo_passo: "", responsavel_user_id: null, responsavel: null,
   situacao: "", contato: "", responsavel_texto: "Agente 2",
-  proximo_passo_em: null, ace_aws: false,
+  proximo_passo_em: null,
   origem_id: null, ponte: "", contato_operacional: "", dor: "", erp: "", proposta_url: "", ultima_interacao: null,
   blocker: "", blocker_tipo: null, blocker_dono_id: null, motivo_perda: null, motivo_perda_detalhe: "", notas: "",
   modulos: ["regtrack"],
@@ -79,7 +79,7 @@ const OPOR = {
 
 console.log("\n1. criação: permissão vem antes de tudo o que depende do produto");
 checa("produto só-leitura recusa com 403",
-  erro(planejarCriacaoAtividade({ titulo: "X", area: "tech" }, perm, fatos)), "403 Sem permissão de edição em LIFF.tech.");
+  erro(planejarCriacaoAtividade({ titulo: "X", area: "tech" }, perm, fatos)), "403 Sem permissão de edição em Tech.");
 checa("produto invisível também recusa (403, o produto existe no cadastro)",
   erro(planejarCriacaoOportunidade({ conta: "X", area: "jur" }, perm, fatos)), "403 Sem permissão de edição em Jurídico.");
 checa("produto inexistente é 400, não 403",
@@ -147,7 +147,7 @@ checa("data malformada vira nula, sem erro (comportamento antigo)",
 checa("texto longo é cortado no limite também na criação",
   planejarCriacaoOportunidade({ conta: "X", area: "tax", situacao: "a".repeat(9000) }, perm, fatos).linha?.situacao.length, 4000);
 checa("auditoria da criação", planejarCriacaoOportunidade({ conta: "JBS", area: "tax", valorReais: 60000 }, perm, fatos).auditoria.texto,
-  `Criou a oportunidade JBS (${(6000000 / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}) em LIFF Tax`);
+  `Criou a oportunidade JBS (${(6000000 / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}) em Tax`);
 
 console.log("\n3. alteração: a permissão é a do registro no banco");
 checa("registro em produto invisível é 404 (não confirma que existe)",
@@ -155,7 +155,7 @@ checa("registro em produto invisível é 404 (não confirma que existe)",
 checa("registro em produto só-leitura é 403",
   erro(planejarAtualizacaoOportunidade({ ...OPOR, area: "tech" }, { conta: "Y" }, perm, fatos)), "403 Sem permissão de edição neste produto.");
 checa("mover para produto sem edição recusa",
-  erro(planejarAtualizacaoAtividade(ATIV, { area: "tech" }, perm, fatos)), "403 Sem permissão de edição em LIFF.tech.");
+  erro(planejarAtualizacaoAtividade(ATIV, { area: "tech" }, perm, fatos)), "403 Sem permissão de edição em Tech.");
 checa("mover tirando de produto alheio recusa (registro em Tech, quem age só edita Tax)",
   erro(planejarAtualizacaoOportunidade({ ...OPOR, area: "tech" }, { area: "tax" }, perm, fatos)), "403 Sem permissão de edição neste produto.");
 const movida = planejarAtualizacaoAtividade(ATIV, { area: "tech" }, perm2, fatos);
@@ -199,23 +199,23 @@ checa("responsável para nulo", planejarAtualizacaoAtividade(ATIV, { responsavel
 console.log("\n5. as chaves de SQL são só as colunas conhecidas");
 // `sets` vira `UPDATE ... SET ${tx(sets)}`. Uma chave vinda da entrada seria injeção de nome
 // de coluna. A entrada aqui traz chaves que não são campo nenhum.
-const intruso = planejarAtualizacaoOportunidade(OPOR, { valor_centavos: 1, "area = 'x'; --": 1, ace_aws: true, aceAws: true }, perm, fatos);
-checa("chave desconhecida na entrada é ignorada", Object.keys(intruso.sets), ["ace_aws"]);
+const intruso = planejarAtualizacaoOportunidade(OPOR, { valor_centavos: 1, "area = 'x'; --": 1, coluna_que_nao_existe: true }, perm, fatos);
+checa("chave desconhecida na entrada é ignorada", Object.keys(intruso.sets), []);
 const COLUNAS = new Set(["area", "conta", "estagio", "valor_centavos", "proximo_passo", "situacao", "contato",
-  "responsavel_texto", "proximo_passo_em", "ace_aws", "responsavel_user_id",
+  "responsavel_texto", "proximo_passo_em", "responsavel_user_id",
   "origem_id", "ponte", "contato_operacional", "dor", "erp", "ultima_interacao", "blocker", "blocker_tipo",
   "blocker_dono_id", "motivo_perda", "motivo_perda_detalhe", "notas", "situacao_em", "proposta_url"]);
 const tudo = planejarAtualizacaoOportunidade(OPOR, {
   area: "tech", conta: "B", escopo: "c", estagio: "prospeccao", valorReais: 1, proximoPasso: "p", situacao: "s",
   contato: "k", responsavelTexto: "r", proximoPassoEm: "2026-12-01", produtoId: "observa", pausado: true,
-  aceAws: true, responsavelId: 2, origemId: "aws", ponte: "pt", contatoOperacional: "co", dor: "d", erp: "SAP",
+  responsavelId: 2, origemId: "parceiro", ponte: "pt", contatoOperacional: "co", dor: "d", erp: "SAP",
   ultimaInteracao: "2026-11-01", blocker: "b", blockerTipo: "preco", blockerDonoId: 1, motivoPerda: "outro",
   motivoPerdaDetalhe: "md", notas: "n", modulos: ["observa"], propostaUrl: "https://docs.google.com/document/d/1AbCdEfGhIjKlMnOp/edit",
 }, perm2, fatos);
 checa("pausado (legado) não vira coluna nenhuma", "pausado" in tudo.sets, false);
 checa("todas as colunas possíveis estão na lista conhecida", Object.keys(tudo.sets).every((k) => COLUNAS.has(k)), true);
 checa("escopo e produto_id (removidos) não voltam", "escopo" in tudo.sets || "produto_id" in tudo.sets, false);
-checa("e são todas as 25 da oportunidade", Object.keys(tudo.sets).length, 25);
+checa("e são todas as 24 da oportunidade", Object.keys(tudo.sets).length, 24);
 checa("mudar a situação grava a data dela", typeof tudo.sets.situacao_em, "string");
 checa("a data dita por quem atualiza vale",
   planejarAtualizacaoOportunidade(OPOR, { situacao: "nova", situacaoEm: "2026-10-19" }, perm, fatos).sets.situacao_em, "2026-10-19");
@@ -255,7 +255,7 @@ console.log("\n7. tarefa ligada a oportunidade");
 const criadaLigada = planejarCriacaoAtividade({ titulo: "Implantar", area: "tax", oportunidade: 20 }, perm, fatos);
 checa("liga pelo id (o que a tela manda)", criadaLigada.linha?.oportunidadeId, 20);
 checa("a criação conta no histórico a que venda serve",
-  criadaLigada.auditoria?.texto, 'Criou "Implantar" em LIFF Tax, ligada à oportunidade C-0120 · JBS');
+  criadaLigada.auditoria?.texto, 'Criou "Implantar" em Tax, ligada à oportunidade C-0120 · JBS');
 checa("liga pela referência (o que o Claude manda)",
   planejarCriacaoAtividade({ titulo: "X", area: "tax", oportunidade: "c-120" }, perm, fatos).linha?.oportunidadeId, 20);
 checa("liga pela referência antiga", planejarCriacaoAtividade({ titulo: "X", area: "tax", oportunidade: "D-121" }, perm, fatos).linha?.oportunidadeId, 21);
@@ -333,35 +333,14 @@ checa("fora do pipeline: Prospecção, Ganho, Lost", ["prospeccao", "ganho", "lo
 checa("o pipeline é o funil sem a primeira e a última casa, mais On hold", PIPELINE, [...FUNIL.slice(1, -1), "on_hold"]);
 checa("On hold é pipeline mas não está em aberto (não cobra prazo)", [estagioNoPipeline("on_hold"), estagioEmAberto("on_hold")], [true, false]);
 
-// Composição da proposta (assinatura mensal, implantação e customização com parcelas) e arquétipo.
-const fatosArq = { ...fatos, arquetipos: [{ id: 1, nome: "Compartilhado", ativo: true, pasta: "Tax", area: "tax" }, { id: 2, nome: "Geral", ativo: true, pasta: null, area: null }, { id: 3, nome: "Velho", ativo: false, pasta: "Tax", area: "tax" }] };
+// Composição da proposta (assinatura mensal, implantação e customização com parcelas).
 const comp = planejarCriacaoOportunidade(
   { conta: "X", area: "tax", valorReais: 1, propAssinaturaReais: 5000, propImplantacaoReais: 30000, propImplantacaoParcelas: 3, propCustomizacaoReais: 24000, propCustomizacaoParcelas: 24, arquetipoId: 1 },
-  perm, fatosArq);
+  perm, fatos);
 checa("composição define o total em 12 meses (parcelas acima de 12 contam só 12)", comp.linha?.valorCentavos, 5000 * 12 * 100 + 3000000 + 1200000);
-checa("…e o arquétipo vai junto", comp.linha?.arquetipoId, 1);
 checa("sem composição vale o valor digitado", planejarCriacaoOportunidade({ conta: "X", area: "tax", valorReais: 1500 }, perm, fatos).linha?.valorCentavos, 150000);
 checa("parcelas fora da faixa", erro(planejarCriacaoOportunidade({ conta: "X", area: "tax", propImplantacaoParcelas: 0 }, perm, fatos)), "400 Parcelas inválidas: use de 1 a 60.");
 const upd = planejarAtualizacaoOportunidade(OPOR, { propAssinaturaReais: 1000, valorReais: 7 }, perm, fatos);
 checa("atualizar a assinatura recalcula o valor", [upd.sets.prop_assinatura_centavos, upd.sets.valor_centavos], [100000, 1200000]);
-checa("arquétipo inexistente", erro(planejarAtualizacaoOportunidade(OPOR, { arquetipoId: 99 }, perm, fatosArq)), "400 Arquétipo inválido.");
-checa("arquétipo inativo não entra", erro(planejarAtualizacaoOportunidade(OPOR, { arquetipoId: 3 }, perm, fatosArq)), "400 Arquétipo inválido.");
-checa("arquétipo de pasta sem produto vale em qualquer um", planejarAtualizacaoOportunidade(OPOR, { arquetipoId: 2 }, perm, fatosArq).sets.arquetipo_id, 2);
-checa("arquétipo de outro produto",
-  erro(planejarAtualizacaoOportunidade(OPOR, { arquetipoId: 4 }, perm, { ...fatosArq, arquetipos: [{ id: 4, nome: "De outro", ativo: true, pasta: "Jur", area: "jur" }] })),
-  "400 Este arquétipo é de outro produto.");
-
-// Registros na AWS: N ACEs e N pedidos de funding por oportunidade, cada um com o link.
-const comAws = { ...OPOR, ace_aws: true, aws: [{ tipo: "ace", descricao: "O1", url: "" }] };
-const novaAws = planejarAtualizacaoOportunidade(OPOR, { aws: [{ tipo: "ace", descricao: "O1", url: "aws.com/o1" }, { tipo: "funding", descricao: "MAP", url: "" }] }, perm, fatos);
-checa("lista de registros na AWS grava e liga o ace_aws", [novaAws.aws?.length, novaAws.aws?.[0].url, novaAws.sets.ace_aws], [2, "https://aws.com/o1", true]);
-checa("tirar a última ACE desliga o ace_aws", planejarAtualizacaoOportunidade(comAws, { aws: [] }, perm, fatos).sets.ace_aws, false);
-checa("lista igual não gera mudança", planejarAtualizacaoOportunidade(comAws, { aws: comAws.aws }, perm, fatos).mudancas.length, 0);
-checa("acrescentar (MCP) mantém o que havia", planejarAtualizacaoOportunidade(comAws, { awsAdicionar: { tipo: "funding", descricao: "POC" } }, perm, fatos).aws?.length, 2);
-checa("aceAws antigo: true cria uma ACE sem link", planejarAtualizacaoOportunidade(OPOR, { aceAws: true }, perm, fatos).aws, [{ tipo: "ace", descricao: "", url: "" }]);
-checa("aceAws antigo: false não apaga ACE cadastrada", erro(planejarAtualizacaoOportunidade(comAws, { aceAws: false }, perm, fatos)), "400 Este card tem ACE cadastrada. Remova a ACE pela tela do card.");
-checa("tipo de registro inválido", erro(planejarAtualizacaoOportunidade(OPOR, { aws: [{ tipo: "x" }] }, perm, fatos)), "400 Tipo de registro da AWS inválido: use ace ou funding.");
-checa("criar com aceAws antigo", planejarCriacaoOportunidade({ conta: "X", area: "tax", aceAws: true }, perm, fatos).linha?.aws.length, 1);
-
 console.log(`\n${ok} passaram, ${falhou} falharam`);
 process.exit(falhou ? 1 : 0);

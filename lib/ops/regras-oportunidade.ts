@@ -4,13 +4,13 @@
 // de erro não mudar quando a entrada tem mais de um problema.
 //
 // Card comercial v2 (nov/2026): Escopo e Produto saíram da oportunidade — Dor principal e
-// Módulos de interesse dizem o mesmo com estrutura — e entraram os campos da planilha do LIFF
+// Módulos de interesse dizem o mesmo com estrutura — e entraram os campos da planilha comercial de origem
 // Tax: origem, ponte, contato operacional, ERP, última interação, blocker (tipo e quem
 // resolve), motivo da perda e notas. `contato` passou a ser "Contato / sponsor".
 
 import {
-  BLOCKER_TIPO_KEYS, ESTAGIO_INICIAL, FUNIL, LIMITES_AWS, MOTIVO_PERDA_KEYS, PARCELAS_MAX, TIPOS_AWS, resumoAws, STAGE_KEYS, blockerTipoLabel, brlExato,
-  hojeISO, motivoPerdaLabel, stageLabel, temComposicao, totalPrimeiroAno, urlDaProposta, type ComposicaoProposta, type RegistroAws,
+  BLOCKER_TIPO_KEYS, ESTAGIO_INICIAL, FUNIL, MOTIVO_PERDA_KEYS, PARCELAS_MAX, STAGE_KEYS, blockerTipoLabel, brlExato,
+  hojeISO, motivoPerdaLabel, stageLabel, temComposicao, totalPrimeiroAno, urlDaProposta, type ComposicaoProposta,
 } from "../domain.ts";
 import {
   LIMITES, dataOuNula, falha, idDePessoa, isoDoBanco, texto,
@@ -30,7 +30,6 @@ export type OportunidadeNova = {
   situacaoEm: string | null;
   contato: string;
   responsavelTexto: string;
-  aceAws: boolean;
   origemId: string | null;
   ponte: string;
   contatoOperacional: string;
@@ -46,8 +45,6 @@ export type OportunidadeNova = {
   notas: string;
   modulos: string[];
   proposta: ComposicaoProposta;
-  arquetipoId: number | null;
-  aws: RegistroAws[];
 };
 
 export type OportunidadeAtual = {
@@ -67,7 +64,6 @@ export type OportunidadeAtual = {
   contato: string;
   responsavel_texto: string;
   proximo_passo_em: Date | null;
-  ace_aws: boolean;
   origem_id: string | null;
   ponte: string;
   contato_operacional: string;
@@ -89,9 +85,6 @@ export type OportunidadeAtual = {
   prop_implantacao_parcelas?: number;
   prop_customizacao_centavos?: string | number;
   prop_customizacao_parcelas?: number;
-  arquetipo_id?: number | null;
-  /** ACEs e pedidos de funding do card, na ordem em que foram cadastrados. */
-  aws?: RegistroAws[];
 };
 
 type Entrada = Record<string, unknown>;
@@ -135,51 +128,6 @@ function lerProposta(body: Entrada, base: ComposicaoProposta): string | { final:
   return { final, mudou };
 }
 
-/** Um registro na AWS vindo do corpo: o registro limpo, ou a mensagem de erro. */
-function registroAws(v: unknown): RegistroAws | string {
-  if (!v || typeof v !== "object") return "Registro da AWS inválido.";
-  const r = v as Record<string, unknown>;
-  if (!TIPOS_AWS.some((t) => t.key === r.tipo)) return "Tipo de registro da AWS inválido: use ace ou funding.";
-  const url = urlDaProposta(r.url);
-  if (url === null) return "Link da AWS inválido. Cole o endereço completo, começando por https://.";
-  return { tipo: r.tipo as RegistroAws["tipo"], descricao: texto(r.descricao, LIMITES_AWS.descricao), url };
-}
-
-/** A lista inteira de registros na AWS. Linha sem descrição e sem link é descartada. */
-function listaAws(v: unknown): RegistroAws[] | string {
-  if (v === null) return [];
-  if (!Array.isArray(v)) return "Registros da AWS inválidos.";
-  if (v.length > LIMITES_AWS.registros) return `No máximo ${LIMITES_AWS.registros} registros na AWS por oportunidade.`;
-  const lista: RegistroAws[] = [];
-  for (const item of v) {
-    const r = registroAws(item);
-    if (typeof r === "string") return r;
-    lista.push(r);
-  }
-  return lista;
-}
-
-const mesmaAws = (a: RegistroAws[], b: RegistroAws[]) =>
-  a.length === b.length && a.every((x, i) => x.tipo === b[i].tipo && x.descricao === b[i].descricao && x.url === b[i].url);
-const temAce = (l: RegistroAws[]) => l.some((r) => r.tipo === "ace");
-
-/**
- * Arquétipo da proposta: tem de existir, estar ativo (ou já ser o do card) e ser do produto
- * do card — arquétipo de pasta sem módulo vale para qualquer produto.
- */
-function arquetipoValido(v: unknown, fatos: Fatos, area: string, atual: number | null): number | null | string {
-  if (v === null || v === "") return null;
-  const id = Number(v);
-  const a = Number.isInteger(id) ? (fatos.arquetipos ?? []).find((x) => x.id === id) : undefined;
-  if (!a || !(a.ativo || a.id === atual)) return "Arquétipo inválido.";
-  if (a.area && a.area !== area) return "Este arquétipo é de outro produto.";
-  return a.id;
-}
-
-function booleanoOpcional(v: unknown): boolean | undefined | "invalido" {
-  if (v === undefined) return undefined;
-  return typeof v === "boolean" ? v : "invalido";
-}
 
 /** Valor de uma lista fechada: a chave, `null` (vazio limpa) ou "invalido". */
 function deLista(v: unknown, chaves: readonly string[]): string | null | "invalido" {
@@ -254,9 +202,6 @@ export function planejarCriacaoOportunidade(
   // "Em pausa" deixou de ser interruptor: virou o estágio On hold. Um `pausado` vindo de um
   // cliente antigo é ignorado, como qualquer campo que a regra não conhece — idem `escopo` e
   // `produtoId`, que saíram do card comercial.
-  const aceAws = booleanoOpcional(body.aceAws);
-  if (aceAws === "invalido") return falha("Requisição inválida.");
-
   const origemId = origemValida(body.origemId ?? null, fatos, null);
   if (origemId === "invalido") return falha("Origem inválida.");
   const blockerTipo = deLista(body.blockerTipo ?? null, BLOCKER_TIPO_KEYS);
@@ -271,12 +216,6 @@ export function planejarCriacaoOportunidade(
     if (id === undefined || !fatos.pessoas.has(id)) return falha("Quem resolve o blocker é inválido.");
     blockerDonoId = id;
   }
-  const arquetipoId = arquetipoValido(body.arquetipoId ?? null, fatos, area, null);
-  if (typeof arquetipoId === "string") return falha(arquetipoId);
-  // Registros na AWS. `aceAws: true` sozinho (forma antiga, MCP) vale como uma ACE sem link.
-  let aws = body.aws === undefined ? [] : listaAws(body.aws);
-  if (typeof aws === "string") return falha(aws);
-  if (body.aws === undefined && aceAws === true) aws = [{ tipo: "ace", descricao: "", url: "" }];
 
   const linha: OportunidadeNova = {
     conta,
@@ -290,7 +229,6 @@ export function planejarCriacaoOportunidade(
     situacaoEm: texto(body.situacao, LIMITES.situacao) ? (dataOuNula(body.situacaoEm) ?? hojeISO()) : null,
     contato: texto(body.contato, LIMITES.contato),
     responsavelTexto: texto(body.responsavelTexto, LIMITES.responsavelTexto),
-    aceAws: temAce(aws),
     origemId,
     ponte: texto(body.ponte, LIMITES.ponte),
     contatoOperacional: texto(body.contatoOperacional, LIMITES.contatoOperacional),
@@ -306,8 +244,6 @@ export function planejarCriacaoOportunidade(
     notas: texto(body.notas, LIMITES.notas),
     modulos,
     proposta: proposta.final,
-    arquetipoId,
-    aws,
   };
 
   return {
@@ -325,19 +261,17 @@ export function planejarCriacaoOportunidade(
 export type ColunaOportunidade =
   | "area" | "conta" | "estagio" | "valor_centavos" | "proximo_passo"
   | "situacao" | "situacao_em" | "contato" | "responsavel_texto" | "proximo_passo_em"
-  | "ace_aws" | "responsavel_user_id"
+  | "responsavel_user_id"
   | "origem_id" | "ponte" | "contato_operacional" | "dor" | "erp" | "ultima_interacao"
   | "blocker" | "blocker_tipo" | "blocker_dono_id" | "motivo_perda" | "motivo_perda_detalhe" | "notas" | "proposta_url"
   | "prop_assinatura_centavos" | "prop_implantacao_centavos" | "prop_implantacao_parcelas"
-  | "prop_customizacao_centavos" | "prop_customizacao_parcelas" | "arquetipo_id";
+  | "prop_customizacao_centavos" | "prop_customizacao_parcelas";
 
 export type PlanoOportunidade = {
   ok: true;
   sets: Partial<Record<ColunaOportunidade, string | number | boolean | null>>;
   /** Lista NOVA de módulos, quando mudou. Ausente = não mexer. */
   modulos?: string[];
-  /** Lista NOVA de registros na AWS (ACEs e fundings), quando mudou. Ausente = não mexer. */
-  aws?: RegistroAws[];
   mudancas: Mudanca[];
   areaFinal: string;
 };
@@ -579,23 +513,6 @@ export function planejarAtualizacaoOportunidade(
     });
   }
 
-  // Arquétipo, contra o produto FINAL. Trocar só o produto derruba o arquétipo que não serve.
-  const arqAtual = atual.arquetipo_id ?? null;
-  const nomeArq = (id: number | null) => (id === null ? "—" : ((fatos.arquetipos ?? []).find((a) => a.id === id)?.nome ?? `#${id}`));
-  let arqNovo: number | null | undefined;
-  if (body.arquetipoId !== undefined) {
-    const v = arquetipoValido(body.arquetipoId, fatos, areaFinal, arqAtual);
-    if (typeof v === "string") return falha(v);
-    arqNovo = v;
-  } else if (areaFinal !== atual.area && arqAtual !== null) {
-    const a = (fatos.arquetipos ?? []).find((x) => x.id === arqAtual);
-    if (a?.area && a.area !== areaFinal) arqNovo = null;
-  }
-  if (arqNovo !== undefined && arqNovo !== arqAtual) {
-    mudancas.push({ campo: "arquetipo", de: nomeArq(arqAtual), para: nomeArq(arqNovo), texto: `Alterou o arquétipo da proposta de ${atual.conta}` });
-    sets.arquetipo_id = arqNovo;
-  }
-
   if (body.origemId !== undefined) {
     const origem = origemValida(body.origemId, fatos, atual.origem_id);
     if (origem === "invalido") return falha("Origem inválida.");
@@ -651,32 +568,6 @@ export function planejarAtualizacaoOportunidade(
     }
   }
 
-  // Registros na AWS: N ACEs e N pedidos de funding, cada um com o link do cadastro. Três
-  // entradas: a lista inteira (a tela), um registro a acrescentar (o MCP, que não remove nada)
-  // e o `aceAws` antigo, que hoje só sabe dizer "há uma ACE".
-  const awsAtual = atual.aws ?? [];
-  let aws: RegistroAws[] | undefined;
-  if (body.aws !== undefined) {
-    const nova = listaAws(body.aws);
-    if (typeof nova === "string") return falha(nova);
-    if (!mesmaAws(nova, awsAtual)) aws = nova;
-  } else if (body.awsAdicionar !== undefined) {
-    const r = registroAws(body.awsAdicionar);
-    if (typeof r === "string") return falha(r);
-    if (awsAtual.length >= LIMITES_AWS.registros) return falha(`No máximo ${LIMITES_AWS.registros} registros na AWS por oportunidade.`);
-    aws = [...awsAtual, r];
-  } else {
-    const aceAws = booleanoOpcional(body.aceAws);
-    if (aceAws === "invalido") return falha("Requisição inválida.");
-    if (aceAws === true && !temAce(awsAtual)) aws = [...awsAtual, { tipo: "ace", descricao: "", url: "" }];
-    if (aceAws === false && temAce(awsAtual)) return falha("Este card tem ACE cadastrada. Remova a ACE pela tela do card.");
-  }
-  if (aws) {
-    mudancas.push({ campo: "aws", de: resumoAws(awsAtual), para: resumoAws(aws), texto: `Alterou os registros de ${atual.conta} na AWS (ACE e funding)` });
-    // `ace_aws` acompanha a lista: é o que o card e os filtros leem.
-    if (temAce(aws) !== atual.ace_aws) sets.ace_aws = temAce(aws);
-  }
-
   if (body.responsavelId !== undefined && body.responsavelId !== atual.responsavel_user_id) {
     let nomeNovo = "—";
     let novoId: number | null = null;
@@ -696,5 +587,5 @@ export function planejarAtualizacaoOportunidade(
     sets.responsavel_user_id = novoId;
   }
 
-  return { ok: true, sets, modulos, aws, mudancas, areaFinal };
+  return { ok: true, sets, modulos, mudancas, areaFinal };
 }

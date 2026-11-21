@@ -3,7 +3,7 @@
 //   node --experimental-strip-types scripts/verificar-filtro.mjs
 //
 // A regra não é "responsavelId === alguem.id", e isso é o ponto do teste. A importação de
-// planilha grava SÓ `responsavel_texto`: no pipeline do LIFF Tax o responsável é texto livre
+// planilha grava SÓ `responsavel_texto`: no pipeline do Tax o responsável é texto livre
 // na coluna RESPONSÁVEL e nenhuma linha tem `responsavel_user_id`. Um filtro por id
 // devolveria zero oportunidades e pareceria quebrado no primeiro clique.
 //
@@ -90,7 +90,7 @@ checa("o mesmo nome repetido não duplica a chave",
 checa("slug de texto com pontuação", chaveDeTexto("Special Agent 2 — ponte"), "t:special-agent-2-ponte");
 checa("texto sem letra nem número cai em 'sem'", chaveDeTexto("—"), CHAVE_SEM_RESPONSAVEL);
 
-console.log("\n4. as opções, tiradas do pipeline real do LIFF Tax");
+console.log("\n4. as opções, tiradas do pipeline real do Tax");
 const DEALS = [
   ["3M", "Bruno Santo"],
   ["PERNOD RICARD", "Bianka"],

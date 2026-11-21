@@ -169,7 +169,7 @@ export default function Faturamento({
 
       {/* ---------- barra de controle ---------- */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <div role="group" aria-label="Visão" className="liff-densidade">
+        <div role="group" aria-label="Visão" className="col-densidade">
           <button type="button" aria-pressed={aba === "mes"} onClick={() => setAba("mes")}>
             por mês
           </button>
@@ -193,7 +193,7 @@ export default function Faturamento({
                 mês atual
               </button>
             )}
-            <div role="group" aria-label="Filtrar por situação" className="liff-densidade">
+            <div role="group" aria-label="Filtrar por situação" className="col-densidade">
               {FILTROS.map((f) => (
                 <button key={f.key} type="button" aria-pressed={filtro === f.key} onClick={() => setFiltro(f.key)}>
                   {f.label} · {todosDoMes.filter((i) => f.casa(i.status)).length}
@@ -312,7 +312,7 @@ function TabelaMes({ itens, vazio, hoje, onAcao }: { itens: ItemDoMes[]; vazio: 
   const ord = useOrdem();
   if (!itens.length) return <div style={{ fontSize: 14, color: C.faint, lineHeight: 1.6, maxWidth: 640 }}>{vazio}</div>;
   return (
-    <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
+    <div className="col-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
       <div style={{ minWidth: 920 }}>
         <div className="fat-linha fat-linha--cab" style={{ gridTemplateColumns: COLS_MES }}>
           {(
@@ -333,7 +333,7 @@ function TabelaMes({ itens, vazio, hoje, onAcao }: { itens: ItemDoMes[]; vazio: 
           return (
             <div
               key={i.chave}
-              className={`fat-linha${f ? " liff-hover-row" : ""}`}
+              className={`fat-linha${f ? " col-hover-row" : ""}`}
               style={{ gridTemplateColumns: COLS_MES, cursor: f ? "pointer" : undefined }}
               onClick={() => f && onAcao({ tipo: "detalhe", fatura: f })}
             >
@@ -393,7 +393,7 @@ function TabelaAberto({
   const ord = useOrdem();
   if (!faturas.length) return <div style={{ fontSize: 14, color: C.faint }}>Nenhuma fatura em aberto.</div>;
   return (
-    <div className="liff-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
+    <div className="col-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
       <div style={{ minWidth: 980 }}>
         <div className="fat-linha fat-linha--cab" style={{ gridTemplateColumns: COLS_ABERTO }}>
           {(
@@ -413,7 +413,7 @@ function TabelaAberto({
           const s = statusDe(f, hoje);
           const email = f.contratoId != null ? contratoPorId.get(f.contratoId)?.cobranca.emailCobranca : "";
           return (
-            <div key={f.id} className="fat-linha liff-hover-row" style={{ gridTemplateColumns: COLS_ABERTO, cursor: "pointer" }} onClick={() => onAcao({ tipo: "detalhe", fatura: f })}>
+            <div key={f.id} className="fat-linha col-hover-row" style={{ gridTemplateColumns: COLS_ABERTO, cursor: "pointer" }} onClick={() => onAcao({ tipo: "detalhe", fatura: f })}>
               <div style={{ minWidth: 0 }}>
                 <div className="fat-cliente">{f.conta}</div>
                 <div className="fat-meta">
@@ -450,7 +450,7 @@ function TabelaAberto({
 /** Rascunho de e-mail de cobrança (abre no programa de e-mail da pessoa; nada é enviado sozinho). */
 function linkCobranca(f: Fatura, email: string, hoje: string): string {
   const atraso = diasDeAtraso(f.vencimento, hoje);
-  const assunto = `${atraso ? "Fatura em atraso" : "Lembrete de fatura"} ${f.nfNumero ? `NF ${f.nfNumero}` : f.ref} · LIFF`;
+  const assunto = `${atraso ? "Fatura em atraso" : "Lembrete de fatura"} ${f.nfNumero ? `NF ${f.nfNumero}` : f.ref} · Colméia`;
   const corpo = [
     "Olá,",
     "",
@@ -534,7 +534,7 @@ function FormEmissao({
   };
 
   return (
-    <Modal titulo={titulo} eyebrowTexto={`LIFF/ FATURAMENTO · ${subtitulo.toUpperCase()}`} onFechar={onFechar} largura={640}>
+    <Modal titulo={titulo} eyebrowTexto={`COLMÉIA/ FATURAMENTO · ${subtitulo.toUpperCase()}`} onFechar={onFechar} largura={640}>
       <div className="rec-form">
         {avulsa && (
           <>
@@ -630,7 +630,7 @@ function FormBaixa({ fatura, hoje, onFechar, onSalvo }: { fatura: Fatura; hoje: 
   };
 
   return (
-    <Modal titulo={`Baixa · ${fatura.conta}`} eyebrowTexto={`LIFF/ FATURAMENTO · ${fatura.ref}`} onFechar={onFechar} largura={520}>
+    <Modal titulo={`Baixa · ${fatura.conta}`} eyebrowTexto={`COLMÉIA/ FATURAMENTO · ${fatura.ref}`} onFechar={onFechar} largura={520}>
       <div className="rec-form">
         <div className="fat-meta">
           {rotuloTipoFatura(fatura.tipo)} {fatura.parcela} · competência {rotuloMes(fatura.competencia)} · vence {br(fatura.vencimento)}
@@ -700,7 +700,7 @@ function Detalhe({
   );
 
   return (
-    <Modal titulo={`${f.ref} · ${f.conta}`} eyebrowTexto="LIFF/ FATURAMENTO · FATURA" onFechar={onFechar} largura={560}>
+    <Modal titulo={`${f.ref} · ${f.conta}`} eyebrowTexto="COLMÉIA/ FATURAMENTO · FATURA" onFechar={onFechar} largura={560}>
       <div className="rec-form">
         <div>
           <Status s={s} dias={diasDeAtraso(f.vencimento, hoje)} />

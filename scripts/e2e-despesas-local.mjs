@@ -97,10 +97,10 @@ checa("categoria em uso não se exclui: 409", (await A("DELETE", `/api/despesas/
 
 console.log("\nfatura do cartão com itens");
 const p2 = await A("POST", "/api/despesas", { favorecidoId: cartao.id, competencia: "2026-11", descricao: "Fatura do cartão", vencimento: "2026-11-25", forma: "boleto", valorCentavos: 1,
-  itens: [{ data: "2026-11-02", descricao: "AWS", categoriaId: cat("Infraestrutura de nuvem e IA"), valorCentavos: 60000 }, { descricao: "Notion", categoriaId: cat("Software e assinaturas"), valorCentavos: 30000 }] });
+  itens: [{ data: "2026-11-02", descricao: "Nuvem", categoriaId: cat("Infraestrutura de nuvem e IA"), valorCentavos: 60000 }, { descricao: "Notion", categoriaId: cat("Software e assinaturas"), valorCentavos: 30000 }] });
 const conta2 = (await ler()).despesas.find((d) => d.ref === p2.corpo.ref);
 checa("valor é a soma dos itens e a conta fica sem categoria", [conta2.valorCentavos, conta2.categoriaId, conta2.itens.map((i) => [i.descricao, i.valorCentavos, i.data])],
-  [90000, null, [["AWS", 60000, "2026-11-02"], ["Notion", 30000, null]]]);
+  [90000, null, [["Nuvem", 60000, "2026-11-02"], ["Notion", 30000, null]]]);
 checa("item com categoria inexistente: 400", (await A("POST", "/api/despesas", { favorecidoId: cartao.id, competencia: "2026-11", vencimento: "2026-11-25", forma: "boleto",
   itens: [{ descricao: "X", categoriaId: 9999, valorCentavos: 1 }] })).status, 400);
 checa("conta simples sem categoria: 400", (await A("POST", "/api/despesas", { favorecidoId: cartao.id, competencia: "2026-11", vencimento: "2026-11-25", forma: "boleto", valorCentavos: 100 })).status, 400);
@@ -122,7 +122,7 @@ checa("corrige (valor e vencimento)", (await acao(conta1.id, { acao: "editar", .
 c1 = (await ler()).despesas.find((d) => d.id === conta1.id);
 checa("conta de recorrência não troca de mês nem de favorecido", [c1.status, c1.valorCentavos, c1.vencimento, c1.competencia, c1.favorecidoId, c1.pagoEm], ["aberta", 1600000, "2026-12-10", "2026-11", pj.id, null]);
 checa("corrige os itens do cartão", (await acao(conta2.id, { acao: "editar", favorecidoId: cartao.id, competencia: "2026-11", descricao: "Fatura do cartão", vencimento: "2026-11-25", forma: "boleto",
-  itens: [{ descricao: "AWS", categoriaId: cat("Infraestrutura de nuvem e IA"), valorCentavos: 70000 }] })).status, 200);
+  itens: [{ descricao: "Nuvem", categoriaId: cat("Infraestrutura de nuvem e IA"), valorCentavos: 70000 }] })).status, 200);
 const c2 = (await ler()).despesas.find((d) => d.id === conta2.id);
 checa("itens substituídos e total refeito", [c2.valorCentavos, c2.itens.length], [70000, 1]);
 checa("cancelar sem motivo: 400", (await acao(conta1.id, { acao: "cancelar", motivo: "  " })).status, 400);
@@ -133,11 +133,11 @@ checa("depois de cancelada, a competência pode ser relançada", p3.status, 200)
 
 console.log("\ncomo vamos pagar: cartão ou banco");
 const fat = (corpo) => A("POST", "/api/despesas/fatura", corpo);
-const aws = (await A("POST", "/api/despesas/cadastros/favorecidos", { nome: "AWS", tipo: "fornecedor" })).corpo;
+const nuvem = (await A("POST", "/api/despesas/cadastros/favorecidos", { nome: "Nuvem", tipo: "fornecedor" })).corpo;
 checa("cartão com um dia só: 400", (await A("PATCH", `/api/despesas/cadastros/favorecidos/${cartao.id}`, { nome: "Cartão corporativo final 1234", tipo: "cartao", diaFechamento: 25 })).status, 400);
 checa("cartão ganha fechamento e vencimento", (await A("PATCH", `/api/despesas/cadastros/favorecidos/${cartao.id}`, { nome: "Cartão corporativo final 1234", tipo: "cartao", diaFechamento: 25, diaVencimento: 5 })).status, 200);
 checa("os dias voltam na leitura", (({ diaFechamento, diaVencimento }) => [diaFechamento, diaVencimento])((await ler()).favorecidos.find((f) => f.id === cartao.id)), [25, 5]);
-const noCartao = { favorecidoId: aws.id, competencia: "2026-11", categoriaId: cat("Infraestrutura de nuvem e IA"), descricao: "Consumo de nuvem", valorCentavos: 420000, vencimento: "2026-12-05", forma: "cartao", cartaoId: cartao.id };
+const noCartao = { favorecidoId: nuvem.id, competencia: "2026-11", categoriaId: cat("Infraestrutura de nuvem e IA"), descricao: "Consumo de nuvem", valorCentavos: 420000, vencimento: "2026-12-05", forma: "cartao", cartaoId: cartao.id };
 checa("no cartão sem dizer qual: 400", (await A("POST", "/api/despesas", { ...noCartao, cartaoId: null })).status, 400);
 checa("cartão que não é cartão: 400", (await A("POST", "/api/despesas", { ...noCartao, cartaoId: pj.id })).status, 400);
 const a1 = (await A("POST", "/api/despesas", noCartao)).corpo;
@@ -146,13 +146,13 @@ const a3 = (await A("POST", "/api/despesas", { ...noCartao, descricao: "Outra fa
 const b1 = (await A("POST", "/api/despesas", { ...noCartao, descricao: "Pelo banco", forma: "boleto", cartaoId: cartao.id, valorCentavos: 5000 })).corpo;
 let dx = await ler();
 const de1 = (ref) => dx.despesas.find((d) => d.ref === ref);
-checa("a despesa é da AWS, paga no cartão", [de1(a1.ref).favorecido, de1(a1.ref).forma, de1(a1.ref).cartaoId, de1(a1.ref).status], ["AWS", "cartao", cartao.id, "aberta"]);
+checa("a despesa é da Nuvem, paga no cartão", [de1(a1.ref).favorecido, de1(a1.ref).forma, de1(a1.ref).cartaoId, de1(a1.ref).status], ["Nuvem", "cartao", cartao.id, "aberta"]);
 checa("pelo banco não guarda cartão", [de1(b1.ref).forma, de1(b1.ref).cartaoId], ["boleto", null]);
 checa("cartão em uso não troca de tipo: 409", (await A("PATCH", `/api/despesas/cadastros/favorecidos/${cartao.id}`, { nome: "X", tipo: "fornecedor" })).status, 409);
 checa("recorrência no cartão", (await A("POST", "/api/despesas/cadastros/recorrencias",
-  { favorecidoId: aws.id, categoriaId: cat("Software e assinaturas"), valorCentavos: 9900, diaVencimento: 3, forma: "cartao", cartaoId: cartao.id, inicio: "2027-06" })).status, 200);
+  { favorecidoId: nuvem.id, categoriaId: cat("Software e assinaturas"), valorCentavos: 9900, diaVencimento: 3, forma: "cartao", cartaoId: cartao.id, inicio: "2027-06" })).status, 200);
 checa("recorrência no cartão sem cartão: 400", (await A("POST", "/api/despesas/cadastros/recorrencias",
-  { favorecidoId: aws.id, categoriaId: cat("Software e assinaturas"), valorCentavos: 9900, diaVencimento: 3, forma: "cartao", inicio: "2027-06" })).status, 400);
+  { favorecidoId: nuvem.id, categoriaId: cat("Software e assinaturas"), valorCentavos: 9900, diaVencimento: 3, forma: "cartao", inicio: "2027-06" })).status, 400);
 checa("fatura sem data de pagamento: 400", (await fat({ cartaoId: cartao.id, vencimento: "2026-12-05" })).status, 400);
 checa("fatura de cartão inexistente: 404", (await fat({ cartaoId: 99999, vencimento: "2026-12-05", pagoEm: "2026-12-05" })).status, 404);
 checa("fatura sem nada em aberto: 409", (await fat({ cartaoId: cartao.id, vencimento: "2030-01-05", pagoEm: "2026-12-05" })).status, 409);
