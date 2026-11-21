@@ -63,7 +63,8 @@ export function LiffMark({
    LiffSig — assinatura de produto, como no Manual de Marca (seção "assinatura"):
    o LIFF/ monocromático seguido do nome do produto em Rethink Sans 400, minúsculas, 1.16em,
    tracking -0.05em, alinhado pela linha de base. `size` é a altura do LIFF/ e controla tudo.
-   A cor entra só no nome. Este sistema ("go") não é produto do portfólio e não tem cor
+   Na Colméia (fork do LIFF go) o LIFF/ saiu: a assinatura é só o nome, até a marca própria
+   existir. A cor entra só no nome. Este sistema ("go") não é produto do portfólio e não tem cor
    própria no manual: usa a Spicy Paprika, que é a cor de assinatura da marca-mãe.
    --------------------------------------------------------------- */
 export function LiffSig({
@@ -83,17 +84,10 @@ export function LiffSig({
   return (
     <span
       role="img"
-      aria-label={`LIFF ${name}`}
+      aria-label={name}
       style={{ display: "inline-flex", alignItems: "baseline", fontSize: size, lineHeight: 1, color: cor, fontFamily: SANS, whiteSpace: "nowrap", ...style }}
     >
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 360" aria-hidden="true" style={{ height: "1em", width: "auto", flex: "none", fill: "currentColor" }}>
-        <path d="M639.0,0.0 380.0,0.0 380.0,359.0 479.0,359.0 480.0,219.0 609.0,219.0 609.0,140.0 480.0,140.0 479.0,80.0 639.0,79.0Z" />
-        <path d="M949.0,0.0 660.0,0.0 660.0,359.0 759.0,359.0 759.0,220.0 840.0,219.0 879.0,141.0 760.0,140.0 759.0,80.0 910.0,79.0Z" />
-        <path d="M0.0,0.0 0.0,359.0 229.0,359.0 229.0,280.0 99.0,279.0 99.0,0.0Z" />
-        <path d="M250.0,0.0 250.0,359.0 349.0,359.0 349.0,0.0Z" />
-        <path d="M999.0,0.0 979.0,0.0 800.0,359.0 820.0,359.0Z" />
-      </svg>
-      <span aria-hidden="true" style={{ fontSize: "1.16em", fontWeight: 400, letterSpacing: "-0.05em", marginLeft: 0, color: nameColor }}>
+      <span aria-hidden="true" style={{ fontSize: "1.16em", fontWeight: 800, letterSpacing: "-0.05em", marginLeft: 0, color: nameColor }}>
         {name}
       </span>
     </span>

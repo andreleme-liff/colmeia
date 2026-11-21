@@ -1,20 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // O sistema mudou de endereço (nov/2026): tudo o que chega em tasks.liff.tech vai para o
-  // mesmo caminho em go.liff.tech. Permanente (308), que preserva o método. Sessão e conexões
-  // do Claude não atravessam: o cookie é por domínio e o token do MCP fica preso ao endereço
-  // em que foi autorizado, então a pessoa entra de novo e reconecta no endereço novo.
-  async redirects() {
-    return [
-      {
-        source: "/:path*",
-        has: [{ type: "host", value: "tasks.liff.tech" }],
-        destination: "https://go.liff.tech/:path*",
-        permanent: true,
-      },
-    ];
-  },
   async headers() {
     return [
       {

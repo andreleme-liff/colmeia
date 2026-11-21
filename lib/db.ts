@@ -87,6 +87,14 @@ const inList = (vals: readonly string[]) => vals.map((v) => `'${v}'`).join(",");
 const MIGRATION_LOCK = 811020261;
 
 /**
+ * Colméia nasce vazia. Produtos, origens e arquétipos de funding da semente são dados da
+ * LIFF (de onde este sistema foi copiado), então só entram junto com o conjunto de
+ * demonstração — `SEED_DEMO=1`, que é o que os testes locais usam. Sem a variável, base limpa:
+ * a administração cadastra os produtos do negócio pela tela.
+ */
+const COM_DEMO = process.env.SEED_DEMO === "1";
+
+/**
  * Semente do cadastro de áreas. São os valores da cascata de cada produto no design system
  * — o tom Mid, exceto Labs, cujo Core é o que segura sobre os dois fundos. Ficam aqui como
  * HEX porque a partir da primeira subida viram DADO editável, não mais token de código: o
@@ -197,7 +205,7 @@ async function migrate(): Promise<void> {
         planilha_url TEXT
       )
     `;
-    if (areasNova) {
+    if (areasNova && COM_DEMO) {
       for (const [i, a] of AREAS_SEMENTE.entries()) {
         await sql`
           INSERT INTO areas (id, label, short, cor, ordem)
@@ -474,7 +482,7 @@ async function migrate(): Promise<void> {
       )
     `;
     const [{ n: qtdOrigens }] = await sql<{ n: number }[]>`SELECT count(*)::int AS n FROM origens`;
-    if (!qtdOrigens) {
+    if (!qtdOrigens && COM_DEMO) {
       for (const [i, label] of ORIGENS_INICIAIS.entries()) {
         await sql`INSERT INTO origens (id, label, ordem) VALUES (${slugificar(label)}, ${label}, ${i}) ON CONFLICT DO NOTHING`;
       }
@@ -862,7 +870,7 @@ async function migrate(): Promise<void> {
           VALUES (${p.id}, ${p.label}, ${p.forma}, ${p.descricao}, ${i}) ON CONFLICT (id) DO NOTHING
         `;
       }
-      for (const [i, a] of ARQUETIPOS_SEMENTE.entries()) {
+      for (const [i, a] of (COM_DEMO ? ARQUETIPOS_SEMENTE : []).entries()) {
         const [novo] = await sql<{ id: number }[]>`
           INSERT INTO funding_arquetipos (nome, modelo, descricao, ordem) VALUES (${a.nome}, ${a.modelo}, ${a.descricao}, ${i}) RETURNING id
         `;
@@ -891,7 +899,7 @@ async function migrate(): Promise<void> {
       )
     `;
     await sql`ALTER TABLE funding_arquetipos ADD COLUMN IF NOT EXISTS pasta_id INTEGER REFERENCES funding_pastas(id) ON DELETE SET NULL`;
-    if (pastasNovas) {
+    if (pastasNovas && COM_DEMO) {
       const [pasta] = await sql<{ id: number }[]>`
         INSERT INTO funding_pastas (nome, descricao, ordem)
         VALUES ('LIFF Tax Reform', 'Arquétipos do documento "Estimativa de custo AWS · Liff Tax" (porte M, 29/10/2026).', 0)
@@ -1288,7 +1296,7 @@ async function reiniciarPipeline(sql: Queryable): Promise<void> {
  * São os mesmos dados que o protótipo estático carregava em memória, agora persistidos.
  */
 async function seed(sql: Queryable): Promise<void> {
-  if (process.env.SEED_DEMO === "0") return;
+  if (!COM_DEMO) return;
   const [{ c }] = await sql<{ c: number }[]>`SELECT COUNT(*)::int AS c FROM users`;
   if (Number(c) > 0) return;
 

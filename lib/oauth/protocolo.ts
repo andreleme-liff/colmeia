@@ -349,7 +349,7 @@ export function metadadosRecurso(cfg: Config) {
     // documento, e sem ele não receberia refresh token: a conexão cairia a cada hora.
     scopes_supported: ["leitura", "escrita", "offline_access"],
     bearer_methods_supported: ["header"],
-    resource_name: "LIFF go",
+    resource_name: "Colméia",
   };
 }
 

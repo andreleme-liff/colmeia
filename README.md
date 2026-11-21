@@ -1,4 +1,14 @@
-# LIFF tasks — gestão de atividades e pipeline comercial
+# Colméia — gestão de atividades e pipeline comercial
+
+> **Fork do LIFF go** (`andreleme-liff/liff-ops`, commit `9f85ab3`, nov/2026), copiado para
+> servir a outro negócio e evoluir por conta própria. Repositório, projeto na Vercel e banco
+> Supabase são separados dos da LIFF — nada aqui lê ou grava na base do LIFF go.
+>
+> O que mudou na cópia: o nome do sistema; o redirect `tasks.liff.tech` saiu; e a base **nasce
+> vazia** — produtos, origens e arquétipos de funding da LIFF só entram com `SEED_DEMO=1`
+> (teste local). O restante deste documento ainda descreve o LIFF go e vale como referência
+> de arquitetura; domínios e nomes citados abaixo são os do sistema de origem.
+
 
 Atividade comercial, execução operacional, cadastros e administração da LIFF, organizados
 por área, com permissão por usuário e log de alterações em tudo.
@@ -16,7 +26,7 @@ npm run dev
 ```
 
 A migração é idempotente e roda sozinha no primeiro acesso ao banco: cria as tabelas e, se a
-base estiver vazia, insere o conjunto de demonstração. `SEED_DEMO=0` sobe a base limpa.
+variável `SEED_DEMO=1` estiver definida, insere o conjunto de demonstração. Sem ela a base sobe limpa.
 
 ### Pooler ou conexão direta?
 

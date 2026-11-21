@@ -1,4 +1,4 @@
-// Registro de visita: a pessoa abriu o LIFF go, mesmo sem alterar nada.
+// Registro de visita: a pessoa abriu a Colméia, mesmo sem alterar nada.
 //
 // A regra é a de sessão do Google Analytics: uma visita é uma sequência de atividade sem
 // intervalo maior que 30 minutos. O navegador avisa aqui quando a pessoa abre o sistema e,
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
       campo: "visita",
       de: u.ultima ? u.ultima.toISOString() : null,
       para: secao,
-      texto: `${ctx.user.nome} visitou o LIFF go${secao ? ` (entrou por ${secao})` : ""}`,
+      texto: `${ctx.user.nome} visitou a Colméia${secao ? ` (entrou por ${secao})` : ""}`,
     });
     return true;
   });

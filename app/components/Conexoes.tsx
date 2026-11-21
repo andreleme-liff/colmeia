@@ -114,7 +114,7 @@ export default function Conexoes({ mcpHabilitado }: { mcpHabilitado: boolean }) 
           {!lista && !erro && <div style={{ padding: 16, fontFamily: MONO, fontSize: 11, color: C.faint }}>carregando…</div>}
           {lista && !lista.length && (
             <div style={{ padding: "22px 16px", fontSize: 14, lineHeight: 1.6, color: C.faint, maxWidth: "52ch" }}>
-              Nenhuma conexão. Quando você autorizar um assistente (Claude, ChatGPT, Amazon Quick) a acessar o LIFF go, ela aparece aqui — com o que pode
+              Nenhuma conexão. Quando você autorizar um assistente (Claude, ChatGPT, Amazon Quick) a acessar a Colméia, ela aparece aqui — com o que pode
               fazer, quando foi usada pela última vez e o botão para cortar o acesso.
             </div>
           )}
@@ -182,7 +182,7 @@ export default function Conexoes({ mcpHabilitado }: { mcpHabilitado: boolean }) 
         ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 16, fontSize: 13, lineHeight: 1.6, color: C.body }}>
           <div>
-            O LIFF go é um servidor MCP: um assistente de IA conectado a ele consulta e atualiza cards conversando. No
+            A Colméia é um servidor MCP: um assistente de IA conectado a ele consulta e atualiza cards conversando. No
             aplicativo, adicione um servidor MCP remoto (às vezes chamado de conector ou app personalizado) com o endereço:
             <code style={{ display: "block", marginTop: 6, fontFamily: MONO, fontSize: 12, color: C.ink, background: C.code, padding: "8px 10px", overflowWrap: "anywhere" }}>
               {urlMcp}

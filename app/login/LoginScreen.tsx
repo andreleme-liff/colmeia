@@ -14,7 +14,7 @@ export default function LoginScreen({ erro, dominio }: { erro?: string; dominio:
   return (
     <div className="liff-login">
       <div className="liff-login__pitch">
-        <LiffSig name="go" size={34} tone={markTone(theme)} />
+        <LiffSig name="colméia" size={34} tone={markTone(theme)} />
         <div>
           <div style={{ ...eyebrow(12, C.accent), marginBottom: 24 }}>GESTÃO ORGANIZACIONAL</div>
           <h1
@@ -29,7 +29,7 @@ export default function LoginScreen({ erro, dominio }: { erro?: string; dominio:
               textWrap: "pretty",
             }}
           >
-            Toda a operação da LIFF em um único sistema.
+            Toda a operação em um único sistema.
           </h1>
           <p style={{ fontSize: 16, lineHeight: 1.62, color: C.body, margin: 0, maxWidth: "46ch" }}>
             Atividade comercial, execução operacional, cadastros e administração — organizados por produto, com permissão

@@ -54,7 +54,7 @@ export default function TelaConsentimento(props: Props) {
               color: C.ink, margin: "0 0 20px", maxWidth: "16ch", textWrap: "pretty",
             }}
           >
-            {props.modo === "pedido" ? `${props.cliente} quer acessar o LIFF go em seu nome.` : "Não foi possível conectar."}
+            {props.modo === "pedido" ? `${props.cliente} quer acessar a Colméia em seu nome.` : "Não foi possível conectar."}
           </h1>
           <p style={{ fontSize: 16, lineHeight: 1.62, color: C.body, margin: 0, maxWidth: "46ch" }}>
             A conexão age como você: enxerga só os produtos que você enxerga e grava só onde você pode editar. Tudo o que
@@ -143,7 +143,7 @@ export default function TelaConsentimento(props: Props) {
               </div>
 
               <p style={{ fontSize: 12, lineHeight: 1.6, color: C.faint, margin: "0 0 20px" }}>
-                Cada leitura e cada gravação fica registrada. Você revoga a conexão quando quiser em MCP Server, no menu do LIFF go.
+                Cada leitura e cada gravação fica registrada. Você revoga a conexão quando quiser em MCP Server, no menu da Colméia.
               </p>
 
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>

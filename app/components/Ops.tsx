@@ -629,7 +629,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
         head: ["PRODUTO", "SIGLA", "ATIVIDADES"],
         rows: todasAreas().filter((a) => estado.areasVisiveis.includes(a.id)).map((a) => ({
           key: a.id,
-          a: "LIFF " + a.label,
+          a: a.label,
           b: a.short,
           c: estado.activities.filter((x) => x.area === a.id).length + " ativas",
         })),
@@ -784,7 +784,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
     const escopo = waArea === "all" ? estado.areasVisiveis : [waArea];
     const atv = estado.activities.filter((a) => escopo.includes(a.area));
     const deals = estado.deals.filter((d) => escopo.includes(d.area));
-    const cabecalho = waArea === "all" ? "LIFF — Status geral" : `LIFF ${areaOf(waArea).label} — Status`;
+    const cabecalho = waArea === "all" ? "Colméia — Status geral" : `${areaOf(waArea).label} — Status`;
     const d = new Date();
     const p = (n: number) => String(n).padStart(2, "0");
     const hoje = `${p(d.getDate())}/${p(d.getMonth() + 1)}`;
@@ -859,7 +859,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
 
     const hojeISO = new Date().toISOString().slice(0, 10);
     L.push(`Alterações registradas hoje: ${estado.logs.filter((l) => l.criadoEm.slice(0, 10) === hojeISO).length}`);
-    L.push(`Reportado por ${estado.me.nome} via LIFF go`);
+    L.push(`Reportado por ${estado.me.nome} via Colméia`);
     return L.join("\n");
   }, [estado, waArea, waEtapas]);
 
@@ -1183,7 +1183,7 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
       <aside className="liff-aside">
         <div className="liff-aside-topo">
           <div className="liff-so-expandida" style={{ minWidth: 0 }}>
-            <LiffSig name="go" size={24} tone={markTone(theme, true)} />
+            <LiffSig name="colméia" size={24} tone={markTone(theme, true)} />
             <div style={{ ...eyebrow(10, C.faint, "0.18em"), marginTop: 12 }}>GESTÃO ORGANIZACIONAL</div>
           </div>
           <button
@@ -1376,8 +1376,8 @@ export default function Ops({ rotaInicial }: { rotaInicial: Rota }) {
           <div style={{ minWidth: 200 }}>
             <div style={eyebrow(10, C.faint)}>
               {view === "conexoes"
-                ? "LIFF/ MCP SERVER"
-                : `LIFF/ ${view === "overview" ? "PAINEL" : (NAV.find((n) => n.key === view)?.label ?? view).toUpperCase()} · ${rotuloArea.toUpperCase()}`}
+                ? "COLMÉIA/ MCP SERVER"
+                : `COLMÉIA/ ${view === "overview" ? "PAINEL" : (NAV.find((n) => n.key === view)?.label ?? view).toUpperCase()} · ${rotuloArea.toUpperCase()}`}
             </div>
             <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em", color: C.ink }}>{TITLES[view]}</div>
           </div>

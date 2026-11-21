@@ -669,7 +669,7 @@ export function descreverFerramentas(escopos: string, admin = false, receita = a
 }
 
 export const INSTRUCOES = [
-  "LIFF go (antes LIFF tasks): quadro operacional (tarefas, refs T-0000), pipeline comercial (oportunidades, refs C-0000) e cadastro de organizações (refs CLI-0000) da LIFF.",
+  "Colméia: quadro operacional (tarefas, refs T-0000), pipeline comercial (oportunidades, refs C-0000) e cadastro de organizações (refs CLI-0000).",
   "Chame `contexto` primeiro: ele diz em nome de quem você age, o papel da pessoa, os produtos e o vocabulário de status e estágios.",
   "Permissão é por papel, não por produto: todos veem todos os produtos; `leitura` não grava; `membro`, `gestor` e `admin` gravam em qualquer produto; receita só é lida por `gestor` e `admin`; só `admin` grava receita e usa faturamento e funding.",
   "Valores em reais; datas AAAA-MM-DD. Responsável: use o id de `listar_cadastros`.",

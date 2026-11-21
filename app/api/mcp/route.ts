@@ -88,7 +88,7 @@ export async function POST(req: Request) {
         ok(id, {
           protocolVersion: negociarVersao(params.protocolVersion),
           capabilities: { tools: { listChanged: false } },
-          serverInfo: { name: "liff-go", title: "LIFF go", version: "1.0.0" },
+          serverInfo: { name: "colmeia", title: "Colméia", version: "1.0.0" },
           instructions: INSTRUCOES,
         })
       );
