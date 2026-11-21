@@ -339,7 +339,7 @@ function Financeiro({
         />
         <div className="pn-mini">
           <Mini rotulo="Contratada · 12 meses" valor={contratada} />
-          <Mini rotulo={`Assinatura em ${rotuloMes(mes)}`} valor={serie[0]?.assinatura ?? 0} />
+          <Mini rotulo={`Contratada em ${rotuloMes(mes)}`} valor={serie[0]?.contratada ?? 0} />
           <Mini rotulo="Provável · 12 meses" valor={provavel} />
         </div>
         <ul className="rec-legenda" aria-label="Legenda" style={{ marginBottom: 6 }}>

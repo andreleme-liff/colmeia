@@ -1,8 +1,8 @@
 // Faturamento (contas a receber): lista de faturas e emissão. Só financeiro e administração.
 //
-// Emitir uma linha do cronograma: o servidor confere que o contrato é CONTRATADO (inclusive o
-// previsto cujo card foi para Ganho) e que a parcela existe naquela competência, e usa o valor
-// do cronograma se o corpo não trouxer outro. Fatura avulsa: cliente, produto e valor livres.
+// Emitir a parcela de uma receita: o servidor confere que a receita é CONTRATADA (inclusive a
+// prevista cujo card foi para Ganho) e que a parcela ainda não tem fatura viva, e usa o valor
+// da parcela se o corpo não trouxer outro. Fatura avulsa: cliente, produto e valor livres.
 // Toda gravação entra na auditoria, na mesma transação.
 
 import { getDb } from "@/lib/db";

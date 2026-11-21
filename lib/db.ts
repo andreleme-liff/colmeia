@@ -487,14 +487,10 @@ async function migrate(): Promise<void> {
     await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS dor TEXT NOT NULL DEFAULT ''`;
     // Onde a proposta comercial está (Drive, Docs, PDF). Só o endereço; o arquivo fica onde já mora.
     await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS proposta_url TEXT NOT NULL DEFAULT ''`;
-    // Composição da proposta (nov/2026): os mesmos três tipos da receita. Assinatura é o valor
-    // por mês; implantação e customização são totais, divididos em N parcelas. Com qualquer um
-    // preenchido, `valor_centavos` (o total em 12 meses) passa a ser calculado deles.
-    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS prop_assinatura_centavos BIGINT NOT NULL DEFAULT 0`;
-    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS prop_implantacao_centavos BIGINT NOT NULL DEFAULT 0`;
-    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS prop_implantacao_parcelas INTEGER NOT NULL DEFAULT 1`;
-    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS prop_customizacao_centavos BIGINT NOT NULL DEFAULT 0`;
-    await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS prop_customizacao_parcelas INTEGER NOT NULL DEFAULT 1`;
+    // O valor da oportunidade é um número só; o detalhamento por tipo que existia saiu.
+    for (const col of ["prop_assinatura_centavos", "prop_implantacao_centavos", "prop_implantacao_parcelas", "prop_customizacao_centavos", "prop_customizacao_parcelas"]) {
+      await sql.unsafe(`ALTER TABLE deals DROP COLUMN IF EXISTS ${col}`);
+    }
     await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS ultima_interacao DATE`;
     await sql`ALTER TABLE deals ADD COLUMN IF NOT EXISTS blocker TEXT NOT NULL DEFAULT ''`;
     await sql.unsafe(
@@ -638,11 +634,10 @@ async function migrate(): Promise<void> {
       WHERE chave_idempotencia IS NOT NULL AND ok
     `;
 
-    // Forecast de receita (nov/2026, só admin por enquanto). Um contrato por cliente, com
-    // até três linhas: customização e implantação (total em N parcelas) e assinatura
-    // (valor mensal). O cronograma de parcelas sai daqui, e no futuro vira o faturamento.
+    // Receita. Uma por cliente/negócio, paga em parcelas de data e valor livres
+    // (`contrato_parcelas`). É a base do forecast e do faturamento.
     // `deal_id` liga ao card do pipeline: excluir o card não apaga a receita (SET NULL), e
-    // um card tem no máximo um contrato.
+    // um card tem no máximo uma receita.
     await sql`
       CREATE TABLE IF NOT EXISTS contratos (
         id                 SERIAL PRIMARY KEY,
@@ -652,32 +647,32 @@ async function migrate(): Promise<void> {
         area               TEXT NOT NULL REFERENCES areas(id),
         situacao           TEXT NOT NULL CHECK (situacao IN ('contratada', 'prevista')),
         chance             TEXT CHECK (chance IN ('alta', 'baixa')),
-        inicio_faturamento DATE NOT NULL,
         notas              TEXT NOT NULL DEFAULT '',
         criado_em          TIMESTAMPTZ NOT NULL DEFAULT now(),
         atualizado_em      TIMESTAMPTZ
       )
     `;
     await sql`
-      CREATE TABLE IF NOT EXISTS contrato_receitas (
+      CREATE TABLE IF NOT EXISTS contrato_parcelas (
+        id             SERIAL PRIMARY KEY,
         contrato_id    INTEGER NOT NULL REFERENCES contratos(id) ON DELETE CASCADE,
-        tipo           TEXT NOT NULL CHECK (tipo IN ('assinatura', 'implantacao', 'customizacao')),
-        valor_centavos BIGINT NOT NULL CHECK (valor_centavos >= 0),
-        parcelas       INTEGER NOT NULL DEFAULT 1 CHECK (parcelas >= 1),
-        inicio_mes     INTEGER NOT NULL DEFAULT 0 CHECK (inicio_mes >= 0),
-        duracao_meses  INTEGER CHECK (duracao_meses IS NULL OR duracao_meses >= 1),
-        PRIMARY KEY (contrato_id, tipo)
+        vencimento     DATE NOT NULL,
+        valor_centavos BIGINT NOT NULL CHECK (valor_centavos > 0)
       )
     `;
+    await sql`CREATE INDEX IF NOT EXISTS contrato_parcelas_contrato ON contrato_parcelas (contrato_id, vencimento)`;
+    // Base criada antes do modelo de parcelas: o início fixo e as três linhas por tipo saem.
+    await sql`ALTER TABLE contratos DROP COLUMN IF EXISTS inicio_faturamento`;
+    await sql`ALTER TABLE contratos DROP COLUMN IF EXISTS dia_vencimento`;
+    await sql`DROP TABLE IF EXISTS contrato_receitas`;
 
     // Faturamento (contas a receber), nov/2026. Dados de cobrança no contrato, e uma linha por
-    // fatura emitida. "A emitir" não é gravado: sai do cronograma do contrato. Ao emitir, a
+    // fatura emitida. "A emitir" não é gravado: sai das parcelas da receita. Ao emitir, a
     // fatura guarda o próprio valor — mexer no contrato depois não muda o que foi faturado.
     // `contrato_id` SET NULL: a fatura (e o histórico fiscal) sobrevive ao contrato excluído,
     // por isso cliente e produto vão copiados nela.
     await sql`ALTER TABLE contratos ADD COLUMN IF NOT EXISTS cnpj TEXT NOT NULL DEFAULT ''`;
     await sql`ALTER TABLE contratos ADD COLUMN IF NOT EXISTS email_cobranca TEXT NOT NULL DEFAULT ''`;
-    await sql`ALTER TABLE contratos ADD COLUMN IF NOT EXISTS dia_vencimento INTEGER NOT NULL DEFAULT 10`;
     await sql`ALTER TABLE contratos ADD COLUMN IF NOT EXISTS forma_cobranca TEXT NOT NULL DEFAULT 'boleto'`;
     await sql`
       CREATE TABLE IF NOT EXISTS faturas (
@@ -686,7 +681,7 @@ async function migrate(): Promise<void> {
         contrato_id           INTEGER REFERENCES contratos(id) ON DELETE SET NULL,
         conta                 TEXT NOT NULL,
         area                  TEXT NOT NULL REFERENCES areas(id),
-        tipo                  TEXT NOT NULL CHECK (tipo IN ('assinatura', 'implantacao', 'customizacao', 'avulsa')),
+        tipo                  TEXT NOT NULL CHECK (tipo IN ('parcela', 'avulsa')),
         parcela               TEXT NOT NULL DEFAULT '',
         competencia           TEXT NOT NULL,
         descricao             TEXT NOT NULL DEFAULT '',
@@ -758,12 +753,18 @@ async function migrate(): Promise<void> {
     await sql`ALTER TABLE contratos ADD COLUMN IF NOT EXISTS cliente_id INTEGER REFERENCES clientes(id) ON DELETE SET NULL`;
     await sql`CREATE INDEX IF NOT EXISTS deals_cliente ON deals (cliente_id)`;
 
-    // Uma fatura viva por linha do cronograma: emitir duas vezes a mesma parcela é erro que a
-    // tela não deve conseguir cometer. Cancelada sai da regra (reemissão).
+    // A fatura aponta para a parcela de onde saiu. Uma fatura viva por parcela: emitir duas
+    // vezes a mesma é erro que a tela não deve conseguir cometer. Cancelada sai da regra
+    // (reemissão). SET NULL: a fatura sobrevive à parcela e ao contrato excluídos.
+    await sql`ALTER TABLE faturas ADD COLUMN IF NOT EXISTS parcela_id INTEGER REFERENCES contrato_parcelas(id) ON DELETE SET NULL`;
+    await sql`DROP INDEX IF EXISTS faturas_linha_viva`;
+    await sql`UPDATE faturas SET tipo = 'parcela' WHERE tipo NOT IN ('parcela', 'avulsa')`;
+    await sql`ALTER TABLE faturas DROP CONSTRAINT IF EXISTS faturas_tipo_check`;
+    await sql`ALTER TABLE faturas ADD CONSTRAINT faturas_tipo_check CHECK (tipo IN ('parcela', 'avulsa'))`;
     await sql`
-      CREATE UNIQUE INDEX IF NOT EXISTS faturas_linha_viva
-      ON faturas (contrato_id, tipo, competencia)
-      WHERE contrato_id IS NOT NULL AND tipo <> 'avulsa' AND status <> 'cancelada'
+      CREATE UNIQUE INDEX IF NOT EXISTS faturas_parcela_viva
+      ON faturas (parcela_id)
+      WHERE parcela_id IS NOT NULL AND status <> 'cancelada'
     `;
 
     // Despesas (contas a pagar), nov/2026, só admin. Espelho do faturamento: categorias (o
@@ -921,7 +922,7 @@ async function migrate(): Promise<void> {
             EXECUTE format(
               'REVOKE ALL ON users, user_area_perms, activities, deals, sessions, audit_log, areas, produtos, '
               'oauth_concessoes, oauth_codigos, oauth_tokens, mcp_chamadas, origens, oportunidade_modulos, '
-              'contratos, contrato_receitas, faturas, clientes, cliente_chaves, cliente_contatos, '
+              'contratos, contrato_parcelas, faturas, clientes, cliente_chaves, cliente_contatos, '
               'despesa_categorias, despesa_favorecidos, despesa_recorrencias, despesas, despesa_itens, schema_migracoes FROM %I',
               papel
             );

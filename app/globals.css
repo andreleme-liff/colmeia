@@ -268,17 +268,10 @@ body { background: var(--col-canvas); color: var(--col-text); }
 }
 
 /* ---------- forecast de receita ----------
-   Cores das séries, por pedido do usuário (nov/2026), amarradas às verticais do cadastro:
-   contratada e assinatura no verde de Tax, implantação na cor da Regtrack, customização
-   no roxo da Legal Dept, previsão (provável sólida, possível com textura) no paprika da marca.
-   Por serem as variáveis das áreas, seguem o cadastro e o escurecimento do tema claro. Ordem de
-   empilhamento validada (dataviz): separação e contraste passam nos dois temas; a Regtrack fica
-   mais clara que as demais no escuro. O valor depois da vírgula vale se a vertical sumir. */
+   Cores das séries: contratada no verde, previsão (provável sólida, possível com textura) no
+   paprika. Seguem as variáveis das áreas quando existem; o valor depois da vírgula vale sem elas. */
 :root {
   --rec-contratada: var(--col-app-area-tax, #0d9488);
-  --rec-assinatura: var(--col-app-area-tax, #0d9488);
-  --rec-implantacao: var(--col-app-area-regtrack, #2ad7d0);
-  --rec-customizacao: var(--col-app-area-corporate, #7e58df);
   --rec-prevista: var(--col-paprika, #EB5E28);
 }
 .rec-numeros { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--col-border); border: 1px solid var(--col-border); border-radius: var(--col-radius-sm); overflow: hidden; }
@@ -333,14 +326,10 @@ body { background: var(--col-canvas); color: var(--col-text); }
 .rec-form { display: flex; flex-direction: column; gap: 18px; }
 .rec-form__quatro { display: grid; grid-template-columns: 1.2fr 1.4fr 0.6fr 1fr; gap: 12px; align-items: start; }
 .rec-form__duas { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
-.rec-linhas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--col-border); border: 1px solid var(--col-border); border-radius: var(--col-radius-sm); overflow: hidden; }
-.rec-linha { background: var(--col-canvas); padding: 14px; display: flex; flex-direction: column; gap: 12px; }
 .rec-notas { width: 100%; box-sizing: border-box; background: var(--col-code-bg, #0B0D10); border: 1px solid var(--col-charcoal); border-radius: var(--col-radius-sm);
   color: var(--col-text); font-family: var(--col-font-body); font-size: 14px; padding: 10px 12px; resize: vertical; }
-.rec-previa { max-height: 220px; overflow: auto; border: 1px solid var(--col-border); border-radius: var(--col-radius-sm); }
-.rec-previa__mes { display: grid; grid-template-columns: 60px 1fr auto; gap: 10px; align-items: baseline; padding: 7px 10px; border-bottom: 1px solid var(--col-border); }
 @media (max-width: 640px) {
-  .rec-form__duas, .rec-linhas, .rec-form__quatro { grid-template-columns: 1fr; }
+  .rec-form__duas, .rec-form__quatro { grid-template-columns: 1fr; }
   .rec-grafico { grid-template-columns: 48px 1fr; padding-right: 8px; }
   .rec-grafico__barras { gap: 2px; }
   .rec-grafico__pilha { margin: 0 8%; }
@@ -496,15 +485,6 @@ body { background: var(--col-canvas); color: var(--col-text); }
   padding-bottom: 18px; border-bottom: 1px solid var(--col-border); }
 .cortina-topo > :first-child { margin-right: -18px; }
 @media (max-width: 900px) { .cortina-topo { grid-template-columns: 1fr 1fr; gap: 14px; } .cortina-topo > :first-child { grid-column: 1 / -1; margin-right: 0; } }
-/* Composição da proposta: três tipos lado a lado, cada um com valor e parcelas. */
-.cop-proposta { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--col-border);
-  border: 1px solid var(--col-border); border-radius: var(--col-radius-sm); overflow: hidden; }
-.cop-proposta > div { background: var(--col-canvas); padding: 12px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-@media (max-width: 560px) { .cop-proposta { grid-template-columns: 1fr; } }
-.cop-total { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; padding: 10px 12px;
-  border: 1px solid var(--col-border); border-radius: var(--col-radius-sm); background: var(--col-surface-2); }
-.cop-total strong { font-family: var(--col-font-mono); font-size: 16px; color: var(--col-text); font-weight: 600; }
-.cop-total span { font-family: var(--col-font-mono); font-size: 11px; color: var(--col-text-faint); }
 /* Formulário longo em duas colunas quando a cortina é larga. */
 .cortina-duas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 32px; align-items: start; }
 .cortina-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
@@ -919,3 +899,18 @@ input[type="date"]:disabled::-webkit-calendar-picker-indicator {
   .col-so-largo { display: none; }
   .col-so-estreito { display: block; }
 }
+
+/* ---------- receita: parcelas ---------- */
+.rec-gerar { display: grid; grid-template-columns: minmax(0, 1.2fr) 90px minmax(0, 1.2fr) auto; gap: 10px; align-items: end;
+  padding: 12px; border: 1px dashed var(--col-border); border-radius: var(--col-radius-sm); }
+.rec-parcelas { display: grid; gap: 6px; }
+.rec-parcela { display: grid; grid-template-columns: 22px minmax(0, 1fr) minmax(0, 1fr) 30px; gap: 8px; align-items: center; }
+.rec-parcela__remover { all: unset; box-sizing: border-box; width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 16px; color: var(--col-text-faint); border-radius: var(--col-radius-sm); }
+.rec-parcela__remover:hover:not(:disabled) { color: var(--col-error); background: var(--col-surface-2); }
+.rec-parcela__remover:focus-visible { outline: 2px solid var(--col-accent); }
+.rec-parcela__remover:disabled { opacity: 0.3; cursor: default; }
+.rec-total { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-top: 14px; padding-top: 12px;
+  border-top: 1px solid var(--col-border); }
+.rec-total strong { font-family: var(--col-font-mono); font-size: 16px; color: var(--col-text); }
+@media (max-width: 640px) { .rec-gerar { grid-template-columns: 1fr 1fr; } }

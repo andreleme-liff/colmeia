@@ -104,8 +104,6 @@ export async function GET() {
         ultima_interacao: Date | null; blocker: string; blocker_tipo: string | null;
         blocker_dono_id: number | null; blocker_dono: string | null; motivo_perda: string | null;
         motivo_perda_detalhe: string; notas: string; modulos: string[];
-        prop_assinatura_centavos: string; prop_implantacao_centavos: string; prop_implantacao_parcelas: number;
-        prop_customizacao_centavos: string; prop_customizacao_parcelas: number;
       }[]
     >`
       SELECT d.id, d.ref, d.conta, d.area, d.estagio, d.valor_centavos,
@@ -114,8 +112,6 @@ export async function GET() {
              d.origem_id, d.ponte, d.contato_operacional, d.dor, d.proposta_url, d.cliente_id, d.ultima_interacao,
              d.blocker, d.blocker_tipo, d.blocker_dono_id, bd.nome AS blocker_dono,
              d.motivo_perda, d.motivo_perda_detalhe, d.notas,
-             d.prop_assinatura_centavos, d.prop_implantacao_centavos, d.prop_implantacao_parcelas,
-             d.prop_customizacao_centavos, d.prop_customizacao_parcelas,
              COALESCE((SELECT array_agg(m.produto_id ORDER BY m.produto_id) FROM oportunidade_modulos m
                        WHERE m.deal_id = d.id), '{}') AS modulos,
              -- Card nunca editado tem atualizado_em nulo; nesse caso a idade conta da criação,
@@ -276,13 +272,6 @@ export async function GET() {
       motivoPerdaDetalhe: d.motivo_perda_detalhe,
       notas: d.notas,
       modulos: d.modulos,
-      proposta: {
-        assinaturaCentavos: Number(d.prop_assinatura_centavos),
-        implantacaoCentavos: Number(d.prop_implantacao_centavos),
-        implantacaoParcelas: d.prop_implantacao_parcelas,
-        customizacaoCentavos: Number(d.prop_customizacao_centavos),
-        customizacaoParcelas: d.prop_customizacao_parcelas,
-      },
       atualizadoEm: d.mexido_em.toISOString(),
       criadoEm: d.criado_em.toISOString(),
       podeEditar: ctx.podeEditar(d.area),

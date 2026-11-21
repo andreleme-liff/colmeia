@@ -76,8 +76,6 @@ export type Deal = {
   notas: string;
   /** Ids dos produtos da área marcados como módulos de interesse. */
   modulos: string[];
-  /** Composição da proposta: assinatura por mês, implantação e customização com parcelas. */
-  proposta: import("@/lib/domain").ComposicaoProposta;
 };
 
 export type Origem = { id: string; label: string; ativo: boolean };
@@ -192,11 +190,6 @@ export type NovaOportunidade = {
   notas: string;
   modulos: string[];
   /** Composição da proposta, em reais. Com algum valor, o total em 12 meses é calculado. */
-  propAssinaturaReais?: number;
-  propImplantacaoReais?: number;
-  propImplantacaoParcelas?: number;
-  propCustomizacaoReais?: number;
-  propCustomizacaoParcelas?: number;
 };
 
 async function req<T>(url: string, opts: RequestInit = {}): Promise<T> {

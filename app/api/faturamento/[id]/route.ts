@@ -2,8 +2,8 @@
 //   pagar    — baixa: data e valor recebido (emitida → paga);
 //   estornar — desfaz a baixa (paga → emitida), para corrigir um lançamento errado;
 //   editar   — corrige dados da emissão: NF, vencimento, forma, retenções, valor (só emitida);
-//   cancelar — com motivo (só emitida; paga precisa ser estornada antes). A linha do
-//              cronograma volta a ficar a emitir, para a reemissão.
+//   cancelar — com motivo (só emitida; paga precisa ser estornada antes). A parcela
+//              volta a ficar a emitir, para a reemissão.
 
 import { getDb } from "@/lib/db";
 import { requireFinanceiro } from "@/lib/perms";

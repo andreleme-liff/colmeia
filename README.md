@@ -48,6 +48,14 @@ cadastros. Toda leitura filtra no SQL e toda escrita reavalia a permissão no se
 Quem não enxerga um registro recebe **404, não 403**. No pipeline o cliente manda a direção
 (`-1`/`+1`), não o estágio de destino.
 
+## Receita e faturamento
+
+Uma receita é paga em **parcelas livres**: cada uma com a sua data e o seu valor, sem intervalo
+fixo. Uma parcela = à vista; duas ou mais = parcelado. O valor da oportunidade no Comercial é um
+número só; o detalhe das parcelas fica na Receita. Cada parcela de uma receita contratada vira
+uma fatura a emitir no mês em que vence, e a fatura aponta para a parcela (`faturas.parcela_id`)
+— por isso uma parcela já faturada não pode ser removida sem cancelar a fatura.
+
 ## Auditoria
 
 `audit_log` é append-only. Cada linha guarda autor, horário, entidade, campo e o par valor

@@ -6,7 +6,7 @@ import type { Queryable } from "./db";
 import { registrar } from "./log";
 import { hojeISO } from "./domain";
 import { lancamentos, situacaoEfetiva } from "./forecast";
-import { lerBaixa, lerEmissao, liquidoEsperado, rotuloForma, rotuloTipoFatura, type Fatura } from "./faturamento";
+import { lerBaixa, lerEmissao, liquidoEsperado, rotuloForma, type Fatura } from "./faturamento";
 import { lerContratos, type Autor } from "./receita";
 
 const reais = (c: number) => (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -14,7 +14,7 @@ const br = (iso: string) => iso.split("-").reverse().join("/");
 const MES = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 type Linha = {
-  id: number; ref: string; contrato_id: number | null; conta: string; area: string; tipo: Fatura["tipo"]; parcela: string;
+  id: number; ref: string; contrato_id: number | null; parcela_id: number | null; conta: string; area: string; tipo: Fatura["tipo"]; parcela: string;
   competencia: string; descricao: string; valor_centavos: string; status: Fatura["status"]; emitida_em: Date | null;
   vencimento: Date | null; nf_numero: string; forma: string | null; retencoes_centavos: string; pago_em: Date | null;
   valor_pago_centavos: string | null; cancelada_em: Date | null; motivo_cancelamento: string; notas: string;
@@ -27,6 +27,7 @@ export function deLinha(r: Linha): Fatura {
     id: r.id,
     ref: r.ref,
     contratoId: r.contrato_id,
+    parcelaId: r.parcela_id,
     conta: r.conta,
     area: r.area,
     tipo: r.tipo,
@@ -61,21 +62,22 @@ export async function lerFatura(sql: Queryable, id: number, travar = false): Pro
 }
 
 /**
- * Emite uma fatura. `body.origem === "avulsa"` para serviço fora de contrato; senão, a linha do
- * cronograma (contratoId, tipo, competencia) — o contrato precisa ser efetivamente contratado,
- * a parcela tem de existir naquela competência e não pode já ter fatura viva.
+ * Emite uma fatura. `body.origem === "avulsa"` para serviço fora de contrato (com
+ * `competencia`); senão, a parcela de uma receita (`parcelaId`) — a receita precisa ser
+ * efetivamente contratada e a parcela não pode já ter fatura viva. A competência é o mês em
+ * que a parcela vence.
  */
 export async function emitirFatura(
   tx: Queryable,
   autor: Autor,
   body: Record<string, unknown>
 ): Promise<{ ref: string } | { erro: string }> {
-  const competencia = typeof body.competencia === "string" ? body.competencia : "";
-  if (!MES.test(competencia)) return { erro: "Competência inválida." };
-
-    let linha: { contratoId: number | null; conta: string; area: string; tipo: string; parcela: string; descricao: string; valorPadrao: number | null };
+    let linha: { contratoId: number | null; parcelaId: number | null; conta: string; area: string; tipo: string; parcela: string; descricao: string; valorPadrao: number | null };
+    let competencia: string;
 
     if (body.origem === "avulsa") {
+      competencia = typeof body.competencia === "string" ? body.competencia : "";
+      if (!MES.test(competencia)) return { erro: "Competência inválida." };
       const conta = typeof body.conta === "string" ? body.conta.trim().slice(0, 200) : "";
       if (!conta) return { erro: "Informe o cliente." };
       const area = typeof body.area === "string" ? body.area : "";
@@ -83,35 +85,34 @@ export async function emitirFatura(
       if (!a) return { erro: "Escolha o produto." };
       const descricao = typeof body.descricao === "string" ? body.descricao.trim().slice(0, 300) : "";
       if (!descricao) return { erro: "Descreva o que está sendo faturado." };
-      linha = { contratoId: null, conta, area, tipo: "avulsa", parcela: "", descricao, valorPadrao: null };
+      linha = { contratoId: null, parcelaId: null, conta, area, tipo: "avulsa", parcela: "", descricao, valorPadrao: null };
     } else {
-      const contratoId = Number(body.contratoId);
-      const tipo = typeof body.tipo === "string" ? body.tipo : "";
-      const c = (await lerContratos(tx)).find((x) => x.id === contratoId);
-      if (!c) return { erro: "Contrato não encontrado." };
+      const parcelaId = Number(body.parcelaId);
+      if (!Number.isInteger(parcelaId) || parcelaId <= 0) return { erro: "Parcela inválida." };
+      const c = (await lerContratos(tx)).find((x) => x.parcelas.some((p) => p.id === parcelaId));
+      if (!c) return { erro: "Parcela não encontrada." };
       const [deal] = c.dealId != null ? await tx<{ estagio: string }[]>`SELECT estagio FROM deals WHERE id = ${c.dealId}` : [];
-      if (situacaoEfetiva(c, deal ?? null) !== "contratada") return { erro: "Só receita contratada é faturada. Este contrato ainda é previsão." };
-      const l = lancamentos(c, competencia, competencia).find((x) => x.tipo === tipo);
-      if (!l) return { erro: "Esta parcela não existe no cronograma do contrato nesta competência." };
-      const [viva] = await tx<{ ref: string }[]>`
-        SELECT ref FROM faturas WHERE contrato_id = ${c.id} AND tipo = ${tipo} AND competencia = ${competencia} AND status <> 'cancelada'
-      `;
+      if (situacaoEfetiva(c, deal ?? null) !== "contratada") return { erro: "Só receita contratada é faturada. Esta ainda é previsão." };
+      const l = lancamentos(c, "0000-00", "9999-99").find((x) => x.parcelaId === parcelaId);
+      if (!l) return { erro: "Parcela não encontrada." };
+      const [viva] = await tx<{ ref: string }[]>`SELECT ref FROM faturas WHERE parcela_id = ${parcelaId} AND status <> 'cancelada'`;
       if (viva) return { erro: `Esta parcela já foi faturada (${viva.ref}).` };
-      linha = { contratoId: c.id, conta: c.conta, area: c.area, tipo, parcela: l.rotulo, descricao: "", valorPadrao: l.valorCentavos };
+      competencia = l.mes;
+      linha = { contratoId: c.id, parcelaId, conta: c.conta, area: c.area, tipo: "parcela", parcela: l.rotulo, descricao: "", valorPadrao: l.valorCentavos };
     }
 
     const e = lerEmissao(body, linha.valorPadrao);
     if (typeof e === "string") return { erro: e };
     const [nova] = await tx<{ id: number }[]>`
-      INSERT INTO faturas (contrato_id, conta, area, tipo, parcela, competencia, descricao, valor_centavos, status,
+      INSERT INTO faturas (contrato_id, parcela_id, conta, area, tipo, parcela, competencia, descricao, valor_centavos, status,
                            emitida_em, vencimento, nf_numero, forma, retencoes_centavos, notas)
-      VALUES (${linha.contratoId}, ${linha.conta}, ${linha.area}, ${linha.tipo}, ${linha.parcela}, ${competencia}, ${linha.descricao},
+      VALUES (${linha.contratoId}, ${linha.parcelaId}, ${linha.conta}, ${linha.area}, ${linha.tipo}, ${linha.parcela}, ${competencia}, ${linha.descricao},
               ${e.valorCentavos}, 'emitida', ${e.emitidaEm}, ${e.vencimento}, ${e.nfNumero}, ${e.forma}, ${e.retencoesCentavos}, ${e.notas})
       RETURNING id
     `;
     const ref = `F-${String(nova.id).padStart(4, "0")}`;
     await tx`UPDATE faturas SET ref = ${ref} WHERE id = ${nova.id}`;
-    const oque = linha.tipo === "avulsa" ? linha.descricao : `${rotuloTipoFatura(linha.tipo)} ${linha.parcela}`.trim();
+    const oque = linha.tipo === "avulsa" ? linha.descricao : linha.parcela === "à vista" ? "à vista" : `parcela ${linha.parcela}`;
     await registrar(tx, {
       actorUserId: autor.userId,
       origem: autor.origem,

@@ -9,8 +9,8 @@
 import type { Queryable } from "../db";
 import { hojeISO, refCanonica, stageLabel, tipoDaRef } from "../domain";
 import {
-  ETAPAS_FINAIS, ROTULO_SITUACAO, contratadaDoMes, lancamentos, lerContrato, mesDe, rotuloMes, serieMensal,
-  situacaoEfetiva, somarMeses, totalNoPeriodo, type Contrato, type SituacaoEfetiva,
+  ETAPAS_FINAIS, ROTULO_SITUACAO, contratadaDoMes, lerContrato, mesDe, pagamentoDe, rotuloMes, serieMensal,
+  situacaoEfetiva, somarMeses, totalDoContrato, totalNoPeriodo, type Contrato, type SituacaoEfetiva,
 } from "../forecast";
 import {
   ROTULO_STATUS, aging, diasDeAtraso, itensDoMes, liquidoEsperado, rotuloForma, rotuloTipoFatura, statusDe,
@@ -56,15 +56,11 @@ function contratoParaSaida(
     situacao_cadastrada: c.situacao,
     chance: c.chance,
     oportunidade: card ? { ref: card.ref, estagio: card.estagio, estagio_rotulo: stageLabel(card.estagio) } : null,
-    inicio_faturamento: c.inicioFaturamento,
-    linhas: c.linhas.map((l) => ({
-      tipo: l.tipo,
-      valor_reais: reais(l.valorCentavos),
-      parcelas: l.parcelas,
-      comeca_no_mes: l.inicioMes + 1,
-      duracao_meses: l.duracaoMeses,
-    })),
-    cobranca: { cnpj: c.cobranca.cnpj, email: c.cobranca.emailCobranca, dia_vencimento: c.cobranca.diaVencimento, forma: c.cobranca.formaCobranca },
+    pagamento: pagamentoDe(c.parcelas),
+    total_reais: reais(totalDoContrato(c)),
+    // `numero` é a posição na ordem de vencimento; é o que `emitir_fatura` recebe em `parcela`.
+    parcelas: c.parcelas.map((p, i) => ({ numero: i + 1, vencimento: p.data, valor_reais: reais(p.valorCentavos) })),
+    cobranca: { cnpj: c.cobranca.cnpj, email: c.cobranca.emailCobranca, forma: c.cobranca.formaCobranca },
     total_no_horizonte_reais: efetiva === "fora" ? 0 : reais(totalNoPeriodo(c, de, ate)),
     notas: c.notas,
     url: `${base}/receita`,
@@ -100,15 +96,19 @@ function faturaParaSaida(f: Fatura, hoje: string, refContrato: string | null, ba
 }
 
 /** Converte as linhas do MCP (reais, mês 1-based) para o formato do cadastro. */
-function linhasParaCadastro(v: unknown): unknown {
+/**
+ * Parcelas vindas do MCP (vencimento + valor_reais) no formato do cadastro. Na atualização,
+ * cada uma herda o id da parcela atual de mesma data (a primeira ainda livre): é o que mantém
+ * a ligação com a fatura já emitida quando só o valor de outra parcela muda.
+ */
+function parcelasParaCadastro(v: unknown, atuais: Contrato["parcelas"] = []): unknown {
   if (!Array.isArray(v)) return v;
-  return v.map((l: Record<string, unknown>) => ({
-    tipo: l.tipo,
-    valorCentavos: centavos(l.valor_reais),
-    parcelas: l.parcelas ?? 1,
-    inicioMes: typeof l.comeca_no_mes === "number" ? l.comeca_no_mes - 1 : 0,
-    duracaoMeses: l.duracao_meses ?? null,
-  }));
+  const livres = [...atuais];
+  return v.map((p: Record<string, unknown>) => {
+    const i = livres.findIndex((x) => x.data === p?.vencimento);
+    const id = i >= 0 ? livres.splice(i, 1)[0].id : undefined;
+    return { id, data: p?.vencimento, valorCentavos: centavos(p?.valor_reais) };
+  });
 }
 
 async function dealIdDe(sql: Queryable, ref: unknown): Promise<number | null | "invalida"> {
@@ -151,19 +151,12 @@ export async function resumoReceita(c: Contexto, a: Record<string, unknown>): Pr
       produto: area ?? "todos",
       totais_reais: {
         contratada: reais(serie.reduce((t, m) => t + contratadaDoMes(m), 0)),
-        contratada_assinatura: reais(serie.reduce((t, m) => t + m.assinatura, 0)),
-        contratada_implantacao: reais(serie.reduce((t, m) => t + m.implantacao, 0)),
-        contratada_customizacao: reais(serie.reduce((t, m) => t + m.customizacao, 0)),
         provavel: reais(serie.reduce((t, m) => t + m.provavel, 0)),
         possivel: reais(serie.reduce((t, m) => t + m.possivel, 0)),
       },
-      assinatura_mes_atual_reais: reais(serie[0]?.assinatura ?? 0),
       por_mes: serie.map((m) => ({
         mes: m.mes,
         rotulo: rotuloMes(m.mes),
-        assinatura: reais(m.assinatura),
-        implantacao: reais(m.implantacao),
-        customizacao: reais(m.customizacao),
         contratada: reais(contratadaDoMes(m)),
         provavel: reais(m.provavel),
         possivel: reais(m.possivel),
@@ -202,7 +195,6 @@ export async function verContrato(c: Contexto, a: Record<string, unknown>): Prom
   const cards = await lerCards(c.sql);
   const [e] = efetivos([contrato], cards);
   const hoje = hojeISO();
-  const inicio = mesDe(contrato.inicioFaturamento);
   // Faturamento continua só da administração: os demais veem a receita sem as faturas.
   const faturas = c.ctx.isAdmin ? (await lerFaturas(c.sql)).filter((f) => f.contratoId === contrato.id) : [];
   const historico = await c.sql<{ criado_em: Date; autor: string | null; texto: string; origem: string | null }[]>`
@@ -216,12 +208,6 @@ export async function verContrato(c: Contexto, a: Record<string, unknown>): Prom
     ref: contrato.ref,
     dados: {
       receita: contratoParaSaida(contrato, e.card, e.efetiva, mesDe(hoje), somarMeses(mesDe(hoje), 11), c.base),
-      cronograma_24_meses: lancamentos(contrato, inicio, somarMeses(inicio, 23)).map((l) => ({
-        mes: l.mes,
-        tipo: l.tipo,
-        parcela: l.rotulo,
-        valor_reais: reais(l.valorCentavos),
-      })),
       ...(c.ctx.isAdmin ? { faturas: faturas.map((f) => faturaParaSaida(f, hoje, contrato.ref, c.base)) } : {}),
       historico: historico.map((h) => ({
         quando: h.criado_em.toISOString(),
@@ -303,10 +289,9 @@ export async function criarContratoMcp(c: Contexto, a: Record<string, unknown>):
     dealId,
     situacao: a.situacao,
     chance: a.chance ?? null,
-    inicioFaturamento: a.inicio_faturamento,
     notas: a.notas ?? "",
-    linhas: linhasParaCadastro(a.linhas),
-    cobranca: { cnpj: cob.cnpj, emailCobranca: cob.email, diaVencimento: cob.dia_vencimento, formaCobranca: cob.forma },
+    parcelas: parcelasParaCadastro(a.parcelas),
+    cobranca: { cnpj: cob.cnpj, emailCobranca: cob.email, formaCobranca: cob.forma },
   });
   if (typeof entrada === "string") return { ok: false, erro: entrada };
   const r = await criarContrato(c.sql, autorDe(c), entrada);
@@ -333,16 +318,11 @@ export async function atualizarContratoMcp(c: Contexto, a: Record<string, unknow
     situacao,
     // Mudou para prevista sem dizer a chance: assume alta (provável), como a tela.
     chance: a.chance !== undefined ? a.chance : situacao === "prevista" ? atual.chance ?? "alta" : null,
-    inicioFaturamento: a.inicio_faturamento ?? atual.inicioFaturamento,
     notas: a.notas ?? atual.notas,
-    linhas:
-      a.linhas !== undefined
-        ? linhasParaCadastro(a.linhas)
-        : atual.linhas.map((l) => ({ ...l })),
+    parcelas: a.parcelas !== undefined ? parcelasParaCadastro(a.parcelas, atual.parcelas) : atual.parcelas.map((p) => ({ ...p })),
     cobranca: {
       cnpj: cob.cnpj ?? atual.cobranca.cnpj,
       emailCobranca: cob.email ?? atual.cobranca.emailCobranca,
-      diaVencimento: cob.dia_vencimento ?? atual.cobranca.diaVencimento,
       formaCobranca: cob.forma ?? atual.cobranca.formaCobranca,
     },
   });
@@ -360,7 +340,6 @@ async function verDepois(c: Contexto, ref: string, extra: Record<string, unknown
 export async function emitirFaturaMcp(c: Contexto, a: Record<string, unknown>): Promise<Saida> {
   if (!c.ctx.isAdmin) return negado;
   const hoje = hojeISO();
-  const competencia = a.competencia as string;
   const emissao = {
     emitidaEm: (a.emitida_em as string | undefined) ?? hoje,
     nfNumero: a.nf_numero ?? "",
@@ -370,23 +349,24 @@ export async function emitirFaturaMcp(c: Contexto, a: Record<string, unknown>): 
   };
   let corpo: Record<string, unknown>;
   if (a.avulsa) {
-    if (a.contrato || a.tipo) return { ok: false, erro: "Fatura avulsa não leva `contrato` nem `tipo`." };
+    if (a.receita || a.parcela) return { ok: false, erro: "Fatura avulsa não leva `receita` nem `parcela`." };
     const av = a.avulsa as Record<string, unknown>;
     if (a.valor_reais === undefined) return { ok: false, erro: "Fatura avulsa precisa de `valor_reais`." };
+    if (!a.competencia) return { ok: false, erro: "Fatura avulsa precisa de `competencia` (AAAA-MM)." };
     corpo = {
-      origem: "avulsa", conta: av.conta, area: av.area, descricao: av.descricao, competencia,
+      origem: "avulsa", conta: av.conta, area: av.area, descricao: av.descricao, competencia: a.competencia,
       vencimento: a.vencimento ?? emissao.emitidaEm, forma: a.forma ?? "boleto", ...emissao,
     };
   } else {
-    if (!a.contrato || !a.tipo) return { ok: false, erro: "Informe `contrato` e `tipo` (ou `avulsa`)." };
-    const contrato = await contratoPorRef(c.sql, a.contrato as string);
+    if (!a.receita || !a.parcela) return { ok: false, erro: "Informe `receita` e `parcela` (ou `avulsa`)." };
+    const contrato = await contratoPorRef(c.sql, a.receita as string);
     if (!contrato) return { ok: false, erro: "Receita não encontrada." };
+    const parcela = contrato.parcelas[(a.parcela as number) - 1];
+    if (!parcela) return { ok: false, erro: `Esta receita tem ${contrato.parcelas.length} parcela(s); veja os números em \`ver_receita\`.` };
     corpo = {
-      origem: "cronograma",
-      contratoId: contrato.id,
-      tipo: a.tipo,
-      competencia,
-      vencimento: a.vencimento ?? vencimentoSugerido(competencia, contrato.cobranca.diaVencimento, emissao.emitidaEm),
+      origem: "parcela",
+      parcelaId: parcela.id,
+      vencimento: a.vencimento ?? vencimentoSugerido(parcela.data, emissao.emitidaEm),
       forma: a.forma ?? contrato.cobranca.formaCobranca,
       ...emissao,
     };
@@ -394,7 +374,7 @@ export async function emitirFaturaMcp(c: Contexto, a: Record<string, unknown>): 
   const r = await emitirFatura(c.sql, autorDe(c), corpo);
   if ("erro" in r) return { ok: false, erro: r.erro };
   const f = await faturaPorRef(c.sql, r.ref);
-  return { ok: true, ref: r.ref, dados: { emitida: true, fatura: f ? faturaParaSaida(f, hoje, (a.contrato as string | undefined)?.toUpperCase() ?? null, c.base) : { ref: r.ref } } };
+  return { ok: true, ref: r.ref, dados: { emitida: true, fatura: f ? faturaParaSaida(f, hoje, (a.receita as string | undefined)?.toUpperCase() ?? null, c.base) : { ref: r.ref } } };
 }
 
 async function agir(c: Contexto, ref: string, corpo: (f: Fatura) => Record<string, unknown>): Promise<Saida> {

@@ -1,16 +1,16 @@
 "use client";
 
-// Forecast de receita. Todos veem (números, gráfico, formatos de visualização, cronograma);
-// só a administração decide o que entra e altera valores.
+// Forecast de receita. Todos veem (números, gráfico, parcelas); só a administração decide o
+// que entra e altera valores.
 //
 // De cima para baixo:
-//  1. números do horizonte escolhido — contratada, assinatura do mês (MRR), provável, possível;
-//  2. gráfico mensal empilhado — contratada por tipo, e por cima o que ainda é previsão;
-//     tabela equivalente a um clique (o gráfico sozinho não basta para todo mundo);
+//  1. números do horizonte escolhido — contratada, contratada do mês, provável, possível;
+//  2. gráfico mensal empilhado — contratada e, por cima, o que ainda é previsão; tabela
+//     equivalente a um clique (o gráfico sozinho não basta para todo mundo);
 //  3. pendências — cards ganhos sem receita, cards nas etapas finais fora do forecast,
 //     previsões cujo card saiu das etapas finais;
-//  4. contratos — a lista, com o cadastro de cada um (e o cronograma de parcelas, que é a
-//     base do faturamento).
+//  4. receitas — a lista, com o cadastro de cada uma: as parcelas, cada qual com a sua data
+//     e o seu valor, que são a base do faturamento.
 //
 // A conta mora em `lib/forecast.ts`. Aqui é só tela.
 
@@ -22,9 +22,9 @@ import { CampoData, Modal } from "./views";
 import { useOrdem } from "./ordenacao";
 import { areaOf, brl, brlExato, hojeISO, porTexto, stageLabel, todasAreas } from "@/lib/domain";
 import {
-  ETAPAS_FINAIS, FORMAS_COBRANCA, ROTULO_SITUACAO, TIPOS_RECEITA, contratadaDoMes, lancamentos, mesDe, rotuloMes, serieMensal,
-  situacaoEfetiva, somarMeses, totalNoPeriodo,
-  type Contrato, type LinhaReceita, type MesForecast, type SituacaoEfetiva, type TipoReceita,
+  ETAPAS_FINAIS, FORMAS_COBRANCA, LIMITES_RECEITA, PAGAMENTOS, ROTULO_SITUACAO, contratadaDoMes, dataValida, emOrdem, mesDe,
+  pagamentoDe, parcelasIguais, rotuloMes, serieMensal, situacaoEfetiva, somarMeses, totalDoContrato, totalNoPeriodo,
+  type Contrato, type MesForecast, type Pagamento, type SituacaoEfetiva,
 } from "@/lib/forecast";
 
 const HORIZONTES = [6, 12, 24, 36] as const;
@@ -32,20 +32,13 @@ const HORIZONTES = [6, 12, 24, 36] as const;
 /** Uma série do gráfico. A cor vem do CSS (`--rec-*`), validada nos dois temas. */
 export type Serie = { key: string; label: string; cor: string; textura?: boolean; valor: (m: MesForecast) => number };
 
-const S_ASSINATURA: Serie = { key: "assinatura", label: "Assinatura", cor: "var(--rec-assinatura)", valor: (m) => m.assinatura };
-const S_IMPLANTACAO: Serie = { key: "implantacao", label: "Implantação", cor: "var(--rec-implantacao)", valor: (m) => m.implantacao };
-const S_CUSTOMIZACAO: Serie = { key: "customizacao", label: "Customização", cor: "var(--rec-customizacao)", valor: (m) => m.customizacao };
 export const S_CONTRATADA: Serie = { key: "contratada", label: "Contratada", cor: "var(--rec-contratada)", valor: contratadaDoMes };
 export const S_PROVAVEL: Serie = { key: "provavel", label: "Provável", cor: "var(--rec-prevista)", valor: (m) => m.provavel };
 export const S_POSSIVEL: Serie = { key: "possivel", label: "Possível", cor: "var(--rec-prevista)", textura: true, valor: (m) => m.possivel };
 
-/** Como a receita contratada aparece: um total só (consolidada), ou aberta nos três tipos. */
-type Visao = "consolidada" | "detalhada";
-
 /** Séries de baixo para cima: a contratada e, se pedidas, provável e possível por cima. */
-function seriesDe(visao: Visao, provavel: boolean, possivel: boolean): Serie[] {
-  const base = visao === "detalhada" ? [S_ASSINATURA, S_IMPLANTACAO, S_CUSTOMIZACAO] : [S_CONTRATADA];
-  return [...base, ...(provavel ? [S_PROVAVEL] : []), ...(possivel ? [S_POSSIVEL] : [])];
+function seriesDe(provavel: boolean, possivel: boolean): Serie[] {
+  return [S_CONTRATADA, ...(provavel ? [S_PROVAVEL] : []), ...(possivel ? [S_POSSIVEL] : [])];
 }
 
 const fundoSerie = (s: Serie): CSSProperties =>
@@ -89,7 +82,6 @@ export default function Receita({
   const [versao, setVersao] = useState(0);
   const [horizonte, setHorizonte] = useState<(typeof HORIZONTES)[number]>(12);
   const [verTabela, setVerTabela] = useState(false);
-  const [visao, setVisao] = useState<Visao>("consolidada");
   const [comProvavel, setComProvavel] = useState(false);
   const [comPossivel, setComPossivel] = useState(false);
   const [editando, setEditando] = useState<Partial<Contrato> | null>(null);
@@ -122,7 +114,7 @@ export default function Receita({
       efetivos,
       serie,
       contratada: serie.reduce((t, m) => t + contratadaDoMes(m), 0),
-      mrr: serie[0]?.assinatura ?? 0,
+      doMes: serie[0]?.contratada ?? 0,
       provavel: soma("provavel"),
       possivel: soma("possivel"),
       ganhosSemReceita: dealsNaArea.filter((d) => d.estagio === "ganho" && !comContrato.has(d.id)),
@@ -140,11 +132,11 @@ export default function Receita({
     dealId: d.id,
     situacao: d.estagio === "ganho" ? "contratada" : "prevista",
     chance: d.estagio === "ganho" ? null : "alta",
-    inicioFaturamento: `${somarMeses(mesAtual, 1)}-01`,
-    linhas: [],
+    // Ponto de partida: o valor do card numa parcela só, no mês que vem. A pessoa ajusta.
+    parcelas: d.valorCentavos > 0 ? [{ data: `${somarMeses(mesAtual, 1)}-10`, valorCentavos: d.valorCentavos }] : [],
   });
 
-  const series = seriesDe(visao, comProvavel, comPossivel);
+  const series = seriesDe(comProvavel, comPossivel);
   const pendencias = calc.ganhosSemReceita.length + calc.finaisFora.length + calc.previsoesFora.length;
 
   return (
@@ -163,7 +155,7 @@ export default function Receita({
         </span>
         {podeEditar && (
           <span style={{ marginLeft: "auto" }}>
-            <Button variant="solid" size="sm" onClick={() => setEditando({ situacao: "contratada", inicioFaturamento: `${somarMeses(mesAtual, 1)}-01`, linhas: [] })}>
+            <Button variant="solid" size="sm" onClick={() => setEditando({ situacao: "contratada", parcelas: [] })}>
               + receita
             </Button>
           </span>
@@ -172,8 +164,8 @@ export default function Receita({
 
       {/* ---------- 1 · números ---------- */}
       <div className="rec-numeros">
-        <Numero rotulo={`Contratada · ${horizonte} meses`} valor={calc.contratada} detalhe="Assinatura, implantação e customização já fechadas" />
-        <Numero rotulo={`Assinatura em ${rotuloMes(mesAtual)}`} valor={calc.mrr} detalhe="Receita recorrente contratada do mês (MRR)" />
+        <Numero rotulo={`Contratada · ${horizonte} meses`} valor={calc.contratada} detalhe="Parcelas de receitas já fechadas que vencem no período" />
+        <Numero rotulo={`Contratada em ${rotuloMes(mesAtual)}`} valor={calc.doMes} detalhe="Parcelas contratadas que vencem neste mês" />
         <Numero rotulo={`Provável · ${horizonte} meses`} valor={calc.provavel} detalhe="Etapas finais com chance alta" />
         <Numero rotulo={`Possível · ${horizonte} meses`} valor={calc.possivel} detalhe="Etapas finais com chance baixa" />
       </div>
@@ -182,17 +174,9 @@ export default function Receita({
       <section>
         <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", marginBottom: 14 }}>
           <div style={eyebrow(11, C.dust, "0.14em")}>RECEITA POR MÊS</div>
-          {/* Contratada sempre aparece: um total (Contratado) ou aberta nos três tipos (Ver detalhes).
-              Provável (chance alta) e Possível (chance baixa) entram por cima, cada um com o seu botão. */}
+          {/* Contratada sempre aparece. Provável (chance alta) e Possível (chance baixa) entram por
+              cima, cada um com o seu botão. */}
           <div className="rec-controles">
-            <div role="group" aria-label="Receita contratada" className="col-densidade">
-              {([["consolidada", "Contratado"], ["detalhada", "Ver detalhes"]] as const).map(([v, rotulo]) => (
-                <button key={v} type="button" aria-pressed={visao === v} onClick={() => setVisao(v)}>
-                  {rotulo}
-                </button>
-              ))}
-            </div>
-            <span style={eyebrow(10, C.faint, "0.12em")}>+</span>
             <button type="button" className="rec-alterna" aria-pressed={comProvavel} onClick={() => setComProvavel((v) => !v)}>
               <span aria-hidden className="rec-legenda__marca" style={fundoSerie(S_PROVAVEL)} />
               {S_PROVAVEL.label}
@@ -225,7 +209,7 @@ export default function Receita({
             {calc.ganhosSemReceita.length > 0 && (
               <ListaPendencia
                 titulo="Ganhos sem receita cadastrada"
-                texto="Venda fechada que ainda não entra no forecast. Cadastre os valores e o início do faturamento."
+                texto="Venda fechada que ainda não entra no forecast. Cadastre as parcelas: datas e valores."
                 itens={calc.ganhosSemReceita.map((d) => ({
                   chave: d.ref,
                   rotulo: `${d.ref} · ${d.conta}`,
@@ -504,38 +488,36 @@ function TabelaContratos({
   horizonte: number;
   onAbrir: (c: Contrato) => void;
 }) {
-  const cols = "1.6fr 0.9fr 0.9fr 0.7fr 1fr 1fr 1fr 1fr";
-  const linha = (c: Contrato, t: TipoReceita) => c.linhas.find((l) => l.tipo === t);
+  const cols = "1.7fr 0.9fr 0.9fr 0.9fr 1.3fr 1fr 1fr";
+  const hoje = hojeISO();
+  /** A próxima parcela a vencer; se todas já venceram, a última. */
+  const proxima = (c: Contrato) => c.parcelas.find((p) => p.data >= hoje) ?? c.parcelas[c.parcelas.length - 1];
+  const br = (iso: string) => iso.split("-").reverse().join("/");
   const ord = useOrdem();
-  const valorDe = (c: Contrato, t: TipoReceita) => linha(c, t)?.valorCentavos ?? null;
   const ordenados = ord.aplicar([...itens].sort((a, b) => porTexto(a.contrato.conta, b.contrato.conta)), {
     conta: (i) => i.contrato.conta,
     produto: (i) => areaOf(i.contrato.area).label,
     situacao: (i) => ROTULO_SITUACAO[i.efetiva],
-    inicio: (i) => i.contrato.inicioFaturamento,
-    assinatura: (i) => valorDe(i.contrato, "assinatura"),
-    implantacao: (i) => valorDe(i.contrato, "implantacao"),
-    customizacao: (i) => valorDe(i.contrato, "customizacao"),
-    total: (i) => (i.efetiva === "fora" ? null : totalNoPeriodo(i.contrato, de, ate)),
+    pagamento: (i) => i.contrato.parcelas.length,
+    proxima: (i) => proxima(i.contrato)?.data ?? null,
+    total: (i) => totalDoContrato(i.contrato),
+    horizonte: (i) => (i.efetiva === "fora" ? null : totalNoPeriodo(i.contrato, de, ate)),
   });
   return (
     <div className="col-scroll-x" style={{ border: `1px solid ${C.line}`, borderRadius: R }}>
-      <div style={{ minWidth: 980 }}>
+      <div style={{ minWidth: 900 }}>
         <div style={{ display: "grid", gridTemplateColumns: cols, background: C.canvas, borderBottom: `1px solid ${C.line}` }}>
           {(
             [
-              ["conta", "CLIENTE"], ["produto", "PRODUTO"], ["situacao", "SITUAÇÃO"], ["inicio", "INÍCIO"], ["assinatura", "ASSINATURA / MÊS"],
-              ["implantacao", "IMPLANTAÇÃO"], ["customizacao", "CUSTOMIZAÇÃO"], ["total", `TOTAL · ${horizonte} MESES`],
+              ["conta", "CLIENTE"], ["produto", "PRODUTO"], ["situacao", "SITUAÇÃO"], ["pagamento", "PAGAMENTO"], ["proxima", "PRÓXIMA PARCELA"],
+              ["total", "TOTAL"], ["horizonte", `EM ${horizonte} MESES`],
             ] as const
-          ).map(([chave, h], k) => ord.th(chave, h, { padding: "12px 14px", ...eyebrow(10, C.faint), textAlign: k >= 4 ? "right" : "left" }))}
+          ).map(([chave, h], k) => ord.th(chave, h, { padding: "12px 14px", ...eyebrow(10, C.faint), textAlign: k >= 5 ? "right" : "left" }))}
         </div>
         {ordenados.map(({ contrato: c, efetiva }) => {
           const d = c.dealId != null ? dealPorId.get(c.dealId) : undefined;
           const a = areaOf(c.area);
-          const ass = linha(c, "assinatura");
-          const imp = linha(c, "implantacao");
-          const cus = linha(c, "customizacao");
-          const [ano, mes] = c.inicioFaturamento.split("-");
+          const p = proxima(c);
           return (
             <div
               key={c.id}
@@ -559,11 +541,14 @@ function TabelaContratos({
                 <span aria-hidden className="rec-legenda__marca" style={MARCA_SITUACAO[efetiva]} />
                 {ROTULO_SITUACAO[efetiva]}
               </div>
-              <div style={{ padding: "12px 14px", fontFamily: MONO, fontSize: 12, color: C.body }}>{`${mes}/${ano}`}</div>
-              <Celula>{ass ? `${brlExato(ass.valorCentavos)}${ass.duracaoMeses ? ` · ${ass.duracaoMeses}m` : ""}` : "—"}</Celula>
-              <Celula>{imp ? `${brlExato(imp.valorCentavos)}${imp.parcelas > 1 ? ` · ${imp.parcelas}x` : ""}` : "—"}</Celula>
-              <Celula>{cus ? `${brlExato(cus.valorCentavos)}${cus.parcelas > 1 ? ` · ${cus.parcelas}x` : ""}` : "—"}</Celula>
-              <Celula forte>{efetiva === "fora" ? "—" : brlExato(totalNoPeriodo(c, de, ate))}</Celula>
+              <div style={{ padding: "12px 14px", fontSize: 13, color: C.body }}>
+                {c.parcelas.length > 1 ? `${c.parcelas.length} parcelas` : "À vista"}
+              </div>
+              <div style={{ padding: "12px 14px", fontFamily: MONO, fontSize: 12, color: p && p.data < hoje ? C.faint : C.body }}>
+                {p ? `${br(p.data)} · ${brlExato(p.valorCentavos)}` : "—"}
+              </div>
+              <Celula forte>{brlExato(totalDoContrato(c))}</Celula>
+              <Celula>{efetiva === "fora" ? "—" : brlExato(totalNoPeriodo(c, de, ate))}</Celula>
             </div>
           );
         })}
@@ -582,16 +567,13 @@ function Celula({ children, forte }: { children: string; forte?: boolean }) {
 
 /* ============================== cadastro ============================== */
 
-type Rascunho = { valor: string; parcelas: string; inicio: string; duracao: string };
+/** Uma parcela no formulário: o valor como a pessoa digita. `k` é só a chave da linha na tela. */
+type Rascunho = { k: number; id?: number; data: string; valor: string };
 
-function rascunhoDe(l: LinhaReceita | undefined): Rascunho {
-  return {
-    valor: l ? deCentavos(l.valorCentavos) : "",
-    parcelas: l ? String(l.parcelas) : "1",
-    inicio: l ? String(l.inicioMes + 1) : "1",
-    duracao: l?.duracaoMeses ? String(l.duracaoMeses) : "",
-  };
-}
+let proximaChave = 1;
+const rascunhoDe = (p: { id?: number; data: string; valorCentavos: number }): Rascunho => ({
+  k: proximaChave++, id: p.id, data: p.data, valor: deCentavos(p.valorCentavos),
+});
 
 function FormContrato({
   inicial,
@@ -604,7 +586,7 @@ function FormContrato({
   inicial: Partial<Contrato>;
   deals: Deal[];
   contratos: Contrato[];
-  /** Quem não é admin abre para ver o cronograma; não salva nem exclui. */
+  /** Quem não é admin abre para ver as parcelas; não salva nem exclui. */
   somenteLeitura?: boolean;
   onFechar: () => void;
   onMudou: () => void;
@@ -615,25 +597,16 @@ function FormContrato({
   const [area, setArea] = useState(inicial.area ?? "");
   const [situacao, setSituacao] = useState<"contratada" | "prevista">(inicial.situacao ?? "contratada");
   const [chance, setChance] = useState<"alta" | "baixa">(inicial.chance ?? "alta");
-  const [inicio, setInicio] = useState(inicial.inicioFaturamento ?? "");
   const [notas, setNotas] = useState(inicial.notas ?? "");
   const [cnpj, setCnpj] = useState(inicial.cobranca?.cnpj ?? "");
   const [emailCobranca, setEmailCobranca] = useState(inicial.cobranca?.emailCobranca ?? "");
-  const [diaVencimento, setDiaVencimento] = useState(String(inicial.cobranca?.diaVencimento ?? 10));
   const [formaCobranca, setFormaCobranca] = useState<string>(inicial.cobranca?.formaCobranca ?? "boleto");
-  const [rasc, setRasc] = useState<Record<TipoReceita, Rascunho>>(() => {
-    // Receita nova a partir de um card: começa com a composição da proposta que está no card
-    // (assinatura, implantação e customização, com as parcelas), para não digitar duas vezes.
-    const p = !editando && !inicial.linhas?.length ? deals.find((d) => d.id === inicial.dealId)?.proposta : undefined;
-    const doCard = (tipo: TipoReceita, valorCentavos: number, parcelas: number): LinhaReceita | undefined =>
-      valorCentavos > 0 ? { tipo, valorCentavos, parcelas, inicioMes: 0, duracaoMeses: null } : undefined;
-    const linha = (tipo: TipoReceita) => inicial.linhas?.find((l) => l.tipo === tipo);
-    return {
-      assinatura: rascunhoDe(linha("assinatura") ?? (p && doCard("assinatura", p.assinaturaCentavos, 1))),
-      implantacao: rascunhoDe(linha("implantacao") ?? (p && doCard("implantacao", p.implantacaoCentavos, p.implantacaoParcelas))),
-      customizacao: rascunhoDe(linha("customizacao") ?? (p && doCard("customizacao", p.customizacaoCentavos, p.customizacaoParcelas))),
-    };
-  });
+  const [parcelas, setParcelas] = useState<Rascunho[]>(() => emOrdem(inicial.parcelas ?? []).map(rascunhoDe));
+  const [modo, setModo] = useState<Pagamento>(pagamentoDe(inicial.parcelas ?? []));
+  // "Gerar parcelas iguais": só um atalho para preencher a lista, que depois se edita linha a linha.
+  const [gerTotal, setGerTotal] = useState("");
+  const [gerN, setGerN] = useState("3");
+  const [gerData, setGerData] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -648,19 +621,30 @@ function FormContrato({
     .filter((d) => !ocupados.has(d.id) && (d.estagio === "ganho" || (ETAPAS_FINAIS as readonly string[]).includes(d.estagio) || d.id === dealId))
     .sort((a, b) => porTexto(a.conta, b.conta));
 
-  const linhas: LinhaReceita[] = TIPOS_RECEITA.map((t) => {
-    const r = rasc[t.key];
-    return {
-      tipo: t.key,
-      valorCentavos: paraCentavos(r.valor),
-      parcelas: t.parcelado ? Math.max(1, Number(r.parcelas) || 1) : 1,
-      inicioMes: Math.max(0, (Number(r.inicio) || 1) - 1),
-      duracaoMeses: t.key === "assinatura" && r.duracao.trim() ? Number(r.duracao) || null : null,
-    };
-  }).filter((l) => l.valorCentavos > 0);
-
-  const previa = inicio ? lancamentos({ inicioFaturamento: inicio, linhas }, mesDe(inicio), somarMeses(mesDe(inicio), 23)) : [];
-  const mexe = (t: TipoReceita, campo: keyof Rascunho, v: string) => setRasc((r) => ({ ...r, [t]: { ...r[t], [campo]: v } }));
+  // À vista é a lista com uma linha só: a primeira. Parcelado mostra e envia todas.
+  const visiveis = modo === "a_vista" ? parcelas.slice(0, 1) : parcelas;
+  const total = visiveis.reduce((t, p) => t + paraCentavos(p.valor), 0);
+  const incompletas = visiveis.some((p) => !dataValida(p.data) || paraCentavos(p.valor) <= 0);
+  const mexe = (k: number, campo: "data" | "valor", v: string) => setParcelas((ps) => ps.map((p) => (p.k === k ? { ...p, [campo]: v } : p)));
+  const acrescentar = () => setParcelas((ps) => [...ps, { k: proximaChave++, data: "", valor: "" }]);
+  const remover = (k: number) => setParcelas((ps) => ps.filter((p) => p.k !== k));
+  const trocarModo = (m: Pagamento) => {
+    setModo(m);
+    if (m === "parcelado" && parcelas.length < 2) {
+      // Parcelado começa com duas linhas; a primeira guarda o que já estava no à vista.
+      setParcelas((ps) => [...ps, ...Array.from({ length: 2 - ps.length }, () => ({ k: proximaChave++, data: "", valor: "" }))]);
+    }
+    if (m === "a_vista" && parcelas.length === 0) acrescentar();
+  };
+  const gerar = () => {
+    const centavos = paraCentavos(gerTotal);
+    const n = Number(gerN) || 0;
+    if (centavos <= 0 || n < 2 || !dataValida(gerData)) return;
+    // As parcelas já gravadas doam o id às novas, na ordem: quem já foi faturada continua ligada.
+    const ids = parcelas.map((p) => p.id);
+    setParcelas(parcelasIguais(centavos, n, gerData).map((p, i) => rascunhoDe({ ...p, id: ids[i] })));
+  };
+  const podeGerar = paraCentavos(gerTotal) > 0 && (Number(gerN) || 0) >= 2 && dataValida(gerData);
 
   const salvar = async () => {
     setSalvando(true);
@@ -671,16 +655,9 @@ function FormContrato({
       dealId,
       situacao: sitEfetiva,
       chance: sitEfetiva === "prevista" ? chance : null,
-      inicioFaturamento: inicio,
       notas,
-      cobranca: { cnpj, emailCobranca, diaVencimento: Number(diaVencimento) || 0, formaCobranca },
-      linhas: TIPOS_RECEITA.map((t) => ({
-        tipo: t.key,
-        valorCentavos: paraCentavos(rasc[t.key].valor),
-        parcelas: t.parcelado ? Number(rasc[t.key].parcelas) || 0 : 1,
-        inicioMes: (Number(rasc[t.key].inicio) || 0) - 1,
-        duracaoMeses: t.key === "assinatura" && rasc[t.key].duracao.trim() ? Number(rasc[t.key].duracao) : null,
-      })),
+      cobranca: { cnpj, emailCobranca, formaCobranca },
+      parcelas: visiveis.map((p) => ({ id: p.id, data: p.data, valorCentavos: paraCentavos(p.valor) })),
     };
     try {
       if (editando) await api.alterarReceita(inicial.id!, corpo);
@@ -694,7 +671,7 @@ function FormContrato({
   };
 
   const excluir = async () => {
-    if (!window.confirm(`Excluir a receita de ${inicial.conta}?\n\nOs valores e o cronograma de parcelas somem. O histórico continua no changelog.`)) return;
+    if (!window.confirm(`Excluir a receita de ${inicial.conta}?\n\nAs parcelas somem; as faturas já emitidas ficam. O histórico continua no changelog.`)) return;
     setSalvando(true);
     try {
       await api.excluirReceita(inicial.id!);
@@ -710,7 +687,7 @@ function FormContrato({
   return (
     <Modal
       titulo={editando ? `${inicial.conta} · ${inicial.ref}` : "Nova receita"}
-      eyebrowTexto="COLMÉIA/ RECEITA · CONTRATO"
+      eyebrowTexto="COLMÉIA/ RECEITA"
       onFechar={onFechar}
       largura={760}
     >
@@ -767,40 +744,90 @@ function FormContrato({
             </Field>
           )}
         </div>
-        <Field label="Início do faturamento" required hint="O mês deste dia é o mês 1 de cada linha. Todo o forecast parte daqui.">
-          <CampoData valor={inicio} onChange={setInicio} />
-        </Field>
-
         {deal && (
           <div style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>
             Valor no card: {brlExato(deal.valorCentavos)} · {stageLabel(deal.estagio)}
           </div>
         )}
 
-        <div className="rec-linhas">
-          {TIPOS_RECEITA.map((t) => (
-            <div key={t.key} className="rec-linha">
-              <div style={eyebrow(10, C.dust, "0.14em")}>{t.label.toUpperCase()}</div>
-              <Field label={t.key === "assinatura" ? "Valor por mês (R$)" : "Valor total (R$)"}>
-                <Input value={rasc[t.key].valor} onChange={(v) => mexe(t.key, "valor", v)} placeholder="0,00" size="sm" />
+        {/* Pagamento: à vista é uma parcela só; parcelado é uma lista livre, cada linha com a
+            sua data e o seu valor — sem intervalo fixo e sem valor igual. */}
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", marginBottom: 12 }}>
+            <div style={eyebrow(10, C.dust, "0.14em")}>PAGAMENTO</div>
+            <div role="group" aria-label="Forma de pagamento" className="col-densidade">
+              {PAGAMENTOS.map((m) => (
+                <button key={m.key} type="button" aria-pressed={modo === m.key} disabled={somenteLeitura} onClick={() => trocarModo(m.key)}>
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {modo === "a_vista" ? (
+            <div className="rec-form__duas">
+              <Field label="Valor (R$)" required>
+                <Input value={visiveis[0]?.valor ?? ""} onChange={(v) => (visiveis[0] ? mexe(visiveis[0].k, "valor", v) : setParcelas([{ k: proximaChave++, data: "", valor: v }]))} placeholder="0,00" />
               </Field>
-              {t.parcelado ? (
-                <Field label="Parcelas">
-                  <Input value={rasc[t.key].parcelas} onChange={(v) => mexe(t.key, "parcelas", v.replace(/\D/g, ""))} size="sm" />
-                </Field>
-              ) : (
-                <Field label="Duração (meses)" hint="Em branco: sem prazo.">
-                  <Input value={rasc[t.key].duracao} onChange={(v) => mexe(t.key, "duracao", v.replace(/\D/g, ""))} size="sm" />
-                </Field>
-              )}
-              <Field label="Começa no mês">
-                <Input value={rasc[t.key].inicio} onChange={(v) => mexe(t.key, "inicio", v.replace(/\D/g, ""))} size="sm" />
+              <Field label="Vencimento" required>
+                <CampoData valor={visiveis[0]?.data ?? ""} onChange={(v) => (visiveis[0] ? mexe(visiveis[0].k, "data", v) : setParcelas([{ k: proximaChave++, data: v, valor: "" }]))} />
               </Field>
             </div>
-          ))}
+          ) : (
+            <>
+              {!somenteLeitura && (
+                <div className="rec-gerar">
+                  <Field label="Total (R$)">
+                    <Input value={gerTotal} onChange={setGerTotal} placeholder="0,00" size="sm" />
+                  </Field>
+                  <Field label="Parcelas">
+                    <Input value={gerN} onChange={(v) => setGerN(v.replace(/\D/g, "").slice(0, 3))} size="sm" />
+                  </Field>
+                  <Field label="Primeira em">
+                    <CampoData valor={gerData} onChange={setGerData} />
+                  </Field>
+                  <Button variant="outline" size="sm" disabled={!podeGerar} onClick={gerar}>
+                    gerar parcelas iguais
+                  </Button>
+                </div>
+              )}
+              <div style={{ fontSize: 12, color: C.faint, lineHeight: 1.5, margin: "8px 0 10px" }}>
+                Atalho opcional: preenche a lista com parcelas mensais iguais. Depois, mude a data e o valor de cada uma à vontade.
+              </div>
+              <div className="rec-parcelas">
+                {parcelas.map((p, i) => (
+                  <div key={p.k} className="rec-parcela">
+                    <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>{i + 1}</span>
+                    <CampoData valor={p.data} onChange={(v) => mexe(p.k, "data", v)} />
+                    <Input value={p.valor} onChange={(v) => mexe(p.k, "valor", v)} placeholder="0,00" size="sm" />
+                    {!somenteLeitura && (
+                      <button type="button" className="rec-parcela__remover" onClick={() => remover(p.k)} disabled={parcelas.length <= 2} title="Remover esta parcela" aria-label={`Remover a parcela ${i + 1}`}>
+                        ×
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {!somenteLeitura && parcelas.length < LIMITES_RECEITA.parcelas && (
+                <button type="button" className="rec-link" style={{ marginTop: 10 }} onClick={acrescentar}>
+                  + parcela
+                </button>
+              )}
+            </>
+          )}
+
+          <div className="rec-total">
+            <span style={eyebrow(10, C.dust, "0.14em")}>TOTAL{modo === "parcelado" ? ` · ${visiveis.length} PARCELAS` : ""}</span>
+            <strong>{brlExato(total)}</strong>
+          </div>
+          {deal && deal.valorCentavos > 0 && total > 0 && total !== deal.valorCentavos && (
+            <div style={{ fontSize: 12, color: C.faint, marginTop: 6 }}>
+              Diferente do valor no card ({brlExato(deal.valorCentavos)}). Tudo bem se for de propósito.
+            </div>
+          )}
         </div>
 
-        {/* Dados de cobrança: o Faturamento usa para sugerir vencimento e forma, e para o e-mail de cobrança. */}
+        {/* Dados de cobrança: o Faturamento usa para sugerir a forma e para o e-mail de cobrança. */}
         <div>
           <div style={{ ...eyebrow(10, C.dust, "0.14em"), marginBottom: 10 }}>COBRANÇA</div>
           <div className="rec-form__quatro">
@@ -810,10 +837,7 @@ function FormContrato({
             <Field label="E-mail do financeiro">
               <Input value={emailCobranca} onChange={setEmailCobranca} placeholder="financeiro@cliente.com.br" size="sm" />
             </Field>
-            <Field label="Vence no dia" hint="1 a 28">
-              <Input value={diaVencimento} onChange={(v) => setDiaVencimento(v.replace(/\D/g, "").slice(0, 2))} size="sm" />
-            </Field>
-            <Field label="Forma de cobrança">
+            <Field label="Meio de cobrança">
               <Select value={formaCobranca} onChange={setFormaCobranca} options={FORMAS_COBRANCA.map((f) => ({ value: f.key, label: f.label }))} />
             </Field>
           </div>
@@ -828,32 +852,6 @@ function FormContrato({
             placeholder="Condições, reajuste, observações de faturamento…"
           />
         </Field>
-
-        {/* Cronograma de faturamento: é o que, mais adiante, vira cobrança para o cliente. */}
-        <div>
-          <div style={{ ...eyebrow(10, C.dust, "0.14em"), marginBottom: 8 }}>
-            CRONOGRAMA DE FATURAMENTO {previa.length ? `· PRIMEIROS 24 MESES` : ""}
-          </div>
-          {previa.length === 0 ? (
-            <div style={{ fontSize: 12.5, color: C.faint }}>Informe o início do faturamento e ao menos um valor.</div>
-          ) : (
-            <div className="rec-previa">
-              {Object.entries(
-                previa.reduce<Record<string, typeof previa>>((acc, l) => ((acc[l.mes] ??= []).push(l), acc), {})
-              ).map(([mes, ls]) => (
-                <div key={mes} className="rec-previa__mes">
-                  <span style={{ fontFamily: MONO, fontSize: 11, color: C.body }}>{rotuloMes(mes)}</span>
-                  <span style={{ fontSize: 12, color: C.faint }}>
-                    {ls.map((l) => `${TIPOS_RECEITA.find((t) => t.key === l.tipo)!.label} ${l.rotulo}`).join(" · ")}
-                  </span>
-                  <span style={{ fontFamily: MONO, fontSize: 12, color: C.ink, textAlign: "right" }}>
-                    {brlExato(ls.reduce((t, l) => t + l.valorCentavos, 0))}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
 
         {erro && <div style={{ fontFamily: MONO, fontSize: 11, lineHeight: 1.6, color: C.error }}>{erro}</div>}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
@@ -871,7 +869,7 @@ function FormContrato({
               {somenteLeitura ? "fechar" : "cancelar"}
             </Button>
             {!somenteLeitura && (
-              <Button variant="solid" size="sm" disabled={salvando || !conta.trim() || !area || !inicio} onClick={() => void salvar()}>
+              <Button variant="solid" size="sm" disabled={salvando || !conta.trim() || !area || visiveis.length === 0 || incompletas} onClick={() => void salvar()}>
                 {salvando ? "salvando…" : editando ? "salvar alterações" : "cadastrar receita"}
               </Button>
             )}

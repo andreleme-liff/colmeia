@@ -1,11 +1,10 @@
 // Forecast de receita: regras puras, sem banco. A rota grava e lê; aqui fica o que é conta.
 //
-// Um CONTRATO é a receita de um cliente. Tem um início de faturamento e até três linhas:
-//  · customização — um total, faturado em N parcelas mensais;
-//  · implantação  — um total, faturado em N parcelas mensais;
-//  · assinatura   — um valor por mês, por uma duração (ou sem prazo).
-// Cada linha pode começar alguns meses depois do início do contrato (ex.: a assinatura só
-// começa quando a implantação termina). Mês 0 = o mês do início do faturamento.
+// Uma RECEITA (tabela `contratos`) é o que um cliente vai pagar, como uma lista de PARCELAS:
+// cada uma com a sua data de vencimento e o seu valor. Não há intervalo fixo nem valor igual —
+// três parcelas podem ser 10/12, 15/01 e 30/04, de valores diferentes.
+//  · à vista   — uma parcela só;
+//  · parcelado — duas ou mais, livres.
 //
 // A situação diz o quanto a receita é certa:
 //  · contratada — negócio fechado (card em Ganho, ou contrato de cliente que já é da casa);
@@ -14,20 +13,19 @@
 // Prevista ligada a um card que foi para Ganho passa a contar como contratada sozinha — a
 // conversão é calculada na leitura, não depende de ninguém lembrar de mudar o cadastro.
 //
-// O cronograma de parcelas é também a base do faturamento: no futuro, cada lançamento vira
-// uma cobrança a disparar para o cliente.
+// As parcelas são também a base do faturamento: cada uma vira uma fatura a emitir.
 
 import { STAGES } from "./domain.ts";
 
-export const TIPOS_RECEITA = [
-  { key: "assinatura", label: "Assinatura", parcelado: false },
-  { key: "implantacao", label: "Implantação", parcelado: true },
-  { key: "customizacao", label: "Customização", parcelado: true },
+/** Como o valor é dividido. É derivado do número de parcelas; existe para a tela e o histórico. */
+export const PAGAMENTOS = [
+  { key: "a_vista", label: "À vista" },
+  { key: "parcelado", label: "Parcelado" },
 ] as const;
-export type TipoReceita = (typeof TIPOS_RECEITA)[number]["key"];
-export const TIPO_KEYS = TIPOS_RECEITA.map((t) => t.key) as readonly string[];
+export type Pagamento = (typeof PAGAMENTOS)[number]["key"];
+export const pagamentoDe = (parcelas: { length: number }): Pagamento => (parcelas.length > 1 ? "parcelado" : "a_vista");
 
-/** Como o cliente paga. Mora aqui (e não em faturamento.ts) porque é dado do contrato. */
+/** Por onde o cliente paga. Mora aqui (e não em faturamento.ts) porque é dado do contrato. */
 export const FORMAS_COBRANCA = [
   { key: "boleto", label: "Boleto" },
   { key: "pix", label: "PIX" },
@@ -41,11 +39,9 @@ export const FORMA_KEYS = FORMAS_COBRANCA.map((f) => f.key) as readonly string[]
 export type Cobranca = {
   cnpj: string;
   emailCobranca: string;
-  /** Dia do mês em que as faturas vencem (1 a 28, para existir em todo mês). */
-  diaVencimento: number;
   formaCobranca: FormaCobranca;
 };
-export const COBRANCA_PADRAO: Cobranca = { cnpj: "", emailCobranca: "", diaVencimento: 10, formaCobranca: "boleto" };
+export const COBRANCA_PADRAO: Cobranca = { cnpj: "", emailCobranca: "", formaCobranca: "boleto" };
 
 export const SITUACOES = ["contratada", "prevista"] as const;
 export type Situacao = (typeof SITUACOES)[number];
@@ -55,19 +51,15 @@ export type Chance = (typeof CHANCES)[number];
 /** Etapas do pipeline em que um card pode entrar no forecast como receita prevista. */
 export const ETAPAS_FINAIS = ["proposta", "validacao", "contrato"] as const;
 
-/** Até onde o cálculo olha, e o teto de parcelas/duração aceitos no cadastro. */
-export const LIMITES_RECEITA = { parcelas: 60, inicioMes: 120, duracao: 240, valorCentavos: 100_000_000_00, notas: 2000, conta: 200 };
+/** Tetos aceitos no cadastro. */
+export const LIMITES_RECEITA = { parcelas: 120, valorCentavos: 100_000_000_00, notas: 2000, conta: 200 };
 
-export type LinhaReceita = {
-  tipo: TipoReceita;
-  /** Total (customização, implantação) ou valor mensal (assinatura), em centavos. */
+export type Parcela = {
+  /** Id no banco. Ausente = parcela nova, ainda não gravada. É o que liga a parcela à fatura. */
+  id?: number;
+  /** Vencimento, "YYYY-MM-DD". */
+  data: string;
   valorCentavos: number;
-  /** Parcelas mensais do total. Assinatura ignora (é sempre mensal). */
-  parcelas: number;
-  /** Meses depois do início do faturamento em que esta linha começa. 0 = no próprio mês. */
-  inicioMes: number;
-  /** Só assinatura: quantos meses dura. null = sem prazo definido. */
-  duracaoMeses: number | null;
 };
 
 export type Contrato = {
@@ -80,12 +72,22 @@ export type Contrato = {
   clienteId?: number | null;
   situacao: Situacao;
   chance: Chance | null;
-  /** "YYYY-MM-DD"; o cálculo usa o mês. */
-  inicioFaturamento: string;
   notas: string;
-  linhas: LinhaReceita[];
+  /** Na ordem de vencimento. */
+  parcelas: Parcela[];
   cobranca: Cobranca;
 };
+
+/** Parcelas em ordem de vencimento (empate: a ordem em que foram cadastradas). */
+export function emOrdem<T extends { data: string }>(parcelas: T[]): T[] {
+  return parcelas.map((p, i) => ({ p, i })).sort((a, b) => (a.p.data < b.p.data ? -1 : a.p.data > b.p.data ? 1 : a.i - b.i)).map((x) => x.p);
+}
+
+/** Vencimento da primeira parcela, ou "" se não há nenhuma. */
+export const primeiraData = (c: Pick<Contrato, "parcelas">): string => emOrdem(c.parcelas)[0]?.data ?? "";
+
+/** Soma de todas as parcelas. */
+export const totalDoContrato = (c: Pick<Contrato, "parcelas">): number => c.parcelas.reduce((t, p) => t + p.valorCentavos, 0);
 
 /** O card ligado, no que importa para a situação efetiva. */
 export type CardLigado = { estagio: string } | null | undefined;
@@ -140,50 +142,34 @@ export function rotuloMes(mes: string): string {
   return `${MESES_CURTOS[m - 1]}/${String(a).slice(2)}`;
 }
 
-/* ---------------- cronograma de faturamento ---------------- */
+/* ---------------- parcelas no tempo ---------------- */
 
 export type Lancamento = {
   mes: string;
-  tipo: TipoReceita;
+  /** Vencimento da parcela. */
+  data: string;
+  /** Id da parcela no banco (ausente na prévia de um cadastro ainda não gravado). */
+  parcelaId?: number;
   valorCentavos: number;
-  /** "3/6" nas parcelas; "mês 4" na assinatura (contado a partir do primeiro mês dela). */
+  /** "3/6"; "à vista" quando a receita tem uma parcela só. */
   rotulo: string;
 };
 
-/**
- * Lançamentos de um contrato entre `de` e `ate` (meses, inclusivos). Parcela é o total
- * dividido por N com o resto de centavos na última, para a soma bater exatamente.
- * Assinatura sem prazo segue até `ate`.
- */
-export function lancamentos(c: Pick<Contrato, "inicioFaturamento" | "linhas">, de: string, ate: string): Lancamento[] {
-  const inicio = mesDe(c.inicioFaturamento);
+/** Parcelas de um contrato que vencem entre `de` e `ate` (meses, inclusivos), em ordem. */
+export function lancamentos(c: Pick<Contrato, "parcelas">, de: string, ate: string): Lancamento[] {
+  const todas = emOrdem(c.parcelas);
+  const n = todas.length;
   const out: Lancamento[] = [];
-  for (const l of c.linhas) {
-    if (l.valorCentavos <= 0) continue;
-    const primeiro = somarMeses(inicio, l.inicioMes);
-    if (l.tipo === "assinatura") {
-      const n = l.duracaoMeses ?? Math.max(0, mesesEntre(primeiro, ate) + 1);
-      for (let k = 0; k < n; k++) {
-        const mes = somarMeses(primeiro, k);
-        if (mes > ate) break;
-        if (mes >= de) out.push({ mes, tipo: l.tipo, valorCentavos: l.valorCentavos, rotulo: `mês ${k + 1}` });
-      }
-    } else {
-      const n = Math.max(1, l.parcelas);
-      const base = Math.floor(l.valorCentavos / n);
-      for (let k = 0; k < n; k++) {
-        const mes = somarMeses(primeiro, k);
-        if (mes > ate) break;
-        const valor = k === n - 1 ? l.valorCentavos - base * (n - 1) : base;
-        if (mes >= de) out.push({ mes, tipo: l.tipo, valorCentavos: valor, rotulo: `${k + 1}/${n}` });
-      }
-    }
-  }
-  return out.sort((a, b) => (a.mes < b.mes ? -1 : a.mes > b.mes ? 1 : TIPO_KEYS.indexOf(a.tipo) - TIPO_KEYS.indexOf(b.tipo)));
+  todas.forEach((p, k) => {
+    const mes = mesDe(p.data);
+    if (p.valorCentavos <= 0 || mes < de || mes > ate) return;
+    out.push({ mes, data: p.data, parcelaId: p.id, valorCentavos: p.valorCentavos, rotulo: n === 1 ? "à vista" : `${k + 1}/${n}` });
+  });
+  return out;
 }
 
-/** Valor total do contrato (assinatura sem prazo conta só até `ate`). */
-export function totalNoPeriodo(c: Pick<Contrato, "inicioFaturamento" | "linhas">, de: string, ate: string): number {
+/** Quanto do contrato vence no período. */
+export function totalNoPeriodo(c: Pick<Contrato, "parcelas">, de: string, ate: string): number {
   return lancamentos(c, de, ate).reduce((t, l) => t + l.valorCentavos, 0);
 }
 
@@ -191,36 +177,51 @@ export function totalNoPeriodo(c: Pick<Contrato, "inicioFaturamento" | "linhas">
 
 export type MesForecast = {
   mes: string;
-  assinatura: number;
-  implantacao: number;
-  customizacao: number;
+  contratada: number;
   provavel: number;
   possivel: number;
 };
 
-/** Soma por mês, de `de` em diante, `meses` meses. Contratada é aberta por tipo; prevista, por chance. */
+/** Soma por mês, de `de` em diante, `meses` meses, aberta pela certeza da receita. */
 export function serieMensal(
   contratos: { contrato: Contrato; efetiva: SituacaoEfetiva }[],
   de: string,
   meses: number
 ): MesForecast[] {
   const ate = somarMeses(de, meses - 1);
-  const linhas: MesForecast[] = Array.from({ length: meses }, (_, i) => ({
-    mes: somarMeses(de, i), assinatura: 0, implantacao: 0, customizacao: 0, provavel: 0, possivel: 0,
-  }));
+  const linhas: MesForecast[] = Array.from({ length: meses }, (_, i) => ({ mes: somarMeses(de, i), contratada: 0, provavel: 0, possivel: 0 }));
   const idx = new Map(linhas.map((l, i) => [l.mes, i]));
   for (const { contrato, efetiva } of contratos) {
     if (efetiva === "fora") continue;
-    for (const l of lancamentos(contrato, de, ate)) {
-      const alvo = linhas[idx.get(l.mes)!];
-      if (efetiva === "contratada") alvo[l.tipo] += l.valorCentavos;
-      else alvo[efetiva] += l.valorCentavos;
-    }
+    for (const l of lancamentos(contrato, de, ate)) linhas[idx.get(l.mes)!][efetiva] += l.valorCentavos;
   }
   return linhas;
 }
 
-export const contratadaDoMes = (m: MesForecast) => m.assinatura + m.implantacao + m.customizacao;
+export const contratadaDoMes = (m: MesForecast) => m.contratada;
+
+/* ---------------- parcelas iguais ---------------- */
+
+/** Dia `dia` do mês `mes`, recuado para o último dia quando o mês é mais curto (31 → 28/02). */
+export function diaNoMes(mes: string, dia: number): string {
+  const [a, m] = mes.split("-").map(Number);
+  const ultimo = new Date(Date.UTC(a, m, 0)).getUTCDate();
+  return `${mes}-${String(Math.min(dia, ultimo)).padStart(2, "0")}`;
+}
+
+/**
+ * Ponto de partida para o parcelado: `n` parcelas mensais iguais a partir de `primeira`, com
+ * o resto de centavos na última para a soma bater. A tela gera isto e deixa editar cada linha.
+ */
+export function parcelasIguais(totalCentavos: number, n: number, primeira: string): Parcela[] {
+  const qtd = Math.max(1, Math.min(LIMITES_RECEITA.parcelas, Math.floor(n) || 1));
+  const base = Math.floor(totalCentavos / qtd);
+  const dia = Number(primeira.slice(8, 10));
+  return Array.from({ length: qtd }, (_, k) => ({
+    data: diaNoMes(somarMeses(mesDe(primeira), k), dia),
+    valorCentavos: k === qtd - 1 ? totalCentavos - base * (qtd - 1) : base,
+  }));
+}
 
 /* ---------------- validação do cadastro ---------------- */
 
@@ -230,13 +231,12 @@ export type EntradaContrato = {
   dealId: number | null;
   situacao: Situacao;
   chance: Chance | null;
-  inicioFaturamento: string;
   notas: string;
-  linhas: LinhaReceita[];
+  parcelas: Parcela[];
   cobranca: Cobranca;
 };
 
-/** Dados de cobrança; ausentes ficam no padrão (vencimento dia 10, boleto). */
+/** Dados de cobrança; ausentes ficam no padrão (boleto). */
 function lerCobranca(v: unknown): Cobranca | string {
   if (v == null) return { ...COBRANCA_PADRAO };
   if (typeof v !== "object") return "Dados de cobrança inválidos.";
@@ -244,11 +244,9 @@ function lerCobranca(v: unknown): Cobranca | string {
   const cnpj = typeof b.cnpj === "string" ? b.cnpj.trim().slice(0, 30) : "";
   const email = typeof b.emailCobranca === "string" ? b.emailCobranca.trim().slice(0, 200) : "";
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "E-mail de cobrança inválido.";
-  const dia = b.diaVencimento == null || b.diaVencimento === "" ? COBRANCA_PADRAO.diaVencimento : inteiro(b.diaVencimento, 1, 28);
-  if (dia == null) return "Dia de vencimento entre 1 e 28.";
   const forma = b.formaCobranca == null ? COBRANCA_PADRAO.formaCobranca : b.formaCobranca;
   if (typeof forma !== "string" || !FORMA_KEYS.includes(forma)) return "Forma de cobrança inválida.";
-  return { cnpj, emailCobranca: email, diaVencimento: dia, formaCobranca: forma as FormaCobranca };
+  return { cnpj, emailCobranca: email, formaCobranca: forma as FormaCobranca };
 }
 
 const inteiro = (v: unknown, min: number, max: number): number | null => {
@@ -258,7 +256,7 @@ const inteiro = (v: unknown, min: number, max: number): number | null => {
 
 /**
  * Lê e valida o corpo do cadastro. Devolve o contrato normalizado ou a mensagem de erro
- * (a mesma que a tela mostra). Linha com valor zero é descartada — é "não tem".
+ * (a mesma que a tela mostra). As parcelas saem em ordem de vencimento.
  */
 export function lerContrato(body: Record<string, unknown> | null): EntradaContrato | string {
   if (!body) return "Requisição inválida.";
@@ -272,37 +270,39 @@ export function lerContrato(body: Record<string, unknown> | null): EntradaContra
   if (situacao !== "contratada" && situacao !== "prevista") return "Situação inválida.";
   const chance = situacao === "prevista" ? (body.chance === "baixa" ? "baixa" : body.chance === "alta" ? "alta" : null) : null;
   if (situacao === "prevista" && !chance) return "Diga se a chance de fechar é alta ou baixa.";
-  const inicio = typeof body.inicioFaturamento === "string" ? body.inicioFaturamento : "";
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(inicio) || Number.isNaN(Date.parse(inicio + "T00:00:00Z"))) return "Informe o início do faturamento.";
   const notas = typeof body.notas === "string" ? body.notas.slice(0, LIMITES_RECEITA.notas) : "";
 
-  if (!Array.isArray(body.linhas)) return "Linhas de receita inválidas.";
-  const linhas: LinhaReceita[] = [];
-  const vistos = new Set<string>();
-  for (const bruto of body.linhas as Record<string, unknown>[]) {
-    const tipo = bruto?.tipo;
-    if (typeof tipo !== "string" || !TIPO_KEYS.includes(tipo)) return "Tipo de receita inválido.";
-    if (vistos.has(tipo)) return "Cada tipo de receita aparece uma vez só.";
-    vistos.add(tipo);
-    const rotulo = TIPOS_RECEITA.find((t) => t.key === tipo)!.label;
+  if (!Array.isArray(body.parcelas)) return "Parcelas inválidas.";
+  if (!body.parcelas.length) return "Informe ao menos uma parcela, com data e valor.";
+  if (body.parcelas.length > LIMITES_RECEITA.parcelas) return `No máximo ${LIMITES_RECEITA.parcelas} parcelas.`;
+  const parcelas: Parcela[] = [];
+  const ids = new Set<number>();
+  for (const [i, bruto] of (body.parcelas as Record<string, unknown>[]).entries()) {
+    const n = i + 1;
+    if (!bruto || typeof bruto !== "object") return `Parcela ${n}: inválida.`;
+    const data = typeof bruto.data === "string" ? bruto.data : "";
+    if (!dataValida(data)) return `Parcela ${n}: informe a data de vencimento.`;
     const valor = inteiro(bruto.valorCentavos, 0, LIMITES_RECEITA.valorCentavos);
-    if (valor == null) return `${rotulo}: valor inválido.`;
-    if (valor === 0) continue;
-    const parcelas = tipo === "assinatura" ? 1 : inteiro(bruto.parcelas ?? 1, 1, LIMITES_RECEITA.parcelas);
-    if (parcelas == null) return `${rotulo}: parcelas entre 1 e ${LIMITES_RECEITA.parcelas}.`;
-    const inicioMes = inteiro(bruto.inicioMes ?? 0, 0, LIMITES_RECEITA.inicioMes);
-    if (inicioMes == null) return `${rotulo}: o mês de início vai de 1 a ${LIMITES_RECEITA.inicioMes + 1}.`;
-    let duracaoMeses: number | null = null;
-    if (tipo === "assinatura" && bruto.duracaoMeses != null && bruto.duracaoMeses !== "") {
-      duracaoMeses = inteiro(bruto.duracaoMeses, 1, LIMITES_RECEITA.duracao);
-      if (duracaoMeses == null) return `${rotulo}: duração entre 1 e ${LIMITES_RECEITA.duracao} meses, ou em branco.`;
+    if (valor == null || valor <= 0) return `Parcela ${n}: informe o valor.`;
+    let id: number | undefined;
+    if (bruto.id != null && bruto.id !== "") {
+      const lido = inteiro(bruto.id, 1, 2_000_000_000);
+      if (lido == null || ids.has(lido)) return `Parcela ${n}: inválida.`;
+      ids.add(lido);
+      id = lido;
     }
-    linhas.push({ tipo: tipo as TipoReceita, valorCentavos: valor, parcelas, inicioMes, duracaoMeses });
+    parcelas.push(id == null ? { data, valorCentavos: valor } : { id, data, valorCentavos: valor });
   }
-  if (!linhas.length) return "Informe ao menos um valor: customização, implantação ou assinatura.";
   const cobranca = lerCobranca(body.cobranca);
   if (typeof cobranca === "string") return cobranca;
-  return { conta, area, dealId, situacao, chance, inicioFaturamento: inicio, notas, linhas, cobranca };
+  return { conta, area, dealId, situacao, chance, notas, parcelas: emOrdem(parcelas), cobranca };
+}
+
+/** "YYYY-MM-DD" que existe no calendário (31/02 não passa). */
+export function dataValida(v: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+  const d = new Date(v + "T00:00:00Z");
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
 }
 
 /** "Proposta", "Validação"... para mensagens. */
@@ -312,22 +312,21 @@ export function rotuloEtapa(k: string): string {
 
 const reais = (c: number) => (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-/** Resumo de uma linha para histórico e tela: "Implantação R$ 30.000,00 em 3x a partir do mês 1". */
-export function resumoLinha(l: LinhaReceita): string {
-  const rotulo = TIPOS_RECEITA.find((t) => t.key === l.tipo)!.label;
-  const quando = l.inicioMes > 0 ? ` a partir do mês ${l.inicioMes + 1}` : "";
-  if (l.tipo === "assinatura") {
-    return `${rotulo} ${reais(l.valorCentavos)}/mês${l.duracaoMeses ? ` por ${l.duracaoMeses} meses` : ""}${quando}`;
-  }
-  return `${rotulo} ${reais(l.valorCentavos)}${l.parcelas > 1 ? ` em ${l.parcelas}x` : ""}${quando}`;
+const br = (iso: string) => iso.split("-").reverse().join("/");
+
+/** "R$ 30.000,00 à vista em 10/12/2026" ou "R$ 30.000,00 em 3 parcelas: 10/12/2026 R$ 10.000,00; …". */
+export function resumoParcelas(parcelas: Parcela[]): string {
+  const ps = emOrdem(parcelas);
+  const total = reais(ps.reduce((t, p) => t + p.valorCentavos, 0));
+  if (ps.length === 1) return `${total} à vista em ${br(ps[0].data)}`;
+  return `${total} em ${ps.length} parcelas: ${ps.map((p) => `${br(p.data)} ${reais(p.valorCentavos)}`).join("; ")}`;
 }
 
 /** Resumo do contrato inteiro, para o histórico. */
-export function resumoContrato(c: EntradaContrato): string {
+export function resumoContrato(c: Pick<EntradaContrato, "situacao" | "chance" | "parcelas" | "cobranca">): string {
   const sit = c.situacao === "contratada" ? "contratada" : `prevista, chance ${c.chance}`;
-  const [a, m] = c.inicioFaturamento.split("-");
   const cob = c.cobranca ?? COBRANCA_PADRAO;
   const forma = FORMAS_COBRANCA.find((f) => f.key === cob.formaCobranca)?.label ?? cob.formaCobranca;
   const extras = [cob.cnpj && `CNPJ ${cob.cnpj}`, cob.emailCobranca && `cobrança em ${cob.emailCobranca}`].filter(Boolean).join(", ");
-  return `${sit}; início do faturamento ${m}/${a}; ${c.linhas.map(resumoLinha).join("; ")}; ${forma}, vence dia ${cob.diaVencimento}${extras ? `; ${extras}` : ""}`;
+  return `${sit}; ${resumoParcelas(c.parcelas)}; ${forma}${extras ? `; ${extras}` : ""}`;
 }

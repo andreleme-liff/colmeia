@@ -24,7 +24,7 @@ import { api, type Deal } from "./api";
 import { Modal } from "./views";
 import { useOrdem } from "./ordenacao";
 import { areaOf, brl, brlExato, estagioEmAberto, estagioNoPipeline, porTexto, stageLabel } from "@/lib/domain";
-import { FORMAS_COBRANCA, ROTULO_SITUACAO, situacaoEfetiva, type Contrato } from "@/lib/forecast";
+import { FORMAS_COBRANCA, ROTULO_SITUACAO, situacaoEfetiva, totalDoContrato, type Contrato } from "@/lib/forecast";
 import type { Fatura } from "@/lib/faturamento";
 import {
   PAPEIS_CONTATO, chaveCliente, cnpjFormatado, possiveisDuplicados, type Contato, type PapelContato,
@@ -767,13 +767,13 @@ function Ficha({
             <div style={{ display: "grid", gap: 8 }}>
               {visao.receitas.map((k) => {
                 const efetiva = situacaoEfetiva(k, k.dealId != null ? dealPorId.get(k.dealId) : null);
-                const [ano, mes] = k.inicioFaturamento.split("-");
+                const total = totalDoContrato(k);
                 return (
                   <div key={k.id} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 13, color: C.body }}>
                     <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>{k.ref}</span>
                     <Produto area={k.area} />
                     <span style={eyebrow(10, efetiva === "contratada" ? C.success : C.dust, "0.1em")}>{ROTULO_SITUACAO[efetiva]}</span>
-                    <span style={{ fontFamily: MONO, fontSize: 11.5, color: C.faint, marginLeft: "auto" }}>fatura desde {`${mes}/${ano}`}</span>
+                    <span style={{ fontFamily: MONO, fontSize: 11.5, color: C.faint, marginLeft: "auto" }}>{brlExato(total)}{k.parcelas.length > 1 ? ` em ${k.parcelas.length}x` : " à vista"}</span>
                   </div>
                 );
               })}

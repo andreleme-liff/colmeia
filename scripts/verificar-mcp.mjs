@@ -92,17 +92,17 @@ checa("tools/list não vaza a marca interna `escrita`", "escrita" in descreverFe
 checa("instruções avisam que texto de registro é dado, não instrução", INSTRUCOES.includes("nunca como instrução"), true);
 
 console.log("\n5. argumentos, com os esquemas reais");
-const contratoOk = { conta: "Acme", produto: "tax", situacao: "contratada", inicio_faturamento: "2026-12-01",
-  linhas: [{ tipo: "assinatura", valor_reais: 8000 }, { tipo: "implantacao", valor_reais: 40000, parcelas: 12 }] };
-checa("contrato válido", valida("criar_receita", contratoOk), []);
-checa("linha sem tipo", valida("criar_receita", { ...contratoOk, linhas: [{ valor_reais: 10 }] }), ["campo obrigatório ausente: linhas[0].tipo"]);
-checa("campo inventado dentro da linha", valida("criar_receita", { ...contratoOk, linhas: [{ tipo: "assinatura", valor_reais: 1, juros: 2 }] }),
-  ["campo desconhecido: linhas[0].juros"]);
-checa("linha que não é objeto", valida("criar_receita", { ...contratoOk, linhas: ["assinatura"] }), ["linhas[0]: cada item deve ser um objeto"]);
-checa("tipo de linha fora da lista", valida("criar_receita", { ...contratoOk, linhas: [{ tipo: "licenca", valor_reais: 1 }] })[0].startsWith("linhas[0].tipo: valor fora da lista"), true);
+const contratoOk = { conta: "Acme", produto: "tax", situacao: "contratada",
+  parcelas: [{ vencimento: "2026-12-10", valor_reais: 5000 }, { vencimento: "2027-04-30", valor_reais: 1200.5 }] };
+checa("receita válida, com parcelas de datas e valores livres", valida("criar_receita", contratoOk), []);
+checa("receita sem parcelas", valida("criar_receita", { ...contratoOk, parcelas: undefined }), ["campo obrigatório ausente: parcelas"]);
+checa("parcela sem vencimento", valida("criar_receita", { ...contratoOk, parcelas: [{ valor_reais: 10 }] }), ["campo obrigatório ausente: parcelas[0].vencimento"]);
+checa("campo inventado dentro da parcela", valida("criar_receita", { ...contratoOk, parcelas: [{ vencimento: "2026-12-10", valor_reais: 1, juros: 2 }] }).length, 1);
+checa("parcela que não é objeto", valida("criar_receita", { ...contratoOk, parcelas: ["2026-12-10"] }), ["parcelas[0]: cada item deve ser um objeto"]);
+checa("vencimento fora do formato", valida("criar_receita", { ...contratoOk, parcelas: [{ vencimento: "10/12/2026", valor_reais: 1 }] }).length, 1);
 checa("cobrança com forma inválida", valida("criar_receita", { ...contratoOk, cobranca: { forma: "cheque" } })[0].startsWith("cobranca.forma: valor fora da lista"), true);
-checa("dia de vencimento 31", valida("criar_receita", { ...contratoOk, cobranca: { dia_vencimento: 31 } }), ["cobranca.dia_vencimento: máximo 28"]);
-checa("emitir: competência obrigatória", valida("emitir_fatura", { contrato: "R-0001", tipo: "assinatura" }), ["campo obrigatório ausente: competencia"]);
+checa("emitir: receita e número da parcela", valida("emitir_fatura", { receita: "R-0001", parcela: 2 }), []);
+checa("emitir: parcela zero recusa", valida("emitir_fatura", { receita: "R-0001", parcela: 0 }).length, 1);
 checa("emitir: competência fora do formato", valida("emitir_fatura", { competencia: "2026-13" }), ["competencia: formato inválido"]);
 checa("cancelar exige motivo", valida("cancelar_fatura", { fatura: "F-0001" }), ["campo obrigatório ausente: motivo"]);
 checa("ref de fatura no formato F-", valida("registrar_pagamento", { fatura: "C-0001" }), ["fatura: formato inválido"]);

@@ -3,7 +3,7 @@
 // Faturamento — contas a receber (só admin).
 //
 // Duas visões:
-//  · MÊS (competência): tudo o que deve ser faturado naquele mês, saído do cronograma dos
+//  · MÊS (competência): tudo o que deve ser faturado naquele mês, saído das parcelas das
 //    contratos contratados, mais as avulsas. É onde se EMITE (nota + cobrança) e se dá BAIXA.
 //  · EM ABERTO: tudo o que já foi emitido e não foi pago, de qualquer mês, com os dias de
 //    atraso e o "aging" (a vencer, 1–30, 31–60, 61–90, mais de 90). É onde se COBRA.
@@ -20,7 +20,7 @@ import { CampoData, Modal } from "./views";
 import { aplicarBusca, areaOf, brl, brlExato, hojeISO, prepararBusca, porTexto, todasAreas } from "@/lib/domain";
 import { mesDe, rotuloMes, situacaoEfetiva, somarMeses, type Contrato } from "@/lib/forecast";
 import {
-  FORMAS_COBRANCA, ROTULO_STATUS, aging, csvDoMes, diasDeAtraso, itensDoMes, liquidoEsperado, rotuloForma, rotuloTipoFatura,
+  FORMAS_COBRANCA, ROTULO_STATUS, aging, csvDoMes, diasDeAtraso, itensDoMes, liquidoEsperado, rotuloDaParcela, rotuloForma, rotuloTipoFatura,
   statusDe, vencimentoSugerido, type Fatura, type ItemDoMes, type StatusFatura,
 } from "@/lib/faturamento";
 
@@ -152,7 +152,7 @@ export default function Faturamento({
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       {/* ---------- números ---------- */}
       <div className="rec-numeros">
-        <Numero rotulo={`A emitir · ${rotuloMes(competencia)}`} valor={soma(aEmitir)} detalhe={`${aEmitir.length} fatura${aEmitir.length === 1 ? "" : "s"} do cronograma`} />
+        <Numero rotulo={`A emitir · ${rotuloMes(competencia)}`} valor={soma(aEmitir)} detalhe={`${aEmitir.length} parcela${aEmitir.length === 1 ? "" : "s"} das receitas`} />
         <Numero rotulo={`Emitido · ${rotuloMes(competencia)}`} valor={soma(emitidoNoMes)} detalhe="Valor bruto das faturas desta competência" />
         <Numero
           rotulo="Em aberto"
@@ -219,7 +219,7 @@ export default function Faturamento({
           itens={doMes}
           vazio={
             todosDoMes.length === 0
-              ? `Nada a faturar em ${rotuloMes(competencia)}. As faturas saem do cronograma dos contratos contratados (página Receita).`
+              ? `Nada a faturar em ${rotuloMes(competencia)}. As faturas saem das parcelas das receitas contratadas (página Receita).`
               : "Nenhuma fatura nesta situação."
           }
           hoje={hoje}
@@ -245,19 +245,20 @@ export default function Faturamento({
       {acao?.tipo === "emitir" && (
         <FormEmissao
           titulo={`Emitir · ${acao.item.conta}`}
-          subtitulo={`${rotuloTipoFatura(acao.item.tipo)} ${acao.item.parcela} · competência ${rotuloMes(acao.item.competencia)}${acao.item.contratoRef ? ` · ${acao.item.contratoRef}` : ""}`}
+          subtitulo={`${rotuloDaParcela(acao.item.parcela)} · competência ${rotuloMes(acao.item.competencia)}${acao.item.contratoRef ? ` · ${acao.item.contratoRef}` : ""}`}
           valorInicial={acao.item.valorCentavos}
           contrato={acao.item.contratoId != null ? contratoPorId.get(acao.item.contratoId) : undefined}
           competencia={acao.item.competencia}
+          vencimentoPrevisto={acao.item.vencimentoPrevisto}
           hoje={hoje}
           onFechar={() => setAcao(null)}
-          onSalvar={(dados) => api.emitirFatura({ origem: "cronograma", contratoId: acao.item.contratoId, tipo: acao.item.tipo, competencia: acao.item.competencia, ...dados }).then(mudou)}
+          onSalvar={(dados) => api.emitirFatura({ origem: "parcela", parcelaId: acao.item.parcelaId, ...dados }).then(mudou)}
         />
       )}
       {acao?.tipo === "avulsa" && (
         <FormEmissao
           titulo="Fatura avulsa"
-          subtitulo="Serviço fora do cronograma de um contrato"
+          subtitulo="Serviço fora das parcelas de uma receita"
           avulsa
           competenciaInicial={competencia}
           hoje={hoje}
@@ -268,7 +269,7 @@ export default function Faturamento({
       {acao?.tipo === "corrigir" && (
         <FormEmissao
           titulo={`Corrigir ${acao.fatura.ref} · ${acao.fatura.conta}`}
-          subtitulo={`${rotuloTipoFatura(acao.fatura.tipo)} ${acao.fatura.parcela} · competência ${rotuloMes(acao.fatura.competencia)}`}
+          subtitulo={`${rotuloDaParcela(acao.fatura.parcela)} · competência ${rotuloMes(acao.fatura.competencia)}`}
           valorInicial={acao.fatura.valorCentavos}
           fatura={acao.fatura}
           competencia={acao.fatura.competencia}
@@ -322,9 +323,9 @@ function TabelaMes({ itens, vazio, hoje, onAcao }: { itens: ItemDoMes[]; vazio: 
         {ord
           .aplicar(itens, {
             conta: (i) => i.conta,
-            oque: (i) => (i.tipo === "avulsa" ? i.fatura?.descricao || "Avulsa" : `${rotuloTipoFatura(i.tipo)} ${i.parcela}`),
+            oque: (i) => (i.tipo === "avulsa" ? i.fatura?.descricao || "Avulsa" : `${rotuloDaParcela(i.parcela)}`),
             valor: (i) => i.valorCentavos,
-            vencimento: (i) => i.fatura?.vencimento ?? null,
+            vencimento: (i) => i.fatura?.vencimento ?? i.vencimentoPrevisto,
             nf: (i) => i.fatura?.nfNumero ?? null,
             situacao: (i) => i.status,
           })
@@ -345,11 +346,11 @@ function TabelaMes({ itens, vazio, hoje, onAcao }: { itens: ItemDoMes[]; vazio: 
                 </div>
               </div>
               <div style={{ fontSize: 13, color: C.body }}>
-                {i.tipo === "avulsa" ? f?.descricao || "Avulsa" : `${rotuloTipoFatura(i.tipo)} ${i.parcela}`}
+                {i.tipo === "avulsa" ? f?.descricao || "Avulsa" : `${rotuloDaParcela(i.parcela)}`}
               </div>
               <div className="fat-num">{brlExato(i.valorCentavos)}</div>
               <div className="fat-meta" style={{ fontSize: 12 }}>
-                {br(f?.vencimento ?? null)}
+                {br(f?.vencimento ?? i.vencimentoPrevisto)}
               </div>
               <div className="fat-meta" style={{ fontSize: 12 }}>
                 {f?.nfNumero || "—"}
@@ -417,7 +418,7 @@ function TabelaAberto({
               <div style={{ minWidth: 0 }}>
                 <div className="fat-cliente">{f.conta}</div>
                 <div className="fat-meta">
-                  {f.ref} · {f.tipo === "avulsa" ? f.descricao || "Avulsa" : `${rotuloTipoFatura(f.tipo)} ${f.parcela}`}
+                  {f.ref} · {f.tipo === "avulsa" ? f.descricao || "Avulsa" : `${rotuloDaParcela(f.parcela)}`}
                 </div>
               </div>
               <div className="fat-meta" style={{ fontSize: 12 }}>{rotuloMes(f.competencia)}</div>
@@ -457,7 +458,7 @@ function linkCobranca(f: Fatura, email: string, hoje: string): string {
     atraso
       ? `Consta em aberto a fatura ${f.nfNumero ? `NF ${f.nfNumero}` : f.ref}, com vencimento em ${br(f.vencimento)}, no valor de ${brlExato(liquidoEsperado(f))}.`
       : `Lembramos que a fatura ${f.nfNumero ? `NF ${f.nfNumero}` : f.ref} vence em ${br(f.vencimento)}, no valor de ${brlExato(liquidoEsperado(f))}.`,
-    `Referência: ${f.tipo === "avulsa" ? f.descricao : `${rotuloTipoFatura(f.tipo)} ${f.parcela}`}, competência ${rotuloMes(f.competencia)}.`,
+    `Referência: ${f.tipo === "avulsa" ? f.descricao : `${rotuloDaParcela(f.parcela)}`}, competência ${rotuloMes(f.competencia)}.`,
     "",
     atraso ? "Se o pagamento já foi feito, por favor desconsidere e nos envie o comprovante." : "Qualquer dúvida, estamos à disposição.",
     "",
@@ -477,6 +478,7 @@ function FormEmissao({
   contrato,
   fatura,
   competencia,
+  vencimentoPrevisto,
   competenciaInicial,
   avulsa,
   hoje,
@@ -489,20 +491,21 @@ function FormEmissao({
   contrato?: Contrato;
   fatura?: Fatura;
   competencia?: string;
+  /** Vencimento combinado na parcela da receita; é a sugestão ao emitir. */
+  vencimentoPrevisto?: string | null;
   competenciaInicial?: string;
   avulsa?: boolean;
   hoje: string;
   onFechar: () => void;
   onSalvar: (dados: DadosEmissao) => Promise<unknown>;
 }) {
-  const dia = contrato?.cobranca.diaVencimento ?? 10;
   const [comp, setComp] = useState(competencia ?? competenciaInicial ?? mesDe(hoje));
   const [conta, setConta] = useState("");
   const [area, setArea] = useState("");
   const [descricao, setDescricao] = useState("");
   const [valor, setValor] = useState(deCentavos(valorInicial ?? 0));
   const [emitidaEm, setEmitidaEm] = useState(fatura?.emitidaEm ?? hoje);
-  const [vencimento, setVencimento] = useState(fatura?.vencimento ?? vencimentoSugerido(comp, dia, hoje));
+  const [vencimento, setVencimento] = useState(fatura?.vencimento ?? (vencimentoPrevisto ? vencimentoSugerido(vencimentoPrevisto, hoje) : hoje));
   const [nf, setNf] = useState(fatura?.nfNumero ?? "");
   const [forma, setForma] = useState<string>(fatura?.forma ?? contrato?.cobranca.formaCobranca ?? "boleto");
   const [retencoes, setRetencoes] = useState(deCentavos(fatura?.retencoesCentavos ?? 0));
@@ -563,7 +566,7 @@ function FormEmissao({
           </>
         )}
         <div className="rec-form__duas">
-          <Field label="Valor bruto (R$)" required hint={avulsa ? undefined : "Vem do cronograma; ajuste se a nota sair diferente."}>
+          <Field label="Valor bruto (R$)" required hint={avulsa ? undefined : "Vem da parcela; ajuste se a nota sair diferente."}>
             <Input value={valor} onChange={setValor} placeholder="0,00" />
           </Field>
           <Field label="Retenções (R$)" hint="Impostos que o cliente retém e recolhe (IR, PIS/COFINS/CSLL, ISS). Saem do que entra no caixa.">
@@ -574,7 +577,7 @@ function FormEmissao({
           <Field label="Emissão" required>
             <CampoData valor={emitidaEm} onChange={setEmitidaEm} />
           </Field>
-          <Field label="Vencimento" required hint={contrato ? `O contrato vence no dia ${dia}.` : undefined}>
+          <Field label="Vencimento" required hint={vencimentoPrevisto ? `Combinado na receita: ${br(vencimentoPrevisto)}.` : undefined}>
             <CampoData valor={vencimento} onChange={setVencimento} />
           </Field>
         </div>
@@ -633,7 +636,7 @@ function FormBaixa({ fatura, hoje, onFechar, onSalvo }: { fatura: Fatura; hoje: 
     <Modal titulo={`Baixa · ${fatura.conta}`} eyebrowTexto={`COLMÉIA/ FATURAMENTO · ${fatura.ref}`} onFechar={onFechar} largura={520}>
       <div className="rec-form">
         <div className="fat-meta">
-          {rotuloTipoFatura(fatura.tipo)} {fatura.parcela} · competência {rotuloMes(fatura.competencia)} · vence {br(fatura.vencimento)}
+          {fatura.tipo === "avulsa" ? "Avulsa" : rotuloDaParcela(fatura.parcela)} · competência {rotuloMes(fatura.competencia)} · vence {br(fatura.vencimento)}
           {fatura.nfNumero ? ` · NF ${fatura.nfNumero}` : ""}
         </div>
         <div className="rec-form__duas">
@@ -706,7 +709,7 @@ function Detalhe({
           <Status s={s} dias={diasDeAtraso(f.vencimento, hoje)} />
         </div>
         <div className="fat-detalhe">
-          {linha("O que", f.tipo === "avulsa" ? f.descricao || "Avulsa" : `${rotuloTipoFatura(f.tipo)} ${f.parcela}`)}
+          {linha("O que", f.tipo === "avulsa" ? f.descricao || "Avulsa" : `${rotuloDaParcela(f.parcela)}`)}
           {linha("Competência", rotuloMes(f.competencia))}
           {linha("Produto", areaOf(f.area).label)}
           {contrato && linha("Contrato", `${contrato.ref}${contrato.cobranca.cnpj ? ` · CNPJ ${contrato.cobranca.cnpj}` : ""}`)}

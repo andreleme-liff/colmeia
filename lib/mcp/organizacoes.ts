@@ -93,7 +93,7 @@ export const listarOrganizacoes: Exec = async (c, a) => {
 async function ficha(c: Contexto, o: ClienteLido) {
   const ops = await oportunidadesVisiveis(c, o.id);
   const eventos = await historicoDoCliente(c.sql, o.id, areasDe(c));
-  // Ler a receita é de todos (ver `ver_receita` para valores e cronograma).
+  // Ler a receita é de todos (ver `ver_receita` para valores e parcelas).
   const receitas = await c.sql<{ ref: string; area: string; situacao: string }[]>`
     SELECT ref, area, situacao FROM contratos WHERE cliente_id = ${o.id} ORDER BY ref
   `;

@@ -1,28 +1,27 @@
 // Faturamento (contas a receber): regras puras, sem banco.
 //
-// De onde vem cada fatura: do cronograma dos contratos de receita (lib/forecast.ts). Cada
-// lançamento de um contrato CONTRATADO — parcela de customização ou de implantação, mês de
-// assinatura — é uma fatura a emitir na sua competência (o mês a que se refere).
+// De onde vem cada fatura: das parcelas das receitas (lib/forecast.ts). Cada parcela de uma
+// receita CONTRATADA é uma fatura a emitir na sua competência (o mês em que vence).
 //
 // Ciclo de vida:
 //   a emitir  — calculada do contrato; ainda não existe no banco;
 //   emitida   — nota fiscal e cobrança enviadas; tem vencimento. Passou do vencimento sem
 //               pagamento, a tela mostra VENCIDA (derivado, não gravado);
 //   paga      — baixa registrada: data e valor recebido;
-//   cancelada — com motivo. A linha do cronograma volta a ficar "a emitir" (reemissão).
+//   cancelada — com motivo. A parcela volta a ficar "a emitir" (reemissão).
 //
 // Ao ser emitida, a fatura grava o próprio valor: mexer no contrato depois não altera o que
-// já foi faturado. Fatura avulsa (serviço fora de contrato) nasce emitida, sem cronograma.
+// já foi faturado. Fatura avulsa (serviço fora de contrato) nasce emitida, sem parcela.
 
-import {
-  FORMAS_COBRANCA, FORMA_KEYS, TIPOS_RECEITA, lancamentos, somarMeses, type Contrato, type FormaCobranca, type TipoReceita,
-} from "./forecast.ts";
+import { FORMAS_COBRANCA, FORMA_KEYS, lancamentos, type Contrato, type FormaCobranca } from "./forecast.ts";
 
 export { FORMAS_COBRANCA, FORMA_KEYS, type FormaCobranca };
 
-export const TIPOS_FATURA = [...TIPOS_RECEITA.map((t) => ({ key: t.key as string, label: t.label })), { key: "avulsa", label: "Avulsa" }];
-export type TipoFatura = TipoReceita | "avulsa";
+export const TIPOS_FATURA = [{ key: "parcela", label: "Parcela" }, { key: "avulsa", label: "Avulsa" }] as const;
+export type TipoFatura = (typeof TIPOS_FATURA)[number]["key"];
 export const rotuloTipoFatura = (t: string) => TIPOS_FATURA.find((x) => x.key === t)?.label ?? t;
+/** "Parcela 2/3" ou "À vista" — como a parcela aparece nas listas e no histórico. */
+export const rotuloDaParcela = (parcela: string) => (parcela === "à vista" ? "À vista" : parcela ? `Parcela ${parcela}` : "Parcela");
 
 export const rotuloForma = (k: string | null | undefined) => FORMAS_COBRANCA.find((f) => f.key === k)?.label ?? "—";
 
@@ -41,6 +40,8 @@ export type Fatura = {
   id: number;
   ref: string;
   contratoId: number | null;
+  /** Parcela da receita de onde a fatura saiu; nulo na avulsa (ou se a parcela foi excluída). */
+  parcelaId: number | null;
   conta: string;
   area: string;
   tipo: TipoFatura;
@@ -77,22 +78,26 @@ export function diasDeAtraso(vencimento: string | null, hoje: string): number {
   return Math.round((Date.parse(hoje + "T00:00:00Z") - Date.parse(vencimento + "T00:00:00Z")) / 86_400_000);
 }
 
-/** Chave que liga uma linha do cronograma à fatura emitida a partir dela. */
-export const chaveDaLinha = (contratoId: number, tipo: string, competencia: string) => `${contratoId}|${tipo}|${competencia}`;
+/** Chave de uma parcela na lista do mês. */
+export const chaveDaParcela = (parcelaId: number) => `p${parcelaId}`;
 
-/* ---------------- o mês: cronograma + faturas ---------------- */
+/* ---------------- o mês: parcelas + faturas ---------------- */
 
 export type ItemDoMes = {
-  /** Chave do cronograma (contrato|tipo|competência) ou "f<id>" para avulsa/órfã. */
+  /** "p<id da parcela>", ou "f<id>" para avulsa/órfã. */
   chave: string;
   contratoId: number | null;
+  /** Parcela a faturar; nulo em avulsa/órfã. */
+  parcelaId: number | null;
+  /** Vencimento combinado na receita; nulo em avulsa/órfã. */
+  vencimentoPrevisto: string | null;
   contratoRef: string | null;
   conta: string;
   area: string;
   tipo: TipoFatura;
   parcela: string;
   competencia: string;
-  /** Valor da fatura emitida, ou o do cronograma enquanto está a emitir. */
+  /** Valor da fatura emitida, ou o da parcela enquanto está a emitir. */
   valorCentavos: number;
   status: StatusFatura;
   fatura: Fatura | null;
@@ -101,9 +106,10 @@ export type ItemDoMes = {
 };
 
 /**
- * Tudo o que pertence a uma competência: as linhas do cronograma dos contratos contratados
- * (cada uma com a fatura viva, se houver) mais as faturas daquele mês que não vêm do
- * cronograma (avulsas, ou de uma linha que o contrato não tem mais).
+ * Tudo o que pertence a uma competência: as parcelas das receitas contratadas que vencem
+ * nela (cada uma com a fatura viva, se houver) mais as faturas daquele mês que não vêm de uma
+ * parcela do mês (avulsas, de parcela excluída, ou de parcela cuja data mudou de mês depois
+ * de faturada — a fatura fica na competência em que foi emitida).
  */
 export function itensDoMes(
   contratos: Contrato[],
@@ -119,16 +125,21 @@ export function itensDoMes(
   for (const c of contratos) {
     if (!contratado(c)) continue;
     for (const l of lancamentos(c, competencia, competencia)) {
-      const mesmas = doMes.filter((f) => f.contratoId === c.id && f.tipo === l.tipo);
-      mesmas.forEach((f) => usadas.add(f.id));
+      if (l.parcelaId == null) continue;
+      const mesmas = faturas.filter((f) => f.parcelaId === l.parcelaId);
       const viva = mesmas.find((f) => f.status !== "cancelada") ?? null;
+      // Faturada em outra competência: aparece lá, com a fatura, e não duas vezes.
+      if (viva && viva.competencia !== competencia) continue;
+      mesmas.forEach((f) => usadas.add(f.id));
       itens.push({
-        chave: chaveDaLinha(c.id, l.tipo, competencia),
+        chave: chaveDaParcela(l.parcelaId),
         contratoId: c.id,
+        parcelaId: l.parcelaId,
+        vencimentoPrevisto: l.data,
         contratoRef: c.ref,
         conta: c.conta,
         area: c.area,
-        tipo: l.tipo,
+        tipo: "parcela",
         parcela: l.rotulo,
         competencia,
         valorCentavos: viva ? viva.valorCentavos : l.valorCentavos,
@@ -139,13 +150,15 @@ export function itensDoMes(
     }
   }
 
-  // Avulsas e órfãs: faturas do mês que nenhuma linha do cronograma reivindicou.
+  // Avulsas e órfãs: faturas do mês que nenhuma parcela do mês reivindicou.
   const refPorId = new Map(contratos.map((c) => [c.id, c.ref]));
   for (const f of doMes) {
     if (usadas.has(f.id) || f.status === "cancelada") continue;
     itens.push({
       chave: `f${f.id}`,
       contratoId: f.contratoId,
+      parcelaId: null,
+      vencimentoPrevisto: null,
       contratoRef: f.contratoId != null ? refPorId.get(f.contratoId) ?? null : null,
       conta: f.conta,
       area: f.area,
@@ -158,7 +171,7 @@ export function itensDoMes(
       canceladas: [],
     });
   }
-  return itens.sort((a, b) => a.conta.localeCompare(b.conta, "pt-BR") || a.tipo.localeCompare(b.tipo));
+  return itens.sort((a, b) => a.conta.localeCompare(b.conta, "pt-BR") || (a.vencimentoPrevisto ?? "").localeCompare(b.vencimentoPrevisto ?? "") || a.chave.localeCompare(b.chave));
 }
 
 /* ---------------- contas a receber ---------------- */
@@ -185,18 +198,9 @@ export function aging(faturas: Fatura[], hoje: string): { key: string; label: st
 
 /* ---------------- vencimento ---------------- */
 
-/** "2026-12-10" para (2026-12, dia 10). Dia é limitado a 28 no cadastro, então sempre existe. */
-export function dataNoMes(competencia: string, dia: number): string {
-  return `${competencia}-${String(dia).padStart(2, "0")}`;
-}
-
-/**
- * Vencimento sugerido ao emitir: o dia de vencimento do contrato no mês da competência; se
- * esse dia já passou (ou é antes da emissão), o mesmo dia no mês seguinte.
- */
-export function vencimentoSugerido(competencia: string, diaVencimento: number, emissao: string): string {
-  const noMes = dataNoMes(competencia, diaVencimento);
-  return noMes > emissao ? noMes : dataNoMes(somarMeses(emissao.slice(0, 7), 1), diaVencimento);
+/** Vencimento sugerido ao emitir: o da parcela; se já passou, o dia da emissão. */
+export function vencimentoSugerido(dataDaParcela: string, emissao: string): string {
+  return dataDaParcela > emissao ? dataDaParcela : emissao;
 }
 
 /* ---------------- validação das ações ---------------- */
@@ -218,7 +222,7 @@ export type Emissao = {
   notas: string;
 };
 
-/** Lê os dados de emissão. `valorPadrao` é o do cronograma, usado se o corpo não trouxer valor. */
+/** Lê os dados de emissão. `valorPadrao` é o da parcela, usado se o corpo não trouxer valor. */
 export function lerEmissao(body: Record<string, unknown> | null, valorPadrao: number | null): Emissao | string {
   if (!body) return "Requisição inválida.";
   const emitidaEm = data(body.emitidaEm);
@@ -268,7 +272,7 @@ const dataBR = (iso: string | null) => (iso ? iso.split("-").reverse().join("/")
 /** CSV do mês para a contabilidade (separador ";", decimal com vírgula — abre direto no Excel). */
 export function csvDoMes(itens: ItemDoMes[], rotuloArea: (id: string) => string): string {
   const cab = [
-    "Competência", "Cliente", "Produto", "Contrato", "Tipo", "Parcela", "Status", "Valor bruto", "Retenções",
+    "Competência", "Cliente", "Produto", "Receita", "Tipo", "Parcela", "Status", "Valor bruto", "Retenções",
     "Valor líquido", "NF", "Emissão", "Vencimento", "Forma", "Pago em", "Valor pago",
   ];
   const linhas = itens.map((i) => {
@@ -276,7 +280,7 @@ export function csvDoMes(itens: ItemDoMes[], rotuloArea: (id: string) => string)
     return [
       i.competencia, i.conta, rotuloArea(i.area), i.contratoRef ?? "", rotuloTipoFatura(i.tipo), i.parcela, ROTULO_STATUS[i.status],
       reais(i.valorCentavos), reais(f?.retencoesCentavos ?? 0), reais(f ? liquidoEsperado(f) : i.valorCentavos),
-      f?.nfNumero ?? "", dataBR(f?.emitidaEm ?? null), dataBR(f?.vencimento ?? null), f ? rotuloForma(f.forma) : "",
+      f?.nfNumero ?? "", dataBR(f?.emitidaEm ?? null), dataBR(f?.vencimento ?? i.vencimentoPrevisto), f ? rotuloForma(f.forma) : "",
       dataBR(f?.pagoEm ?? null), reais(f?.valorPagoCentavos ?? null),
     ].map(csvCampo).join(";");
   });

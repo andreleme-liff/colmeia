@@ -333,14 +333,8 @@ checa("fora do pipeline: Prospecção, Ganho, Lost", ["prospeccao", "ganho", "lo
 checa("o pipeline é o funil sem a primeira e a última casa, mais On hold", PIPELINE, [...FUNIL.slice(1, -1), "on_hold"]);
 checa("On hold é pipeline mas não está em aberto (não cobra prazo)", [estagioNoPipeline("on_hold"), estagioEmAberto("on_hold")], [true, false]);
 
-// Composição da proposta (assinatura mensal, implantação e customização com parcelas).
-const comp = planejarCriacaoOportunidade(
-  { conta: "X", area: "tax", valorReais: 1, propAssinaturaReais: 5000, propImplantacaoReais: 30000, propImplantacaoParcelas: 3, propCustomizacaoReais: 24000, propCustomizacaoParcelas: 24, arquetipoId: 1 },
-  perm, fatos);
-checa("composição define o total em 12 meses (parcelas acima de 12 contam só 12)", comp.linha?.valorCentavos, 5000 * 12 * 100 + 3000000 + 1200000);
-checa("sem composição vale o valor digitado", planejarCriacaoOportunidade({ conta: "X", area: "tax", valorReais: 1500 }, perm, fatos).linha?.valorCentavos, 150000);
-checa("parcelas fora da faixa", erro(planejarCriacaoOportunidade({ conta: "X", area: "tax", propImplantacaoParcelas: 0 }, perm, fatos)), "400 Parcelas inválidas: use de 1 a 60.");
-const upd = planejarAtualizacaoOportunidade(OPOR, { propAssinaturaReais: 1000, valorReais: 7 }, perm, fatos);
-checa("atualizar a assinatura recalcula o valor", [upd.sets.prop_assinatura_centavos, upd.sets.valor_centavos], [100000, 1200000]);
+// O valor da oportunidade é um número só, digitado.
+checa("vale o valor digitado", planejarCriacaoOportunidade({ conta: "X", area: "tax", valorReais: 1500 }, perm, fatos).linha?.valorCentavos, 150000);
+checa("atualizar o valor", planejarAtualizacaoOportunidade(OPOR, { valorReais: 7 }, perm, fatos).sets.valor_centavos, 700);
 console.log(`\n${ok} passaram, ${falhou} falharam`);
 process.exit(falhou ? 1 : 0);

@@ -18,7 +18,7 @@ import { CardOportunidade } from "./CardOportunidade";
 import { CardAtividade } from "./CardAtividade";
 import {
   ADMIN_CARDS, BLOCKER_TIPOS, ESTAGIO_INICIAL, MOTIVOS_PERDA, PAPEIS, STAGES, STATUS, CHAVE_SEM_RESPONSAVEL, aplicarBusca, areaOf, prepararBusca, ddmm, porTexto, stamp, statusLabel, hostDaUrl, previaDaProposta, urlDaProposta,
-  PROPOSTA_VAZIA, brlExato, estagioTemProposta, temComposicao, totalPrimeiroAno, type ComposicaoProposta,
+
 } from "@/lib/domain";
 
 /* =========================================================
@@ -2196,25 +2196,6 @@ function campoParaReais(v: string): number {
   const n = Number(v.replace(/[^\d.,]/g, "").replace(/\./g, "").replace(",", "."));
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
-/** Lista fechada de parcelamentos; um valor fora dela (vindo do MCP) entra como opção extra. */
-function opcoesParcelas(atual: number) {
-  const lista = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 18, 24, 36, 48, 60];
-  if (!lista.includes(atual)) lista.push(atual);
-  return lista.sort((a, b) => a - b).map((n) => ({ value: String(n), label: n === 1 ? "à vista (1x)" : `${n}x` }));
-}
-/** De onde vem o total: "12 × R$ 5.000 + implantação R$ 30.000 + customização R$ 12.000 (12 de 24 parcelas)". */
-function resumoDaComposicao(c: ComposicaoProposta): string {
-  const partes: string[] = [];
-  if (c.assinaturaCentavos) partes.push(`12 × ${brlExato(c.assinaturaCentavos)}`);
-  const parcelado = (nome: string, total: number, x: number) => {
-    if (!total) return;
-    // Parcelamento acima de 12 vezes: só as 12 primeiras caem no primeiro ano.
-    partes.push(x > 12 ? `${nome} ${brlExato(Math.round((total * 12) / x))} (12 de ${x} parcelas)` : `${nome} ${brlExato(total)}`);
-  };
-  parcelado("implantação", c.implantacaoCentavos, c.implantacaoParcelas);
-  parcelado("customização", c.customizacaoCentavos, c.customizacaoParcelas);
-  return partes.join(" + ");
-}
 
 export function FormOportunidade({
   areasEditaveis,
@@ -2259,13 +2240,6 @@ export function FormOportunidade({
   const [area, setArea] = useState(inicial?.area ?? "");
   const [estagio, setEstagio] = useState<string>(inicial?.estagio ?? ESTAGIO_INICIAL);
   const [valor, setValor] = useState(inicial ? reaisParaCampo(inicial.valorCentavos) : "");
-  // Composição da proposta: valores como texto (aceitam "1.500,00"), parcelas como número.
-  const p0 = inicial?.proposta ?? PROPOSTA_VAZIA;
-  const [propAss, setPropAss] = useState(reaisParaCampo(p0.assinaturaCentavos));
-  const [propImp, setPropImp] = useState(reaisParaCampo(p0.implantacaoCentavos));
-  const [propImpX, setPropImpX] = useState(p0.implantacaoParcelas);
-  const [propCus, setPropCus] = useState(reaisParaCampo(p0.customizacaoCentavos));
-  const [propCusX, setPropCusX] = useState(p0.customizacaoParcelas);
   const [proximo, setProximo] = useState(inicial?.proximoPasso ?? "");
   const [responsavel, setResponsavel] = useState<string>(
     inicial ? String(inicial.responsavelId ?? pessoas.find((p) => p.nome === inicial.responsavel)?.id ?? "") : ""
@@ -2298,17 +2272,7 @@ export function FormOportunidade({
   // planilha nem tem essas colunas. Ficam à vista se já estiverem preenchidos.
   const emProspeccao = estagio === "prospeccao";
   const mostraBlocker = !emProspeccao || !!blocker || !!blockerTipo || !!blockerDono;
-  const composicao: ComposicaoProposta = {
-    assinaturaCentavos: Math.round(campoParaReais(propAss) * 100),
-    implantacaoCentavos: Math.round(campoParaReais(propImp) * 100),
-    implantacaoParcelas: propImpX,
-    customizacaoCentavos: Math.round(campoParaReais(propCus) * 100),
-    customizacaoParcelas: propCusX,
-  };
-  // Os três valores aparecem a partir do estágio Proposta — ou se já foram preenchidos (um
-  // card que voltou para On hold ou foi perdido depois da proposta não esconde o que tinha).
-  const comProposta = estagioTemProposta(estagio) || temComposicao(inicial?.proposta ?? PROPOSTA_VAZIA);
-  const mostraNegocio = !emProspeccao || !!valor.replace(/[0.,]/g, "") || comProposta;
+  const mostraNegocio = !emProspeccao || !!valor.replace(/[0.,]/g, "");
   const alternarModulo = (id: string) =>
     setModulos((m) => (m.includes(id) ? m.filter((x) => x !== id) : [...m, id]));
 
@@ -2319,11 +2283,6 @@ export function FormOportunidade({
       area,
       estagio,
       valorReais: campoParaReais(valor),
-      propAssinaturaReais: composicao.assinaturaCentavos / 100,
-      propImplantacaoReais: composicao.implantacaoCentavos / 100,
-      propImplantacaoParcelas: composicao.implantacaoParcelas,
-      propCustomizacaoReais: composicao.customizacaoCentavos / 100,
-      propCustomizacaoParcelas: composicao.customizacaoParcelas,
       proximoPasso: proximo,
       responsavelId: responsavel ? Number(responsavel) : null,
       situacao,
@@ -2409,7 +2368,7 @@ export function FormOportunidade({
             }}
           />
         </Field>
-        <Field label="Estágio" hint={comProposta && !estagioTemProposta(inicial?.estagio ?? ESTAGIO_INICIAL) ? "A partir daqui o card detalha a proposta." : undefined}>
+        <Field label="Estágio">
           <Select options={STAGES.map((s) => ({ value: s.key, label: s.label }))} value={estagio} onChange={setEstagio} />
         </Field>
       </div>
@@ -2489,57 +2448,9 @@ export function FormOportunidade({
       {mostraNegocio && (
         <>
           {bloco("VALOR E PROPOSTA")}
-          {/* A partir de Proposta o valor se abre nos três tipos da receita. Antes disso é só
-              uma estimativa, num número. */}
-          {comProposta && (
-            <div className="cop-proposta">
-              <div>
-                <div style={eyebrow(10, C.dust, "0.14em")}>ASSINATURA</div>
-                <Field label="Por mês (R$)">
-                  <Input placeholder="0,00" value={propAss} onChange={setPropAss} size="sm" />
-                </Field>
-                <div style={{ fontSize: 12, color: C.faint, lineHeight: 1.5 }}>Mensal, sem parcelas.</div>
-              </div>
-              <div>
-                <div style={eyebrow(10, C.dust, "0.14em")}>IMPLANTAÇÃO</div>
-                <Field label="Total (R$)">
-                  <Input placeholder="0,00" value={propImp} onChange={setPropImp} size="sm" />
-                </Field>
-                <Field label="Dividido em">
-                  <Select options={opcoesParcelas(propImpX)} value={String(propImpX)} onChange={(v) => setPropImpX(Number(v))} />
-                </Field>
-              </div>
-              <div>
-                <div style={eyebrow(10, C.dust, "0.14em")}>CUSTOMIZAÇÃO</div>
-                <Field label="Total (R$)">
-                  <Input placeholder="0,00" value={propCus} onChange={setPropCus} size="sm" />
-                </Field>
-                <Field label="Dividido em">
-                  <Select options={opcoesParcelas(propCusX)} value={String(propCusX)} onChange={(v) => setPropCusX(Number(v))} />
-                </Field>
-              </div>
-            </div>
-          )}
-          {comProposta && temComposicao(composicao) ? (
-            <div className="cop-total">
-              <div>
-                <div style={eyebrow(10, C.dust, "0.14em")}>VALOR TOTAL · 12 MESES</div>
-                <span>{resumoDaComposicao(composicao)}</span>
-              </div>
-              <strong>{brlExato(totalPrimeiroAno(composicao))}</strong>
-            </div>
-          ) : (
-            <Field
-              label="Valor total · 12 meses (R$)"
-              hint={
-                comProposta
-                  ? "Preencha assinatura, implantação ou customização acima e o total passa a ser calculado."
-                  : "Estimativa do primeiro ano: assinatura, implantação e customização somadas."
-              }
-            >
+            <Field label="Valor (R$)" hint="Valor do negócio. As parcelas e as datas ficam na Receita.">
               <Input placeholder="294.000" value={valor} onChange={setValor} />
             </Field>
-          )}
           <CampoProposta valor={propostaUrl} onChange={setPropostaUrl} aberta={verProposta} onAlternar={() => setVerProposta((v) => !v)} />
         </>
       )}
